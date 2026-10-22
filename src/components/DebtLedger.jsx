@@ -131,6 +131,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
   const [selectedDebtCustomer, setSelectedDebtCustomer] = useState(null);
   const [phone, setPhone] = useState("");
   const [amount, setAmount] = useState("");
+  const [debtFormSubmitted, setDebtFormSubmitted] = useState(false);
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [busyDebtId, setBusyDebtId] = useState(null);
@@ -247,15 +248,14 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
 
   async function saveDebt(event) {
     event.preventDefault();
+    setDebtFormSubmitted(true);
     if (!customerName.trim()) {
       playErrorChime();
-      setError("Enter the customer's name.");
       return;
     }
     const amountPesewas = toPesewas(amount);
     if (!amountPesewas || amountPesewas <= 0) {
       playErrorChime();
-      setError("Enter an amount greater than GHS 0.00.");
       return;
     }
     const now = Date.now();
@@ -282,6 +282,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
       setSelectedDebtCustomer(null);
       setPhone("");
       setAmount("");
+      setDebtFormSubmitted(false);
       setNote("");
       setError("");
       setFormOpen(false);
@@ -298,6 +299,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
     setSelectedDebtCustomer(null);
     setPhone("");
     setAmount("");
+    setDebtFormSubmitted(false);
     setNote("");
     setError("");
     setFormOpen(false);
@@ -562,7 +564,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
             <ArrowLeft size={17} aria-hidden="true" /> Back to dashboard
           </button>
         </div>
-        <button type="button" onClick={() => { setFormOpen((open) => !open); setError(""); }} className="flex min-h-12 items-center gap-2 rounded-xl bg-leaf px-4 font-semibold text-white">
+        <button type="button" onClick={() => { setFormOpen((open) => !open); setError(""); setDebtFormSubmitted(false); }} className="flex min-h-12 items-center gap-2 rounded-xl bg-leaf px-4 font-semibold text-white">
           <UserRoundPlus size={18} aria-hidden="true" />
           <span>Add debt</span>
         </button>
@@ -610,7 +612,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
       )}
 
       {formOpen && (
-        <form onSubmit={saveDebt} className="mb-5 space-y-3 rounded-2xl bg-white p-4 shadow-card">
+        <form noValidate onSubmit={saveDebt} className="mb-5 space-y-3 rounded-2xl bg-white p-4 shadow-card">
           <h2 className="font-bold">New customer debt</h2>
           <label className="block text-sm font-semibold">Customer name <span className="text-red-600">*</span>
             <div className="relative">
@@ -631,6 +633,8 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
                 aria-autocomplete="list"
                 aria-expanded={debtCustomerSuggestions.length > 0}
                 aria-controls="debt-customer-suggestions"
+                aria-invalid={debtFormSubmitted && !customerName.trim()}
+                aria-describedby="debt-customer-name-help"
                 className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 px-3 text-base font-normal outline-none focus:border-leaf"
               />
               {debtCustomerSuggestions.length > 0 && (
@@ -667,12 +671,32 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
                 Outstanding balance: {formatGhs(selectedDebtCustomer.totalDebtPesewas)}
               </span>
             )}
+            <span id="debt-customer-name-help" className={`mt-1 block text-xs font-normal ${debtFormSubmitted && !customerName.trim() ? "text-red-700" : "text-slate-500"}`}>
+              {debtFormSubmitted && !customerName.trim() ? "Enter a customer name to continue." : "Required: enter the customer who owes this amount."}
+            </span>
           </label>
           <label className="block text-sm font-semibold">Phone <span className="font-normal text-slate-500">(for WhatsApp reminder)</span>
             <input type="tel" inputMode="tel" maxLength="30" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="024 123 4567" className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 px-3 text-base font-normal outline-none focus:border-leaf" />
           </label>
-          <label className="block text-sm font-semibold">Amount (GHS)
-            <input required type="number" inputMode="decimal" min="0.01" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0.00" className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 px-3 text-base font-normal outline-none focus:border-leaf" />
+          <label className="block text-sm font-semibold">Amount (GHS) <span className="text-red-600">*</span>
+            <input
+              required
+              type="number"
+              inputMode="decimal"
+              min="0.01"
+              step="0.01"
+              value={amount}
+              onChange={(event) => { setAmount(event.target.value); setError(""); }}
+              placeholder="0.00"
+              aria-invalid={debtFormSubmitted && (!toPesewas(amount) || toPesewas(amount) <= 0)}
+              aria-describedby="debt-amount-help"
+              className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 px-3 text-base font-normal outline-none focus:border-leaf"
+            />
+            <span id="debt-amount-help" className={`mt-1 block text-xs font-normal ${debtFormSubmitted && (!toPesewas(amount) || toPesewas(amount) <= 0) ? "text-red-700" : "text-slate-500"}`}>
+              {debtFormSubmitted && (!toPesewas(amount) || toPesewas(amount) <= 0)
+                ? "Enter an amount greater than GHS 0.00."
+                : "Required: enter the amount the customer owes."}
+            </span>
           </label>
           <label className="block text-sm font-semibold">Note <span className="font-normal text-slate-500">(optional)</span>
             <input maxLength="200" value={note} onChange={(event) => setNote(event.target.value)} className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 px-3 text-base font-normal outline-none focus:border-leaf" />
@@ -714,6 +738,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
             const customerPhone = customer?.phone?.trim() || debt.phone?.trim() || debt.customer_phone?.trim() || "";
             const customerDebt = { ...debt, phone: customerPhone, customer_phone: customerPhone };
             const whatsappUrl = paymentLink(customerDebt);
+            const dialablePhone = customerPhone.replace(/[\s().-]/g, "");
             return (
               <li key={debt.id} className="rounded-2xl bg-white p-4 shadow-card">
                 <div className="flex items-start justify-between gap-3">
@@ -736,31 +761,39 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
                   <p className="shrink-0 text-lg font-bold text-amber-800">{formatGhs(debt.amountPesewas)}</p>
                 </div>
                 {customerPhone ? (
-                  <a
-                    href={whatsappUrl || undefined}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(event) => {
-                      if (!whatsappUrl) {
-                        event.preventDefault();
-                        setReminderDebt(customerDebt);
-                      }
-                    }}
-                    className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-700"
-                  >
-                    <MessageCircle size={17} aria-hidden="true" /> Send Reminder on WhatsApp
-                  </a>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <a
+                      href={whatsappUrl || undefined}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(event) => {
+                        if (!whatsappUrl) {
+                          event.preventDefault();
+                          setReminderDebt(customerDebt);
+                        }
+                      }}
+                      className="flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-2.5 text-center text-sm font-medium text-emerald-700 transition hover:bg-emerald-100"
+                    >
+                      <MessageCircle size={17} aria-hidden="true" /> WhatsApp
+                    </a>
+                    <a
+                      href={`tel:${dialablePhone}`}
+                      className="flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100 px-2 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
+                    >
+                      <span aria-hidden="true">📞</span> Call
+                    </a>
+                  </div>
                 ) : (
                   <button type="button" onClick={() => setReminderDebt(customerDebt)} className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-800 transition hover:bg-emerald-100">
                     <MessageCircle size={17} aria-hidden="true" />
-                    + Add WhatsApp Number
+                    + Add Phone Number
                   </button>
                 )}
                 <div className="mt-3 grid grid-cols-2 gap-3">
-                  <button type="button" onClick={() => editDebt(debt)} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200">
+                  <button type="button" onClick={() => editDebt(debt)} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100">
                     <Pencil size={15} aria-hidden="true" /> Edit Debt
                   </button>
-                  <button type="button" disabled={busyDebtId === debt.id} onClick={() => setPaymentDebt(debt)} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-800 disabled:opacity-50">
+                  <button type="button" disabled={busyDebtId === debt.id} onClick={() => setPaymentDebt(debt)} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50">
                     <Check size={17} aria-hidden="true" /> Mark as Paid
                   </button>
                 </div>
