@@ -1,19 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import Dexie from "dexie";
-import { ArrowDownLeft, ArrowUpRight, ChevronDown, ChevronUp, CirclePlus, ReceiptText, UsersRound } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, CirclePlus, ReceiptText, UsersRound } from "lucide-react";
 import { db } from "../db/db.js";
 import FinancialSummaryModal from "./FinancialSummaryModal.jsx";
 import SyncStatusBadge from "./SyncStatusBadge.jsx";
 import InstallPromptBanner from "./InstallPromptBanner.jsx";
 import { formatGhs } from "../lib/money.js";
+import { getLargestUnpaidBalances } from "../utils/debtBalances.js";
 
 const ROW_HEIGHT = 72;
 const FEED_HEIGHT = 360;
 const PAGE_SIZE = 50;
 const OVERSCAN = 4;
 
-function MetricCard({ title, value, icon: Icon, tone, onClick, expanded, detailsId }) {
+function MetricCard({ title, value, icon: Icon, tone, onClick, hint }) {
   const tones = {
     green: {
       card: "bg-leaf",
@@ -42,21 +43,16 @@ function MetricCard({ title, value, icon: Icon, tone, onClick, expanded, details
       <button
         type="button"
         onClick={onClick}
-        aria-expanded={expanded}
-        aria-controls={detailsId}
         className={`min-h-32 w-full rounded-2xl p-4 text-left shadow-card ${tones[tone].card} focus:outline-none focus:ring-2 focus:ring-leaf focus:ring-offset-2`}
       >
         <span className="flex items-center justify-between">
           <span className={`text-sm font-medium ${tones[tone].label}`}>{title}</span>
           <span className="flex items-center gap-2">
             <Icon aria-hidden="true" size={19} className={tones[tone].icon} />
-            {expanded
-              ? <ChevronUp aria-hidden="true" size={18} className={tones[tone].icon} />
-              : <ChevronDown aria-hidden="true" size={18} className={tones[tone].icon} />}
           </span>
         </span>
         <span className={`mt-5 block break-words text-2xl font-bold tracking-tight ${tones[tone].value}`}>{value}</span>
-        <span className={`mt-1 block text-xs ${tones[tone].hint}`}>Tap to see details</span>
+        <span className={`mt-1 block text-xs ${tones[tone].hint}`}>{hint}</span>
       </button>
     );
   }
@@ -77,9 +73,8 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [feedError, setFeedError] = useState("");
-  const [debtDetailsOpen, setDebtDetailsOpen] = useState(false);
   const [debtBreakdown, setDebtBreakdown] = useState([]);
-  const [debtBreakdownLoading, setDebtBreakdownLoading] = useState(false);
+  const [debtBreakdownLoading, setDebtBreakdownLoading] = useState(true);
   const [debtBreakdownError, setDebtBreakdownError] = useState("");
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const feedElement = useRef(null);
@@ -111,21 +106,15 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey }) {
   const netProfit = totals.cashIn - totals.expenses;
 
   useEffect(() => {
-    if (!debtDetailsOpen) return undefined;
     let cancelled = false;
     setDebtBreakdownLoading(true);
     setDebtBreakdownError("");
     db.debts
-      .where("[status+amountPesewas+id]")
-      .between(
-        ["unpaid", 0, Dexie.minKey],
-        ["unpaid", Dexie.maxKey, Dexie.maxKey]
-      )
-      .reverse()
-      .limit(5)
+      .where("status")
+      .equals("unpaid")
       .toArray()
       .then((results) => {
-        if (!cancelled) setDebtBreakdown(results);
+        if (!cancelled) setDebtBreakdown(getLargestUnpaidBalances(results));
       })
       .catch((error) => {
         console.error("Could not load the debt breakdown.", error);
@@ -137,7 +126,7 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey }) {
     return () => {
       cancelled = true;
     };
-  }, [debtDetailsOpen, refreshKey]);
+  }, [refreshKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -251,39 +240,36 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey }) {
           value={formatGhs(totals.totalDebt)}
           icon={ReceiptText}
           tone="debt"
-          onClick={() => setDebtDetailsOpen((open) => !open)}
-          expanded={debtDetailsOpen}
-          detailsId="uncollected-debt-details"
+          onClick={onViewDebts}
+          hint="Tap to view debts"
         />
       </section>
 
-      {debtDetailsOpen && (
-        <section id="uncollected-debt-details" aria-label="Uncollected debt details" className="mt-3 rounded-2xl bg-white p-4 shadow-card">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="font-bold">Largest unpaid balances</h2>
-            <button type="button" onClick={onViewDebts} className="text-sm font-semibold text-leaf underline">View all debts</button>
-          </div>
-          {debtBreakdownLoading ? (
-            <p className="text-sm text-slate-500">Loading debt details…</p>
-          ) : debtBreakdownError ? (
-            <p role="alert" className="text-sm text-red-700">{debtBreakdownError}</p>
-          ) : debtBreakdown.length ? (
-            <ul className="divide-y divide-slate-100">
-              {debtBreakdown.map((debt) => (
-                <li key={debt.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold">{debt.customerName || debt.customer_name || "Unnamed customer"}</p>
-                    {debt.phone && <p className="truncate text-xs text-slate-500">{debt.phone}</p>}
-                  </div>
-                  <p className="shrink-0 font-bold text-amber-800">{formatGhs(debt.amountPesewas)}</p>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-slate-500">There are no unpaid balances.</p>
-          )}
-        </section>
-      )}
+      <section aria-label="Uncollected debt details" className="mt-3 rounded-2xl bg-white p-4 shadow-card">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="font-bold">Largest unpaid balances</h2>
+          <button type="button" onClick={onViewDebts} className="min-h-10 shrink-0 text-sm font-semibold text-leaf underline">View all debts</button>
+        </div>
+        {debtBreakdownLoading ? (
+          <p className="text-sm text-slate-500">Loading debt details…</p>
+        ) : debtBreakdownError ? (
+          <p role="alert" className="text-sm text-red-700">{debtBreakdownError}</p>
+        ) : debtBreakdown.length ? (
+          <ul className="divide-y divide-slate-100">
+            {debtBreakdown.map((debt) => (
+              <li key={debt.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">{debt.customerName}</p>
+                  {debt.phone && <p className="truncate text-xs text-slate-500">{debt.phone}</p>}
+                </div>
+                <p className="shrink-0 font-bold text-amber-800">{formatGhs(debt.amountPesewas)}</p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-slate-500">There are no unpaid balances.</p>
+        )}
+      </section>
 
       <section aria-label="Today's net profit" className="relative mt-3 flex flex-col items-start justify-between gap-4 rounded-2xl bg-slate-900 p-5 text-white shadow-sm md:flex-row md:items-center">
         <div>

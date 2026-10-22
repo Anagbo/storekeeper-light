@@ -917,7 +917,6 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
       {reminderDebt && (
         <WhatsAppReminderModal
           debt={reminderDebt}
-          shopName={shopName}
           onClose={() => setReminderDebt(null)}
           onPhoneSaved={saveWhatsAppPhone}
         />
