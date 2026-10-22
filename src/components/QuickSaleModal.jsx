@@ -30,11 +30,13 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
   const [quantity, setQuantity] = useState("1");
   const [price, setPrice] = useState("");
   const [paymentType, setPaymentType] = useState("cash");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [note, setNote] = useState("");
   const [speechLanguage, setSpeechLanguage] = useState("en-GB");
   const [listening, setListening] = useState(false);
   const [error, setError] = useState("");
   const recognitionRef = useRef(null);
+  const submitLock = useRef(false);
 
   useEffect(() => {
     const query = normalizeCustomerName(customerName);
@@ -203,6 +205,7 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (submitLock.current) return;
     const parsedQuantity = Number(quantity);
     if (type === "sale") {
       if (!Number.isFinite(parsedQuantity) || parsedQuantity <= 0) {
@@ -234,6 +237,8 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
     }
 
     const now = Date.now();
+    submitLock.current = true;
+    setIsSubmitting(true);
     try {
       const transaction = {
         id: createId(),
@@ -296,6 +301,7 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
       } else {
         await db.transactions.add(transaction);
       }
+      console.log("Saved offline successfully:", transaction);
       void requestBackgroundSync();
       if (type === "expense") {
         playExpenseChime();
@@ -304,11 +310,25 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
         playSuccessChime();
         speakConfirmation("Sale saved");
       }
+      setCustomerName("");
+      setSelectedCustomer(null);
+      setCustomerSuggestions([]);
+      setPhone("");
+      setItemDescription("");
+      setQuantity("1");
+      setPrice("");
+      setPaymentType("cash");
+      setNote("");
+      setError("");
       onSaved();
+      onClose();
     } catch (saveError) {
-      console.error("Could not save transaction.", saveError);
+      console.error("Offline save error:", saveError);
       playErrorChime();
       setError("This entry could not be saved. Please check available storage and try again.");
+    } finally {
+      submitLock.current = false;
+      setIsSubmitting(false);
     }
   }
 
@@ -512,9 +532,10 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
             </button>
             <button
               type="submit"
-              className="w-full rounded-xl bg-emerald-700 px-5 py-3 font-medium text-white shadow-sm transition hover:bg-emerald-800 sm:w-auto"
+              disabled={isSubmitting}
+              className="w-full rounded-xl bg-emerald-700 px-5 py-3 font-medium text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
             >
-              Save {type}{type === "sale" && paymentType === "credit" ? " and debt" : ""}
+              {isSubmitting ? "Saving…" : `Save ${type}${type === "sale" && paymentType === "credit" ? " and debt" : ""}`}
             </button>
           </div>
         </form>

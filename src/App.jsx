@@ -154,7 +154,6 @@ export default function App() {
           onClose={closeQuickEntry}
           onSaved={() => {
             setRefreshKey((current) => current + 1);
-            closeQuickEntry();
           }}
         />
       )}
