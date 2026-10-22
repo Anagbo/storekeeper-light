@@ -695,6 +695,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
                   </a>
                 ) : (
                   <button type="button" onClick={() => setReminderDebt(customerDebt)} className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-800 transition hover:bg-emerald-100">
+                    <MessageCircle size={17} aria-hidden="true" />
                     + Add WhatsApp Number
                   </button>
                 )}

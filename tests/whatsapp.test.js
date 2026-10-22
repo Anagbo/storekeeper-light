@@ -6,12 +6,46 @@ test("normalizes common Ghana phone number formats to +233", () => {
   for (const phone of [
     "024 123 4567",
     "024-123-4567",
+    "024.123.4567",
     "+233 24 123 4567",
+    "+233 (24) 123 4567",
     "00233 (24) 123 4567",
     "233241234567",
     "241234567"
   ]) {
     assert.equal(normalizeWhatsAppPhone(phone), "+233241234567");
+  }
+  assert.equal(normalizeWhatsAppPhone("050 123 4567"), "+233501234567");
+  assert.equal(normalizeWhatsAppPhone("233123456"), "+233233123456");
+});
+
+test("accepts Ghana mobile prefixes and rejects non-mobile, malformed, or wrong-length numbers", () => {
+  for (const prefix of [
+    "020", "021", "022", "023", "024", "025", "026", "027", "028", "029",
+    "050", "051", "052", "053", "054", "055", "056", "057", "058", "059"
+  ]) {
+    const nationalNumber = `${prefix}1234567`;
+    assert.equal(normalizeWhatsAppPhone(nationalNumber), `+233${nationalNumber.slice(1)}`, prefix);
+  }
+
+  for (const phone of [
+    "0301234567",
+    "0401234567",
+    "0701234567",
+    "020123456",
+    "02012345678",
+    "+233 20 123 456",
+    "+233 30 123 4567",
+    "00234 24 123 4567",
+    "++233241234567",
+    "024+1234567",
+    "024 123 4567 ext 2",
+    "(024 123 4567",
+    "024)123(4567",
+    "024 () 4567",
+    "０２４１２３４５６７"
+  ]) {
+    assert.equal(normalizeWhatsAppPhone(phone), null, phone);
   }
 });
 

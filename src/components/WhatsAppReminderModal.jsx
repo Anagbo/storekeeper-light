@@ -13,7 +13,8 @@ export default function WhatsAppReminderModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const formattedPhone = normalizeWhatsAppPhone(phone);
-  const phoneAlreadySaved = formattedPhone === normalizeWhatsAppPhone(debt.phone ?? debt.customer_phone);
+  const phoneAlreadySaved = Boolean(formattedPhone) &&
+    formattedPhone === normalizeWhatsAppPhone(debt.phone ?? debt.customer_phone);
   const link = generateWhatsAppLink(
     formattedPhone ?? phone,
     debt.customerName || debt.customer_name,
@@ -120,8 +121,10 @@ export default function WhatsAppReminderModal({
               aria-describedby="whatsapp-phone-help"
               className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 px-3 text-base font-normal outline-none focus:border-leaf focus:ring-2 focus:ring-leaf/20 sm:text-sm"
             />
-            <span id="whatsapp-phone-help" className="mt-1 block text-xs font-normal text-slate-500">
-              Ghana numbers are opened with the +233 country code.
+            <span id="whatsapp-phone-help" className={`mt-1 block text-xs font-normal ${phone && !formattedPhone ? "text-red-700" : "text-slate-500"}`}>
+              {phone && !formattedPhone
+                ? "Enter a valid Ghana mobile number: 10 digits starting 02 or 05, or +233 followed by 9 digits."
+                : "Ghana numbers are opened with the +233 country code."}
             </span>
           </label>
 
@@ -131,11 +134,6 @@ export default function WhatsAppReminderModal({
               : "Enter a valid Ghana number to preview the reminder."}
           </div>
 
-            {phone && !formattedPhone && (
-              <p role="alert" className="text-sm text-red-700">
-                Enter a valid Ghana number, such as 024 123 4567.
-              </p>
-            )}
             {error && <p role="alert" className="text-sm text-amber-800">{error}</p>}
           {fallbackLink && (
             <a
@@ -148,10 +146,10 @@ export default function WhatsAppReminderModal({
               <MessageCircle size={18} aria-hidden="true" /> Open WhatsApp
             </a>
           )}
-          {!fallbackLink && (
+          {!fallbackLink && formattedPhone && (
             <button
               type="submit"
-              disabled={busy || !formattedPhone}
+              disabled={busy}
               className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 font-semibold text-white disabled:opacity-50"
             >
               <MessageCircle size={18} aria-hidden="true" />
