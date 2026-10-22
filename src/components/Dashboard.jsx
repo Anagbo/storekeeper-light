@@ -5,6 +5,7 @@ import { ArrowDownLeft, ArrowUpRight, ChevronDown, ChevronUp, CirclePlus, Receip
 import { db } from "../db/db.js";
 import FinancialSummaryModal from "./FinancialSummaryModal.jsx";
 import SyncStatusBadge from "./SyncStatusBadge.jsx";
+import InstallPromptBanner from "./InstallPromptBanner.jsx";
 import { formatGhs } from "../lib/money.js";
 
 const ROW_HEIGHT = 72;
@@ -232,6 +233,7 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey }) {
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 pb-28 pt-6 sm:px-6">
+      <InstallPromptBanner />
       <div className="mb-5 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <p className="text-sm font-medium text-leaf">Your shop at a glance</p>

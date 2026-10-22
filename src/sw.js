@@ -1,5 +1,8 @@
 import { NavigationRoute, registerRoute } from "workbox-routing";
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from "workbox-precaching";
+import { CacheableResponsePlugin } from "workbox-cacheable-response";
+import { ExpirationPlugin } from "workbox-expiration";
+import { StaleWhileRevalidate } from "workbox-strategies";
 
 const DATABASE_NAME = "StoreKeeperLight";
 const TABLES = ["products", "transactions", "debts"];
@@ -8,6 +11,28 @@ const SYNC_ENDPOINT = import.meta.env.VITE_SYNC_ENDPOINT?.trim();
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
 registerRoute(new NavigationRoute(createHandlerBoundToURL("/index.html")));
+registerRoute(
+  ({ request }) => ["script", "style", "font"].includes(request.destination),
+  new StaleWhileRevalidate({
+    cacheName: "storekeeper-runtime-assets",
+    plugins: [
+      new CacheableResponsePlugin({ statuses: [0, 200] }),
+      new ExpirationPlugin({ maxEntries: 40, maxAgeSeconds: 60 * 60 * 24 * 30 })
+    ]
+  })
+);
+
+self.addEventListener("install", () => {
+  void self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") void self.skipWaiting();
+});
 
 function openDatabase() {
   return new Promise((resolve, reject) => {

@@ -5,6 +5,14 @@ import "./styles.css";
 
 if ("serviceWorker" in navigator) {
   if (import.meta.env.PROD) {
+    const hadController = Boolean(navigator.serviceWorker.controller);
+    let reloadingForUpdate = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (hadController && !reloadingForUpdate) {
+        reloadingForUpdate = true;
+        window.location.reload();
+      }
+    });
     window.addEventListener("load", () => {
       navigator.serviceWorker.register("/sw.js").catch((error) => {
         console.error("The offline app shell could not be registered.", error);
