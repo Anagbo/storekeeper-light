@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Mic, MicOff, X } from "lucide-react";
 import { db } from "../db/db.js";
+import { addDebtToCustomer } from "../db/debts.js";
 import { createId } from "../lib/ids.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { parseSpokenExpense, parseSpokenSale } from "../lib/saleParser.js";
@@ -273,23 +274,13 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
       if (type === "sale" && paymentType === "credit") {
         await db.transaction("rw", db.transactions, db.debts, db.customers, async () => {
           await db.transactions.add(transaction);
-          await db.debts.add({
-            id: createId(),
-            transactionId: transaction.id,
-            customerName: customerName.trim(),
-            customer_name: customerName.trim(),
-            phone: phone.trim(),
-            customer_phone: phone.trim(),
+          await addDebtToCustomer({
+            name: customerName,
+            phone,
             amountPesewas,
-            total_owed: amountPesewas,
             note: itemDescription.trim(),
-            status: "unpaid",
-            createdAt: now,
-            created_at: now,
-            last_reminder_date: null,
-            updatedAt: now,
-            synced: false,
-            syncStatus: "pending"
+            transactionId: transaction.id,
+            now
           });
           await upsertCustomer({
             name: customerName,
@@ -455,16 +446,6 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
                   />
                 </label>
               </div>
-              {paymentType === "credit" && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-950" aria-live="polite">
-                  Adds {formatGhs(toPesewas(price) || 0)} to customer&apos;s outstanding balance
-                </div>
-              )}
-              {paymentType === "credit" && selectedCustomer?.totalDebtPesewas > 0 && (
-                <p aria-live="polite" className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                  Note: {selectedCustomer.name} already has an unpaid balance of {formatGhs(selectedCustomer.totalDebtPesewas)}.
-                </p>
-              )}
               <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-leaf">
                 Total: GHS {(Number(price) || 0).toFixed(2)}
                 {paymentType === "credit" && " · Added to customer debts"}

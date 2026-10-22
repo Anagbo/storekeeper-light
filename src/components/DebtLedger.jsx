@@ -3,6 +3,7 @@ import Dexie from "dexie";
 import { useLiveQuery } from "dexie-react-hooks";
 import { ArrowLeft, Check, LogOut, MessageCircle, Pencil, UserRoundPlus, X } from "lucide-react";
 import { db } from "../db/db.js";
+import { addDebtToCustomer } from "../db/debts.js";
 import { upsertCustomer } from "../db/customers.js";
 import { createId } from "../lib/ids.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
@@ -127,6 +128,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
   const [refreshKey, setRefreshKey] = useState(0);
   const [formOpen, setFormOpen] = useState(false);
   const [customerName, setCustomerName] = useState("");
+  const [selectedDebtCustomer, setSelectedDebtCustomer] = useState(null);
   const [phone, setPhone] = useState("");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -147,6 +149,13 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
   const [sendingReminderId, setSendingReminderId] = useState(null);
   const [reminderResult, setReminderResult] = useState(null);
   const loadingLock = useRef(false);
+  const customerNameQuery = customerName.trim().toLowerCase();
+  const debtCustomerSuggestions = formOpen && customerNameQuery.length >= 2 &&
+    selectedDebtCustomer?.nameLower !== customerNameQuery
+    ? savedCustomers.filter((customer) => (
+        (customer.nameLower ?? customer.name.trim().toLowerCase()).startsWith(customerNameQuery)
+      )).slice(0, 8)
+    : [];
 
   useEffect(() => {
     if (!supabase) return undefined;
@@ -252,22 +261,12 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
     const now = Date.now();
     try {
       await db.transaction("rw", db.debts, db.customers, async () => {
-        await db.debts.add({
-          id: createId(),
-          customerName: customerName.trim(),
-          customer_name: customerName.trim(),
-          phone: phone.trim(),
-          customer_phone: phone.trim(),
+        await addDebtToCustomer({
+          name: customerName,
+          phone,
           amountPesewas,
-          total_owed: amountPesewas,
           note: note.trim(),
-          status: "unpaid",
-          createdAt: now,
-          created_at: now,
-          last_reminder_date: null,
-          updatedAt: now,
-          synced: false,
-          syncStatus: "pending"
+          now
         });
         await upsertCustomer({
           name: customerName,
@@ -280,6 +279,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
       playSuccessChime();
       speakConfirmation("Debt saved");
       setCustomerName("");
+      setSelectedDebtCustomer(null);
       setPhone("");
       setAmount("");
       setNote("");
@@ -295,6 +295,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
 
   function cancelDebtEntry() {
     setCustomerName("");
+    setSelectedDebtCustomer(null);
     setPhone("");
     setAmount("");
     setNote("");
@@ -612,7 +613,60 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
         <form onSubmit={saveDebt} className="mb-5 space-y-3 rounded-2xl bg-white p-4 shadow-card">
           <h2 className="font-bold">New customer debt</h2>
           <label className="block text-sm font-semibold">Customer name <span className="text-red-600">*</span>
-            <input required aria-required="true" maxLength="100" value={customerName} onChange={(event) => { setCustomerName(event.target.value); setError(""); }} className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 px-3 text-base font-normal outline-none focus:border-leaf" />
+            <div className="relative">
+              <input
+                required
+                aria-required="true"
+                maxLength="100"
+                value={customerName}
+                onChange={(event) => {
+                  setCustomerName(event.target.value);
+                  setSelectedDebtCustomer(null);
+                  setPhone("");
+                  setError("");
+                }}
+                placeholder="Search saved customers or enter a new name"
+                autoComplete="off"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={debtCustomerSuggestions.length > 0}
+                aria-controls="debt-customer-suggestions"
+                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 px-3 text-base font-normal outline-none focus:border-leaf"
+              />
+              {debtCustomerSuggestions.length > 0 && (
+                <ul id="debt-customer-suggestions" role="listbox" className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
+                  {debtCustomerSuggestions.map((customer) => (
+                    <li key={customer.id} role="presentation">
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected="false"
+                        onClick={() => {
+                          setCustomerName(customer.name);
+                          setSelectedDebtCustomer(customer);
+                          setPhone(customer.phone ?? "");
+                          setError("");
+                        }}
+                        className="flex min-h-12 w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left hover:bg-emerald-50"
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate font-semibold">{customer.name}</span>
+                          <span className="block truncate text-xs font-normal text-slate-500">{customer.phone || "No phone saved"}</span>
+                        </span>
+                        <span className={`shrink-0 text-xs font-semibold ${customer.totalDebtPesewas > 0 ? "text-amber-800" : "text-slate-500"}`}>
+                          {customer.totalDebtPesewas > 0 ? `Owes ${formatGhs(customer.totalDebtPesewas)}` : "No unpaid debt"}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            {selectedDebtCustomer?.totalDebtPesewas > 0 && (
+              <span className="mt-2 inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">
+                Outstanding balance: {formatGhs(selectedDebtCustomer.totalDebtPesewas)}
+              </span>
+            )}
           </label>
           <label className="block text-sm font-semibold">Phone <span className="font-normal text-slate-500">(for WhatsApp reminder)</span>
             <input type="tel" inputMode="tel" maxLength="30" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="024 123 4567" className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 px-3 text-base font-normal outline-none focus:border-leaf" />
@@ -623,6 +677,9 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
           <label className="block text-sm font-semibold">Note <span className="font-normal text-slate-500">(optional)</span>
             <input maxLength="200" value={note} onChange={(event) => setNote(event.target.value)} className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 px-3 text-base font-normal outline-none focus:border-leaf" />
           </label>
+          <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-leaf">
+            Total: {formatGhs(toPesewas(amount) || 0)} · Added to customer debts
+          </p>
           {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
           <div className="flex flex-col-reverse items-stretch justify-end gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center">
             <button
