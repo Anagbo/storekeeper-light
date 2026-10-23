@@ -12,7 +12,9 @@ precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
 registerRoute(new NavigationRoute(createHandlerBoundToURL("/index.html")));
 registerRoute(
-  ({ request }) => ["script", "style", "font"].includes(request.destination),
+  ({ request, url }) =>
+    ["script", "style", "font"].includes(request.destination) &&
+    !url.pathname.startsWith("/_vercel/"),
   new StaleWhileRevalidate({
     cacheName: "storekeeper-runtime-assets",
     plugins: [
