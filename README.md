@@ -49,3 +49,13 @@ Copy `.env.example` as a reference and configure the variables in Vercel (never 
 - `WHATSAPP_DEBT_TEMPLATE` defaults to `debt_reminder`; `WHATSAPP_TEMPLATE_LANGUAGE` defaults to `en`.
 
 Create and get approval for a WhatsApp template whose body has exactly three text parameters, in this order: customer name, outstanding balance, shop name (for example, `Hello {{1}}, your balance with {{3}} is {{2}}.`). Set the template name and language to match the approved template in Meta. Configure Supabase email authentication and add the deployed app URL to its allowed redirect URLs. Have the shop owner sign in once, copy that user's UUID from Supabase Auth, and add it to `WHATSAPP_ALLOWED_USER_IDS`. Deploy the app to Vercel with the `api/` function and required environment settings. Vite's development server does not run Vercel functions, so use the existing **Open WhatsApp** fallback during local development.
+
+## Paystack Mobile Money subscription
+
+The subscription option is available from **Settings → View subscription options**. It starts a GHS 15.00 monthly Paystack checkout restricted to Mobile Money. The server-side Vercel functions in `api/subscription/` keep `PAYSTACK_SECRET_KEY` off the client. A return URL/reference alone does not activate a subscription: the verification function checks Paystack's transaction status, exact amount, currency, payment channel, and reference before the app saves a 30-day expiry and payment reference in the local Dexie `settings` table.
+
+Configure `PAYSTACK_SECRET_KEY` as a server-only Vercel environment variable and set `APP_URL` to the deployed HTTPS app origin. For local function testing, use Vercel's local development server and sandbox credentials stored only in an ignored `.env.local`; never put the secret in a `VITE_` variable or commit it. Hosted checkout uses Paystack's returned authorization URL, so the public key is not needed in this redirect-based integration.
+
+`FEATURE_SUBSCRIPTION_LOCKOUT` in `src/config/features.js` defaults to `false`. No user is blocked or shown a subscription popup automatically; users can open checkout from Settings. The recorded expiry is available for future enforcement, but an expiry stored only in IndexedDB can be altered or removed by a device owner. Do not enable payment lockout until a server-verifiable offline license and a rollout policy for existing users are in place.
+
+Local `npm run dev` also routes `/api/subscription/initiate` and `/api/subscription/verify` to the same server handlers used by Vercel. Set `PAYSTACK_SECRET_KEY` in the ignored `.env.local`; `APP_URL` defaults to `http://localhost:5173` for local callbacks. These values are read by Vite's Node-side config and are not exposed as client environment variables.

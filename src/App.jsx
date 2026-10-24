@@ -1,9 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
 import { Activity, Check, Cloud, CloudOff, Pencil, RefreshCw, Settings, WalletCards, Wifi, WifiOff, X } from "lucide-react";
+import { db } from "./db/db.js";
 import Dashboard from "./components/Dashboard.jsx";
 import BackupModal from "./components/BackupModal.jsx";
 import DebtLedger from "./components/DebtLedger.jsx";
 import QuickSaleModal from "./components/QuickSaleModal.jsx";
+import SubscriptionModal from "./components/SubscriptionModal.jsx";
+import { FEATURE_SUBSCRIPTION_LOCKOUT } from "./config/features.js";
 import { useSync } from "./hooks/useSync.js";
 
 function getSavedShopName() {
@@ -42,7 +46,15 @@ export default function App() {
   const [editingShopName, setEditingShopName] = useState(false);
   const [shopNameDraft, setShopNameDraft] = useState(shopName);
   const [backupOpen, setBackupOpen] = useState(false);
+  const [subscriptionOpen, setSubscriptionOpen] = useState(false);
+  const [subscriptionNotice, setSubscriptionNotice] = useState(null);
   const sync = useSync();
+  const settings = useLiveQuery(() => db.settings.toArray(), [], []);
+  const processedPaymentReference = useRef("");
+  const subscriptionExpiry = settings.find((setting) => setting.key === "subscriptionExpiry")?.value ?? "";
+  const expiryTimestamp = Date.parse(subscriptionExpiry);
+  const hasActiveSubscription = Number.isFinite(expiryTimestamp) && expiryTimestamp > Date.now();
+  const subscriptionRequired = FEATURE_SUBSCRIPTION_LOCKOUT && !hasActiveSubscription;
 
   useEffect(() => {
     const onOnline = () => setIsOnline(true);
@@ -53,6 +65,55 @@ export default function App() {
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
     };
+  }, []);
+
+  useEffect(() => {
+    const callbackUrl = new URL(window.location.href);
+    const reference = callbackUrl.searchParams.get("reference") || callbackUrl.searchParams.get("trxref");
+    if (!reference || processedPaymentReference.current === reference) return;
+    processedPaymentReference.current = reference;
+    callbackUrl.searchParams.delete("reference");
+    callbackUrl.searchParams.delete("trxref");
+    callbackUrl.searchParams.delete("status");
+    window.history.replaceState({}, "", `${callbackUrl.pathname}${callbackUrl.search}${callbackUrl.hash}`);
+
+    async function verifySubscriptionPayment() {
+      try {
+        const response = await fetch("/api/subscription/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reference }),
+          signal: AbortSignal.timeout(20000)
+        });
+        const result = await response.json();
+        if (!response.ok || result.success !== true || result.reference !== reference) {
+          throw new Error(result.error || "Payment could not be verified.");
+        }
+        const expiresAt = new Date(result.expiresAt);
+        if (!Number.isFinite(expiresAt.getTime())) throw new Error("The payment verification response had an invalid expiry date.");
+
+        await db.transaction("rw", db.settings, async () => {
+          const current = await db.settings.get("subscriptionExpiry");
+          const currentTime = Date.parse(current?.value ?? "");
+          if (!Number.isFinite(currentTime) || expiresAt.getTime() > currentTime) {
+            await db.settings.put({ key: "subscriptionExpiry", value: expiresAt.toISOString() });
+          }
+          await db.settings.put({ key: "isSubscribed", value: true });
+          await db.settings.put({ key: "lastSubscriptionReference", value: reference });
+        });
+        setSubscriptionNotice({
+          type: "success",
+          text: `Payment verified. This subscription is active until ${expiresAt.toLocaleDateString("en-GH")}.`
+        });
+      } catch (verificationError) {
+        console.error("Could not verify the Paystack subscription payment.", verificationError);
+        setSubscriptionNotice({
+          type: "error",
+          text: verificationError.message || "Payment verification failed. Please contact support before paying again."
+        });
+      }
+    }
+    void verifySubscriptionPayment();
   }, []);
 
   function closeQuickEntry() {
@@ -167,7 +228,18 @@ export default function App() {
       <BackupModal
         isOpen={backupOpen}
         onClose={() => setBackupOpen(false)}
+        onManageSubscription={() => { setBackupOpen(false); setSubscriptionOpen(true); }}
         onRestored={() => setRefreshKey((current) => current + 1)}
+        subscriptionExpiry={subscriptionExpiry}
+        subscriptionNotice={subscriptionNotice}
+      />
+      <SubscriptionModal
+        isOpen={subscriptionOpen || subscriptionRequired}
+        lockout={subscriptionRequired}
+        isActive={hasActiveSubscription}
+        onClose={() => setSubscriptionOpen(false)}
+        expiresAt={subscriptionExpiry}
+        notice={subscriptionNotice}
       />
     </div>
   );

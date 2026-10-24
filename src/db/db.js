@@ -141,6 +141,14 @@ db.version(6).stores({
   });
 });
 
+db.version(7).stores({
+  products: "++id, name, category, default_price, updatedAt, syncStatus, synced, [name+updatedAt], [syncStatus+updatedAt], [category+name]",
+  transactions: "id, type, createdAt, timestamp, updatedAt, syncStatus, synced, [type+createdAt], [syncStatus+updatedAt], [createdAt+id], [type+timestamp], [synced+timestamp]",
+  debts: "id, customerName, customer_name, phone, customer_phone, status, amountPesewas, total_owed, created_at, updatedAt, syncStatus, synced, [status+updatedAt], [customerName+status], [syncStatus+updatedAt], [status+updatedAt+id], [status+amountPesewas+id], [status+created_at]",
+  customers: "id, name, nameLower, phone, totalDebtPesewas, createdAt, updatedAt",
+  settings: "key"
+});
+
 export const storagePersistPromise =
   typeof navigator !== "undefined" && navigator.storage?.persist
     ? navigator.storage.persist().catch((error) => {

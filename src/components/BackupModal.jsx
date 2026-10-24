@@ -3,7 +3,14 @@ import { Download, Upload, X } from "lucide-react";
 import { exportDatabaseToJson, importDatabaseFromJson } from "../utils/backup.js";
 import { isAudioFeedbackEnabled, setAudioFeedbackEnabled } from "../utils/audioFeedback.js";
 
-export default function BackupModal({ isOpen, onClose, onRestored }) {
+export default function BackupModal({
+  isOpen,
+  onClose,
+  onRestored,
+  onManageSubscription,
+  subscriptionExpiry,
+  subscriptionNotice
+}) {
   const fileInput = useRef(null);
   const [busy, setBusy] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(isAudioFeedbackEnabled);
@@ -93,6 +100,30 @@ export default function BackupModal({ isOpen, onClose, onRestored }) {
           </button>
           <input ref={fileInput} type="file" accept="application/json,.json" onChange={(event) => void restoreBackup(event)} className="hidden" />
         </div>
+
+        <section className="mt-5 rounded-xl border border-slate-200 p-4" aria-label="Subscription">
+          <h3 className="text-sm font-bold text-slate-900">Subscription</h3>
+          <p className="mt-1 text-xs text-slate-600">
+            {subscriptionExpiry
+              ? `This device has a subscription expiry saved for ${new Date(subscriptionExpiry).toLocaleDateString("en-GH")}.`
+              : "No subscription payment is recorded on this device."}
+          </p>
+          {subscriptionNotice && (
+            <p
+              role={subscriptionNotice.type === "error" ? "alert" : "status"}
+              className={`mt-2 text-xs ${subscriptionNotice.type === "error" ? "text-red-700" : "text-emerald-800"}`}
+            >
+              {subscriptionNotice.text}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={onManageSubscription}
+            className="mt-3 min-h-11 w-full rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+          >
+            View subscription options
+          </button>
+        </section>
 
         <label className="mt-5 flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3">
           <span>
