@@ -125,7 +125,7 @@ function ConfirmPaymentModal({ debt, onCancel, onConfirm, saving }) {
   );
 }
 
-export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }) {
+export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, onDataChanged }) {
   const savedCustomers = useLiveQuery(() => db.customers.toArray(), [], []);
   const [debts, setDebts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -268,13 +268,44 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
       return;
     }
     const now = Date.now();
+    const transactionId = createId();
+    const cleanCustomerName = customerName.trim();
+    const cleanNote = note.trim();
+    const transaction = {
+      id: transactionId,
+      type: "sale",
+      amountPesewas,
+      total_amount: amountPesewas,
+      payment_method: null,
+      paymentType: "credit",
+      customer_name: cleanCustomerName,
+      customer_phone: phone.trim(),
+      customerName: cleanCustomerName,
+      phone: phone.trim(),
+      items_json: JSON.stringify([{
+        name: cleanNote || "Debt added",
+        quantity: 1,
+        total_amount: amountPesewas
+      }]),
+      itemDescription: cleanNote || "Debt added",
+      quantity: 1,
+      pricePesewas: amountPesewas,
+      note: `${cleanNote || "Debt added"} · ${cleanCustomerName}`,
+      createdAt: now,
+      timestamp: now,
+      updatedAt: now,
+      synced: false,
+      syncStatus: "pending"
+    };
     try {
-      await runTransactionWithTimeout(db, [db.debts, db.customers], async () => {
+      await runTransactionWithTimeout(db, [db.debts, db.customers, db.transactions], async () => {
+        await db.transactions.add(transaction);
         await addDebtToCustomer({
           name: customerName,
           phone,
           amountPesewas,
-          note: note.trim(),
+          note: cleanNote,
+          transactionId,
           now
         });
         await upsertCustomer({
@@ -296,6 +327,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
       setError("");
       setFormOpen(false);
       setRefreshKey((current) => current + 1);
+      onDataChanged?.();
     } catch (saveError) {
       console.error("Could not save debt.", saveError);
       playErrorChime();

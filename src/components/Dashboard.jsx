@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import Dexie from "dexie";
-import { ArrowDownLeft, ArrowUpRight, CirclePlus, MessageCircle, Phone, ReceiptText, UsersRound } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, CirclePlus, MessageCircle, Phone, ReceiptText, UserRoundPlus, UsersRound } from "lucide-react";
 import { db } from "../db/db.js";
+import { upsertCustomer } from "../db/customers.js";
+import { runTransactionWithTimeout } from "../db/runTransactionWithTimeout.js";
 import FinancialSummaryModal from "./FinancialSummaryModal.jsx";
 import SyncStatusBadge from "./SyncStatusBadge.jsx";
 import InstallPromptBanner from "./InstallPromptBanner.jsx";
 import { formatGhs } from "../lib/money.js";
 import { getLargestUnpaidBalances } from "../utils/debtBalances.js";
+import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
+import WhatsAppReminderModal from "./WhatsAppReminderModal.jsx";
 
 const ROW_HEIGHT = 72;
 const FEED_HEIGHT = 360;
@@ -77,6 +81,7 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
   const [debtBreakdown, setDebtBreakdown] = useState([]);
   const [debtBreakdownLoading, setDebtBreakdownLoading] = useState(true);
   const [debtBreakdownError, setDebtBreakdownError] = useState("");
+  const [phoneEntryDebt, setPhoneEntryDebt] = useState(null);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const feedElement = useRef(null);
   const cursor = useRef(null);
@@ -105,6 +110,34 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
     return result;
   }, [today.start, today.end], { cashIn: 0, expenses: 0, totalDebt: 0 });
   const netProfit = totals.cashIn - totals.expenses;
+
+  async function saveDebtPhone(debt, phone) {
+    const now = Date.now();
+    const normalizedName = debt.customerName.trim().toLowerCase();
+    await runTransactionWithTimeout(db, [db.debts, db.customers], async () => {
+      const unpaidDebts = await db.debts.where("status").equals("unpaid").toArray();
+      const matchingDebts = unpaidDebts.filter((item) => (
+        (item.customer_name ?? item.customerName ?? "").trim().toLowerCase() === normalizedName
+      ));
+      if (matchingDebts.length === 0) {
+        throw new Error(`No unpaid debt found for ${debt.customerName}.`);
+      }
+
+      await Promise.all(matchingDebts.map((item) => db.debts.update(item.id, {
+        phone,
+        customer_phone: phone,
+        updatedAt: now,
+        synced: false,
+        syncStatus: "pending"
+      })));
+      await upsertCustomer({ name: debt.customerName, phone, now });
+    });
+
+    setDebtBreakdown((current) => current.map((item) => (
+      item.id === debt.id ? { ...item, phone } : item
+    )));
+    void requestBackgroundSync();
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -283,17 +316,7 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
                       >
                         <MessageCircle size={18} aria-hidden="true" />
                       </a>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled
-                        aria-label={`WhatsApp unavailable for ${debt.customerName}; no valid phone number is saved`}
-                        title="No valid phone number saved"
-                        className="grid min-h-10 min-w-10 place-items-center rounded-xl border border-slate-200 bg-slate-50 text-slate-400 disabled:cursor-not-allowed"
-                      >
-                        <MessageCircle size={18} aria-hidden="true" />
-                      </button>
-                    )}
+                    ) : null}
                     {phone ? (
                       <a
                         href={`tel:${phone}`}
@@ -303,15 +326,16 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
                       >
                         <Phone size={18} aria-hidden="true" />
                       </a>
-                    ) : (
+                    ) : null}
+                    {!phone && (
                       <button
                         type="button"
-                        disabled
-                        aria-label={`Call unavailable for ${debt.customerName}; no valid phone number is saved`}
-                        title="No valid phone number saved"
-                        className="grid min-h-10 min-w-10 place-items-center rounded-xl border border-slate-200 bg-slate-50 text-slate-400 disabled:cursor-not-allowed"
+                        onClick={() => setPhoneEntryDebt(debt)}
+                        aria-label={`Add phone number for ${debt.customerName}`}
+                        title="Add phone number"
+                        className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-600"
                       >
-                        <Phone size={18} aria-hidden="true" />
+                        <UserRoundPlus size={16} aria-hidden="true" /> Add phone
                       </button>
                     )}
                   </div>
@@ -447,6 +471,14 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
         )}
       </section>
       <FinancialSummaryModal isOpen={isSummaryOpen} onClose={() => setIsSummaryOpen(false)} refreshKey={refreshKey} />
+      {phoneEntryDebt && (
+        <WhatsAppReminderModal
+          key={phoneEntryDebt.id}
+          debt={phoneEntryDebt}
+          onClose={() => setPhoneEntryDebt(null)}
+          onPhoneSaved={saveDebtPhone}
+        />
+      )}
     </main>
   );
 }

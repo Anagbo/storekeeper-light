@@ -136,7 +136,13 @@ export default function App() {
           onQuickEntry={(type) => { setEntryType(type); setQuickEntryOpen(true); }}
           onViewDebts={() => setPage("debts")}
         />
-      ) : <DebtLedger shopName={shopName} onReturnToDashboard={() => setPage("home")} />}
+      ) : (
+        <DebtLedger
+          shopName={shopName}
+          onReturnToDashboard={() => setPage("home")}
+          onDataChanged={() => setRefreshKey((current) => current + 1)}
+        />
+      )}
 
       <nav aria-label="Main navigation" className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 pt-2 backdrop-blur">
         <div className="mx-auto grid max-w-lg grid-cols-2 gap-2">

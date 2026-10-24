@@ -54,6 +54,24 @@ test("treats legacy Telecel Cash receipts as MoMo and missing methods as cash", 
   assert.equal(summary.momoReceived, 2000);
 });
 
+test("counts Add Debt transaction records as new credit without cash inflow", () => {
+  const summary = summarizeFinancialTransactions([
+    {
+      type: "sale",
+      paymentType: "credit",
+      payment_method: null,
+      amountPesewas: 22400,
+      createdAt: new Date(2026, 9, 24, 10).getTime()
+    },
+    { type: "expense", amountPesewas: 5000 }
+  ]);
+
+  assert.equal(summary.newCreditExtended, 22400);
+  assert.equal(summary.cashInflow, 0);
+  assert.equal(summary.realCashProfit, -5000);
+  assert.equal(summary.accruedProfit, 17400);
+});
+
 test("week date range starts Monday and ends exclusively the next Monday", () => {
   const range = getFinancialDateRange("week", "", "", new Date(2026, 9, 25, 15));
   assert.equal(new Date(range.start).getDay(), 1);
