@@ -9,8 +9,8 @@ function makeBackup() {
     exportedAt: "2026-10-22T00:00:00.000Z",
     data: {
       transactions: [{ id: "transaction-1" }],
-      customers: [{ id: "customer-1" }],
-      debts: [{ id: "debt-1" }],
+      customers: [{ id: "customer-1", ghanaCardNumber: "GHA-123456789-0" }],
+      debts: [{ id: "debt-1", ghanaCardNumber: "1234567890" }],
       products: [{ id: 1 }]
     }
   };
@@ -18,6 +18,8 @@ function makeBackup() {
 
 test("accepts a valid StoreKeeper backup with all data tables", () => {
   assert.deepEqual(validateBackupData(makeBackup()), makeBackup().data);
+  assert.equal(validateBackupData(makeBackup()).customers[0].ghanaCardNumber, "GHA-123456789-0");
+  assert.equal(validateBackupData(makeBackup()).debts[0].ghanaCardNumber, "1234567890");
 });
 
 test("rejects unsupported or incomplete backup files", () => {

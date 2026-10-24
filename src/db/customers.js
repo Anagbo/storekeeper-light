@@ -5,10 +5,18 @@ export function normalizeCustomerName(name) {
   return name.trim().toLowerCase();
 }
 
-export async function upsertCustomer({ name, phone = "", debtDeltaPesewas = 0, now = Date.now() }) {
+export async function upsertCustomer({
+  name,
+  phone = "",
+  ghanaCardNumber = "",
+  replaceGhanaCardNumber = false,
+  debtDeltaPesewas = 0,
+  now = Date.now()
+}) {
   const cleanName = name.trim();
   const nameLower = normalizeCustomerName(cleanName);
   if (!nameLower) return null;
+  const cleanGhanaCardNumber = ghanaCardNumber.trim().toUpperCase();
 
   const customer = await db.customers.where("nameLower").equals(nameLower).first();
   if (customer) {
@@ -16,6 +24,9 @@ export async function upsertCustomer({ name, phone = "", debtDeltaPesewas = 0, n
       name: cleanName,
       nameLower,
       phone: phone.trim() || customer.phone || "",
+      ghanaCardNumber: replaceGhanaCardNumber
+        ? cleanGhanaCardNumber
+        : cleanGhanaCardNumber || customer.ghanaCardNumber || "",
       totalDebtPesewas: Math.max(0, (customer.totalDebtPesewas ?? 0) + debtDeltaPesewas),
       updatedAt: now
     };
@@ -28,6 +39,7 @@ export async function upsertCustomer({ name, phone = "", debtDeltaPesewas = 0, n
     name: cleanName,
     nameLower,
     phone: phone.trim(),
+    ghanaCardNumber: cleanGhanaCardNumber,
     totalDebtPesewas: Math.max(0, debtDeltaPesewas),
     createdAt: now,
     updatedAt: now

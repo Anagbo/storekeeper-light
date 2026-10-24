@@ -97,7 +97,15 @@ export async function importDatabaseFromJson(jsonFile) {
 
   await db.transaction("rw", ...BACKUP_TABLES.map((tableName) => db.table(tableName)), async () => {
     for (const tableName of BACKUP_TABLES) {
-      if (data[tableName].length) await db.table(tableName).bulkPut(data[tableName]);
+      if (data[tableName].length) {
+        const records = ["customers", "debts"].includes(tableName)
+          ? data[tableName].map((record) => ({
+              ...record,
+              ghanaCardNumber: record.ghanaCardNumber ?? ""
+            }))
+          : data[tableName];
+        await db.table(tableName).bulkPut(records);
+      }
     }
   });
   return Object.fromEntries(BACKUP_TABLES.map((tableName) => [tableName, data[tableName].length]));

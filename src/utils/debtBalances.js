@@ -10,11 +10,13 @@ export function getLargestUnpaidBalances(debts) {
     if (balance) {
       balance.amountPesewas += debt.amountPesewas ?? debt.total_owed ?? 0;
       balance.phone ||= debt.phone || debt.customer_phone || "";
+      balance.ghanaCardNumber ||= debt.ghanaCardNumber || "";
     } else {
       balancesByCustomer.set(key, {
         id: key,
         customerName: customerName || "Unnamed customer",
         phone: debt.phone || debt.customer_phone || "",
+        ghanaCardNumber: debt.ghanaCardNumber || "",
         amountPesewas: debt.amountPesewas ?? debt.total_owed ?? 0
       });
     }

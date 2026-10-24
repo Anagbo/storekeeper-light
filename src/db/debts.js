@@ -1,9 +1,18 @@
 import { db } from "./db.js";
 import { createId } from "../lib/ids.js";
 
-export async function addDebtToCustomer({ name, phone = "", amountPesewas, note = "", transactionId, now = Date.now() }) {
+export async function addDebtToCustomer({
+  name,
+  phone = "",
+  ghanaCardNumber = "",
+  amountPesewas,
+  note = "",
+  transactionId,
+  now = Date.now()
+}) {
   const customerName = name.trim();
   const normalizedName = customerName.toLowerCase();
+  const cleanGhanaCardNumber = ghanaCardNumber.trim().toUpperCase();
   if (!normalizedName) throw new TypeError("A customer name is required to record debt.");
   if (!Number.isSafeInteger(amountPesewas) || amountPesewas <= 0) {
     throw new TypeError("Debt amount must be a positive integer number of pesewas.");
@@ -29,6 +38,7 @@ export async function addDebtToCustomer({ name, phone = "", amountPesewas, note 
       customer_name: existingDebt.customer_name ?? existingDebt.customerName ?? customerName,
       phone: phone.trim() || existingDebt.phone || existingDebt.customer_phone || "",
       customer_phone: phone.trim() || existingDebt.customer_phone || existingDebt.phone || "",
+      ghanaCardNumber: cleanGhanaCardNumber || existingDebt.ghanaCardNumber || "",
       amountPesewas: combinedAmount,
       total_owed: combinedAmount,
       note: combinedNote,
@@ -47,6 +57,7 @@ export async function addDebtToCustomer({ name, phone = "", amountPesewas, note 
     customer_name: customerName,
     phone: phone.trim(),
     customer_phone: phone.trim(),
+    ghanaCardNumber: cleanGhanaCardNumber,
     amountPesewas,
     total_owed: amountPesewas,
     note: note.trim(),

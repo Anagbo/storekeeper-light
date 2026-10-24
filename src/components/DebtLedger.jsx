@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Dexie from "dexie";
 import { useLiveQuery } from "dexie-react-hooks";
-import { ArrowLeft, Check, LogOut, MessageCircle, Pencil, UserRoundPlus, X } from "lucide-react";
+import { ArrowLeft, Check, Copy, IdCard, LogOut, MessageCircle, Pencil, UserRoundPlus, X } from "lucide-react";
 import { db } from "../db/db.js";
 import { addDebtToCustomer } from "../db/debts.js";
 import { upsertCustomer } from "../db/customers.js";
@@ -10,6 +10,8 @@ import { createId } from "../lib/ids.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { supabase } from "../lib/supabase.js";
+import { isValidGhanaCardNumber, normalizeGhanaCardNumber } from "../lib/ghanaCardNumber.js";
+import { formatGhanaCard } from "../utils/formatters.js";
 import WhatsAppReminderModal from "./WhatsAppReminderModal.jsx";
 import { generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { playErrorChime, playSuccessChime, speakConfirmation } from "../utils/audioFeedback.js";
@@ -65,6 +67,7 @@ function ConfirmPaymentModal({ debt, onCancel, onConfirm, saving }) {
             <h2 id="confirm-payment-title" className="text-xl font-bold">Confirm Payment</h2>
             <p className="mt-1 font-semibold">{debt.customerName}</p>
             {debt.phone && <p className="text-sm text-slate-500">{debt.phone}</p>}
+            {debt.ghanaCardNumber && <p className="text-sm text-slate-500">Ghana Card: {formatGhanaCard(debt.ghanaCardNumber)}</p>}
           </div>
           <button type="button" disabled={saving} onClick={onCancel} aria-label="Close payment confirmation" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-100 disabled:opacity-50">
             <X size={18} aria-hidden="true" />
@@ -138,6 +141,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
   const [customerName, setCustomerName] = useState("");
   const [selectedDebtCustomer, setSelectedDebtCustomer] = useState(null);
   const [phone, setPhone] = useState("");
+  const [ghanaCardNumber, setGhanaCardNumber] = useState("");
   const [amount, setAmount] = useState("");
   const [debtFormSubmitted, setDebtFormSubmitted] = useState(false);
   const [note, setNote] = useState("");
@@ -145,6 +149,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
   const [busyDebtId, setBusyDebtId] = useState(null);
   const [editingDebt, setEditingDebt] = useState(null);
   const [phoneDraft, setPhoneDraft] = useState("");
+  const [ghanaCardDraft, setGhanaCardDraft] = useState("");
   const [amountDraft, setAmountDraft] = useState("");
   const [editError, setEditError] = useState("");
   const [paymentDebt, setPaymentDebt] = useState(null);
@@ -157,6 +162,8 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
   const [authBusy, setAuthBusy] = useState(false);
   const [sendingReminderId, setSendingReminderId] = useState(null);
   const [reminderResult, setReminderResult] = useState(null);
+  const [copiedGhanaCardDebtId, setCopiedGhanaCardDebtId] = useState(null);
+  const [copyErrorDebtId, setCopyErrorDebtId] = useState(null);
   const loadingLock = useRef(false);
   const customerNameQuery = customerName.trim().toLowerCase();
   const debtCustomerSuggestions = formOpen && customerNameQuery.length >= 2 &&
@@ -166,6 +173,22 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
       )).slice(0, 8)
     : [];
   const editedBalancePesewas = toPesewas(amountDraft);
+
+  async function copyGhanaCardNumber(debtId, number) {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard access is unavailable.");
+      await navigator.clipboard.writeText(number);
+      setCopiedGhanaCardDebtId(debtId);
+      setCopyErrorDebtId(null);
+      window.setTimeout(() => {
+        setCopiedGhanaCardDebtId((current) => current === debtId ? null : current);
+      }, 1800);
+    } catch (copyError) {
+      console.error("Could not copy the Ghana Card number.", copyError);
+      setCopiedGhanaCardDebtId(null);
+      setCopyErrorDebtId(debtId);
+    }
+  }
 
   useEffect(() => {
     if (!supabase) return undefined;
@@ -267,6 +290,11 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
       playErrorChime();
       return;
     }
+    if (!isValidGhanaCardNumber(ghanaCardNumber)) {
+      playErrorChime();
+      setError("Enter a Ghana Card number like GHA-123456789-0 or 1234567890.");
+      return;
+    }
     const now = Date.now();
     const transactionId = createId();
     const cleanCustomerName = customerName.trim();
@@ -280,6 +308,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
       paymentType: "credit",
       customer_name: cleanCustomerName,
       customer_phone: phone.trim(),
+      ghanaCardNumber: normalizeGhanaCardNumber(ghanaCardNumber),
       customerName: cleanCustomerName,
       phone: phone.trim(),
       items_json: JSON.stringify([{
@@ -303,6 +332,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
         await addDebtToCustomer({
           name: customerName,
           phone,
+          ghanaCardNumber: normalizeGhanaCardNumber(ghanaCardNumber),
           amountPesewas,
           note: cleanNote,
           transactionId,
@@ -311,6 +341,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
         await upsertCustomer({
           name: customerName,
           phone,
+          ghanaCardNumber: normalizeGhanaCardNumber(ghanaCardNumber),
           debtDeltaPesewas: amountPesewas,
           now
         });
@@ -321,6 +352,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
       setCustomerName("");
       setSelectedDebtCustomer(null);
       setPhone("");
+      setGhanaCardNumber("");
       setAmount("");
       setDebtFormSubmitted(false);
       setNote("");
@@ -339,6 +371,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
     setCustomerName("");
     setSelectedDebtCustomer(null);
     setPhone("");
+    setGhanaCardNumber("");
     setAmount("");
     setDebtFormSubmitted(false);
     setNote("");
@@ -522,8 +555,10 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
   }
 
   function editDebt(debt) {
+    const customer = savedCustomers.find((item) => item.nameLower === (debt.customerName || debt.customer_name || "").trim().toLowerCase());
     setEditingDebt(debt);
     setPhoneDraft(debt.phone ?? "");
+    setGhanaCardDraft(formatGhanaCard(customer?.ghanaCardNumber || debt.ghanaCardNumber || ""));
     setAmountDraft((debt.amountPesewas / 100).toFixed(2));
     setEditError("");
   }
@@ -535,6 +570,11 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
       setEditError("Enter a valid Ghana number, such as 024 123 4567.");
       return;
     }
+    if (!isValidGhanaCardNumber(ghanaCardDraft)) {
+      playErrorChime();
+      setEditError("Enter a Ghana Card number like GHA-123456789-0 or 1234567890.");
+      return;
+    }
     const nextAmountPesewas = toPesewas(amountDraft);
     if (!nextAmountPesewas || nextAmountPesewas <= 0) {
       playErrorChime();
@@ -544,6 +584,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
 
     const now = Date.now();
     const nextPhone = phoneDraft.trim();
+    const nextGhanaCardNumber = normalizeGhanaCardNumber(ghanaCardDraft);
     const debtDeltaPesewas = nextAmountPesewas - debt.amountPesewas;
     setBusyDebtId(debt.id);
     setEditError("");
@@ -552,6 +593,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
         await db.debts.update(debt.id, {
           phone: nextPhone,
           customer_phone: nextPhone,
+          ghanaCardNumber: nextGhanaCardNumber,
           amountPesewas: nextAmountPesewas,
           total_owed: nextAmountPesewas,
           updatedAt: now,
@@ -561,6 +603,8 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
         await upsertCustomer({
           name: debt.customerName,
           phone: nextPhone,
+          ghanaCardNumber: nextGhanaCardNumber,
+          replaceGhanaCardNumber: true,
           debtDeltaPesewas,
           now
         });
@@ -571,6 +615,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
               ...item,
               phone: nextPhone,
               customer_phone: nextPhone,
+              ghanaCardNumber: nextGhanaCardNumber,
               amountPesewas: nextAmountPesewas,
               total_owed: nextAmountPesewas,
               updatedAt: now,
@@ -666,6 +711,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
                   setCustomerName(event.target.value);
                   setSelectedDebtCustomer(null);
                   setPhone("");
+                  setGhanaCardNumber("");
                   setError("");
                 }}
                 placeholder="Search saved customers or enter a new name"
@@ -690,6 +736,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
                           setCustomerName(customer.name);
                           setSelectedDebtCustomer(customer);
                           setPhone(customer.phone ?? "");
+                          setGhanaCardNumber(formatGhanaCard(customer.ghanaCardNumber));
                           setError("");
                         }}
                         className="flex min-h-12 w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left hover:bg-emerald-50"
@@ -718,6 +765,22 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
           </label>
           <label className="block text-sm font-semibold">Phone <span className="font-normal text-slate-500">(for WhatsApp reminder)</span>
             <input type="tel" inputMode="tel" maxLength="30" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="024 123 4567" className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 px-3 text-base font-normal outline-none focus:border-leaf" />
+          </label>
+          <label className="block text-sm font-semibold">Ghana Card Number <span className="font-normal text-slate-500">(Optional)</span>
+            <input
+              type="text"
+              autoComplete="off"
+              maxLength="15"
+              value={ghanaCardNumber}
+              onChange={(event) => {
+                setGhanaCardNumber(formatGhanaCard(event.target.value));
+                setError("");
+              }}
+              placeholder="GHA-123456789-0"
+              aria-invalid={Boolean(ghanaCardNumber && !isValidGhanaCardNumber(ghanaCardNumber))}
+              className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 px-3 text-base font-normal uppercase outline-none focus:border-leaf"
+            />
+            <span className="mt-1 block text-xs font-normal text-slate-500">e.g., GHA-712345678-9 (National ID for debtor verification)</span>
           </label>
           <label className="block text-sm font-semibold">Amount (GHS) <span className="text-red-600">*</span>
             <input
@@ -777,7 +840,13 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
           {debts.map((debt) => {
             const customer = savedCustomers.find((item) => item.nameLower === (debt.customerName || debt.customer_name || "").trim().toLowerCase());
             const customerPhone = customer?.phone?.trim() || debt.phone?.trim() || debt.customer_phone?.trim() || "";
-            const customerDebt = { ...debt, phone: customerPhone, customer_phone: customerPhone };
+            const customerGhanaCardNumber = formatGhanaCard(customer?.ghanaCardNumber || debt.ghanaCardNumber || "");
+            const customerDebt = {
+              ...debt,
+              phone: customerPhone,
+              customer_phone: customerPhone,
+              ghanaCardNumber: customerGhanaCardNumber
+            };
             const whatsappUrl = paymentLink(customerDebt);
             const dialablePhone = customerPhone.replace(/[\s().-]/g, "");
             return (
@@ -796,6 +865,24 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
                         <span>{customerPhone}</span>
                         <Pencil size={13} aria-hidden="true" />
                       </button>
+                    )}
+                    {customerGhanaCardNumber && (
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <span className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-slate-100 px-2.5 text-xs font-medium text-slate-700">
+                          <IdCard size={14} aria-hidden="true" />
+                          {customerGhanaCardNumber}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => void copyGhanaCardNumber(debt.id, customerGhanaCardNumber)}
+                          aria-label={`Copy Ghana Card number for ${debt.customerName || debt.customer_name}`}
+                          className="inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-leaf hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-leaf"
+                        >
+                          {copiedGhanaCardDebtId === debt.id ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
+                          {copiedGhanaCardDebtId === debt.id ? "Copied" : "Copy ID"}
+                        </button>
+                        {copyErrorDebtId === debt.id && <span role="alert" className="text-xs text-red-700">Could not copy ID.</span>}
+                      </div>
                     )}
                     {debt.note && <p className="mt-1 break-words text-sm text-slate-600">{debt.note}</p>}
                   </div>
@@ -834,7 +921,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
                   <button type="button" onClick={() => editDebt(debt)} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100">
                     <Pencil size={15} aria-hidden="true" /> Edit Debt
                   </button>
-                  <button type="button" disabled={busyDebtId === debt.id} onClick={() => setPaymentDebt(debt)} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50">
+                  <button type="button" disabled={busyDebtId === debt.id} onClick={() => setPaymentDebt(customerDebt)} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50">
                     <Check size={17} aria-hidden="true" /> Mark as Paid
                   </button>
                 </div>
@@ -931,6 +1018,23 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
                 />
               </label>
               <p className="text-xs text-slate-500">Use a Ghana number, for example 024 123 4567 or +233 24 123 4567.</p>
+              <label className="block text-sm font-semibold" htmlFor="edit-debt-ghana-card">Ghana Card Number <span className="font-normal text-slate-500">(Optional)</span>
+                <input
+                  id="edit-debt-ghana-card"
+                  type="text"
+                  autoComplete="off"
+                  maxLength="15"
+                  value={ghanaCardDraft}
+                  onChange={(event) => {
+                    setGhanaCardDraft(formatGhanaCard(event.target.value));
+                    setEditError("");
+                  }}
+                  placeholder="GHA-123456789-0"
+                  aria-invalid={Boolean(editError && ghanaCardDraft && !isValidGhanaCardNumber(ghanaCardDraft))}
+                  className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 px-3 text-base font-normal uppercase outline-none focus:border-leaf focus:ring-2 focus:ring-leaf/20 sm:text-sm"
+                />
+                <span className="mt-1 block text-xs font-normal text-slate-500">e.g., GHA-712345678-9 (National ID for debtor verification). Leave blank to remove.</span>
+              </label>
               {editError && <p role="alert" className="text-sm text-red-700">{editError}</p>}
               <div className="flex flex-col-reverse items-stretch justify-end gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center">
                 <button

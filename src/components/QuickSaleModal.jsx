@@ -8,6 +8,8 @@ import { formatGhs, toPesewas } from "../lib/money.js";
 import { parseSpokenExpense, parseSpokenSale } from "../lib/saleParser.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { normalizeCustomerName, upsertCustomer } from "../db/customers.js";
+import { isValidGhanaCardNumber, normalizeGhanaCardNumber } from "../lib/ghanaCardNumber.js";
+import { formatGhanaCard } from "../utils/formatters.js";
 import { playErrorChime, playExpenseChime, playSuccessChime, speakConfirmation } from "../utils/audioFeedback.js";
 import PaymentMethodToggle from "./PaymentMethodToggle.jsx";
 
@@ -28,6 +30,7 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
   const [customerLookupBusy, setCustomerLookupBusy] = useState(false);
   const [customerLookupError, setCustomerLookupError] = useState("");
   const [phone, setPhone] = useState("");
+  const [ghanaCardNumber, setGhanaCardNumber] = useState("");
   const [itemDescription, setItemDescription] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [price, setPrice] = useState("");
@@ -59,6 +62,7 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
         if (exactMatch) {
           setCustomerName(exactMatch.name);
           setPhone(exactMatch.phone ?? "");
+          setGhanaCardNumber(formatGhanaCard(exactMatch.ghanaCardNumber));
           setSelectedCustomer(exactMatch);
           setCustomerSuggestions([]);
           return;
@@ -97,6 +101,7 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
     setSelectedCustomer(null);
     setCustomerSuggestions([]);
     setPhone("");
+    setGhanaCardNumber("");
     setCustomerLookupError("");
   }
 
@@ -107,6 +112,7 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
       setSelectedCustomer(null);
       setCustomerSuggestions([]);
       setPhone("");
+      setGhanaCardNumber("");
       setCustomerLookupError("");
     }
   }
@@ -114,6 +120,7 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
   function selectCustomer(customer) {
     setCustomerName(customer.name);
     setPhone(customer.phone ?? "");
+    setGhanaCardNumber(formatGhanaCard(customer.ghanaCardNumber));
     setSelectedCustomer(customer);
     setCustomerSuggestions([]);
     setCustomerLookupError("");
@@ -228,6 +235,11 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
           setError("Enter the customer's name for a credit sale.");
           return;
         }
+        if (paymentType === "credit" && !isValidGhanaCardNumber(ghanaCardNumber)) {
+          playErrorChime();
+          setError("Enter a Ghana Card number like GHA-123456789-0 or 1234567890.");
+          return;
+        }
       }
       const amountPesewas = toPesewas(price);
       if (!amountPesewas || amountPesewas <= 0) {
@@ -250,6 +262,7 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
         payment_method: type === "sale" && paymentType !== "credit" ? paymentType : null,
         customer_name: type === "sale" && paymentType === "credit" ? customerName.trim() : "",
         customer_phone: type === "sale" && paymentType === "credit" ? phone.trim() : "",
+        ghanaCardNumber: type === "sale" && paymentType === "credit" ? normalizeGhanaCardNumber(ghanaCardNumber) : "",
         items_json: JSON.stringify(type === "sale" ? [{
           name: itemDescription.trim(),
           quantity: parsedQuantity,
@@ -261,6 +274,7 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
         ...(type === "sale" && {
           customerName: paymentType === "credit" ? customerName.trim() : "",
           phone: paymentType === "credit" ? phone.trim() : "",
+          ghanaCardNumber: paymentType === "credit" ? normalizeGhanaCardNumber(ghanaCardNumber) : "",
           itemDescription: itemDescription.trim(),
           quantity: parsedQuantity,
           pricePesewas: amountPesewas,
@@ -278,6 +292,7 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
           await addDebtToCustomer({
             name: customerName,
             phone,
+            ghanaCardNumber: normalizeGhanaCardNumber(ghanaCardNumber),
             amountPesewas,
             note: itemDescription.trim(),
             transactionId: transaction.id,
@@ -286,6 +301,7 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
           await upsertCustomer({
             name: customerName,
             phone,
+            ghanaCardNumber: normalizeGhanaCardNumber(ghanaCardNumber),
             debtDeltaPesewas: amountPesewas,
             now
           });
@@ -306,6 +322,7 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
       setSelectedCustomer(null);
       setCustomerSuggestions([]);
       setPhone("");
+      setGhanaCardNumber("");
       setItemDescription("");
       setQuantity("1");
       setPrice("");
@@ -406,6 +423,23 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
                   placeholder="024 123 4567"
                   className="min-h-12 w-full rounded-xl border border-slate-200 px-4 outline-none focus:border-leaf focus:ring-2 focus:ring-leaf/20"
                 />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-semibold">Ghana Card Number <span className="font-normal text-slate-500">(Optional)</span></span>
+                <input
+                  type="text"
+                  autoComplete="off"
+                  maxLength="15"
+                  value={ghanaCardNumber}
+                  onChange={(event) => {
+                    setGhanaCardNumber(formatGhanaCard(event.target.value));
+                    setError("");
+                  }}
+                  placeholder="GHA-123456789-0"
+                  aria-invalid={Boolean(ghanaCardNumber && !isValidGhanaCardNumber(ghanaCardNumber))}
+                  className="min-h-12 w-full rounded-xl border border-slate-200 px-4 uppercase outline-none focus:border-leaf focus:ring-2 focus:ring-leaf/20"
+                />
+                <span className="mt-1 block text-xs font-normal text-slate-500">e.g., GHA-712345678-9 (National ID for debtor verification)</span>
               </label>
                 </>
               )}

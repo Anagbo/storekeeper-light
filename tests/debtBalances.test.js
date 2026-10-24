@@ -4,7 +4,7 @@ import { getLargestUnpaidBalances } from "../src/utils/debtBalances.js";
 
 test("aggregates unpaid balances by trimmed case-insensitive customer name and returns only the top three", () => {
   const balances = getLargestUnpaidBalances([
-    { id: "1", customer_name: " Kofi Abanga ", amountPesewas: 1000, phone: "" },
+    { id: "1", customer_name: " Kofi Abanga ", amountPesewas: 1000, phone: "", ghanaCardNumber: "GHA-123456789-0" },
     { id: "2", customerName: "kofi abanga", amountPesewas: 2500, phone: "0241234567" },
     { id: "3", customer_name: "Ama Mensah", amountPesewas: 2000 },
     { id: "4", customerName: "Yaw Boateng", amountPesewas: 1500 },
@@ -12,9 +12,9 @@ test("aggregates unpaid balances by trimmed case-insensitive customer name and r
   ]);
 
   assert.deepEqual(balances, [
-    { id: "kofi abanga", customerName: "Kofi Abanga", phone: "0241234567", amountPesewas: 3500 },
-    { id: "ama mensah", customerName: "Ama Mensah", phone: "", amountPesewas: 2000 },
-    { id: "yaw boateng", customerName: "Yaw Boateng", phone: "", amountPesewas: 1500 }
+    { id: "kofi abanga", customerName: "Kofi Abanga", phone: "0241234567", ghanaCardNumber: "GHA-123456789-0", amountPesewas: 3500 },
+    { id: "ama mensah", customerName: "Ama Mensah", phone: "", ghanaCardNumber: "", amountPesewas: 2000 },
+    { id: "yaw boateng", customerName: "Yaw Boateng", phone: "", ghanaCardNumber: "", amountPesewas: 1500 }
   ]);
 });
 
@@ -25,7 +25,7 @@ test("keeps unnamed debt records separate and supports legacy debt fields", () =
   ]);
 
   assert.deepEqual(balances, [
-    { id: "unnamed:legacy-2", customerName: "Unnamed customer", phone: "", amountPesewas: 300 },
-    { id: "unnamed:legacy-1", customerName: "Unnamed customer", phone: "", amountPesewas: 200 }
+    { id: "unnamed:legacy-2", customerName: "Unnamed customer", phone: "", ghanaCardNumber: "", amountPesewas: 300 },
+    { id: "unnamed:legacy-1", customerName: "Unnamed customer", phone: "", ghanaCardNumber: "", amountPesewas: 200 }
   ]);
 });
