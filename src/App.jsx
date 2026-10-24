@@ -7,7 +7,7 @@ import BackupModal from "./components/BackupModal.jsx";
 import DebtLedger from "./components/DebtLedger.jsx";
 import QuickSaleModal from "./components/QuickSaleModal.jsx";
 import SubscriptionModal from "./components/SubscriptionModal.jsx";
-import { FEATURE_SUBSCRIPTION_LOCKOUT } from "./config/features.js";
+import { FEATURE_FLAGS, FEATURE_SUBSCRIPTION_LOCKOUT } from "./config/features.js";
 import { useSync } from "./hooks/useSync.js";
 
 function getSavedShopName() {
@@ -49,12 +49,18 @@ export default function App() {
   const [subscriptionOpen, setSubscriptionOpen] = useState(false);
   const [subscriptionNotice, setSubscriptionNotice] = useState(null);
   const sync = useSync();
-  const settings = useLiveQuery(() => db.settings.toArray(), [], []);
+  const settings = useLiveQuery(
+    () => FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE ? db.settings.toArray() : Promise.resolve([]),
+    [FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE],
+    []
+  );
   const processedPaymentReference = useRef("");
   const subscriptionExpiry = settings.find((setting) => setting.key === "subscriptionExpiry")?.value ?? "";
   const expiryTimestamp = Date.parse(subscriptionExpiry);
   const hasActiveSubscription = Number.isFinite(expiryTimestamp) && expiryTimestamp > Date.now();
-  const subscriptionRequired = FEATURE_SUBSCRIPTION_LOCKOUT && !hasActiveSubscription;
+  const subscriptionRequired = FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE
+    && FEATURE_SUBSCRIPTION_LOCKOUT
+    && !hasActiveSubscription;
 
   useEffect(() => {
     const onOnline = () => setIsOnline(true);
@@ -68,6 +74,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE) return;
     const callbackUrl = new URL(window.location.href);
     const reference = callbackUrl.searchParams.get("reference") || callbackUrl.searchParams.get("trxref");
     if (!reference || processedPaymentReference.current === reference) return;
@@ -228,19 +235,23 @@ export default function App() {
       <BackupModal
         isOpen={backupOpen}
         onClose={() => setBackupOpen(false)}
-        onManageSubscription={() => { setBackupOpen(false); setSubscriptionOpen(true); }}
+        onManageSubscription={FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE
+          ? () => { setBackupOpen(false); setSubscriptionOpen(true); }
+          : undefined}
         onRestored={() => setRefreshKey((current) => current + 1)}
         subscriptionExpiry={subscriptionExpiry}
         subscriptionNotice={subscriptionNotice}
       />
-      <SubscriptionModal
-        isOpen={subscriptionOpen || subscriptionRequired}
-        lockout={subscriptionRequired}
-        isActive={hasActiveSubscription}
-        onClose={() => setSubscriptionOpen(false)}
-        expiresAt={subscriptionExpiry}
-        notice={subscriptionNotice}
-      />
+      {FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE && (
+        <SubscriptionModal
+          isOpen={subscriptionOpen || subscriptionRequired}
+          lockout={subscriptionRequired}
+          isActive={hasActiveSubscription}
+          onClose={() => setSubscriptionOpen(false)}
+          expiresAt={subscriptionExpiry}
+          notice={subscriptionNotice}
+        />
+      )}
     </div>
   );
 }

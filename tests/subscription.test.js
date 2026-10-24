@@ -2,13 +2,14 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
 import initiate from "../api/subscription/initiate.js";
 import verify from "../api/subscription/verify.js";
-import { FEATURE_SUBSCRIPTION_LOCKOUT } from "../src/config/features.js";
+import { FEATURE_FLAGS, FEATURE_SUBSCRIPTION_LOCKOUT } from "../src/config/features.js";
 
 const originalSecret = process.env.PAYSTACK_SECRET_KEY;
 const originalAppUrl = process.env.APP_URL;
 const originalFetch = global.fetch;
 
-test("subscription lockout is disabled by default", () => {
+test("subscription UI and lockout are disabled by default", () => {
+  assert.equal(FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE, false);
   assert.equal(FEATURE_SUBSCRIPTION_LOCKOUT, false);
 });
 
