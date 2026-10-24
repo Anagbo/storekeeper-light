@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import Dexie from "dexie";
-import { ArrowDownLeft, ArrowUpRight, Check, CirclePlus, Copy, IdCard, MessageCircle, Phone, ReceiptText, UserRoundPlus, UsersRound } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, CirclePlus, MessageCircle, Phone, ReceiptText, UserRoundPlus, UsersRound } from "lucide-react";
 import { db } from "../db/db.js";
 import { upsertCustomer } from "../db/customers.js";
 import { runTransactionWithTimeout } from "../db/runTransactionWithTimeout.js";
@@ -14,6 +14,7 @@ import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import WhatsAppReminderModal from "./WhatsAppReminderModal.jsx";
 import { formatGhanaCard } from "../utils/formatters.js";
+import GhanaCardBadge from "./GhanaCardBadge.jsx";
 
 const ROW_HEIGHT = 72;
 const FEED_HEIGHT = 360;
@@ -83,8 +84,6 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
   const [debtBreakdownLoading, setDebtBreakdownLoading] = useState(true);
   const [debtBreakdownError, setDebtBreakdownError] = useState("");
   const [phoneEntryDebt, setPhoneEntryDebt] = useState(null);
-  const [copiedGhanaCardId, setCopiedGhanaCardId] = useState(null);
-  const [copyGhanaCardErrorId, setCopyGhanaCardErrorId] = useState(null);
   const savedCustomers = useLiveQuery(() => db.customers.toArray(), [], []);
   const customerByName = useMemo(
     () => new Map(savedCustomers.map((customer) => [customer.nameLower, customer])),
@@ -118,22 +117,6 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
     return result;
   }, [today.start, today.end], { cashIn: 0, expenses: 0, totalDebt: 0 });
   const netProfit = totals.cashIn - totals.expenses;
-
-  async function copyGhanaCardNumber(debtId, number) {
-    try {
-      if (!navigator.clipboard?.writeText) throw new Error("Clipboard access is unavailable.");
-      await navigator.clipboard.writeText(number);
-      setCopiedGhanaCardId(debtId);
-      setCopyGhanaCardErrorId(null);
-      window.setTimeout(() => {
-        setCopiedGhanaCardId((current) => current === debtId ? null : current);
-      }, 1800);
-    } catch (copyError) {
-      console.error("Could not copy the Ghana Card number.", copyError);
-      setCopiedGhanaCardId(null);
-      setCopyGhanaCardErrorId(debtId);
-    }
-  }
 
   async function saveDebtPhone(debt, phone) {
     const now = Date.now();
@@ -330,23 +313,8 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
                     <p className="truncate text-sm font-semibold">{debt.customerName}</p>
                     <p className="text-sm font-bold text-amber-800">{formatGhs(debt.amountPesewas)}</p>
                     {ghanaCardNumber && (
-                      <div className="mt-1 flex flex-wrap items-center gap-1">
-                        <span className="inline-flex min-h-9 items-center gap-2 rounded-full bg-slate-100 px-3 text-sm text-slate-800">
-                          <IdCard size={16} aria-hidden="true" />
-                          <span>{ghanaCardNumber}</span>
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => void copyGhanaCardNumber(debt.id, ghanaCardNumber)}
-                          aria-label={`Copy Ghana Card number for ${debt.customerName}`}
-                          className="inline-flex min-h-10 items-center gap-1.5 px-2 text-base font-medium text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-600"
-                        >
-                          {copiedGhanaCardId === debt.id ? <Check size={18} aria-hidden="true" /> : <Copy size={18} aria-hidden="true" />}
-                          {copiedGhanaCardId === debt.id ? "Copied" : "Copy ID"}
-                        </button>
-                        {copyGhanaCardErrorId === debt.id && (
-                          <span role="alert" className="text-xs text-red-700">Could not copy ID.</span>
-                        )}
+                      <div className="mt-1 min-w-0">
+                        <GhanaCardBadge number={ghanaCardNumber} customerName={debt.customerName} />
                       </div>
                     )}
                   </div>

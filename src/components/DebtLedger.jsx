@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Dexie from "dexie";
 import { useLiveQuery } from "dexie-react-hooks";
-import { ArrowLeft, Check, Copy, IdCard, LogOut, MessageCircle, Pencil, UserRoundPlus, X } from "lucide-react";
+import { ArrowLeft, Check, LogOut, MessageCircle, Pencil, UserRoundPlus, X } from "lucide-react";
 import { db } from "../db/db.js";
 import { addDebtToCustomer } from "../db/debts.js";
 import { upsertCustomer } from "../db/customers.js";
@@ -12,6 +12,7 @@ import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { supabase } from "../lib/supabase.js";
 import { isValidGhanaCardNumber, normalizeGhanaCardNumber } from "../lib/ghanaCardNumber.js";
 import { formatGhanaCard } from "../utils/formatters.js";
+import GhanaCardBadge from "./GhanaCardBadge.jsx";
 import WhatsAppReminderModal from "./WhatsAppReminderModal.jsx";
 import { generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { playErrorChime, playSuccessChime, speakConfirmation } from "../utils/audioFeedback.js";
@@ -67,7 +68,11 @@ function ConfirmPaymentModal({ debt, onCancel, onConfirm, saving }) {
             <h2 id="confirm-payment-title" className="text-xl font-bold">Confirm Payment</h2>
             <p className="mt-1 font-semibold">{debt.customerName}</p>
             {debt.phone && <p className="text-sm text-slate-500">{debt.phone}</p>}
-            {debt.ghanaCardNumber && <p className="text-sm text-slate-500">Ghana Card: {formatGhanaCard(debt.ghanaCardNumber)}</p>}
+            {debt.ghanaCardNumber && (
+              <div className="mt-1">
+                <GhanaCardBadge number={formatGhanaCard(debt.ghanaCardNumber)} customerName={debt.customerName} />
+              </div>
+            )}
           </div>
           <button type="button" disabled={saving} onClick={onCancel} aria-label="Close payment confirmation" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-100 disabled:opacity-50">
             <X size={18} aria-hidden="true" />
@@ -162,8 +167,6 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
   const [authBusy, setAuthBusy] = useState(false);
   const [sendingReminderId, setSendingReminderId] = useState(null);
   const [reminderResult, setReminderResult] = useState(null);
-  const [copiedGhanaCardDebtId, setCopiedGhanaCardDebtId] = useState(null);
-  const [copyErrorDebtId, setCopyErrorDebtId] = useState(null);
   const loadingLock = useRef(false);
   const customerNameQuery = customerName.trim().toLowerCase();
   const debtCustomerSuggestions = formOpen && customerNameQuery.length >= 2 &&
@@ -173,22 +176,6 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
       )).slice(0, 8)
     : [];
   const editedBalancePesewas = toPesewas(amountDraft);
-
-  async function copyGhanaCardNumber(debtId, number) {
-    try {
-      if (!navigator.clipboard?.writeText) throw new Error("Clipboard access is unavailable.");
-      await navigator.clipboard.writeText(number);
-      setCopiedGhanaCardDebtId(debtId);
-      setCopyErrorDebtId(null);
-      window.setTimeout(() => {
-        setCopiedGhanaCardDebtId((current) => current === debtId ? null : current);
-      }, 1800);
-    } catch (copyError) {
-      console.error("Could not copy the Ghana Card number.", copyError);
-      setCopiedGhanaCardDebtId(null);
-      setCopyErrorDebtId(debtId);
-    }
-  }
 
   useEffect(() => {
     if (!supabase) return undefined;
@@ -867,21 +854,11 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
                       </button>
                     )}
                     {customerGhanaCardNumber && (
-                      <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <span className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-slate-100 px-2.5 text-xs font-medium text-slate-700">
-                          <IdCard size={14} aria-hidden="true" />
-                          {customerGhanaCardNumber}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => void copyGhanaCardNumber(debt.id, customerGhanaCardNumber)}
-                          aria-label={`Copy Ghana Card number for ${debt.customerName || debt.customer_name}`}
-                          className="inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-leaf hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-leaf"
-                        >
-                          {copiedGhanaCardDebtId === debt.id ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
-                          {copiedGhanaCardDebtId === debt.id ? "Copied" : "Copy ID"}
-                        </button>
-                        {copyErrorDebtId === debt.id && <span role="alert" className="text-xs text-red-700">Could not copy ID.</span>}
+                      <div className="mt-1 min-w-0">
+                        <GhanaCardBadge
+                          number={customerGhanaCardNumber}
+                          customerName={debt.customerName || debt.customer_name}
+                        />
                       </div>
                     )}
                     {debt.note && <p className="mt-1 break-words text-sm text-slate-600">{debt.note}</p>}
