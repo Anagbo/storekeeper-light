@@ -51,7 +51,8 @@ test("initializes a fixed GHS 15 Mobile Money checkout without exposing the secr
     request = { url, options };
     return {
       ok: true,
-      json: async () => ({ status: true, data: { authorization_url: "https://checkout.paystack.com/ref" } })
+      status: 200,
+      text: async () => JSON.stringify({ status: true, data: { authorization_url: "https://checkout.paystack.com/ref" } })
     };
   };
   const response = makeResponse();
@@ -69,6 +70,61 @@ test("initializes a fixed GHS 15 Mobile Money checkout without exposing the secr
     channels: ["mobile_money"],
     callback_url: "https://storekeeper.example/?subscription=verify"
   });
+});
+
+test("uses a trusted request origin for the Paystack callback", async () => {
+  let payload;
+  global.fetch = async (_url, options) => {
+    payload = JSON.parse(options.body);
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({
+        status: true,
+        data: { authorization_url: "https://checkout.paystack.com/ref" }
+      })
+    };
+  };
+  const response = makeResponse();
+
+  await initiate({
+    method: "POST",
+    headers: { origin: "https://storekeeper.example" },
+    body: { email: "buyer@example.com" }
+  }, response);
+
+  assert.equal(payload.callback_url, "https://storekeeper.example/?subscription=verify");
+  assert.equal(response.statusCode, 200);
+});
+
+test("returns Paystack's error message for a failed API response", async () => {
+  global.fetch = async () => ({
+    ok: false,
+    status: 400,
+    text: async () => JSON.stringify({ status: false, message: "Invalid key" })
+  });
+  const response = makeResponse();
+
+  await initiate({ method: "POST", body: { email: "buyer@example.com" } }, response);
+
+  assert.equal(response.statusCode, 502);
+  assert.equal(response.body.error, "Invalid key");
+});
+
+test("reports status when Paystack returns an empty or non-JSON response", async () => {
+  for (const text of ["", "<html>gateway error</html>"]) {
+    global.fetch = async () => ({
+      ok: false,
+      status: 502,
+      text: async () => text
+    });
+    const response = makeResponse();
+
+    await initiate({ method: "POST", body: { email: "buyer@example.com" } }, response);
+
+    assert.equal(response.statusCode, 502);
+    assert.match(response.body.error, /HTTP 502/);
+  }
 });
 
 test("rejects invalid checkout emails and unsupported methods", async () => {
