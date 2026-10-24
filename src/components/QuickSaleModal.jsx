@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Mic, MicOff, X } from "lucide-react";
 import { db } from "../db/db.js";
 import { addDebtToCustomer } from "../db/debts.js";
+import { runTransactionWithTimeout, SaveTimeoutError } from "../db/runTransactionWithTimeout.js";
 import { createId } from "../lib/ids.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { parseSpokenExpense, parseSpokenSale } from "../lib/saleParser.js";
@@ -82,7 +83,7 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
 
   useEffect(() => {
     const onKeyDown = (event) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape" && !submitLock.current) onClose();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => {
@@ -207,40 +208,40 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
   async function handleSubmit(event) {
     event.preventDefault();
     if (submitLock.current) return;
-    const parsedQuantity = Number(quantity);
-    if (type === "sale") {
-      if (!Number.isFinite(parsedQuantity) || parsedQuantity <= 0) {
-        playErrorChime();
-        setError("Enter a quantity greater than zero.");
-        return;
-      }
-      if (!itemDescription.trim()) {
-        playErrorChime();
-        setError("Enter an item description.");
-        return;
-      }
-      if (paymentType === "credit" && !customerName.trim()) {
-        playErrorChime();
-        setError("Enter the customer's name for a credit sale.");
-        return;
-      }
-    }
-    const amountPesewas = toPesewas(price);
-    if (!amountPesewas || amountPesewas <= 0) {
-      playErrorChime();
-      setError("Enter a total price greater than GHS 0.00.");
-      return;
-    }
-    if (!Number.isSafeInteger(amountPesewas) || amountPesewas <= 0) {
-      playErrorChime();
-      setError("The amount is too large. Check the quantity and price.");
-      return;
-    }
-
-    const now = Date.now();
     submitLock.current = true;
     setIsSubmitting(true);
     try {
+      const parsedQuantity = Number(quantity);
+      if (type === "sale") {
+        if (!Number.isFinite(parsedQuantity) || parsedQuantity <= 0) {
+          playErrorChime();
+          setError("Enter a quantity greater than zero.");
+          return;
+        }
+        if (!itemDescription.trim()) {
+          playErrorChime();
+          setError("Enter an item description.");
+          return;
+        }
+        if (paymentType === "credit" && !customerName.trim()) {
+          playErrorChime();
+          setError("Enter the customer's name for a credit sale.");
+          return;
+        }
+      }
+      const amountPesewas = toPesewas(price);
+      if (!amountPesewas || amountPesewas <= 0) {
+        playErrorChime();
+        setError("Enter a total price greater than GHS 0.00.");
+        return;
+      }
+      if (!Number.isSafeInteger(amountPesewas) || amountPesewas <= 0) {
+        playErrorChime();
+        setError("The amount is too large. Check the quantity and price.");
+        return;
+      }
+
+      const now = Date.now();
       const transaction = {
         id: createId(),
         type,
@@ -272,7 +273,7 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
         syncStatus: "pending"
       };
       if (type === "sale" && paymentType === "credit") {
-        await db.transaction("rw", db.transactions, db.debts, db.customers, async () => {
+        await runTransactionWithTimeout(db, [db.transactions, db.debts, db.customers], async () => {
           await db.transactions.add(transaction);
           await addDebtToCustomer({
             name: customerName,
@@ -290,7 +291,7 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
           });
         });
       } else {
-        await db.transactions.add(transaction);
+        await runTransactionWithTimeout(db, [db.transactions], () => db.transactions.add(transaction));
       }
       console.log("Saved offline successfully:", transaction);
       void requestBackgroundSync();
@@ -316,7 +317,9 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
     } catch (saveError) {
       console.error("Offline save error:", saveError);
       playErrorChime();
-      setError("This entry could not be saved. Please check available storage and try again.");
+      setError(saveError instanceof SaveTimeoutError
+        ? "Saving took too long and was canceled. Check available storage, then try again."
+        : "This entry could not be saved. Please check available storage and try again.");
     } finally {
       submitLock.current = false;
       setIsSubmitting(false);
@@ -324,14 +327,14 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-0 sm:items-center sm:p-4" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-0 sm:items-center sm:p-4" onMouseDown={(event) => event.target === event.currentTarget && !submitLock.current && onClose()}>
       <section role="dialog" aria-modal="true" aria-labelledby="quick-entry-title" className="safe-bottom max-h-[92dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-3xl bg-white p-5 sm:rounded-3xl">
         <div className="mb-5 flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-leaf">Quick entry</p>
             <h2 id="quick-entry-title" className="text-xl font-bold">Record {type}</h2>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" className="grid h-11 w-11 place-items-center rounded-full bg-slate-100"><X size={20} /></button>
+          <button type="button" onClick={onClose} disabled={isSubmitting} aria-label="Close" className="grid h-11 w-11 place-items-center rounded-full bg-slate-100 disabled:opacity-50"><X size={20} /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -507,7 +510,8 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
             <button
               type="button"
               onClick={onClose}
-              className="w-full rounded-xl bg-slate-100 px-5 py-3 font-medium text-slate-700 transition hover:bg-slate-200 sm:w-auto"
+              disabled={isSubmitting}
+              className="w-full rounded-xl bg-slate-100 px-5 py-3 font-medium text-slate-700 transition hover:bg-slate-200 disabled:opacity-50 sm:w-auto"
             >
               Cancel
             </button>

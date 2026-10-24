@@ -132,6 +132,7 @@ export default function App() {
       {page === "home" ? (
         <Dashboard
           refreshKey={refreshKey}
+          shopName={shopName}
           onQuickEntry={(type) => { setEntryType(type); setQuickEntryOpen(true); }}
           onViewDebts={() => setPage("debts")}
         />

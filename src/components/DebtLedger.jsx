@@ -5,6 +5,7 @@ import { ArrowLeft, Check, LogOut, MessageCircle, Pencil, UserRoundPlus, X } fro
 import { db } from "../db/db.js";
 import { addDebtToCustomer } from "../db/debts.js";
 import { upsertCustomer } from "../db/customers.js";
+import { runTransactionWithTimeout } from "../db/runTransactionWithTimeout.js";
 import { createId } from "../lib/ids.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
@@ -32,19 +33,26 @@ function ConfirmPaymentModal({ debt, onCancel, onConfirm, saving }) {
   const [amount, setAmount] = useState((debt.amountPesewas / 100).toFixed(2));
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [error, setError] = useState("");
+  const submitLock = useRef(false);
 
   async function submitPayment(event) {
     event.preventDefault();
-    const amountPesewas = toPesewas(paymentType === "full" ? debt.amountPesewas / 100 : amount);
-    if (!amountPesewas || amountPesewas <= 0 || amountPesewas > debt.amountPesewas) {
-      playErrorChime();
-      setError(`Enter a payment greater than GHS 0.00 and no more than ${formatGhs(debt.amountPesewas)}.`);
-      return;
-    }
+    if (saving || submitLock.current) return;
+    submitLock.current = true;
     try {
+      const amountPesewas = toPesewas(paymentType === "full" ? debt.amountPesewas / 100 : amount);
+      if (!Number.isSafeInteger(amountPesewas) || amountPesewas <= 0 || amountPesewas > debt.amountPesewas) {
+        playErrorChime();
+        setError(`Enter a payment greater than GHS 0.00 and no more than ${formatGhs(debt.amountPesewas)}.`);
+        return;
+      }
       await onConfirm({ debt, amountPesewas, paymentMethod });
-    } catch {
+    } catch (paymentError) {
+      console.error("Could not submit the debt payment.", paymentError);
+      playErrorChime();
       setError("The payment could not be recorded. Please try again.");
+    } finally {
+      submitLock.current = false;
     }
   }
 
@@ -157,6 +165,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
         (customer.nameLower ?? customer.name.trim().toLowerCase()).startsWith(customerNameQuery)
       )).slice(0, 8)
     : [];
+  const editedBalancePesewas = toPesewas(amountDraft);
 
   useEffect(() => {
     if (!supabase) return undefined;
@@ -260,7 +269,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
     }
     const now = Date.now();
     try {
-      await db.transaction("rw", db.debts, db.customers, async () => {
+      await runTransactionWithTimeout(db, [db.debts, db.customers], async () => {
         await addDebtToCustomer({
           name: customerName,
           phone,
@@ -310,7 +319,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
     const now = Date.now();
     setBusyDebtId(debt.id);
     try {
-      await db.transaction("rw", db.debts, db.transactions, db.customers, async () => {
+      await runTransactionWithTimeout(db, [db.debts, db.transactions, db.customers], async () => {
         const currentDebt = await db.debts.get(debt.id);
         if (!currentDebt || currentDebt.status !== "unpaid" || amountPesewas > currentDebt.amountPesewas) {
           throw new Error("The debt changed before the payment could be recorded.");
@@ -375,7 +384,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
   async function saveWhatsAppPhone(debt, phone) {
     const now = Date.now();
     try {
-      await db.transaction("rw", db.debts, db.customers, async () => {
+      await runTransactionWithTimeout(db, [db.debts, db.customers], async () => {
         const updatedCount = await db.debts.update(debt.id, {
           phone,
           customer_phone: phone,
@@ -507,7 +516,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
     setBusyDebtId(debt.id);
     setEditError("");
     try {
-      await db.transaction("rw", db.debts, db.customers, async () => {
+      await runTransactionWithTimeout(db, [db.debts, db.customers], async () => {
         await db.debts.update(debt.id, {
           phone: nextPhone,
           customer_phone: nextPhone,
@@ -855,7 +864,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
             </div>
             <form onSubmit={(event) => void saveDebtChanges(event, editingDebt)} className="space-y-3">
               <p className="text-sm text-slate-600">{editingDebt.customerName}</p>
-              <label className="block text-sm font-semibold" htmlFor="edit-debt-amount">Remaining balance (GHS)
+              <label className="block text-sm font-semibold" htmlFor="edit-debt-amount">New remaining balance (GHS)
                 <input
                   id="edit-debt-amount"
                   required
@@ -869,6 +878,12 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard }
                   className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 px-3 text-base font-normal outline-none focus:border-leaf focus:ring-2 focus:ring-leaf/20 sm:text-sm"
                 />
               </label>
+              <p className="text-xs text-slate-500">
+                {Number.isSafeInteger(editedBalancePesewas) && editedBalancePesewas > 0
+                  ? `Remaining balance after save: ${formatGhs(editedBalancePesewas)}`
+                  : "Enter a valid balance to preview the amount after saving."}
+              </p>
+              <p className="text-xs text-slate-500">Editing the balance does not record a payment or add a transaction to your history.</p>
               <label className="block text-sm font-semibold" htmlFor="edit-debt-phone">WhatsApp number <span className="font-normal text-slate-500">(optional)</span>
                 <input
                   id="edit-debt-phone"

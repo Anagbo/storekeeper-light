@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import Dexie from "dexie";
-import { ArrowDownLeft, ArrowUpRight, CirclePlus, ReceiptText, UsersRound } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, CirclePlus, MessageCircle, Phone, ReceiptText, UsersRound } from "lucide-react";
 import { db } from "../db/db.js";
 import FinancialSummaryModal from "./FinancialSummaryModal.jsx";
 import SyncStatusBadge from "./SyncStatusBadge.jsx";
 import InstallPromptBanner from "./InstallPromptBanner.jsx";
 import { formatGhs } from "../lib/money.js";
 import { getLargestUnpaidBalances } from "../utils/debtBalances.js";
+import { generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 
 const ROW_HEIGHT = 72;
 const FEED_HEIGHT = 360;
@@ -67,7 +68,7 @@ function MetricCard({ title, value, icon: Icon, tone, onClick, hint }) {
   );
 }
 
-export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey }) {
+export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopName = "My shop" }) {
   const [transactions, setTransactions] = useState([]);
   const [scrollTop, setScrollTop] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -256,15 +257,67 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey }) {
           <p role="alert" className="text-sm text-red-700">{debtBreakdownError}</p>
         ) : debtBreakdown.length ? (
           <ul className="divide-y divide-slate-100">
-            {debtBreakdown.map((debt) => (
-              <li key={debt.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">{debt.customerName}</p>
-                  {debt.phone && <p className="truncate text-xs text-slate-500">{debt.phone}</p>}
-                </div>
-                <p className="shrink-0 font-bold text-amber-800">{formatGhs(debt.amountPesewas)}</p>
-              </li>
-            ))}
+            {debtBreakdown.map((debt) => {
+              const phone = normalizeWhatsAppPhone(debt.phone);
+              const whatsappLink = generateWhatsAppLink(
+                phone,
+                debt.customerName,
+                debt.amountPesewas / 100,
+                shopName
+              );
+              return (
+                <li key={debt.id} className="flex items-center justify-between gap-3 border-b border-slate-100 py-2 last:border-0">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{debt.customerName}</p>
+                    <p className="text-sm font-bold text-amber-800">{formatGhs(debt.amountPesewas)}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {whatsappLink ? (
+                      <a
+                        href={whatsappLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`Send WhatsApp debt reminder to ${debt.customerName}`}
+                        title="WhatsApp reminder"
+                        className="grid min-h-10 min-w-10 place-items-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                      >
+                        <MessageCircle size={18} aria-hidden="true" />
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        aria-label={`WhatsApp unavailable for ${debt.customerName}; no valid phone number is saved`}
+                        title="No valid phone number saved"
+                        className="grid min-h-10 min-w-10 place-items-center rounded-xl border border-slate-200 bg-slate-50 text-slate-400 disabled:cursor-not-allowed"
+                      >
+                        <MessageCircle size={18} aria-hidden="true" />
+                      </button>
+                    )}
+                    {phone ? (
+                      <a
+                        href={`tel:${phone}`}
+                        aria-label={`Call ${debt.customerName}`}
+                        title="Call customer"
+                        className="grid min-h-10 min-w-10 place-items-center rounded-xl border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                      >
+                        <Phone size={18} aria-hidden="true" />
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        aria-label={`Call unavailable for ${debt.customerName}; no valid phone number is saved`}
+                        title="No valid phone number saved"
+                        className="grid min-h-10 min-w-10 place-items-center rounded-xl border border-slate-200 bg-slate-50 text-slate-400 disabled:cursor-not-allowed"
+                      >
+                        <Phone size={18} aria-hidden="true" />
+                      </button>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         ) : (
           <p className="text-sm text-slate-500">There are no unpaid balances.</p>
