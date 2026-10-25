@@ -3,7 +3,7 @@ import Dexie from "dexie";
 import { useLiveQuery } from "dexie-react-hooks";
 import { ArrowLeft, Check, LogOut, MessageCircle, Pencil, UserRoundPlus, X } from "lucide-react";
 import { db } from "../db/db.js";
-import { addDebtToCustomer } from "../db/debts.js";
+import { addDebtToCustomer, recordDebtPayment } from "../db/debts.js";
 import { upsertCustomer } from "../db/customers.js";
 import { runTransactionWithTimeout } from "../db/runTransactionWithTimeout.js";
 import { createId } from "../lib/ids.js";
@@ -17,6 +17,14 @@ import WhatsAppReminderModal from "./WhatsAppReminderModal.jsx";
 import { generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { playErrorChime, playSuccessChime, speakConfirmation } from "../utils/audioFeedback.js";
 import PaymentMethodToggle from "./PaymentMethodToggle.jsx";
+import {
+  createInstallmentReminderLink,
+  getInstallmentAlertStatus,
+  getNextCycleDate,
+  PAYMENT_FREQUENCIES,
+  localDateString,
+  prepareInstallmentPlan
+} from "../utils/installments.js";
 
 const PAGE_SIZE = 25;
 
@@ -31,9 +39,11 @@ function getDebtPage(after) {
   return page.reverse().limit(PAGE_SIZE).toArray();
 }
 
-function ConfirmPaymentModal({ debt, onCancel, onConfirm, saving }) {
-  const [paymentType, setPaymentType] = useState("full");
-  const [amount, setAmount] = useState((debt.amountPesewas / 100).toFixed(2));
+export function ConfirmPaymentModal({ debt, initialAmountPesewas = debt.amountPesewas, onCancel, onConfirm, saving }) {
+  const startingAmountPesewas = Math.min(initialAmountPesewas, debt.amountPesewas);
+  const startsWithPartial = startingAmountPesewas < debt.amountPesewas;
+  const [paymentType, setPaymentType] = useState(startsWithPartial ? "partial" : "full");
+  const [amount, setAmount] = useState((startingAmountPesewas / 100).toFixed(2));
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [error, setError] = useState("");
   const submitLock = useRef(false);
@@ -148,6 +158,12 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
   const [phone, setPhone] = useState("");
   const [ghanaCardNumber, setGhanaCardNumber] = useState("");
   const [amount, setAmount] = useState("");
+  const [isInstallmentPlan, setIsInstallmentPlan] = useState(false);
+  const [installmentAmount, setInstallmentAmount] = useState("");
+  const [installmentFrequency, setInstallmentFrequency] = useState("weekly");
+  const [installmentStartMode, setInstallmentStartMode] = useState("next-cycle");
+  const [nextDueDate, setNextDueDate] = useState(() => getNextCycleDate(localDateString(), "weekly"));
+  const [installmentPaymentMethod, setInstallmentPaymentMethod] = useState("cash");
   const [debtFormSubmitted, setDebtFormSubmitted] = useState(false);
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
@@ -277,6 +293,32 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
       playErrorChime();
       return;
     }
+    let installmentPlan = null;
+    let initialPaymentPesewas = 0;
+    if (isInstallmentPlan) {
+      try {
+        const preparedPlan = prepareInstallmentPlan({
+          amountPesewas,
+          installmentAmountPesewas: toPesewas(installmentAmount),
+          frequency: installmentFrequency,
+          nextDueDate: installmentStartMode === "today" ? localDateString() : nextDueDate,
+          startToday: installmentStartMode === "today"
+        });
+        installmentPlan = preparedPlan.plan;
+        if (installmentStartMode === "today" && !installmentPlan.nextDueDate) {
+          installmentPlan = {
+            ...installmentPlan,
+            nextDueDate: getNextCycleDate(localDateString(), installmentFrequency)
+          };
+        }
+        initialPaymentPesewas = preparedPlan.initialPaymentPesewas;
+      } catch (planError) {
+        playErrorChime();
+        setError(planError.message);
+        return;
+      }
+    }
+    const remainingDebtPesewas = amountPesewas - initialPaymentPesewas;
     if (!isValidGhanaCardNumber(ghanaCardNumber)) {
       playErrorChime();
       setError("Enter a Ghana Card number like GHA-123456789-0 or 1234567890.");
@@ -291,7 +333,8 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
       type: "sale",
       amountPesewas,
       total_amount: amountPesewas,
-      payment_method: null,
+      payment_method: initialPaymentPesewas > 0 ? installmentPaymentMethod : null,
+      ...(initialPaymentPesewas > 0 && { installmentPaymentPesewas: initialPaymentPesewas }),
       paymentType: "credit",
       customer_name: cleanCustomerName,
       customer_phone: phone.trim(),
@@ -311,25 +354,47 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
       timestamp: now,
       updatedAt: now,
       synced: false,
-      syncStatus: "pending"
+      syncStatus: "pending",
+      creditExtendedPesewas: remainingDebtPesewas
     };
     try {
-      await runTransactionWithTimeout(db, [db.debts, db.customers, db.transactions], async () => {
+      await runTransactionWithTimeout(db, [db.debts, db.customers, db.transactions, db.payments], async () => {
+        let debtResult = null;
+        if (remainingDebtPesewas > 0 || (initialPaymentPesewas > 0 && installmentPlan)) {
+          debtResult = await addDebtToCustomer({
+            name: customerName,
+            phone,
+            ghanaCardNumber: normalizeGhanaCardNumber(ghanaCardNumber),
+            amountPesewas: remainingDebtPesewas,
+            note: cleanNote,
+            installmentPlan,
+            transactionId,
+            now
+          });
+        }
+        transaction.type = debtResult?.isAddon
+          ? "installment_addon"
+          : initialPaymentPesewas > 0 ? "installment_sale" : "sale";
+        if (debtResult?.isAddon) {
+          transaction.addonAmountPesewas = amountPesewas;
+        }
         await db.transactions.add(transaction);
-        await addDebtToCustomer({
-          name: customerName,
-          phone,
-          ghanaCardNumber: normalizeGhanaCardNumber(ghanaCardNumber),
-          amountPesewas,
-          note: cleanNote,
-          transactionId,
-          now
-        });
+        if (initialPaymentPesewas > 0) {
+          await db.payments.add({
+            id: createId(),
+            debtId: debtResult?.id ?? null,
+            amountPesewas: initialPaymentPesewas,
+            paymentMethod: installmentPaymentMethod,
+            customer_name: cleanCustomerName,
+            createdAt: now,
+            updatedAt: now
+          });
+        }
         await upsertCustomer({
           name: customerName,
           phone,
           ghanaCardNumber: normalizeGhanaCardNumber(ghanaCardNumber),
-          debtDeltaPesewas: amountPesewas,
+          debtDeltaPesewas: remainingDebtPesewas,
           now
         });
       });
@@ -341,6 +406,12 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
       setPhone("");
       setGhanaCardNumber("");
       setAmount("");
+      setIsInstallmentPlan(false);
+      setInstallmentAmount("");
+      setInstallmentFrequency("weekly");
+      setInstallmentStartMode("next-cycle");
+      setNextDueDate(getNextCycleDate(localDateString(), "weekly"));
+      setInstallmentPaymentMethod("cash");
       setDebtFormSubmitted(false);
       setNote("");
       setError("");
@@ -360,6 +431,12 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
     setPhone("");
     setGhanaCardNumber("");
     setAmount("");
+    setIsInstallmentPlan(false);
+    setInstallmentAmount("");
+    setInstallmentFrequency("weekly");
+    setInstallmentStartMode("next-cycle");
+    setNextDueDate(getNextCycleDate(localDateString(), "weekly"));
+    setInstallmentPaymentMethod("cash");
     setDebtFormSubmitted(false);
     setNote("");
     setError("");
@@ -368,50 +445,12 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
   }
 
   async function confirmPayment({ debt, amountPesewas, paymentMethod }) {
-    const now = Date.now();
     setBusyDebtId(debt.id);
     try {
-      await runTransactionWithTimeout(db, [db.debts, db.transactions, db.customers], async () => {
-        const currentDebt = await db.debts.get(debt.id);
-        if (!currentDebt || currentDebt.status !== "unpaid" || amountPesewas > currentDebt.amountPesewas) {
-          throw new Error("The debt changed before the payment could be recorded.");
-        }
-        const remainingPesewas = currentDebt.amountPesewas - amountPesewas;
-        await db.debts.update(debt.id, {
-          ...(remainingPesewas === 0 ? { status: "paid" } : {}),
-          ...(remainingPesewas > 0 && {
-            amountPesewas: remainingPesewas,
-            total_owed: remainingPesewas
-          }),
-          updatedAt: now,
-          synced: false,
-          syncStatus: "pending"
-        });
-        await db.transactions.add({
-          id: createId(),
-          type: "income",
-          amountPesewas,
-          total_amount: amountPesewas,
-          payment_method: paymentMethod,
-          customer_name: currentDebt.customerName,
-          customer_phone: currentDebt.phone ?? "",
-          items_json: "[]",
-          note: `Debt payment from ${currentDebt.customerName}${remainingPesewas ? ` · ${formatGhs(remainingPesewas)} remaining` : ""}`,
-          createdAt: now,
-          timestamp: now,
-          updatedAt: now,
-          synced: false,
-          syncStatus: "pending"
-        });
-        await upsertCustomer({
-          name: currentDebt.customerName,
-          phone: currentDebt.phone ?? "",
-          debtDeltaPesewas: -amountPesewas,
-          now
-        });
-      });
+      await recordDebtPayment({ debtId: debt.id, amountPesewas, paymentMethod });
       void requestBackgroundSync();
       setRefreshKey((current) => current + 1);
+      onDataChanged?.();
       setPaymentDebt(null);
       playSuccessChime();
       speakConfirmation("Debt payment recorded");
@@ -573,6 +612,16 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
     const nextPhone = phoneDraft.trim();
     const nextGhanaCardNumber = normalizeGhanaCardNumber(ghanaCardDraft);
     const debtDeltaPesewas = nextAmountPesewas - debt.amountPesewas;
+    const installmentUpdates = debt.isInstallmentPlan && debt.installmentAmount > 0
+      ? (() => {
+          const previousRemaining = debt.installmentsRemaining ?? Math.ceil(debt.amountPesewas / debt.installmentAmount);
+          const nextRemaining = Math.ceil(nextAmountPesewas / debt.installmentAmount);
+          return {
+            installmentsRemaining: nextRemaining,
+            totalInstallments: (debt.totalInstallments ?? previousRemaining) + nextRemaining - previousRemaining
+          };
+        })()
+      : {};
     setBusyDebtId(debt.id);
     setEditError("");
     try {
@@ -583,6 +632,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
           ghanaCardNumber: nextGhanaCardNumber,
           amountPesewas: nextAmountPesewas,
           total_owed: nextAmountPesewas,
+          ...installmentUpdates,
           updatedAt: now,
           synced: false,
           syncStatus: "pending"
@@ -605,6 +655,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
               ghanaCardNumber: nextGhanaCardNumber,
               amountPesewas: nextAmountPesewas,
               total_owed: nextAmountPesewas,
+              ...installmentUpdates,
               updatedAt: now,
               synced: false,
               syncStatus: "pending"
@@ -612,6 +663,8 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
           : item
       )));
       setEditingDebt(null);
+      setRefreshKey((current) => current + 1);
+      onDataChanged?.();
       void requestBackgroundSync();
     } catch (saveError) {
       console.error("Could not update the customer debt.", saveError);
@@ -789,6 +842,105 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
                 : "Required: enter the amount the customer owes."}
             </span>
           </label>
+          <section className={`rounded-2xl border p-4 transition-colors ${isInstallmentPlan ? "border-emerald-200 bg-emerald-50/80" : "border-slate-200 bg-slate-50"}`}>
+            <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3">
+              <span>
+                <span className="block text-sm font-bold text-slate-900">Enable Installment Plan</span>
+                <span className="mt-0.5 block text-xs font-normal text-slate-500">Set payment amount, frequency, and due date.</span>
+              </span>
+              <span className="relative inline-flex h-6 w-11 shrink-0 items-center">
+                <input
+                  type="checkbox"
+                  checked={isInstallmentPlan}
+                  onChange={(event) => setIsInstallmentPlan(event.target.checked)}
+                  aria-label="Enable Installment Plan"
+                  className="peer sr-only"
+                />
+                <span aria-hidden="true" className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-emerald-700 peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-700 peer-focus-visible:ring-offset-2" />
+                <span aria-hidden="true" className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+              </span>
+            </label>
+            <div
+              aria-hidden={!isInstallmentPlan}
+              className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${isInstallmentPlan ? "mt-3 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+            >
+              <fieldset disabled={!isInstallmentPlan} className="min-h-0 overflow-hidden">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="text-sm font-semibold">Installment amount (GHS)
+                  <input type="number" inputMode="decimal" min="0.01" step="0.01" required value={installmentAmount} onChange={(event) => setInstallmentAmount(event.target.value)} placeholder="0.00" className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 px-3 text-base font-normal outline-none focus:border-leaf" />
+                </label>
+                <label className="text-sm font-semibold">Frequency
+                  <select
+                    value={installmentFrequency}
+                    onChange={(event) => {
+                      const frequency = event.target.value;
+                      setInstallmentFrequency(frequency);
+                      if (installmentStartMode === "next-cycle") {
+                        setNextDueDate(getNextCycleDate(localDateString(), frequency));
+                      }
+                    }}
+                    className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-base font-normal outline-none focus:border-leaf"
+                  >
+                    {PAYMENT_FREQUENCIES.map((frequency) => (
+                      <option key={frequency.value} value={frequency.value}>{frequency.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <div className="sm:col-span-2">
+                  <span className="block text-sm font-semibold">Schedule starts</span>
+                  <div className="mt-1 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      aria-pressed={installmentStartMode === "today"}
+                      onClick={() => {
+                        setInstallmentStartMode("today");
+                        setNextDueDate(localDateString());
+                      }}
+                      className={`min-h-10 rounded-lg px-3 text-sm font-semibold ${installmentStartMode === "today" ? "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-700" : "bg-slate-100 text-slate-700"}`}
+                    >
+                      Start Today
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={installmentStartMode === "next-cycle"}
+                      onClick={() => {
+                        setInstallmentStartMode("next-cycle");
+                        setNextDueDate(getNextCycleDate(localDateString(), installmentFrequency));
+                      }}
+                      className={`min-h-10 rounded-lg px-3 text-sm font-semibold ${installmentStartMode === "next-cycle" ? "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-700" : "bg-slate-100 text-slate-700"}`}
+                    >
+                      Start Next Cycle
+                    </button>
+                  </div>
+                </div>
+                <label className="text-sm font-semibold sm:col-span-2">Next due date
+                  <input
+                    type="date"
+                    required
+                    value={nextDueDate}
+                    onChange={(event) => {
+                      setNextDueDate(event.target.value);
+                      setInstallmentStartMode("custom");
+                    }}
+                    className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 px-3 text-base font-normal outline-none focus:border-leaf"
+                  />
+                </label>
+                {installmentStartMode === "today" && (
+                  <div className="sm:col-span-2">
+                    <PaymentMethodToggle
+                      value={installmentPaymentMethod}
+                      onChange={setInstallmentPaymentMethod}
+                      label="Initial installment received via"
+                    />
+                    <p className="mt-1 text-xs font-normal text-slate-600">
+                      This records {formatGhs(Math.min(toPesewas(installmentAmount) || 0, toPesewas(amount) || 0))} received today and schedules the next due date for the following cycle.
+                    </p>
+                  </div>
+                )}
+                </div>
+              </fieldset>
+            </div>
+          </section>
           <label className="block text-sm font-semibold">Note <span className="font-normal text-slate-500">(optional)</span>
             <input maxLength="200" value={note} onChange={(event) => setNote(event.target.value)} className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 px-3 text-base font-normal outline-none focus:border-leaf" />
           </label>
@@ -835,6 +987,17 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
               ghanaCardNumber: customerGhanaCardNumber
             };
             const whatsappUrl = paymentLink(customerDebt);
+            const installmentAlert = debt.isInstallmentPlan
+              ? getInstallmentAlertStatus(debt.nextDueDate, debt.frequency)
+              : null;
+            const installmentReminderUrl = installmentAlert?.showAlert
+              ? createInstallmentReminderLink(
+                  customerPhone,
+                  debt.customerName || debt.customer_name,
+                  debt.installmentAmount,
+                  installmentAlert
+                )
+              : null;
             const dialablePhone = customerPhone.replace(/[\s().-]/g, "");
             return (
               <li key={debt.id} className="rounded-2xl bg-white p-4 shadow-card">
@@ -860,6 +1023,17 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
                           customerName={debt.customerName || debt.customer_name}
                         />
                       </div>
+                    )}
+                    {debt.isInstallmentPlan && (
+                      <p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${installmentAlert?.showAlert ? "bg-amber-100 text-amber-900" : "bg-blue-50 text-blue-800"}`}>
+                        {installmentAlert?.type === "overdue"
+                          ? `Installment overdue · ${installmentAlert.days} day${installmentAlert.days === 1 ? "" : "s"} · ${formatGhs(debt.installmentAmount)}`
+                          : installmentAlert?.type === "due_today"
+                            ? `Installment due today · ${formatGhs(debt.installmentAmount)}`
+                            : installmentAlert?.type === "due_soon"
+                              ? `Installment due in ${installmentAlert.days} day${installmentAlert.days === 1 ? "" : "s"} · ${formatGhs(debt.installmentAmount)}`
+                              : `Next ${debt.frequency} installment: ${debt.nextDueDate} · ${debt.installmentsRemaining} remaining`}
+                      </p>
                     )}
                     {debt.note && <p className="mt-1 break-words text-sm text-slate-600">{debt.note}</p>}
                   </div>
@@ -893,6 +1067,17 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
                     <MessageCircle size={17} aria-hidden="true" />
                     + Add Phone Number
                   </button>
+                )}
+                {installmentReminderUrl && (
+                  <a
+                    href={installmentReminderUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 flex min-h-11 items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 text-sm font-semibold text-amber-900 transition hover:bg-amber-100"
+                  >
+                    <MessageCircle size={16} aria-hidden="true" />
+                    WhatsApp installment reminder
+                  </a>
                 )}
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   <button type="button" onClick={() => editDebt(debt)} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100">

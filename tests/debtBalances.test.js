@@ -29,3 +29,33 @@ test("keeps unnamed debt records separate and supports legacy debt fields", () =
     { id: "unnamed:legacy-1", customerName: "Unnamed customer", phone: "", ghanaCardNumber: "", amountPesewas: 200 }
   ]);
 });
+
+test("includes the active installment schedule in grouped customer balances", () => {
+  const [balance] = getLargestUnpaidBalances([
+    {
+      id: "installment-1",
+      customerName: "Ama Mensah",
+      amountPesewas: 5000,
+      isInstallmentPlan: true,
+      installmentAmount: 2500,
+      frequency: "weekly",
+      nextDueDate: "2026-05-08",
+      installmentsRemaining: 2,
+      totalInstallments: 4
+    }
+  ]);
+
+  assert.deepEqual(balance, {
+    id: "ama mensah",
+    customerName: "Ama Mensah",
+    phone: "",
+    ghanaCardNumber: "",
+    amountPesewas: 5000,
+    isInstallmentPlan: true,
+    installmentAmount: 2500,
+    frequency: "weekly",
+    nextDueDate: "2026-05-08",
+    installmentsRemaining: 2,
+    totalInstallments: 4
+  });
+});

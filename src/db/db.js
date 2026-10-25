@@ -164,6 +164,32 @@ db.version(8).stores({
   });
 });
 
+db.version(9).stores({
+  products: "++id, name, category, default_price, updatedAt, syncStatus, synced, [name+updatedAt], [syncStatus+updatedAt], [category+name]",
+  transactions: "id, type, createdAt, timestamp, updatedAt, syncStatus, synced, [type+createdAt], [syncStatus+updatedAt], [createdAt+id], [type+timestamp], [synced+timestamp]",
+  debts: "id, customerName, customer_name, phone, customer_phone, status, amountPesewas, updatedAt, syncStatus, synced, [status+updatedAt], [customerName+status], [syncStatus+updatedAt], [status+updatedAt+id], [status+amountPesewas+id], [status+created_at], nextDueDate",
+  customers: "id, name, nameLower, phone, totalDebtPesewas, createdAt, updatedAt",
+  settings: "key"
+}).upgrade(async (transaction) => {
+  await transaction.table("debts").toCollection().modify((debt) => {
+    debt.isInstallmentPlan ??= false;
+    debt.installmentAmount ??= 0;
+    debt.frequency ??= "";
+    debt.nextDueDate ??= "";
+    debt.installmentsRemaining ??= 0;
+    debt.totalInstallments ??= 0;
+  });
+});
+
+db.version(10).stores({
+  products: "++id, name, category, default_price, updatedAt, syncStatus, synced, [name+updatedAt], [syncStatus+updatedAt], [category+name]",
+  transactions: "id, type, createdAt, timestamp, updatedAt, syncStatus, synced, [type+createdAt], [syncStatus+updatedAt], [createdAt+id], [type+timestamp], [synced+timestamp]",
+  debts: "id, customerName, customer_name, phone, customer_phone, status, amountPesewas, updatedAt, syncStatus, synced, [status+updatedAt], [customerName+status], [syncStatus+updatedAt], [status+updatedAt+id], [status+amountPesewas+id], [status+created_at], nextDueDate",
+  customers: "id, name, nameLower, phone, totalDebtPesewas, createdAt, updatedAt",
+  settings: "key",
+  payments: "id, debtId, createdAt, paymentMethod, syncStatus, synced, [debtId+createdAt], [syncStatus+createdAt]"
+});
+
 export const storagePersistPromise =
   typeof navigator !== "undefined" && navigator.storage?.persist
     ? navigator.storage.persist().catch((error) => {

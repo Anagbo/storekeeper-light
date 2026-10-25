@@ -11,13 +11,31 @@ export function getLargestUnpaidBalances(debts) {
       balance.amountPesewas += debt.amountPesewas ?? debt.total_owed ?? 0;
       balance.phone ||= debt.phone || debt.customer_phone || "";
       balance.ghanaCardNumber ||= debt.ghanaCardNumber || "";
+      if (!balance.isInstallmentPlan && debt.isInstallmentPlan) {
+        Object.assign(balance, {
+          isInstallmentPlan: true,
+          installmentAmount: debt.installmentAmount,
+          frequency: debt.frequency,
+          nextDueDate: debt.nextDueDate,
+          installmentsRemaining: debt.installmentsRemaining,
+          totalInstallments: debt.totalInstallments
+        });
+      }
     } else {
       balancesByCustomer.set(key, {
         id: key,
         customerName: customerName || "Unnamed customer",
         phone: debt.phone || debt.customer_phone || "",
         ghanaCardNumber: debt.ghanaCardNumber || "",
-        amountPesewas: debt.amountPesewas ?? debt.total_owed ?? 0
+        amountPesewas: debt.amountPesewas ?? debt.total_owed ?? 0,
+        ...(debt.isInstallmentPlan && {
+          isInstallmentPlan: true,
+          installmentAmount: debt.installmentAmount,
+          frequency: debt.frequency,
+          nextDueDate: debt.nextDueDate,
+          installmentsRemaining: debt.installmentsRemaining,
+          totalInstallments: debt.totalInstallments
+        })
       });
     }
   }

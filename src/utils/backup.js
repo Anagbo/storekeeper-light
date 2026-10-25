@@ -1,12 +1,13 @@
 import { db } from "../db/db.js";
 
 const BACKUP_FORMAT_VERSION = 1;
-const BACKUP_TABLES = ["transactions", "customers", "debts", "products"];
+const BACKUP_TABLES = ["transactions", "customers", "debts", "products", "payments"];
 const PRIMARY_KEYS = {
   transactions: "id",
   customers: "id",
   debts: "id",
-  products: "id"
+  products: "id",
+  payments: "id"
 };
 
 function localTimestamp(date) {
@@ -31,7 +32,7 @@ export function validateBackupData(backup) {
   }
 
   for (const tableName of BACKUP_TABLES) {
-    const records = backup.data[tableName];
+    const records = backup.data[tableName] ?? (tableName === "payments" ? [] : undefined);
     if (!Array.isArray(records)) {
       throw new TypeError(`The backup is missing a valid ${tableName} record list.`);
     }
@@ -48,7 +49,7 @@ export function validateBackupData(backup) {
       }
     }
   }
-  return backup.data;
+  return { ...backup.data, payments: backup.data.payments ?? [] };
 }
 
 export async function exportDatabaseToJson() {

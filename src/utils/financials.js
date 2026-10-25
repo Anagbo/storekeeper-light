@@ -86,7 +86,23 @@ export function summarizeFinancialTransactions(transactions) {
       totals.debtPaymentsCollected += amount;
       totals[getPaymentMethod(transaction) === "momo" ? "momoReceived" : "cashReceived"] += amount;
     }
-    else if (isCreditSale(transaction)) totals.newCreditExtended += amount;
+    else if (transaction.type === "installment_sale" || transaction.type === "installment_addon") {
+      const cashReceived = transaction.installmentPaymentPesewas ?? 0;
+      const creditExtended = transaction.creditExtendedPesewas ?? 0;
+      if (Number.isSafeInteger(cashReceived) && cashReceived > 0) {
+        totals.directCashSales += cashReceived;
+        totals[getPaymentMethod(transaction) === "momo" ? "momoReceived" : "cashReceived"] += cashReceived;
+      }
+      if (Number.isSafeInteger(creditExtended) && creditExtended > 0) {
+        totals.newCreditExtended += creditExtended;
+      }
+    }
+    else if (isCreditSale(transaction)) {
+      const creditExtended = transaction.creditExtendedPesewas ?? amount;
+      totals.newCreditExtended += Number.isSafeInteger(creditExtended) && creditExtended > 0
+        ? creditExtended
+        : 0;
+    }
     else if (isDirectCashSale(transaction)) {
       totals.directCashSales += amount;
       totals[getPaymentMethod(transaction) === "momo" ? "momoReceived" : "cashReceived"] += amount;

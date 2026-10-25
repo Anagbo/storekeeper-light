@@ -19,15 +19,17 @@ export function useSyncStatus() {
   const [storageCheckError, setStorageCheckError] = useState("");
 
   const counts = useLiveQuery(async () => {
-    const [pendingTransactions, pendingDebts, salesCount, debtCount] = await Promise.all([
+    const [pendingTransactions, pendingDebts, saleCount, installmentSaleCount, installmentAddonCount, debtCount] = await Promise.all([
       countUnsynced(db.transactions),
       countUnsynced(db.debts),
       db.transactions.where("type").equals("sale").count(),
+      db.transactions.where("type").equals("installment_sale").count(),
+      db.transactions.where("type").equals("installment_addon").count(),
       db.debts.count()
     ]);
     return {
       pendingCount: pendingTransactions + pendingDebts,
-      salesCount,
+      salesCount: saleCount + installmentSaleCount + installmentAddonCount,
       debtCount
     };
   }, [], { pendingCount: null, salesCount: 0, debtCount: 0 });

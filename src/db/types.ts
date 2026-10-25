@@ -1,4 +1,4 @@
-export type TransactionType = "sale" | "expense" | "income" | "debt_payment";
+export type TransactionType = "sale" | "installment_sale" | "installment_addon" | "expense" | "income" | "debt_payment";
 export type PaymentMethod = "cash" | "momo";
 export type DebtStatus = "unpaid" | "paid";
 export type SyncStatus = "pending" | "synced";
@@ -19,6 +19,9 @@ export interface Transaction {
   type: TransactionType;
   total_amount: number;
   payment_method: PaymentMethod | null;
+  installmentPaymentPesewas?: number;
+  creditExtendedPesewas?: number;
+  addonAmountPesewas?: number;
   customer_name: string;
   customer_phone: string;
   items_json: string;
@@ -39,6 +42,15 @@ export interface Debt {
   synced: boolean;
   updatedAt: number;
   syncStatus: SyncStatus;
+}
+
+export interface Payment {
+  id: string;
+  debtId: string | null;
+  amountPesewas: number;
+  paymentMethod: PaymentMethod;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface Customer {

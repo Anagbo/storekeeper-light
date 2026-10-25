@@ -72,6 +72,53 @@ test("counts Add Debt transaction records as new credit without cash inflow", ()
   assert.equal(summary.accruedProfit, 17400);
 });
 
+test("counts a single installment sale as both cash received and remaining credit", () => {
+  const summary = summarizeFinancialTransactions([
+    {
+      type: "installment_sale",
+      amountPesewas: 10000,
+      installmentPaymentPesewas: 2500,
+      creditExtendedPesewas: 7500,
+      payment_method: "momo",
+      note: "Cement · Ama"
+    }
+  ]);
+
+  assert.equal(summary.newCreditExtended, 7500);
+  assert.equal(summary.momoReceived, 2500);
+  assert.equal(summary.cashInflow, 2500);
+  assert.equal(summary.realCashProfit, 2500);
+  assert.equal(summary.accruedProfit, 10000);
+});
+
+test("counts installment add-ons as only their new deposit and net credit", () => {
+  const summary = summarizeFinancialTransactions([
+    {
+      type: "installment_addon",
+      amountPesewas: 10000,
+      addonAmountPesewas: 10000,
+      installmentPaymentPesewas: 2000,
+      creditExtendedPesewas: 8000,
+      payment_method: "cash"
+    }
+  ]);
+
+  assert.equal(summary.cashInflow, 2000);
+  assert.equal(summary.realCashProfit, 2000);
+  assert.equal(summary.newCreditExtended, 8000);
+  assert.equal(summary.accruedProfit, 10000);
+
+  const fullyPaidAddon = summarizeFinancialTransactions([{
+    type: "installment_addon",
+    amountPesewas: 10000,
+    installmentPaymentPesewas: 10000,
+    creditExtendedPesewas: 0,
+    payment_method: "momo"
+  }]);
+  assert.equal(fullyPaidAddon.momoReceived, 10000);
+  assert.equal(fullyPaidAddon.newCreditExtended, 0);
+});
+
 test("week date range starts Monday and ends exclusively the next Monday", () => {
   const range = getFinancialDateRange("week", "", "", new Date(2026, 9, 25, 15));
   assert.equal(new Date(range.start).getDay(), 1);

@@ -10,6 +10,7 @@ import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { normalizeCustomerName, upsertCustomer } from "../db/customers.js";
 import { isValidGhanaCardNumber, normalizeGhanaCardNumber } from "../lib/ghanaCardNumber.js";
 import { formatGhanaCard } from "../utils/formatters.js";
+import { getNextCycleDate, localDateString, PAYMENT_FREQUENCIES, prepareInstallmentPlan } from "../utils/installments.js";
 import { playErrorChime, playExpenseChime, playSuccessChime, speakConfirmation } from "../utils/audioFeedback.js";
 import PaymentMethodToggle from "./PaymentMethodToggle.jsx";
 
@@ -31,6 +32,12 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
   const [customerLookupError, setCustomerLookupError] = useState("");
   const [phone, setPhone] = useState("");
   const [ghanaCardNumber, setGhanaCardNumber] = useState("");
+  const [isInstallmentPlan, setIsInstallmentPlan] = useState(false);
+  const [installmentAmount, setInstallmentAmount] = useState("");
+  const [installmentFrequency, setInstallmentFrequency] = useState("weekly");
+  const [installmentStartMode, setInstallmentStartMode] = useState("next-cycle");
+  const [nextDueDate, setNextDueDate] = useState(() => getNextCycleDate(localDateString(), "weekly"));
+  const [installmentPaymentMethod, setInstallmentPaymentMethod] = useState("cash");
   const [itemDescription, setItemDescription] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [price, setPrice] = useState("");
@@ -113,6 +120,12 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
       setCustomerSuggestions([]);
       setPhone("");
       setGhanaCardNumber("");
+      setIsInstallmentPlan(false);
+      setInstallmentAmount("");
+      setInstallmentFrequency("weekly");
+      setInstallmentStartMode("next-cycle");
+      setNextDueDate(getNextCycleDate(localDateString(), "weekly"));
+      setInstallmentPaymentMethod("cash");
       setCustomerLookupError("");
     }
   }
@@ -252,6 +265,32 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
         setError("The amount is too large. Check the quantity and price.");
         return;
       }
+      let installmentPlan = null;
+      let initialPaymentPesewas = 0;
+      if (type === "sale" && paymentType === "credit" && isInstallmentPlan) {
+        try {
+          const preparedPlan = prepareInstallmentPlan({
+            amountPesewas,
+            installmentAmountPesewas: toPesewas(installmentAmount),
+            frequency: installmentFrequency,
+            nextDueDate: installmentStartMode === "today" ? localDateString() : nextDueDate,
+            startToday: installmentStartMode === "today"
+          });
+          installmentPlan = preparedPlan.plan;
+          if (installmentStartMode === "today" && !installmentPlan.nextDueDate) {
+            installmentPlan = {
+              ...installmentPlan,
+              nextDueDate: getNextCycleDate(localDateString(), installmentFrequency)
+            };
+          }
+          initialPaymentPesewas = preparedPlan.initialPaymentPesewas;
+        } catch (planError) {
+          playErrorChime();
+          setError(planError.message);
+          return;
+        }
+      }
+      const remainingDebtPesewas = amountPesewas - initialPaymentPesewas;
 
       const now = Date.now();
       const transaction = {
@@ -259,7 +298,10 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
         type,
         amountPesewas,
         total_amount: amountPesewas,
-        payment_method: type === "sale" && paymentType !== "credit" ? paymentType : null,
+        payment_method: initialPaymentPesewas > 0
+          ? installmentPaymentMethod
+          : type === "sale" && paymentType !== "credit" ? paymentType : null,
+        ...(initialPaymentPesewas > 0 && { installmentPaymentPesewas: initialPaymentPesewas }),
         customer_name: type === "sale" && paymentType === "credit" ? customerName.trim() : "",
         customer_phone: type === "sale" && paymentType === "credit" ? phone.trim() : "",
         ghanaCardNumber: type === "sale" && paymentType === "credit" ? normalizeGhanaCardNumber(ghanaCardNumber) : "",
@@ -280,6 +322,9 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
           pricePesewas: amountPesewas,
           paymentType
         }),
+        ...(type === "sale" && paymentType === "credit" && {
+          creditExtendedPesewas: remainingDebtPesewas
+        }),
         createdAt: now,
         timestamp: now,
         updatedAt: now,
@@ -287,22 +332,44 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
         syncStatus: "pending"
       };
       if (type === "sale" && paymentType === "credit") {
-        await runTransactionWithTimeout(db, [db.transactions, db.debts, db.customers], async () => {
+        await runTransactionWithTimeout(db, [db.transactions, db.debts, db.customers, db.payments], async () => {
+          let debtResult = null;
+          if (remainingDebtPesewas > 0 || (initialPaymentPesewas > 0 && installmentPlan)) {
+            debtResult = await addDebtToCustomer({
+              name: customerName,
+              phone,
+              ghanaCardNumber: normalizeGhanaCardNumber(ghanaCardNumber),
+              amountPesewas: remainingDebtPesewas,
+              note: itemDescription.trim(),
+              installmentPlan,
+              transactionId: transaction.id,
+              now
+            });
+          }
+          transaction.type = debtResult?.isAddon
+            ? "installment_addon"
+            : initialPaymentPesewas > 0 ? "installment_sale" : type;
+          if (debtResult?.isAddon) {
+            transaction.creditExtendedPesewas = remainingDebtPesewas;
+            transaction.addonAmountPesewas = amountPesewas;
+          }
           await db.transactions.add(transaction);
-          await addDebtToCustomer({
-            name: customerName,
-            phone,
-            ghanaCardNumber: normalizeGhanaCardNumber(ghanaCardNumber),
-            amountPesewas,
-            note: itemDescription.trim(),
-            transactionId: transaction.id,
-            now
-          });
+          if (initialPaymentPesewas > 0) {
+            await db.payments.add({
+              id: createId(),
+              debtId: debtResult?.id ?? null,
+              amountPesewas: initialPaymentPesewas,
+              paymentMethod: installmentPaymentMethod,
+              customer_name: customerName.trim(),
+              createdAt: now,
+              updatedAt: now
+            });
+          }
           await upsertCustomer({
             name: customerName,
             phone,
             ghanaCardNumber: normalizeGhanaCardNumber(ghanaCardNumber),
-            debtDeltaPesewas: amountPesewas,
+            debtDeltaPesewas: remainingDebtPesewas,
             now
           });
         });
@@ -323,6 +390,10 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
       setCustomerSuggestions([]);
       setPhone("");
       setGhanaCardNumber("");
+      setIsInstallmentPlan(false);
+      setInstallmentAmount("");
+      setInstallmentFrequency("weekly");
+      setNextDueDate(localDateString());
       setItemDescription("");
       setQuantity("1");
       setPrice("");
@@ -487,6 +558,107 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
                 Total: GHS {(Number(price) || 0).toFixed(2)}
                 {paymentType === "credit" && " · Added to customer debts"}
               </p>
+              {paymentType === "credit" && (
+                <section className={`rounded-2xl border p-4 transition-colors ${isInstallmentPlan ? "border-emerald-200 bg-emerald-50/80" : "border-slate-200 bg-slate-50"}`}>
+                  <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3">
+                    <span>
+                      <span className="block text-sm font-bold text-slate-900">Enable Installment Plan</span>
+                      <span className="mt-0.5 block text-xs font-normal text-slate-500">Set payment amount, frequency, and due date.</span>
+                    </span>
+                    <span className="relative inline-flex h-6 w-11 shrink-0 items-center">
+                      <input
+                        type="checkbox"
+                        checked={isInstallmentPlan}
+                        onChange={(event) => setIsInstallmentPlan(event.target.checked)}
+                        aria-label="Enable Installment Plan"
+                        className="peer sr-only"
+                      />
+                      <span aria-hidden="true" className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-emerald-700 peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-700 peer-focus-visible:ring-offset-2" />
+                      <span aria-hidden="true" className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+                    </span>
+                  </label>
+                  <div
+                    aria-hidden={!isInstallmentPlan}
+                    className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${isInstallmentPlan ? "mt-3 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+                  >
+                    <fieldset disabled={!isInstallmentPlan} className="min-h-0 overflow-hidden">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <label className="text-sm font-semibold">Installment amount (GHS)
+                        <input type="number" inputMode="decimal" min="0.01" step="0.01" required value={installmentAmount} onChange={(event) => setInstallmentAmount(event.target.value)} placeholder="0.00" className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 px-3 text-base font-normal outline-none focus:border-leaf" />
+                      </label>
+                      <label className="text-sm font-semibold">Frequency
+                        <select
+                          value={installmentFrequency}
+                          onChange={(event) => {
+                            const frequency = event.target.value;
+                            setInstallmentFrequency(frequency);
+                            if (installmentStartMode === "next-cycle") {
+                              setNextDueDate(getNextCycleDate(localDateString(), frequency));
+                            }
+                          }}
+                          className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-base font-normal outline-none focus:border-leaf"
+                        >
+                          {PAYMENT_FREQUENCIES.map((frequency) => (
+                            <option key={frequency.value} value={frequency.value}>{frequency.label}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <div className="sm:col-span-2">
+                        <span className="block text-sm font-semibold">Schedule starts</span>
+                        <div className="mt-1 grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            aria-pressed={installmentStartMode === "today"}
+                            onClick={() => {
+                              setInstallmentStartMode("today");
+                              setNextDueDate(localDateString());
+                            }}
+                            className={`min-h-10 rounded-lg px-3 text-sm font-semibold ${installmentStartMode === "today" ? "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-700" : "bg-slate-100 text-slate-700"}`}
+                          >
+                            Start Today
+                          </button>
+                          <button
+                            type="button"
+                            aria-pressed={installmentStartMode === "next-cycle"}
+                            onClick={() => {
+                              setInstallmentStartMode("next-cycle");
+                              setNextDueDate(getNextCycleDate(localDateString(), installmentFrequency));
+                            }}
+                            className={`min-h-10 rounded-lg px-3 text-sm font-semibold ${installmentStartMode === "next-cycle" ? "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-700" : "bg-slate-100 text-slate-700"}`}
+                          >
+                            Start Next Cycle
+                          </button>
+                        </div>
+                      </div>
+                      <label className="text-sm font-semibold sm:col-span-2">Next due date
+                        <input
+                          type="date"
+                          required
+                          value={nextDueDate}
+                          onChange={(event) => {
+                            setNextDueDate(event.target.value);
+                            setInstallmentStartMode("custom");
+                          }}
+                          className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 px-3 text-base font-normal outline-none focus:border-leaf"
+                        />
+                      </label>
+                      {installmentStartMode === "today" && (
+                        <div className="sm:col-span-2">
+                          <p className="mb-2 text-xs font-normal text-slate-600">
+                            This records {formatGhs(Math.min(toPesewas(installmentAmount) || 0, toPesewas(price) || 0))} received today and schedules the next due date for the following cycle.
+                          </p>
+                          <PaymentMethodToggle
+                            value={installmentPaymentMethod}
+                            onChange={setInstallmentPaymentMethod}
+                            label="Initial installment received via"
+                          />
+                        </div>
+                      )}
+                      </div>
+                    </fieldset>
+                  </div>
+                </section>
+              )}
             </>
           ) : (
             <label className="block">

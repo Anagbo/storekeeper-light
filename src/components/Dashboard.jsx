@@ -4,6 +4,7 @@ import Dexie from "dexie";
 import { ArrowDownLeft, ArrowUpRight, CirclePlus, MessageCircle, Phone, ReceiptText, UserRoundPlus, UsersRound } from "lucide-react";
 import { db } from "../db/db.js";
 import { upsertCustomer } from "../db/customers.js";
+import { recordDebtPayment } from "../db/debts.js";
 import { runTransactionWithTimeout } from "../db/runTransactionWithTimeout.js";
 import FinancialSummaryModal from "./FinancialSummaryModal.jsx";
 import SyncStatusBadge from "./SyncStatusBadge.jsx";
@@ -15,6 +16,9 @@ import { generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.
 import WhatsAppReminderModal from "./WhatsAppReminderModal.jsx";
 import { formatGhanaCard } from "../utils/formatters.js";
 import GhanaCardBadge from "./GhanaCardBadge.jsx";
+import { createInstallmentReminderLink, getInstallmentAlertStatus } from "../utils/installments.js";
+import { ConfirmPaymentModal } from "./DebtLedger.jsx";
+import { playSuccessChime, speakConfirmation } from "../utils/audioFeedback.js";
 
 const ROW_HEIGHT = 72;
 const FEED_HEIGHT = 360;
@@ -80,9 +84,21 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [feedError, setFeedError] = useState("");
-  const [debtBreakdown, setDebtBreakdown] = useState([]);
-  const [debtBreakdownLoading, setDebtBreakdownLoading] = useState(true);
-  const [debtBreakdownError, setDebtBreakdownError] = useState("");
+  const [paymentDebt, setPaymentDebt] = useState(null);
+  const [paymentSaving, setPaymentSaving] = useState(false);
+  const [paymentOpenError, setPaymentOpenError] = useState("");
+  const [feedRefreshKey, setFeedRefreshKey] = useState(0);
+  const debtBreakdownResult = useLiveQuery(async () => {
+    try {
+      const results = await db.debts.where("status").equals("unpaid").toArray();
+      return { balances: getLargestUnpaidBalances(results), error: "" };
+    } catch (error) {
+      console.error("Could not load the debt breakdown.", error);
+      return { balances: [], error: "Debt details could not be loaded. Try again." };
+    }
+  }, [refreshKey], { balances: [], error: "" });
+  const debtBreakdown = debtBreakdownResult.balances;
+  const debtBreakdownError = debtBreakdownResult.error;
   const [phoneEntryDebt, setPhoneEntryDebt] = useState(null);
   const savedCustomers = useLiveQuery(() => db.customers.toArray(), [], []);
   const customerByName = useMemo(
@@ -107,6 +123,9 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
       .between(today.start, today.end, true, false)
       .each((transaction) => {
         if (transaction.type === "expense") result.expenses += transaction.amountPesewas;
+        else if (transaction.type === "installment_sale" || transaction.type === "installment_addon") {
+          result.cashIn += transaction.installmentPaymentPesewas ?? 0;
+        }
         else if (transaction.type !== "sale" || transaction.paymentType !== "credit") {
           result.cashIn += transaction.amountPesewas;
         }
@@ -148,29 +167,6 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
 
   useEffect(() => {
     let cancelled = false;
-    setDebtBreakdownLoading(true);
-    setDebtBreakdownError("");
-    db.debts
-      .where("status")
-      .equals("unpaid")
-      .toArray()
-      .then((results) => {
-        if (!cancelled) setDebtBreakdown(getLargestUnpaidBalances(results));
-      })
-      .catch((error) => {
-        console.error("Could not load the debt breakdown.", error);
-        if (!cancelled) setDebtBreakdownError("Debt details could not be loaded. Try again.");
-      })
-      .finally(() => {
-        if (!cancelled) setDebtBreakdownLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [refreshKey]);
-
-  useEffect(() => {
-    let cancelled = false;
     loadingLock.current = false;
     cursor.current = null;
     if (feedElement.current) feedElement.current.scrollTop = 0;
@@ -208,7 +204,57 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
     return () => {
       cancelled = true;
     };
-  }, [refreshKey, today.end, today.start]);
+  }, [feedRefreshKey, refreshKey, today.end, today.start]);
+
+  async function openPaymentForCustomer(customerBalance) {
+    setPaymentOpenError("");
+    try {
+      const normalizedName = customerBalance.customerName.trim().toLowerCase();
+      const matchingDebts = await db.debts
+        .where("status")
+        .equals("unpaid")
+        .and((debt) => (debt.customer_name ?? debt.customerName ?? "").trim().toLowerCase() === normalizedName)
+        .toArray();
+      matchingDebts.sort((a, b) => {
+        if (Boolean(a.isInstallmentPlan) !== Boolean(b.isInstallmentPlan)) return a.isInstallmentPlan ? -1 : 1;
+        return (b.amountPesewas ?? b.total_owed ?? 0) - (a.amountPesewas ?? a.total_owed ?? 0);
+      });
+      const selectedDebt = matchingDebts[0];
+      if (!selectedDebt) {
+        throw new Error(`No unpaid debt found for ${customerBalance.customerName}.`);
+      }
+
+      const amountPesewas = selectedDebt.amountPesewas ?? selectedDebt.total_owed;
+      const debt = {
+        ...selectedDebt,
+        amountPesewas,
+        customerName: selectedDebt.customerName ?? selectedDebt.customer_name ?? customerBalance.customerName,
+        phone: selectedDebt.phone ?? selectedDebt.customer_phone ?? "",
+        ghanaCardNumber: selectedDebt.ghanaCardNumber ?? customerBalance.ghanaCardNumber ?? ""
+      };
+      const initialAmountPesewas = debt.isInstallmentPlan && Number.isSafeInteger(debt.installmentAmount) && debt.installmentAmount > 0
+        ? Math.min(debt.installmentAmount, amountPesewas)
+        : amountPesewas;
+      setPaymentDebt({ debt, initialAmountPesewas });
+    } catch (error) {
+      console.error("Could not open a payment for this customer.", error);
+      setPaymentOpenError("Payment details could not be opened. Please try again.");
+    }
+  }
+
+  async function confirmDashboardPayment({ debt, amountPesewas, paymentMethod }) {
+    setPaymentSaving(true);
+    try {
+      await recordDebtPayment({ debtId: debt.id, amountPesewas, paymentMethod });
+      void requestBackgroundSync();
+      setPaymentDebt(null);
+      setFeedRefreshKey((current) => current + 1);
+      playSuccessChime();
+      speakConfirmation("Debt payment recorded");
+    } finally {
+      setPaymentSaving(false);
+    }
+  }
 
   const loadMore = useCallback(async () => {
     if (!hasMore || loadingLock.current || !cursor.current) return;
@@ -291,9 +337,8 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
           <h2 className="font-bold">Largest unpaid balances</h2>
           <button type="button" onClick={onViewDebts} className="min-h-10 shrink-0 text-sm font-semibold text-leaf underline">View all debts</button>
         </div>
-        {debtBreakdownLoading ? (
-          <p className="text-sm text-slate-500">Loading debt details…</p>
-        ) : debtBreakdownError ? (
+        {paymentOpenError && <p role="alert" className="mb-2 text-sm text-red-700">{paymentOpenError}</p>}
+        {debtBreakdownError ? (
           <p role="alert" className="text-sm text-red-700">{debtBreakdownError}</p>
         ) : debtBreakdown.length ? (
           <ul className="divide-y divide-slate-100">
@@ -307,11 +352,29 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
                 debt.amountPesewas / 100,
                 shopName
               );
+              const installmentAlert = debt.isInstallmentPlan
+                ? getInstallmentAlertStatus(debt.nextDueDate, debt.frequency)
+                : null;
+              const installmentReminderLink = installmentAlert?.showAlert
+                ? createInstallmentReminderLink(debt.phone, debt.customerName, debt.installmentAmount, installmentAlert)
+                : null;
+              const reminderLink = installmentReminderLink || whatsappLink;
               return (
                 <li key={debt.id} className="flex items-center justify-between gap-3 border-b border-slate-100 py-2 last:border-0">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{debt.customerName}</p>
                     <p className="text-sm font-bold text-amber-800">{formatGhs(debt.amountPesewas)}</p>
+                    {debt.isInstallmentPlan && (
+                      <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${installmentAlert?.showAlert ? "bg-amber-100 text-amber-900" : "bg-blue-50 text-blue-800"}`}>
+                        {installmentAlert?.type === "overdue"
+                          ? `Installment overdue · ${installmentAlert.days} day${installmentAlert.days === 1 ? "" : "s"}`
+                          : installmentAlert?.type === "due_today"
+                            ? "Installment due today"
+                            : installmentAlert?.type === "due_soon"
+                              ? `Installment due in ${installmentAlert.days} day${installmentAlert.days === 1 ? "" : "s"}`
+                              : `Next installment ${debt.nextDueDate}`}
+                      </span>
+                    )}
                     {ghanaCardNumber && (
                       <div className="mt-1 min-w-0">
                         <GhanaCardBadge number={ghanaCardNumber} customerName={debt.customerName} />
@@ -319,13 +382,22 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
                     )}
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    {whatsappLink ? (
+                    <button
+                      type="button"
+                      onClick={() => void openPaymentForCustomer(debt)}
+                      aria-label={`Record payment for ${debt.customerName}`}
+                      title="Record payment"
+                      className="min-h-10 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                    >
+                      Pay
+                    </button>
+                    {reminderLink ? (
                       <a
-                        href={whatsappLink}
+                        href={reminderLink}
                         target="_blank"
                         rel="noopener noreferrer"
-                        aria-label={`Send WhatsApp debt reminder to ${debt.customerName}`}
-                        title="WhatsApp reminder"
+                        aria-label={`${installmentReminderLink ? "Send installment reminder" : "Send WhatsApp debt reminder"} to ${debt.customerName}`}
+                        title={installmentReminderLink ? "Installment reminder" : "WhatsApp reminder"}
                         className="grid min-h-10 min-w-10 place-items-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-600"
                       >
                         <MessageCircle size={18} aria-hidden="true" />
@@ -428,16 +500,31 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
             <div style={{ height: Math.max(transactions.length * ROW_HEIGHT, FEED_HEIGHT), position: "relative" }}>
               {visibleTransactions.map((transaction, offset) => {
                 const isCreditSale = transaction.type === "sale" && transaction.paymentType === "credit";
-                const isCashIn = transaction.type !== "expense" && !isCreditSale;
+                const isInstallmentSale = transaction.type === "installment_sale" || transaction.type === "installment_addon";
+                const cashReceivedAmount = transaction.installmentPaymentPesewas ?? 0;
+                const isCashIn = isInstallmentSale
+                  ? cashReceivedAmount > 0
+                  : transaction.type !== "expense" && !isCreditSale;
                 const transactionLabel = {
                   sale: "Sale",
                   expense: "Expense",
                   income: "Debt payment received",
-                  debt_payment: "Debt payment"
+                  debt_payment: "Debt payment",
+                  installment_sale: "Installment sale",
+                  installment_addon: "Installment add-on"
                 }[transaction.type] ?? "Transaction";
                 const displayLabel = transaction.type === "sale" && transaction.paymentType === "credit"
                   ? "Credit sale"
                   : transactionLabel;
+                const installmentCustomerName = transaction.customer_name || transaction.customerName || "Customer not recorded";
+                const noteDescription = transaction.note?.split(" · ")[0]?.trim();
+                const customDescription = transaction.itemDescription?.trim() || noteDescription;
+                const installmentDescription = customDescription && customDescription !== "Debt added"
+                  ? customDescription
+                  : transaction.type === "installment_addon" ? "Debt add-on" : "Installment setup";
+                const formattedTime = new Date(transaction.createdAt)
+                  .toLocaleTimeString("en-GH", { hour: "2-digit", minute: "2-digit" })
+                  .toLowerCase();
                 const rowIndex = startIndex + offset;
                 return (
                   <article
@@ -452,15 +539,24 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
                       </span>
                       <div className="min-w-0">
                         <p className="truncate font-semibold">{displayLabel}</p>
-                        <p className="truncate text-xs text-slate-500">
-                          {transaction.note || "No note"}
-                          {" · "}
-                          {new Date(transaction.createdAt).toLocaleTimeString("en-GH", { hour: "2-digit", minute: "2-digit" })}
-                        </p>
+                        {isInstallmentSale ? (
+                          <p className="truncate text-xs text-slate-500">
+                            {installmentDescription} · {installmentCustomerName} · {formattedTime}
+                          </p>
+                        ) : (
+                          <p className="truncate text-xs text-slate-500">
+                            {transaction.note || "No note"}
+                            {" · "}
+                            {new Date(transaction.createdAt).toLocaleTimeString("en-GH", { hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        )}
                       </div>
                     </div>
-                    <p className={`shrink-0 font-bold ${isCreditSale ? "text-amber-800" : isCashIn ? "text-leaf" : "text-ink"}`}>
-                      {isCreditSale ? formatGhs(transaction.amountPesewas) : `${isCashIn ? "+" : "−"}${formatGhs(transaction.amountPesewas)}`}
+                    <p className={`shrink-0 text-right font-bold ${isCreditSale ? "text-amber-800" : isInstallmentSale && !isCashIn ? "text-ink" : isCashIn ? "text-leaf" : "text-ink"}`}>
+                      {isInstallmentSale
+                        ? `${isCashIn ? "+" : ""}${formatGhs(cashReceivedAmount)}`
+                        : isCreditSale ? formatGhs(transaction.amountPesewas) : `${isCashIn ? "+" : "−"}${formatGhs(transaction.amountPesewas)}`}
+                      {isInstallmentSale && <span className="block text-[10px] font-medium text-amber-800">{formatGhs(transaction.creditExtendedPesewas)} credit</span>}
                     </p>
                   </article>
                 );
@@ -485,6 +581,16 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
         )}
       </section>
       <FinancialSummaryModal isOpen={isSummaryOpen} onClose={() => setIsSummaryOpen(false)} refreshKey={refreshKey} />
+      {paymentDebt && (
+        <ConfirmPaymentModal
+          key={paymentDebt.debt.id}
+          debt={paymentDebt.debt}
+          initialAmountPesewas={paymentDebt.initialAmountPesewas}
+          saving={paymentSaving}
+          onCancel={() => { if (!paymentSaving) setPaymentDebt(null); }}
+          onConfirm={confirmDashboardPayment}
+        />
+      )}
       {phoneEntryDebt && (
         <WhatsAppReminderModal
           key={phoneEntryDebt.id}
