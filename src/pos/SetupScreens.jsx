@@ -290,7 +290,7 @@ export function HowManyItem({ params, onBack, onReplace }) {
       </div>
       {product && <p className="text-lg font-bold">{t("sellItems.each", { amount: formatGhs(unitPricePesewas) })}</p>}
       <div className="flex items-center justify-center gap-5">
-        <PosSecondaryButton type="button" aria-label={t("setup.quantityLess")} disabled={quantity <= 1} onClick={() => setQuantity((current) => Math.max(1, current - 1))}>âˆ’</PosSecondaryButton>
+        <PosSecondaryButton type="button" aria-label={t("setup.quantityLess")} disabled={quantity <= 1} onClick={() => setQuantity((current) => Math.max(1, current - 1))}>−</PosSecondaryButton>
         <output aria-live="polite" className="min-w-16 text-center text-4xl font-extrabold">{quantity}</output>
         <PosSecondaryButton type="button" aria-label={t("setup.quantityMore")} onClick={() => setQuantity((current) => current + 1)}>+</PosSecondaryButton>
       </div>
