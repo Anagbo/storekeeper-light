@@ -1,59 +1,10 @@
-import { db } from "./db.js";
+﻿import { db } from "./db.js";
 import { runTransactionWithTimeout } from "./runTransactionWithTimeout.js";
 import { toPesewas } from "../lib/money.js";
 
-export const STARTER_CATEGORIES = Object.freeze([
-  {
-    id: "provisions",
-    name: "Provisions shop",
-    items: ["Bread", "Water", "Sugar", "Rice", "Cooking oil", "Soap", "Biscuits"]
-  },
-  {
-    id: "food-drinks",
-    name: "Food and drinks",
-    items: ["Rice", "Tomatoes", "Eggs", "Soft drink", "Cooked food"]
-  },
-  {
-    id: "hair-beauty",
-    name: "Hair and beauty",
-    items: ["Haircut", "Hair braiding", "Shampoo", "Hair cream", "Hair oil"]
-  },
-  {
-    id: "clothes",
-    name: "Clothes",
-    items: ["T-shirt", "Dress", "Trousers", "Shoes"]
-  },
-  {
-    id: "phone-airtime",
-    name: "Phone and airtime",
-    items: ["Airtime", "Phone case", "Phone charger", "Earphones"]
-  },
-  {
-    id: "repairs",
-    name: "Repairs",
-    items: ["Phone repair", "Shoe repair", "Clothing repair", "Appliance repair"]
-  },
-  {
-    id: "something-else",
-    name: "Something else",
-    items: ["Other item"]
-  }
-]);
+import { findStarterItem, STARTER_CATEGORIES } from "./starterItems.js";
 
-export const STARTER_ITEMS = Object.freeze([
-  ...new Set(STARTER_CATEGORIES.flatMap(({ items }) => items))
-]);
-
-export function getStarterItemsForCategories(categoryIds) {
-  if (!Array.isArray(categoryIds)) throw new TypeError("Choose at least one starter category.");
-  const selectedCategories = new Set(categoryIds);
-  return STARTER_CATEGORIES
-    .filter(({ id }) => selectedCategories.has(id))
-    .flatMap(({ name: category, items }) => items.map((name) => ({ name, category })))
-    .filter((item, index, allItems) =>
-      allItems.findIndex((candidate) => candidate.name.toLowerCase() === item.name.toLowerCase()) === index
-    );
-}
+export { getStarterItemsForCategories, STARTER_CATEGORIES, STARTER_ITEMS } from "./starterItems.js";
 
 export function normalizeProductInput({ name, price = "" }) {
   const cleanName = typeof name === "string" ? name.trim() : "";
@@ -131,21 +82,14 @@ export async function removeProduct(productId) {
 
 export async function addStarterProducts(names) {
   if (!Array.isArray(names)) throw new TypeError("Choose items from the starter list.");
-  const defaultCategoryByItem = new Map();
-  for (const { name: category, items } of STARTER_CATEGORIES) {
-    for (const name of items) {
-      if (!defaultCategoryByItem.has(name)) defaultCategoryByItem.set(name, category);
-    }
-  }
   const selectedItems = new Map();
   for (const entry of names) {
     const name = typeof entry === "string" ? entry.trim() : entry?.name?.trim();
-    const category = (typeof entry === "string" ? undefined : entry?.category) ?? defaultCategoryByItem.get(name);
-    const categoryEntry = STARTER_CATEGORIES.find((candidate) =>
-      candidate.name === category && candidate.items.includes(name)
-    );
-    if (categoryEntry && !selectedItems.has(name.toLowerCase())) {
-      selectedItems.set(name.toLowerCase(), { name, category: categoryEntry.name });
+    const requested = typeof entry === "string" ? undefined : entry?.category;
+    const defaultCategory = STARTER_CATEGORIES.find((candidate) => findStarterItem(name, candidate.name))?.name;
+    const category = requested && findStarterItem(name, requested) ? requested : defaultCategory;
+    if (category && !selectedItems.has(name.toLowerCase())) {
+      selectedItems.set(name.toLowerCase(), { name, category });
     }
   }
   return runTransactionWithTimeout(db, [db.products], async () => {

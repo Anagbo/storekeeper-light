@@ -79,11 +79,11 @@ test("cash and MoMo sale persistence records split tender and item detail atomic
 
 test("starter products retain the selected category and ignore unknown items", async () => {
   await addStarterProducts([
-    { name: "Airtime", category: "Phone and airtime" },
+    { name: "MTN airtime", category: "Phone and airtime" },
     { name: "Not a starter item", category: "Phone and airtime" }
   ]);
   const [product] = await db.products.toArray();
-  assert.equal(product.name, "Airtime");
+  assert.equal(product.name, "MTN airtime");
   assert.equal(product.category, "Phone and airtime");
   assert.equal(product.default_price, 0);
 });

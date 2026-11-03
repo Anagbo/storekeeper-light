@@ -100,6 +100,7 @@ export const POS_LINKS = Object.freeze([
   { from: "NewPerson", action: "next", to: "WhenWillTheyPay" },
   { from: "WhatDoYouSell", action: "back", to: "HowDoYouWantToSell" },
   { from: "WhatDoYouSell", action: "continue", to: "YourStarterList" },
+  { from: "WhatDoYouSell", action: "somethingElseOnly", to: "NewItem" },
   { from: "WhatDoYouSell", action: "skip", to: "Home" },
   { from: "YourStarterList", action: "continueSetup", to: "Home" },
   { from: "YourStarterList", action: "continueItems", to: "MyItems" },

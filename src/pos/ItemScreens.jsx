@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { ArrowLeft, Check, Plus, Search, Trash2 } from "lucide-react";
 import { db } from "../db/db.js";
-import { createProduct, getStarterItemsForCategories, normalizeProductInput, removeProduct, STARTER_ITEMS, updateProduct, addStarterProducts } from "../db/products.js";
+import { createProduct, normalizeProductInput, removeProduct, updateProduct, addStarterProducts } from "../db/products.js";
+import { getAllStarterItems, mergeStarterItems } from "../db/starterItems.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { posText as t } from "./i18n.js";
@@ -78,7 +79,7 @@ function MyItems({ onBack, onNavigate }) {
   );
 }
 
-function ItemEditor({ item, onBack, onNavigate, onSave }) {
+function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCompleteSetup }) {
   const [name, setName] = useState(item?.name ?? "");
   const [price, setPrice] = useState(item?.default_price > 0 ? item.default_price.toFixed(2) : "");
   const [error, setError] = useState("");
@@ -98,7 +99,8 @@ function ItemEditor({ item, onBack, onNavigate, onSave }) {
     try {
       await onSave({ name, price });
       void requestBackgroundSync();
-      onBack();
+      if (setupFlow) await onCompleteSetup();
+      else onBack();
     } catch (saveError) {
       console.error("Could not save this item.", saveError);
       setError(saveError instanceof TypeError ? saveError.message : t("items.saveFailed"));
@@ -177,16 +179,46 @@ function DeleteItem({ itemId, itemName, onBack, onReturnToItems, onDelete }) {
 
 function StarterList({ params, onBack, onAdd, onCompleteSetup }) {
   const result = useActiveProducts();
-  const starterItems = params.setupFlow && params.starterCategories?.length
-    ? getStarterItemsForCategories(params.starterCategories)
-    : STARTER_ITEMS.map((name) => ({ name }));
-  const [selected, setSelected] = useState(() => new Set(starterItems.map(({ name }) => name)));
+  const isSetup = params.setupFlow === true && params.starterCategories?.length > 0;
+  const merged = useMemo(() => (isSetup
+    ? mergeStarterItems(params.starterCategories)
+    : { core: [], more: getAllStarterItems() }), [isSetup, params.starterCategories]);
+  const [selected, setSelected] = useState(() => new Set(merged.core.map(({ name }) => name.toLowerCase())));
+  const [showMore, setShowMore] = useState(!isSetup);
+  const [query, setQuery] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const existingNames = new Set((result?.products ?? []).map((product) => product.name.toLowerCase()));
-  const availableItems = starterItems.filter(({ name }) => !existingNames.has(name.toLowerCase()));
-  const selectedItems = availableItems.filter(({ name }) => selected.has(name));
+  const existingNames = new Set((result?.products ?? []).map((product) => product.name.trim().toLowerCase()));
+  const isAvailable = ({ name }) => !existingNames.has(name.toLowerCase());
+  const availableItems = [...merged.core, ...merged.more].filter(isAvailable);
+  const searchText = query.trim().toLowerCase();
+  const matches = ({ name }) => !searchText || name.toLowerCase().includes(searchText);
+  const visibleCore = merged.core.filter(isAvailable).filter(matches);
+  const hiddenMore = merged.more.filter(isAvailable);
+  const visibleMore = (showMore ? hiddenMore : []).filter(matches);
+  const selectedItems = availableItems.filter(({ name }) => selected.has(name.toLowerCase()));
   const selectedCount = selectedItems.length;
+
+  function toggle(name) {
+    setSelected((current) => {
+      const next = new Set(current);
+      const itemKey = name.toLowerCase();
+      if (next.has(itemKey)) next.delete(itemKey);
+      else next.add(itemKey);
+      return next;
+    });
+  }
+
+  function renderItem({ name }) {
+    const checked = selected.has(name.toLowerCase());
+    return (
+      <button key={name} type="button" aria-pressed={checked} onClick={() => toggle(name)} className="flex min-h-14 items-center gap-3 rounded-2xl border-2 border-slate-500 bg-white px-3 text-left text-lg font-extrabold">
+        <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg border-[3px] ${checked ? "border-emerald-900 bg-emerald-900 text-white" : "border-slate-500 bg-white"}`}>
+          {checked && <Check size={21} aria-hidden="true" />}
+        </span>{name}
+      </button>
+    );
+  }
 
   async function addSelected() {
     if (saving || selectedCount === 0) return;
@@ -225,22 +257,22 @@ function StarterList({ params, onBack, onAdd, onCompleteSetup }) {
       <p className="text-base text-slate-800">{t("items.starterHint")}</p>
       {result === undefined ? <p role="status">{t("items.loading")}</p> : (
         <div className="flex flex-col gap-2">
-          {availableItems.map(({ name }) => {
-            const checked = selected.has(name);
-            return (
-              <button key={name} type="button" aria-pressed={checked} onClick={() => setSelected((current) => {
-                const next = new Set(current);
-                if (next.has(name)) next.delete(name);
-                else next.add(name);
-                return next;
-              })} className="flex min-h-14 items-center gap-3 rounded-2xl border-2 border-slate-500 bg-white px-3 text-left text-lg font-extrabold">
-                <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg border-[3px] ${checked ? "border-emerald-900 bg-emerald-900 text-white" : "border-slate-500 bg-white"}`}>
-                  {checked && <Check size={21} aria-hidden="true" />}
-                </span>{name}
-              </button>
-            );
-          })}
+          {!isSetup && (
+            <label className="flex min-h-14 items-center gap-2 rounded-2xl border-[3px] border-slate-500 px-3">
+              <Search size={24} aria-hidden="true" />
+              <span className="sr-only">{t("items.starterSearch")}</span>
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("items.starterSearch")} className="min-w-0 flex-1 bg-transparent text-lg font-semibold outline-none" />
+            </label>
+          )}
+          {visibleCore.map(renderItem)}
+          {visibleMore.map(renderItem)}
+          {isSetup && !showMore && hiddenMore.length > 0 && (
+            <PosSecondaryButton type="button" onClick={() => setShowMore(true)}>{t("items.showMore")}</PosSecondaryButton>
+          )}
           {!availableItems.length && <p className="rounded-xl border-2 border-slate-300 bg-white p-4 font-semibold">{t("items.starterEmpty")}</p>}
+          {availableItems.length > 0 && !visibleCore.length && !visibleMore.length && searchText && (
+            <p className="rounded-xl border-2 border-slate-300 bg-white p-4 font-semibold">{t("items.starterNoMatch")}</p>
+          )}
         </div>
       )}
       <p className="text-sm text-slate-700">{t("items.priceLater")}</p>
@@ -248,9 +280,11 @@ function StarterList({ params, onBack, onAdd, onCompleteSetup }) {
       <PosPrimaryButton type="button" disabled={saving || result === undefined || selectedCount === 0} onClick={() => void addSelected()} className="mt-auto">
         {saving
           ? t("items.saving")
-          : selectedCount === 1
-            ? t("items.addOne")
-            : t("items.addCount", { count: selectedCount })}
+          : isSetup
+            ? t("setup.continueCount", { count: selectedCount })
+            : selectedCount === 1
+              ? t("items.addOne")
+              : t("items.addCount", { count: selectedCount })}
       </PosPrimaryButton>
       {params.setupFlow && (
         <PosSecondaryButton type="button" disabled={saving} onClick={() => void finishSetup()}>
@@ -263,7 +297,7 @@ function StarterList({ params, onBack, onAdd, onCompleteSetup }) {
 
 export default function ItemScreens({ route, params = {}, onBack, onNavigate, onReturnToItems, onCompleteSetup }) {
   if (route === "MyItems") return <MyItems onBack={onBack} onNavigate={onNavigate} />;
-  if (route === "NewItem") return <ItemEditor onBack={onBack} onSave={createProduct} onNavigate={onNavigate} />;
+  if (route === "NewItem") return <ItemEditor onBack={onBack} onSave={createProduct} onNavigate={onNavigate} setupFlow={params.setupFlow === true} onCompleteSetup={onCompleteSetup} />;
   if (route === "EditItem") {
     return <EditItem itemId={params.itemId} onBack={onBack} onNavigate={onNavigate} />;
   }

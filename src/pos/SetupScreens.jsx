@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Calculator, Check, List } from "lucide-react";
 import { getPreference, saveSellMode } from "../db/preferences.js";
-import { STARTER_CATEGORIES, updateProduct } from "../db/products.js";
+import { updateProduct } from "../db/products.js";
+import { getMoreCategoryGroups, getPopularCategories, isSomethingElseOnly, STARTER_CATEGORIES } from "../db/starterItems.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
@@ -105,6 +106,8 @@ export function WhatDoYouSell({ onBack, onNavigate, onCompleteSetup }) {
     }
   }
 
+  const starterOther = STARTER_CATEGORIES.at(-1);
+
   function toggleCategory(id) {
     setSelectedCategories((current) => {
       const next = new Set(current);
@@ -112,6 +115,31 @@ export function WhatDoYouSell({ onBack, onNavigate, onCompleteSetup }) {
       else next.add(id);
       return next;
     });
+  }
+
+  function renderTile({ id, name }) {
+    const checked = selectedCategories.has(id);
+    return (
+      <button
+        key={id}
+        type="button"
+        aria-pressed={checked}
+        disabled={saving}
+        onClick={() => toggleCategory(id)}
+        className={`flex min-h-[76px] items-center gap-2 rounded-2xl border-[3px] px-3 text-left text-base font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 ${checked ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}
+      >
+        <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg border-2 ${checked ? "border-emerald-900 bg-emerald-900 text-white" : "border-slate-500"}`}>
+          {checked && <Check size={19} aria-hidden="true" />}
+        </span>
+        {name}
+      </button>
+    );
+  }
+
+  function continueToItems() {
+    const ids = [...selectedCategories];
+    if (isSomethingElseOnly(ids)) onNavigate("NewItem", { setupFlow: true });
+    else onNavigate("YourStarterList", { setupFlow: true, starterCategories: ids });
   }
 
   return (
@@ -122,32 +150,22 @@ export function WhatDoYouSell({ onBack, onNavigate, onCompleteSetup }) {
       </div>
       <p className="text-base text-slate-700">{t("setup.itemsHint")}</p>
       <div className="grid grid-cols-2 gap-2">
-        {STARTER_CATEGORIES.map(({ id }) => {
-          const checked = selectedCategories.has(id);
-          return (
-            <button
-              key={id}
-              type="button"
-              aria-pressed={checked}
-              disabled={saving}
-              onClick={() => toggleCategory(id)}
-              className={`flex min-h-[76px] items-center gap-2 rounded-2xl border-[3px] px-3 text-left text-base font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 ${checked ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}
-            >
-              <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg border-2 ${checked ? "border-emerald-900 bg-emerald-900 text-white" : "border-slate-500"}`}>
-                {checked && <Check size={19} aria-hidden="true" />}
-              </span>
-              {t(`setup.category.${id}`)}
-            </button>
-          );
-        })}
+        {[...getPopularCategories(), starterOther].map((category) => renderTile(category))}
       </div>
+      <h2 className="mt-2 text-xl font-extrabold">{t("setup.moreCategories")}</h2>
+      {getMoreCategoryGroups().map(({ group, categories }) => (
+        <section key={group} aria-label={group} className="flex flex-col gap-2">
+          <h3 className="text-sm font-extrabold uppercase text-slate-700">{group}</h3>
+          <div className="grid grid-cols-2 gap-2">{categories.map((category) => renderTile(category))}</div>
+        </section>
+      ))}
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
       <div className="mt-auto grid grid-cols-2 gap-2">
         <PosSecondaryButton type="button" disabled={saving} onClick={() => void skipSetup()}>{t("setup.skip")}</PosSecondaryButton>
         <PosPrimaryButton
           type="button"
           disabled={saving || selectedCategories.size === 0}
-          onClick={() => onNavigate("YourStarterList", { setupFlow: true, starterCategories: [...selectedCategories] })}
+          onClick={continueToItems}
         >
           {t("setup.continueItems")}
         </PosPrimaryButton>
@@ -244,7 +262,7 @@ export function HowManyItem({ params, onBack, onReplace }) {
       </div>
       {product && <p className="text-lg font-bold">{t("sellItems.each", { amount: formatGhs(unitPricePesewas) })}</p>}
       <div className="flex items-center justify-center gap-5">
-        <PosSecondaryButton type="button" aria-label={t("setup.quantityLess")} disabled={quantity <= 1} onClick={() => setQuantity((current) => Math.max(1, current - 1))}>−</PosSecondaryButton>
+        <PosSecondaryButton type="button" aria-label={t("setup.quantityLess")} disabled={quantity <= 1} onClick={() => setQuantity((current) => Math.max(1, current - 1))}>âˆ’</PosSecondaryButton>
         <output aria-live="polite" className="min-w-16 text-center text-4xl font-extrabold">{quantity}</output>
         <PosSecondaryButton type="button" aria-label={t("setup.quantityMore")} onClick={() => setQuantity((current) => current + 1)}>+</PosSecondaryButton>
       </div>

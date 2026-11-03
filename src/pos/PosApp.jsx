@@ -233,7 +233,8 @@ export default function PosApp() {
   const route = routeState.current;
   const isSetupFlow = route === POS_ROUTES.HowDoYouWantToSell ||
     route === POS_ROUTES.WhatDoYouSell ||
-    (route === POS_ROUTES.YourStarterList && routeState.params.setupFlow === true);
+    (route === POS_ROUTES.YourStarterList && routeState.params.setupFlow === true) ||
+    (route === POS_ROUTES.NewItem && routeState.params.setupFlow === true);
   const isCollectSheet = route === POS_ROUTES.CollectPayment;
   const isFocusedCollectionScreen = [
     POS_ROUTES.CollectPayPart,
