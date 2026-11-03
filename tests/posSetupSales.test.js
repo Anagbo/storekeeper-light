@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { after, before, beforeEach, test } from "node:test";
 import { db } from "../src/db/db.js";
 import { getPreference, setPreference, shouldShowPosSetup } from "../src/db/preferences.js";
+import { addStarterProducts } from "../src/db/products.js";
 import { recordCashSale } from "../src/db/sales.js";
 
 const tables = [
@@ -63,6 +64,17 @@ test("cash and MoMo sale persistence records split tender and item detail atomic
     total_amount: 1500
   }]);
   assert.deepEqual(await db.transactions.toArray(), [transaction]);
+});
+
+test("starter products retain the selected category and ignore unknown items", async () => {
+  await addStarterProducts([
+    { name: "Airtime", category: "Phone and airtime" },
+    { name: "Not a starter item", category: "Phone and airtime" }
+  ]);
+  const [product] = await db.products.toArray();
+  assert.equal(product.name, "Airtime");
+  assert.equal(product.category, "Phone and airtime");
+  assert.equal(product.default_price, 0);
 });
 
 test("invalid cash and MoMo totals or item totals do not write sale transactions", async () => {

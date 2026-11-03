@@ -7,6 +7,7 @@ Status audit: 3 Nov 2026. This records the working tree at the time of review, i
 - Build the POS beside the legacy app and gate the POS entry point with `VITE_ENABLE_POS_SCREENS`; keep the existing sync behavior until a backend migration is decided.
 - Keep Dexie/IndexedDB as the local data store. Its current schema is version 12.
 - Keep the settled brief decisions: additive rollout with backup/restore, 10-second collection undo, append-only financial corrections, no starter-product seeding for new shops, and the specified Ghana Card validation.
+- Screen 35 uses seven fixed merchant categories; selected categories filter the starter items shown on screen 36. Starter names and their category associations are defined in `src/db/products.js`.
 - The screen status below describes implementation presence and visible behavior, not acceptance sign-off. Several screens have not had component or end-to-end testing.
 
 ## Screens 15–47
@@ -33,7 +34,7 @@ Status audit: 3 Nov 2026. This records the working tree at the time of review, i
 | 32 | People who owe you | done | Existing `src/components/DebtLedger.jsx` |
 | 33 | My money | partial | `src/pos/MyMoney.jsx`; week/month totals and balances exist, but profit views are not implemented and spending breakdown is unavailable. |
 | 34 | New person | done | `src/pos/CreditScreens.jsx`, reuses the existing customer/Ghana Card validation. |
-| 35 | What do you sell? | partial | `src/pos/SetupScreens.jsx`; currently adds typed item names rather than the brief's multi-select step. |
+| 35 | What do you sell? | done | `src/pos/SetupScreens.jsx`; multi-select category tiles route to screen 36 with category-specific starter items. |
 | 36 | Your starter list | done | `src/pos/ItemScreens.jsx`; selectable starter items and setup completion/return are implemented. |
 | 37 | How much is {item}? | done | `src/pos/SetupScreens.jsx` |
 | 38 | How many {item}? | done | `src/pos/SetupScreens.jsx` |
@@ -49,7 +50,7 @@ Status audit: 3 Nov 2026. This records the working tree at the time of review, i
 
 ## Screens next
 
-First-time setup flow requested for manual testing: **21 → 35 → 36**. These screens exist, but verify the mode choice, typed-item step, starter-list selection, Back/Skip/Continue paths, and persisted setup completion. Screen 35’s current behavior differs from the brief and should be reviewed before changing it.
+First-time setup flow requested for manual testing: **21 → 35 → 36**. Screen 35 now follows the category-selection flow. Verify category selection, matching starter items, Back/Skip/Continue paths, and setup completion on device after the remaining requested first-run and collection-route changes.
 
 ## Database migrations and consistency
 
@@ -83,8 +84,8 @@ Run tests with `npm.cmd test` in Windows PowerShell (or `npm test` in a shell wh
 ## Differences and open questions
 
 - `src/config/features.js` has one POS flag (`VITE_ENABLE_POS_SCREENS`) plus the subscription flag; it does not gate individual screen groups as requested in the rollout section.
-- Setup screen 21 does not save `sellMode`; screen 35 adds typed items instead of selecting what the merchant sells. Confirm intended screen-35 behavior before implementation changes.
-- Screen 27 has no independent route, despite the brief's 26 → 27 link.
+- Setup screen 21 does not yet save `sellMode`; the setup entry condition currently also checks for debt, customer, and supplier records in addition to sales and products.
+- Screen 27 still has no independent route, despite the brief's 26 → 27 link.
 - Profit estimate/item-cost views, settings switches, and item cost-price fields are absent. `MyMoney` currently says the spending breakdown is unavailable.
 - Receipt generation is wired in the current POS even though the Decisions section says to present the proposed receipt text for approval before wiring it. Confirm whether the proposed templates are approved.
 - Sync/server migration remains the separate, undecided phase described in the brief. No live server migration or real merchant-data rehearsal is evidenced here.

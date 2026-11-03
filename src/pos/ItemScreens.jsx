@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { ArrowLeft, Check, Plus, Search, Trash2 } from "lucide-react";
 import { db } from "../db/db.js";
-import { createProduct, normalizeProductInput, removeProduct, STARTER_ITEMS, updateProduct, addStarterProducts } from "../db/products.js";
+import { createProduct, getStarterItemsForCategories, normalizeProductInput, removeProduct, STARTER_ITEMS, updateProduct, addStarterProducts } from "../db/products.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { posText as t } from "./i18n.js";
@@ -177,19 +177,23 @@ function DeleteItem({ itemId, itemName, onBack, onReturnToItems, onDelete }) {
 
 function StarterList({ params, onBack, onAdd, onCompleteSetup }) {
   const result = useActiveProducts();
-  const [selected, setSelected] = useState(() => new Set(STARTER_ITEMS));
+  const starterItems = params.setupFlow && params.starterCategories?.length
+    ? getStarterItemsForCategories(params.starterCategories)
+    : STARTER_ITEMS.map((name) => ({ name }));
+  const [selected, setSelected] = useState(() => new Set(starterItems.map(({ name }) => name)));
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const existingNames = new Set((result?.products ?? []).map((product) => product.name.toLowerCase()));
-  const availableItems = STARTER_ITEMS.filter((name) => !existingNames.has(name.toLowerCase()));
-  const selectedCount = availableItems.filter((name) => selected.has(name)).length;
+  const availableItems = starterItems.filter(({ name }) => !existingNames.has(name.toLowerCase()));
+  const selectedItems = availableItems.filter(({ name }) => selected.has(name));
+  const selectedCount = selectedItems.length;
 
   async function addSelected() {
     if (saving || selectedCount === 0) return;
     setSaving(true);
     setError("");
     try {
-      await onAdd(availableItems.filter((name) => selected.has(name)));
+      await onAdd(selectedItems);
       void requestBackgroundSync();
       if (params.setupFlow) await onCompleteSetup();
       else onBack();
@@ -221,7 +225,7 @@ function StarterList({ params, onBack, onAdd, onCompleteSetup }) {
       <p className="text-base text-slate-800">{t("items.starterHint")}</p>
       {result === undefined ? <p role="status">{t("items.loading")}</p> : (
         <div className="flex flex-col gap-2">
-          {availableItems.map((name) => {
+          {availableItems.map(({ name }) => {
             const checked = selected.has(name);
             return (
               <button key={name} type="button" aria-pressed={checked} onClick={() => setSelected((current) => {

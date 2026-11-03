@@ -2,15 +2,58 @@ import { db } from "./db.js";
 import { runTransactionWithTimeout } from "./runTransactionWithTimeout.js";
 import { toPesewas } from "../lib/money.js";
 
-export const STARTER_ITEMS = Object.freeze([
-  "Bread",
-  "Water",
-  "Sugar",
-  "Rice",
-  "Cooking oil",
-  "Soap",
-  "Biscuits"
+export const STARTER_CATEGORIES = Object.freeze([
+  {
+    id: "provisions",
+    name: "Provisions shop",
+    items: ["Bread", "Water", "Sugar", "Rice", "Cooking oil", "Soap", "Biscuits"]
+  },
+  {
+    id: "food-drinks",
+    name: "Food and drinks",
+    items: ["Rice", "Tomatoes", "Eggs", "Soft drink", "Cooked food"]
+  },
+  {
+    id: "hair-beauty",
+    name: "Hair and beauty",
+    items: ["Haircut", "Hair braiding", "Shampoo", "Hair cream", "Hair oil"]
+  },
+  {
+    id: "clothes",
+    name: "Clothes",
+    items: ["T-shirt", "Dress", "Trousers", "Shoes"]
+  },
+  {
+    id: "phone-airtime",
+    name: "Phone and airtime",
+    items: ["Airtime", "Phone case", "Phone charger", "Earphones"]
+  },
+  {
+    id: "repairs",
+    name: "Repairs",
+    items: ["Phone repair", "Shoe repair", "Clothing repair", "Appliance repair"]
+  },
+  {
+    id: "something-else",
+    name: "Something else",
+    items: ["Other item"]
+  }
 ]);
+
+export const STARTER_ITEMS = Object.freeze([
+  ...new Set(STARTER_CATEGORIES.flatMap(({ items }) => items))
+]);
+
+export function getStarterItemsForCategories(categoryIds) {
+  if (!Array.isArray(categoryIds)) throw new TypeError("Choose at least one starter category.");
+  const selectedCategories = new Set(categoryIds);
+  return STARTER_CATEGORIES
+    .filter(({ id }) => selectedCategories.has(id))
+    .flatMap(({ name: category, items }) => items.map((name) => ({ name, category })))
+    .filter((item, index, allItems) =>
+      allItems.findIndex((candidate) => candidate.name.toLowerCase() === item.name.toLowerCase()) === index
+    );
+}
 
 export function normalizeProductInput({ name, price = "" }) {
   const cleanName = typeof name === "string" ? name.trim() : "";
@@ -42,7 +85,7 @@ function pendingProduct(details, current = {}) {
   return {
     ...current,
     ...details,
-    category: current.category ?? "Other",
+    category: current.category ?? details.category ?? "Other",
     unit: current.unit ?? "unit",
     active: true,
     updatedAt: now,
@@ -88,17 +131,30 @@ export async function removeProduct(productId) {
 
 export async function addStarterProducts(names) {
   if (!Array.isArray(names)) throw new TypeError("Choose items from the starter list.");
-  const selectedNames = [...new Set(names
-    .filter((name) => typeof name === "string")
-    .map((name) => name.trim())
-    .filter((name) => STARTER_ITEMS.includes(name)))];
+  const defaultCategoryByItem = new Map();
+  for (const { name: category, items } of STARTER_CATEGORIES) {
+    for (const name of items) {
+      if (!defaultCategoryByItem.has(name)) defaultCategoryByItem.set(name, category);
+    }
+  }
+  const selectedItems = new Map();
+  for (const entry of names) {
+    const name = typeof entry === "string" ? entry.trim() : entry?.name?.trim();
+    const category = (typeof entry === "string" ? undefined : entry?.category) ?? defaultCategoryByItem.get(name);
+    const categoryEntry = STARTER_CATEGORIES.find((candidate) =>
+      candidate.name === category && candidate.items.includes(name)
+    );
+    if (categoryEntry && !selectedItems.has(name.toLowerCase())) {
+      selectedItems.set(name.toLowerCase(), { name, category: categoryEntry.name });
+    }
+  }
   return runTransactionWithTimeout(db, [db.products], async () => {
     const existing = await db.products.toArray();
     const existingNames = new Set(existing
       .filter((product) => product.active !== false)
       .map((product) => product.name.trim().toLowerCase()));
-    const newNames = selectedNames.filter((name) => !existingNames.has(name.toLowerCase()));
-    const products = newNames.map((name) => pendingProduct({ name, default_price: 0 }));
+    const newItems = [...selectedItems.values()].filter((item) => !existingNames.has(item.name.toLowerCase()));
+    const products = newItems.map(({ name, category }) => pendingProduct({ name, category, default_price: 0 }));
     if (products.length) await db.products.bulkAdd(products);
     return products.length;
   });

@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizeProductInput, STARTER_ITEMS } from "../src/db/products.js";
+import {
+  getStarterItemsForCategories,
+  normalizeProductInput,
+  STARTER_CATEGORIES,
+  STARTER_ITEMS
+} from "../src/db/products.js";
 
 test("item prices are optional but must be positive valid GHS amounts when entered", () => {
   assert.deepEqual(normalizeProductInput({ name: "  Bread  " }), {
@@ -21,6 +26,26 @@ test("item names are required and limited to 80 characters", () => {
 });
 
 test("starter item names are unique and suitable for bulk selection", () => {
-  assert.deepEqual(STARTER_ITEMS, ["Bread", "Water", "Sugar", "Rice", "Cooking oil", "Soap", "Biscuits"]);
+  assert.deepEqual(STARTER_ITEMS.slice(0, 7), ["Bread", "Water", "Sugar", "Rice", "Cooking oil", "Soap", "Biscuits"]);
   assert.equal(new Set(STARTER_ITEMS.map((name) => name.toLowerCase())).size, STARTER_ITEMS.length);
+});
+
+test("starter categories provide the seven setup choices and category-specific items", () => {
+  assert.deepEqual(STARTER_CATEGORIES.map(({ name }) => name), [
+    "Provisions shop",
+    "Food and drinks",
+    "Hair and beauty",
+    "Clothes",
+    "Phone and airtime",
+    "Repairs",
+    "Something else"
+  ]);
+  assert.deepEqual(getStarterItemsForCategories(["phone-airtime"]), [
+    { name: "Airtime", category: "Phone and airtime" },
+    { name: "Phone case", category: "Phone and airtime" },
+    { name: "Phone charger", category: "Phone and airtime" },
+    { name: "Earphones", category: "Phone and airtime" }
+  ]);
+  assert.equal(getStarterItemsForCategories(["provisions", "food-drinks"])
+    .filter(({ name }) => name === "Rice").length, 1);
 });

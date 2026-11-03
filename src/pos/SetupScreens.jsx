@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Calculator, List, Plus } from "lucide-react";
-import { createProduct, updateProduct } from "../db/products.js";
+import { Calculator, Check, List } from "lucide-react";
+import { STARTER_CATEGORIES, updateProduct } from "../db/products.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
@@ -69,8 +69,7 @@ export function HowDoYouWantToSell({ onNavigate, onCompleteSetup }) {
 }
 
 export function WhatDoYouSell({ onBack, onNavigate, onCompleteSetup }) {
-  const [name, setName] = useState("");
-  const [items, setItems] = useState([]);
+  const [selectedCategories, setSelectedCategories] = useState(() => new Set());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -88,21 +87,13 @@ export function WhatDoYouSell({ onBack, onNavigate, onCompleteSetup }) {
     }
   }
 
-  async function addItem() {
-    if (saving) return;
-    setSaving(true);
-    setError("");
-    try {
-      const product = await createProduct({ name });
-      setItems((current) => [...current, product.name]);
-      setName("");
-      void requestBackgroundSync();
-    } catch (saveError) {
-      console.error("Could not add a setup item.", saveError);
-      setError(saveError instanceof TypeError ? saveError.message : t("setup.itemSaveFailed"));
-    } finally {
-      setSaving(false);
-    }
+  function toggleCategory(id) {
+    setSelectedCategories((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   return (
@@ -112,24 +103,36 @@ export function WhatDoYouSell({ onBack, onNavigate, onCompleteSetup }) {
         <h1 className="text-2xl font-extrabold">{t("setup.itemsTitle")}</h1>
       </div>
       <p className="text-base text-slate-700">{t("setup.itemsHint")}</p>
-      <form onSubmit={(event) => { event.preventDefault(); void addItem(); }} className="flex flex-col gap-2">
-        <label className="block">
-          <span className="mb-1 block font-extrabold">{t("items.name")}</span>
-          <input value={name} onChange={(event) => { setName(event.target.value); setError(""); }} maxLength={80} autoComplete="off" className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />
-        </label>
-        <PosSecondaryButton type="submit" disabled={saving || !name.trim()}>
-          <Plus size={22} aria-hidden="true" />{saving ? t("items.saving") : t("setup.addItem")}
-        </PosSecondaryButton>
-      </form>
-      {items.length > 0 && (
-        <ul className="space-y-1 rounded-xl bg-emerald-50 p-3 font-semibold">
-          {items.map((item, index) => <li key={`${item}-${index}`}>✓ {item}</li>)}
-        </ul>
-      )}
+      <div className="grid grid-cols-2 gap-2">
+        {STARTER_CATEGORIES.map(({ id }) => {
+          const checked = selectedCategories.has(id);
+          return (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={checked}
+              disabled={saving}
+              onClick={() => toggleCategory(id)}
+              className={`flex min-h-[76px] items-center gap-2 rounded-2xl border-[3px] px-3 text-left text-base font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 ${checked ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}
+            >
+              <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg border-2 ${checked ? "border-emerald-900 bg-emerald-900 text-white" : "border-slate-500"}`}>
+                {checked && <Check size={19} aria-hidden="true" />}
+              </span>
+              {t(`setup.category.${id}`)}
+            </button>
+          );
+        })}
+      </div>
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
       <div className="mt-auto grid grid-cols-2 gap-2">
         <PosSecondaryButton type="button" disabled={saving} onClick={() => void skipSetup()}>{t("setup.skip")}</PosSecondaryButton>
-        <PosPrimaryButton type="button" disabled={saving} onClick={() => onNavigate("YourStarterList", { setupFlow: true })}>{t("setup.continueItems")}</PosPrimaryButton>
+        <PosPrimaryButton
+          type="button"
+          disabled={saving || selectedCategories.size === 0}
+          onClick={() => onNavigate("YourStarterList", { setupFlow: true, starterCategories: [...selectedCategories] })}
+        >
+          {t("setup.continueItems")}
+        </PosPrimaryButton>
       </div>
     </PosPage>
   );
