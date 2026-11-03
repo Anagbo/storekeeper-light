@@ -14,6 +14,13 @@ export async function setPreference(key, value) {
   });
 }
 
+export async function saveSellMode(sellMode) {
+  if (!["numbers", "items"].includes(sellMode)) {
+    throw new TypeError("Choose numbers or items as the sell mode.");
+  }
+  return setPreference("sellMode", sellMode);
+}
+
 export async function shouldShowPosSetup() {
   if (await getPreference("posSetupCompleted", false)) return false;
   const [products, transactions, debts, customers, suppliers] = await Promise.all([

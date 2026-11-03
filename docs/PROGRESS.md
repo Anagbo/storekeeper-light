@@ -20,7 +20,7 @@ Status audit: 3 Nov 2026. This records the working tree at the time of review, i
 | 18 | When will they pay? | done | `src/pos/CreditScreens.jsx` |
 | 19 | A little at a time | done | `src/pos/CreditScreens.jsx` |
 | 20 | Sell with items | done | `src/pos/SellWithItems.jsx` |
-| 21 | How do you want to sell? | partial | `src/pos/SetupScreens.jsx`; choice and navigation work, but the selected sell mode is not persisted. |
+| 21 | How do you want to sell? | done | `src/pos/SetupScreens.jsx`; loads and saves `sellMode` (`numbers` or `items`) in IndexedDB settings, and Continue advances only after a choice. |
 | 22 | Home | done | `src/pos/Home.jsx` |
 | 23 | Menu | done | `src/pos/Menu.jsx` |
 | 24 | Today’s transactions | done | `src/pos/TodaysTransactions.jsx` |
@@ -50,7 +50,7 @@ Status audit: 3 Nov 2026. This records the working tree at the time of review, i
 
 ## Screens next
 
-First-time setup flow requested for manual testing: **21 → 35 → 36**. Screen 35 now follows the category-selection flow. Verify category selection, matching starter items, Back/Skip/Continue paths, and setup completion on device after the remaining requested first-run and collection-route changes.
+First-time setup flow requested for manual testing: **21 → 35 → 36**. The mode is persisted; category selection filters the starter items, and setup remains limited to an empty new shop. Verify the complete flow, Back/Skip/Continue paths, and persisted setup completion on device. The collection split route and screen 16 behavior are the remaining implementation tasks before manual testing.
 
 ## Database migrations and consistency
 
@@ -84,7 +84,7 @@ Run tests with `npm.cmd test` in Windows PowerShell (or `npm test` in a shell wh
 ## Differences and open questions
 
 - `src/config/features.js` has one POS flag (`VITE_ENABLE_POS_SCREENS`) plus the subscription flag; it does not gate individual screen groups as requested in the rollout section.
-- Setup screen 21 does not yet save `sellMode`; the setup entry condition currently also checks for debt, customer, and supplier records in addition to sales and products.
+- Setup entry checks that the shop has no products, transactions, debts, customers, or suppliers, as well as no completed-setup preference; this is intentionally stricter than checking only sales and products to protect existing merchants with debt/contact data.
 - Screen 27 still has no independent route, despite the brief's 26 → 27 link.
 - Profit estimate/item-cost views, settings switches, and item cost-price fields are absent. `MyMoney` currently says the spending breakdown is unavailable.
 - Receipt generation is wired in the current POS even though the Decisions section says to present the proposed receipt text for approval before wiring it. Confirm whether the proposed templates are approved.

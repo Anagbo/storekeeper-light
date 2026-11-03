@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import assert from "node:assert/strict";
 import { after, before, beforeEach, test } from "node:test";
 import { db } from "../src/db/db.js";
-import { getPreference, setPreference, shouldShowPosSetup } from "../src/db/preferences.js";
+import { getPreference, saveSellMode, setPreference, shouldShowPosSetup } from "../src/db/preferences.js";
 import { addStarterProducts } from "../src/db/products.js";
 import { recordCashSale } from "../src/db/sales.js";
 
@@ -37,6 +37,14 @@ test("first-run setup is offered only for a new shop that has not completed setu
   await db.products.add({ name: "Rice", active: true });
   assert.equal(await shouldShowPosSetup(), false);
   assert.equal(await getPreference("missing", "fallback"), "fallback");
+});
+
+test("the selected sell mode is saved in settings and rejects unknown modes", async () => {
+  await saveSellMode("items");
+  assert.equal(await getPreference("sellMode"), "items");
+  await saveSellMode("numbers");
+  assert.equal(await getPreference("sellMode"), "numbers");
+  await assert.rejects(saveSellMode("amount"), /Choose numbers or items/);
 });
 
 test("cash and MoMo sale persistence records split tender and item detail atomically", async () => {

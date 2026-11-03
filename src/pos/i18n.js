@@ -136,6 +136,7 @@ const ENGLISH = Object.freeze({
   "setup.itemsModeHint": "Pick items from your list. See what sells best.",
   "setup.laterHint": "You can change this later in Settings.",
   "setup.continue": "Continue ›",
+  "setup.loadFailed": "Your setup choice could not be loaded. Check your device storage and try again.",
   "setup.itemsTitle": "What do you sell?",
   "setup.itemsHint": "Choose the kinds of things you sell.",
   "setup.skip": "Skip for now",
