@@ -11,6 +11,7 @@ import SyncStatusBadge from "./SyncStatusBadge.jsx";
 import InstallPromptBanner from "./InstallPromptBanner.jsx";
 import { formatGhs } from "../lib/money.js";
 import { getLargestUnpaidBalances } from "../utils/debtBalances.js";
+import { getFinancialSummary, getOutstandingDebtPesewas } from "../utils/financials.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import WhatsAppReminderModal from "./WhatsAppReminderModal.jsx";
@@ -19,6 +20,7 @@ import GhanaCardBadge from "./GhanaCardBadge.jsx";
 import { createInstallmentReminderLink, getInstallmentAlertStatus } from "../utils/installments.js";
 import { ConfirmPaymentModal } from "./DebtLedger.jsx";
 import { playSuccessChime, speakConfirmation } from "../utils/audioFeedback.js";
+import CustomerDebtHistoryModal from "./CustomerDebtHistoryModal.jsx";
 
 const ROW_HEIGHT = 72;
 const FEED_HEIGHT = 360;
@@ -54,7 +56,7 @@ function MetricCard({ title, value, icon: Icon, tone, onClick, hint }) {
       <button
         type="button"
         onClick={onClick}
-        className={`min-h-32 w-full rounded-2xl p-4 text-left shadow-card ${tones[tone].card} focus:outline-none focus:ring-2 focus:ring-leaf focus:ring-offset-2`}
+        className={`amount-fit-container min-h-32 w-full rounded-2xl p-4 text-left shadow-card ${tones[tone].card} focus:outline-none focus:ring-2 focus:ring-leaf focus:ring-offset-2`}
       >
         <span className="flex items-center justify-between">
           <span className={`text-sm font-medium ${tones[tone].label}`}>{title}</span>
@@ -62,18 +64,18 @@ function MetricCard({ title, value, icon: Icon, tone, onClick, hint }) {
             <Icon aria-hidden="true" size={19} className={tones[tone].icon} />
           </span>
         </span>
-        <span className={`mt-5 block break-words text-2xl font-bold tracking-tight ${tones[tone].value}`}>{value}</span>
+        <span className={`amount-fit mt-5 font-bold tracking-tight ${tones[tone].value}`}>{value}</span>
         <span className={`mt-1 block text-xs ${tones[tone].hint}`}>{hint}</span>
       </button>
     );
   }
   return (
-    <article className={`min-h-32 rounded-2xl p-4 shadow-card ${tones[tone].card}`}>
+    <article className={`amount-fit-container min-h-32 rounded-2xl p-4 shadow-card ${tones[tone].card}`}>
       <div className="flex items-center justify-between">
         <p className={`text-sm font-medium ${tones[tone].label}`}>{title}</p>
         <Icon aria-hidden="true" size={19} className={tones[tone].icon} />
       </div>
-      <p className={`mt-5 break-words text-2xl font-bold tracking-tight ${tones[tone].value}`}>{value}</p>
+      <p className={`amount-fit mt-5 font-bold tracking-tight ${tones[tone].value}`}>{value}</p>
     </article>
   );
 }
@@ -87,6 +89,7 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
   const [paymentDebt, setPaymentDebt] = useState(null);
   const [paymentSaving, setPaymentSaving] = useState(false);
   const [paymentOpenError, setPaymentOpenError] = useState("");
+  const [historyCustomer, setHistoryCustomer] = useState(null);
   const [feedRefreshKey, setFeedRefreshKey] = useState(0);
   const debtBreakdownResult = useLiveQuery(async () => {
     try {
@@ -116,26 +119,27 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
     end.setDate(end.getDate() + 1);
     return { start: start.getTime(), end: end.getTime() };
   }, []);
-  const totals = useLiveQuery(async () => {
-    const result = { cashIn: 0, expenses: 0, totalDebt: 0 };
-    await db.transactions
-      .where("createdAt")
-      .between(today.start, today.end, true, false)
-      .each((transaction) => {
-        if (transaction.type === "expense") result.expenses += transaction.amountPesewas;
-        else if (transaction.type === "installment_sale" || transaction.type === "installment_addon") {
-          result.cashIn += transaction.installmentPaymentPesewas ?? 0;
-        }
-        else if (transaction.type !== "sale" || transaction.paymentType !== "credit") {
-          result.cashIn += transaction.amountPesewas;
-        }
-      });
-    await db.debts.where("status").equals("unpaid").each((debt) => {
-      result.totalDebt += debt.amountPesewas;
-    });
-    return result;
-  }, [today.start, today.end], { cashIn: 0, expenses: 0, totalDebt: 0 });
-  const netProfit = totals.cashIn - totals.expenses;
+  const totalsResult = useLiveQuery(async () => {
+    try {
+      const [financials, debts] = await Promise.all([
+        getFinancialSummary(today),
+        db.debts.where("status").equals("unpaid").toArray()
+      ]);
+      return {
+        totals: {
+          cashIn: financials.cashInflow,
+          expenses: financials.expenses,
+          totalDebt: getOutstandingDebtPesewas(debts)
+        },
+        error: ""
+      };
+    } catch (error) {
+      console.error("Could not load dashboard totals.", error);
+      return { totals: null, error: "Dashboard totals could not be loaded. Please try again." };
+    }
+  }, [today.start, today.end, refreshKey], { totals: null, error: "" });
+  const totals = totalsResult.totals;
+  const netProfit = totals ? totals.cashIn - totals.expenses : 0;
 
   async function saveDebtPhone(debt, phone) {
     const now = Date.now();
@@ -319,18 +323,24 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
         <SyncStatusBadge />
       </div>
 
-      <section aria-label="Today's totals" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <MetricCard title="Today's cash in" value={formatGhs(totals.cashIn)} icon={ArrowDownLeft} tone="green" />
-        <MetricCard title="Today's expenses" value={formatGhs(totals.expenses)} icon={ArrowUpRight} tone="expense" />
-        <MetricCard
-          title="Uncollected debt"
-          value={formatGhs(totals.totalDebt)}
-          icon={ReceiptText}
-          tone="debt"
-          onClick={onViewDebts}
-          hint="Tap to view debts"
-        />
-      </section>
+      {totalsResult.error ? (
+        <p role="alert" className="rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-800">{totalsResult.error}</p>
+      ) : !totals ? (
+        <p role="status" className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-600">Loading today's totals…</p>
+      ) : (
+        <section aria-label="Today's totals" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <MetricCard title="Today's cash in" value={formatGhs(totals.cashIn)} icon={ArrowDownLeft} tone="green" />
+          <MetricCard title="Today's expenses" value={formatGhs(totals.expenses)} icon={ArrowUpRight} tone="expense" />
+          <MetricCard
+            title="Uncollected debt"
+            value={formatGhs(totals.totalDebt)}
+            icon={ReceiptText}
+            tone="debt"
+            onClick={onViewDebts}
+            hint="Tap to view debts"
+          />
+        </section>
+      )}
 
       <section aria-label="Uncollected debt details" className="mt-3 rounded-2xl bg-white p-4 shadow-card">
         <div className="mb-3 flex items-center justify-between gap-3">
@@ -364,6 +374,18 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{debt.customerName}</p>
                     <p className="text-sm font-bold text-amber-800">{formatGhs(debt.amountPesewas)}</p>
+                    <button
+                      type="button"
+                      onClick={() => setHistoryCustomer({
+                        ...(customer ?? {}),
+                        id: customer?.id ?? `legacy:${debt.id}`,
+                        name: debt.customerName,
+                        phone: customer?.phone ?? debt.phone
+                      })}
+                      className="mt-1 min-h-8 text-xs font-semibold text-leaf underline"
+                    >
+                      View statement
+                    </button>
                     {debt.isInstallmentPlan && (
                       <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${installmentAlert?.showAlert ? "bg-amber-100 text-amber-900" : "bg-blue-50 text-blue-800"}`}>
                         {installmentAlert?.type === "overdue"
@@ -434,10 +456,10 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
         )}
       </section>
 
-      <section aria-label="Today's net profit" className="relative mt-3 flex flex-col items-start justify-between gap-4 rounded-2xl bg-slate-900 p-5 text-white shadow-sm md:flex-row md:items-center">
+      {totals && <section aria-label="Today's net profit" className="amount-fit-container relative mt-3 flex flex-col items-start justify-between gap-4 rounded-2xl bg-slate-900 p-5 text-white shadow-sm md:flex-row md:items-center">
         <div>
           <p className="block text-xs font-medium uppercase tracking-wider text-slate-400">Today's Net Profit</p>
-          <p className="mt-1 block text-3xl font-extrabold tracking-tight">{formatGhs(netProfit)}</p>
+          <p className="amount-fit mt-1 font-extrabold tracking-tight">{formatGhs(netProfit)}</p>
         </div>
         <div className="flex w-full flex-col items-end gap-2.5 md:w-auto">
           <span className="rounded-md border border-slate-700/50 bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-300">
@@ -451,7 +473,7 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
             📊 View Weekly &amp; Monthly Reports
           </button>
         </div>
-      </section>
+      </section>}
 
       <section aria-label="Quick actions" className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <button
@@ -501,13 +523,22 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
               {visibleTransactions.map((transaction, offset) => {
                 const isCreditSale = transaction.type === "sale" && transaction.paymentType === "credit";
                 const isInstallmentSale = transaction.type === "installment_sale" || transaction.type === "installment_addon";
-                const cashReceivedAmount = transaction.installmentPaymentPesewas ?? 0;
+                const isExpense = transaction.type === "expense" || transaction.type === "supplier_payment";
+                const supplierCredit = transaction.type === "expense" && (transaction.owedAmountPesewas ?? 0) > 0;
+                const shownAmount = isExpense
+                  ? transaction.paidAmountPesewas ?? transaction.amountPesewas
+                  : transaction.amountPesewas;
+                const legacyInstallmentPayment = transaction.installmentPaymentPesewas ?? 0;
+                const legacyPaymentIsMomo = transaction.payment_method === "momo" || transaction.payment_method === "telecel_cash";
+                const cashReceivedAmount = (transaction.cashReceivedPesewas ?? (legacyPaymentIsMomo ? 0 : legacyInstallmentPayment)) +
+                  (transaction.momoReceivedPesewas ?? (legacyPaymentIsMomo ? legacyInstallmentPayment : 0));
                 const isCashIn = isInstallmentSale
                   ? cashReceivedAmount > 0
-                  : transaction.type !== "expense" && !isCreditSale;
+                  : !isExpense && !isCreditSale;
                 const transactionLabel = {
                   sale: "Sale",
                   expense: "Expense",
+                  supplier_payment: "Supplier payment",
                   income: "Debt payment received",
                   debt_payment: "Debt payment",
                   installment_sale: "Installment sale",
@@ -552,10 +583,10 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
                         )}
                       </div>
                     </div>
-                    <p className={`shrink-0 text-right font-bold ${isCreditSale ? "text-amber-800" : isInstallmentSale && !isCashIn ? "text-ink" : isCashIn ? "text-leaf" : "text-ink"}`}>
+                    <p className={`shrink-0 text-right font-bold ${isCreditSale || supplierCredit ? "text-amber-800" : isInstallmentSale && !isCashIn ? "text-ink" : isCashIn ? "text-leaf" : "text-ink"}`}>
                       {isInstallmentSale
                         ? `${isCashIn ? "+" : ""}${formatGhs(cashReceivedAmount)}`
-                        : isCreditSale ? formatGhs(transaction.amountPesewas) : `${isCashIn ? "+" : "−"}${formatGhs(transaction.amountPesewas)}`}
+                        : isCreditSale || supplierCredit && !shownAmount ? formatGhs(transaction.owedAmountPesewas ?? transaction.amountPesewas) : `${isCashIn ? "+" : "−"}${formatGhs(shownAmount)}`}
                       {isInstallmentSale && <span className="block text-[10px] font-medium text-amber-800">{formatGhs(transaction.creditExtendedPesewas)} credit</span>}
                     </p>
                   </article>
@@ -590,6 +621,9 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
           onCancel={() => { if (!paymentSaving) setPaymentDebt(null); }}
           onConfirm={confirmDashboardPayment}
         />
+      )}
+      {historyCustomer && (
+        <CustomerDebtHistoryModal customer={historyCustomer} onClose={() => setHistoryCustomer(null)} />
       )}
       {phoneEntryDebt && (
         <WhatsAppReminderModal

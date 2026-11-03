@@ -21,7 +21,8 @@ function makeBackup() {
         totalInstallments: 8
       }],
       products: [{ id: 1 }],
-      payments: []
+      payments: [],
+      suppliers: [{ id: "supplier-1", name: "Market Wholesale", nameLower: "market wholesale", phone: "" }]
     }
   };
 }
@@ -31,12 +32,15 @@ test("accepts a valid StoreKeeper backup with all data tables", () => {
   assert.equal(validateBackupData(makeBackup()).customers[0].ghanaCardNumber, "GHA-123456789-0");
   assert.equal(validateBackupData(makeBackup()).debts[0].ghanaCardNumber, "1234567890");
   assert.equal(validateBackupData(makeBackup()).debts[0].nextDueDate, "2026-11-01");
+  assert.equal(validateBackupData(makeBackup()).suppliers[0].name, "Market Wholesale");
 });
 
 test("accepts older backups without payment details and restores the table as empty", () => {
   const backup = makeBackup();
   delete backup.data.payments;
+  delete backup.data.suppliers;
   assert.deepEqual(validateBackupData(backup).payments, []);
+  assert.deepEqual(validateBackupData(backup).suppliers, []);
 });
 
 test("preserves payment details in backup data", () => {

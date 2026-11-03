@@ -1,0 +1,117 @@
+import {
+  getDebtBalancePesewas,
+  getFinancialDateRange,
+  getPreviousFinancialDateRange,
+  getOutstandingDebtPesewas,
+  summarizeFinancialTransactions,
+  summarizePosMoney
+} from "../utils/financials.js";
+import { posText as t } from "./i18n.js";
+
+function timestampOf(record) {
+  const timestamp = record.createdAt ?? record.timestamp;
+  const parsed = timestamp instanceof Date
+    ? timestamp.getTime()
+    : typeof timestamp === "number"
+      ? timestamp
+      : typeof timestamp === "string"
+        ? Date.parse(timestamp)
+        : Number.NaN;
+  if (!Number.isFinite(parsed)) {
+    throw new RangeError(`Transaction ${record.id ?? "(unknown)"} has an invalid timestamp.`);
+  }
+  return parsed;
+}
+
+export function summarizeMoney(transactions) {
+  return summarizePosMoney(transactions);
+}
+
+export function getMoneyPeriodRange(period, now = new Date()) {
+  const range = getFinancialDateRange(period, "", "", now);
+  if (!range) throw new TypeError("Choose a day, week, or month reporting period.");
+  return range;
+}
+
+export function getPreviousMoneyPeriodRange(period, now = new Date()) {
+  return getPreviousFinancialDateRange(period, now);
+}
+
+export { getOutstandingDebtPesewas };
+
+export function getMostUrgentCustomerDebt(debts, today = new Date()) {
+  const todayDate = new Date(today);
+  todayDate.setHours(0, 0, 0, 0);
+  const grouped = new Map();
+
+  for (const debt of debts) {
+    if (debt.status !== "unpaid") continue;
+    const name = (debt.customerName ?? debt.customer_name ?? "").trim();
+    const key = name.toLowerCase() || `unnamed:${debt.id}`;
+    const balance = getDebtBalancePesewas(debt);
+    const item = grouped.get(key) ?? {
+      customerName: name || t("home.unnamedCustomer"),
+      phone: debt.phone ?? debt.customer_phone ?? "",
+      amountPesewas: 0,
+      dueDate: null,
+      isInstallmentPlan: false,
+      debtId: debt.id,
+      selectedDueDate: null,
+      selectedBalancePesewas: -1
+    };
+    item.amountPesewas += balance;
+    if (!Number.isSafeInteger(item.amountPesewas)) {
+      throw new RangeError("Customer debt total exceeds the safe integer range.");
+    }
+    item.phone ||= debt.phone ?? debt.customer_phone ?? "";
+    const dueDate = debt.isInstallmentPlan ? debt.nextDueDate : debt.dueDate;
+    if (dueDate) {
+      if (!Number.isFinite(Date.parse(`${dueDate}T00:00:00`))) {
+        throw new RangeError(`Debt ${debt.id ?? "(unknown)"} has an invalid due date.`);
+      }
+      if (!item.dueDate || dueDate < item.dueDate) item.dueDate = dueDate;
+    }
+    if (!item.debtId ||
+      (dueDate && (!item.selectedDueDate || dueDate < item.selectedDueDate)) ||
+      (dueDate === item.selectedDueDate && balance > item.selectedBalancePesewas) ||
+      (!dueDate && !item.selectedDueDate && balance > item.selectedBalancePesewas)) {
+      item.debtId = debt.id;
+      item.selectedDueDate = dueDate ?? null;
+      item.selectedBalancePesewas = balance;
+    }
+    item.isInstallmentPlan ||= Boolean(debt.isInstallmentPlan);
+    grouped.set(key, item);
+  }
+
+  return [...grouped.values()].sort((left, right) => {
+    const leftDue = left.dueDate ? Date.parse(`${left.dueDate}T00:00:00`) : Number.POSITIVE_INFINITY;
+    const rightDue = right.dueDate ? Date.parse(`${right.dueDate}T00:00:00`) : Number.POSITIVE_INFINITY;
+    const leftOverdue = leftDue < todayDate.getTime();
+    const rightOverdue = rightDue < todayDate.getTime();
+    if (leftOverdue !== rightOverdue) return leftOverdue ? -1 : 1;
+    if (leftDue !== rightDue) return leftDue - rightDue;
+    return right.amountPesewas - left.amountPesewas;
+  })[0] ?? null;
+}
+
+export function getDebtDueLabel(dueDate, today = new Date()) {
+  if (!dueDate) return t("debt.dueNotSet");
+  const due = new Date(`${dueDate}T00:00:00`);
+  if (!Number.isFinite(due.getTime())) throw new RangeError("The debt due date is invalid.");
+  const current = new Date(today);
+  due.setHours(0, 0, 0, 0);
+  current.setHours(0, 0, 0, 0);
+  const days = Math.round((due.getTime() - current.getTime()) / 86_400_000);
+  if (days < 0) {
+    const lateDays = Math.abs(days);
+    return t("debt.lateDays", { days: lateDays, plural: lateDays === 1 ? "" : "s" });
+  }
+  if (days === 0) return t("debt.dueToday");
+  return t("debt.inDays", { days, plural: days === 1 ? "" : "s" });
+}
+
+export function getTransactionTimestamp(transaction) {
+  return timestampOf(transaction);
+}
+
+export { summarizeFinancialTransactions };

@@ -3,10 +3,9 @@ import Dexie from "dexie";
 import { useLiveQuery } from "dexie-react-hooks";
 import { ArrowLeft, Check, LogOut, MessageCircle, Pencil, UserRoundPlus, X } from "lucide-react";
 import { db } from "../db/db.js";
-import { addDebtToCustomer, recordDebtPayment } from "../db/debts.js";
+import { recordCreditSale, recordDebtPayment } from "../db/debts.js";
 import { upsertCustomer } from "../db/customers.js";
 import { runTransactionWithTimeout } from "../db/runTransactionWithTimeout.js";
-import { createId } from "../lib/ids.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { supabase } from "../lib/supabase.js";
@@ -14,12 +13,15 @@ import { isValidGhanaCardNumber, normalizeGhanaCardNumber } from "../lib/ghanaCa
 import { formatGhanaCard } from "../utils/formatters.js";
 import GhanaCardBadge from "./GhanaCardBadge.jsx";
 import WhatsAppReminderModal from "./WhatsAppReminderModal.jsx";
+import CustomerDebtHistoryModal from "./CustomerDebtHistoryModal.jsx";
 import { generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { playErrorChime, playSuccessChime, speakConfirmation } from "../utils/audioFeedback.js";
 import PaymentMethodToggle from "./PaymentMethodToggle.jsx";
 import {
   createInstallmentReminderLink,
+  getCreditBalanceAfterSale,
   getInstallmentAlertStatus,
+  getMaximumInstallmentAmountPesewas,
   getNextCycleDate,
   PAYMENT_FREQUENCIES,
   localDateString,
@@ -143,7 +145,7 @@ export function ConfirmPaymentModal({ debt, initialAmountPesewas = debt.amountPe
   );
 }
 
-export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, onDataChanged }) {
+export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, onDataChanged, onCollect }) {
   const savedCustomers = useLiveQuery(() => db.customers.toArray(), [], []);
   const [debts, setDebts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -174,6 +176,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
   const [amountDraft, setAmountDraft] = useState("");
   const [editError, setEditError] = useState("");
   const [paymentDebt, setPaymentDebt] = useState(null);
+  const [historyCustomer, setHistoryCustomer] = useState(null);
   const [reminderDebt, setReminderDebt] = useState(null);
   const [authSession, setAuthSession] = useState(null);
   const [authOpen, setAuthOpen] = useState(false);
@@ -192,6 +195,22 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
       )).slice(0, 8)
     : [];
   const editedBalancePesewas = toPesewas(amountDraft);
+  const newDebtAmountPesewas = toPesewas(amount) || 0;
+  const selectedCustomerDebtPesewas = selectedDebtCustomer?.totalDebtPesewas ?? 0;
+  const maximumInstallmentPesewas = newDebtAmountPesewas > 0
+    ? getMaximumInstallmentAmountPesewas(
+      selectedCustomerDebtPesewas,
+      newDebtAmountPesewas,
+      installmentStartMode === "today"
+    )
+    : 0;
+
+  useEffect(() => {
+    const enteredAmountPesewas = toPesewas(installmentAmount);
+    if (Number.isSafeInteger(enteredAmountPesewas) && enteredAmountPesewas > maximumInstallmentPesewas) {
+      setInstallmentAmount((maximumInstallmentPesewas / 100).toFixed(2));
+    }
+  }, [installmentAmount, maximumInstallmentPesewas]);
 
   useEffect(() => {
     if (!supabase) return undefined;
@@ -298,11 +317,12 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
     if (isInstallmentPlan) {
       try {
         const preparedPlan = prepareInstallmentPlan({
-          amountPesewas,
+          amountPesewas: getCreditBalanceAfterSale(selectedCustomerDebtPesewas, amountPesewas),
           installmentAmountPesewas: toPesewas(installmentAmount),
           frequency: installmentFrequency,
           nextDueDate: installmentStartMode === "today" ? localDateString() : nextDueDate,
-          startToday: installmentStartMode === "today"
+          startToday: installmentStartMode === "today",
+          initialPaymentLimitPesewas: amountPesewas
         });
         installmentPlan = preparedPlan.plan;
         if (installmentStartMode === "today" && !installmentPlan.nextDueDate) {
@@ -318,85 +338,27 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
         return;
       }
     }
-    const remainingDebtPesewas = amountPesewas - initialPaymentPesewas;
     if (!isValidGhanaCardNumber(ghanaCardNumber)) {
       playErrorChime();
       setError("Enter a Ghana Card number like GHA-123456789-0 or 1234567890.");
       return;
     }
     const now = Date.now();
-    const transactionId = createId();
     const cleanCustomerName = customerName.trim();
     const cleanNote = note.trim();
-    const transaction = {
-      id: transactionId,
-      type: "sale",
-      amountPesewas,
-      total_amount: amountPesewas,
-      payment_method: initialPaymentPesewas > 0 ? installmentPaymentMethod : null,
-      ...(initialPaymentPesewas > 0 && { installmentPaymentPesewas: initialPaymentPesewas }),
-      paymentType: "credit",
-      customer_name: cleanCustomerName,
-      customer_phone: phone.trim(),
-      ghanaCardNumber: normalizeGhanaCardNumber(ghanaCardNumber),
-      customerName: cleanCustomerName,
-      phone: phone.trim(),
-      items_json: JSON.stringify([{
-        name: cleanNote || "Debt added",
-        quantity: 1,
-        total_amount: amountPesewas
-      }]),
-      itemDescription: cleanNote || "Debt added",
-      quantity: 1,
-      pricePesewas: amountPesewas,
-      note: `${cleanNote || "Debt added"} · ${cleanCustomerName}`,
-      createdAt: now,
-      timestamp: now,
-      updatedAt: now,
-      synced: false,
-      syncStatus: "pending",
-      creditExtendedPesewas: remainingDebtPesewas
-    };
     try {
-      await runTransactionWithTimeout(db, [db.debts, db.customers, db.transactions, db.payments], async () => {
-        let debtResult = null;
-        if (remainingDebtPesewas > 0 || (initialPaymentPesewas > 0 && installmentPlan)) {
-          debtResult = await addDebtToCustomer({
-            name: customerName,
-            phone,
-            ghanaCardNumber: normalizeGhanaCardNumber(ghanaCardNumber),
-            amountPesewas: remainingDebtPesewas,
-            note: cleanNote,
-            installmentPlan,
-            transactionId,
-            now
-          });
-        }
-        transaction.type = debtResult?.isAddon
-          ? "installment_addon"
-          : initialPaymentPesewas > 0 ? "installment_sale" : "sale";
-        if (debtResult?.isAddon) {
-          transaction.addonAmountPesewas = amountPesewas;
-        }
-        await db.transactions.add(transaction);
-        if (initialPaymentPesewas > 0) {
-          await db.payments.add({
-            id: createId(),
-            debtId: debtResult?.id ?? null,
-            amountPesewas: initialPaymentPesewas,
-            paymentMethod: installmentPaymentMethod,
-            customer_name: cleanCustomerName,
-            createdAt: now,
-            updatedAt: now
-          });
-        }
-        await upsertCustomer({
-          name: customerName,
-          phone,
-          ghanaCardNumber: normalizeGhanaCardNumber(ghanaCardNumber),
-          debtDeltaPesewas: remainingDebtPesewas,
-          now
-        });
+      await recordCreditSale({
+        amountPesewas,
+        name: cleanCustomerName,
+        phone,
+        ghanaCardNumber: normalizeGhanaCardNumber(ghanaCardNumber),
+        installmentPlan,
+        initialPaymentPesewas,
+        paymentMethod: installmentPaymentMethod,
+        note: cleanNote || "Debt added",
+        itemDescription: cleanNote || "Debt added",
+        transactionNote: `${cleanNote || "Debt added"} · ${cleanCustomerName}`,
+        now
       });
       void requestBackgroundSync();
       playSuccessChime();
@@ -421,7 +383,9 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
     } catch (saveError) {
       console.error("Could not save debt.", saveError);
       playErrorChime();
-      setError("This debt could not be saved. Please try again.");
+      setError(saveError?.name === "QuotaExceededError"
+        ? "The browser reports that its storage quota is full. Free up device storage, then try again."
+        : "This debt could not be saved. Please try again.");
     }
   }
 
@@ -867,7 +831,13 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
               <fieldset disabled={!isInstallmentPlan} className="min-h-0 overflow-hidden">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="text-sm font-semibold">Installment amount (GHS)
-                  <input type="number" inputMode="decimal" min="0.01" step="0.01" required value={installmentAmount} onChange={(event) => setInstallmentAmount(event.target.value)} placeholder="0.00" className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 px-3 text-base font-normal outline-none focus:border-leaf" />
+                  <input type="number" inputMode="decimal" min="0.01" max={(maximumInstallmentPesewas / 100).toFixed(2)} step="0.01" required value={installmentAmount} onChange={(event) => {
+                    const nextAmount = toPesewas(event.target.value);
+                    setInstallmentAmount(Number.isSafeInteger(nextAmount) && nextAmount > maximumInstallmentPesewas
+                      ? (maximumInstallmentPesewas / 100).toFixed(2)
+                      : event.target.value);
+                  }} placeholder="0.00" className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 px-3 text-base font-normal outline-none focus:border-leaf" />
+                  <span className="mt-1 block text-xs font-normal text-slate-500">Maximum: {formatGhs(maximumInstallmentPesewas)}</span>
                 </label>
                 <label className="text-sm font-semibold">Frequency
                   <select
@@ -982,6 +952,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
             const customerGhanaCardNumber = formatGhanaCard(customer?.ghanaCardNumber || debt.ghanaCardNumber || "");
             const customerDebt = {
               ...debt,
+              customerId: customer?.id ?? debt.customerId,
               phone: customerPhone,
               customer_phone: customerPhone,
               ghanaCardNumber: customerGhanaCardNumber
@@ -1080,10 +1051,22 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
                   </a>
                 )}
                 <div className="mt-3 grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setHistoryCustomer({
+                      ...(customer ?? {}),
+                      id: customer?.id ?? `legacy:${debt.id}`,
+                      name: debt.customerName || debt.customer_name,
+                      phone: customerPhone
+                    })}
+                    className="col-span-2 flex min-h-11 w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    View Payment History
+                  </button>
                   <button type="button" onClick={() => editDebt(debt)} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100">
                     <Pencil size={15} aria-hidden="true" /> Edit Debt
                   </button>
-                  <button type="button" disabled={busyDebtId === debt.id} onClick={() => setPaymentDebt(customerDebt)} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50">
+                  <button type="button" disabled={busyDebtId === debt.id} onClick={() => onCollect ? onCollect(customerDebt) : setPaymentDebt(customerDebt)} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50">
                     <Check size={17} aria-hidden="true" /> Mark as Paid
                   </button>
                 </div>
@@ -1233,6 +1216,9 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
           onClose={() => setReminderDebt(null)}
           onPhoneSaved={saveWhatsAppPhone}
         />
+      )}
+      {historyCustomer && (
+        <CustomerDebtHistoryModal customer={historyCustomer} onClose={() => setHistoryCustomer(null)} />
       )}
     </main>
   );

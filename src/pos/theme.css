@@ -1,0 +1,6 @@
+.pos-app {
+  min-height: 100vh;
+  background: var(--pos-background, #fff);
+  color: var(--pos-ink, #0f172a);
+  font-family: var(--pos-font, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+}

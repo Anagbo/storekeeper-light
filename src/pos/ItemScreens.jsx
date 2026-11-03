@@ -1,0 +1,280 @@
+import { useMemo, useState } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
+import { ArrowLeft, Check, Plus, Search, Trash2 } from "lucide-react";
+import { db } from "../db/db.js";
+import { createProduct, normalizeProductInput, removeProduct, STARTER_ITEMS, updateProduct, addStarterProducts } from "../db/products.js";
+import { formatGhs, toPesewas } from "../lib/money.js";
+import { requestBackgroundSync } from "../lib/syncRegistration.js";
+import { posText as t } from "./i18n.js";
+import { PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
+
+function ScreenHeader({ title, onBack }) {
+  return (
+    <div className="flex items-center gap-3">
+      <button type="button" onClick={onBack} className="min-h-12 shrink-0 rounded-xl border-2 border-slate-900 px-4 text-base font-extrabold">
+        <ArrowLeft size={20} className="mr-1 inline" aria-hidden="true" />{t("items.back")}
+      </button>
+      <h1 className="min-w-0 text-2xl font-extrabold">{title}</h1>
+    </div>
+  );
+}
+
+function useActiveProducts() {
+  return useLiveQuery(async () => {
+    try {
+      const products = await db.products.toArray();
+      return { products: products.filter((product) => product.active !== false).sort((a, b) => a.name.localeCompare(b.name)), error: "" };
+    } catch (error) {
+      console.error("Could not load items.", error);
+      return { products: [], error: t("items.loadFailed") };
+    }
+  }, [], undefined);
+}
+
+function MyItems({ onBack, onNavigate }) {
+  const [query, setQuery] = useState("");
+  const result = useActiveProducts();
+  const filteredItems = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return (result?.products ?? []).filter((item) => item.name.toLowerCase().includes(normalizedQuery));
+  }, [query, result]);
+
+  return (
+    <PosPage className="flex flex-col gap-3">
+      <ScreenHeader title={t("items.title")} onBack={onBack} />
+      <label className="flex min-h-14 items-center gap-2 rounded-2xl border-[3px] border-slate-500 px-3">
+        <Search size={24} aria-hidden="true" />
+        <span className="sr-only">{t("items.find")}</span>
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("items.find")} className="min-w-0 flex-1 bg-transparent text-lg font-semibold outline-none" />
+      </label>
+      <PosPrimaryButton type="button" onClick={() => onNavigate("NewItem")}>
+        <Plus size={24} aria-hidden="true" />{t("items.new")}
+      </PosPrimaryButton>
+      {result === undefined ? (
+        <p role="status" className="rounded-xl bg-slate-100 p-3 font-semibold">{t("items.loading")}</p>
+      ) : result.error ? (
+        <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{result.error}</p>
+      ) : filteredItems.length ? (
+        <div className="flex flex-col gap-2">
+          {filteredItems.map((item) => (
+            <button key={item.id} type="button" onClick={() => onNavigate("EditItem", { itemId: item.id })} className="flex min-h-[60px] items-center gap-3 rounded-2xl border-2 border-slate-500 bg-white px-3 text-left">
+              <strong className="min-w-0 flex-1 truncate text-lg">{item.name}</strong>
+              <span className={`shrink-0 font-extrabold ${item.default_price > 0 ? "text-emerald-900" : "text-amber-900"}`}>
+                {item.default_price > 0 ? formatGhs(toPesewas(item.default_price)) : t("items.setPrice")}
+              </span>
+              <span className="text-2xl font-extrabold" aria-hidden="true">›</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="rounded-xl border-2 border-slate-300 bg-white p-4 font-semibold">
+          {query ? t("items.noMatches") : t("items.empty")}
+        </p>
+      )}
+      <PosSecondaryButton type="button" onClick={() => onNavigate("YourStarterList", { returnRoute: "MyItems" })}>
+        {t("items.starterList")}
+      </PosSecondaryButton>
+    </PosPage>
+  );
+}
+
+function ItemEditor({ item, onBack, onNavigate, onSave }) {
+  const [name, setName] = useState(item?.name ?? "");
+  const [price, setPrice] = useState(item?.default_price > 0 ? item.default_price.toFixed(2) : "");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function submit(event) {
+    event.preventDefault();
+    if (saving) return;
+    try {
+      normalizeProductInput({ name, price });
+    } catch (validationError) {
+      setError(validationError.message);
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await onSave({ name, price });
+      void requestBackgroundSync();
+      onBack();
+    } catch (saveError) {
+      console.error("Could not save this item.", saveError);
+      setError(saveError instanceof TypeError ? saveError.message : t("items.saveFailed"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <PosPage className="flex flex-col gap-3">
+      <ScreenHeader title={item ? item.name : t("items.new")} onBack={onBack} />
+      <form onSubmit={(event) => void submit(event)} className="flex flex-1 flex-col gap-3">
+        <label className="block">
+          <span className="mb-1 block text-lg font-extrabold">{t("items.name")}</span>
+          <input autoComplete="off" maxLength="80" value={name} onChange={(event) => { setName(event.target.value); setError(""); }} placeholder={t("items.namePlaceholder")} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-lg font-extrabold">{t("items.price")}</span>
+          <span className="flex h-14 items-center gap-2 rounded-2xl border-[3px] border-slate-500 px-3">
+            <span className="shrink-0 font-bold text-slate-700">GHS</span>
+            <input type="text" inputMode="decimal" autoComplete="off" value={price} onChange={(event) => { setPrice(event.target.value); setError(""); }} placeholder="0.00" className="w-full min-w-0 bg-transparent text-right text-lg font-bold outline-none" />
+          </span>
+        </label>
+        {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
+        <div className="mt-auto flex flex-col gap-2">
+          {item && (
+            <PosSecondaryButton type="button" disabled={saving} onClick={() => onNavigate("DeleteItem", { itemId: item.id, itemName: item.name })} className="border-rose-900 text-rose-900">
+              <Trash2 size={20} aria-hidden="true" />{t("items.delete")}
+            </PosSecondaryButton>
+          )}
+          <PosPrimaryButton type="submit" disabled={saving}>
+            <Check size={24} aria-hidden="true" />{saving ? t("items.saving") : t("items.save")}
+          </PosPrimaryButton>
+        </div>
+      </form>
+    </PosPage>
+  );
+}
+
+function DeleteItem({ itemId, itemName, onBack, onReturnToItems, onDelete }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function confirmDelete() {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await onDelete(itemId);
+      void requestBackgroundSync();
+      onReturnToItems();
+    } catch (deleteError) {
+      console.error("Could not remove this item.", deleteError);
+      setError(deleteError instanceof TypeError ? deleteError.message : t("items.deleteFailed"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <PosPage className="flex flex-col gap-3">
+      <ScreenHeader title={itemName} onBack={onBack} />
+      <section role="alertdialog" aria-modal="true" aria-labelledby="delete-item-title" className="my-auto flex flex-col gap-3 rounded-3xl border-[3px] border-slate-900 bg-white p-5 text-center">
+        <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-rose-200 text-rose-950"><Trash2 size={32} aria-hidden="true" /></div>
+        <h2 id="delete-item-title" className="text-2xl font-extrabold">{t("items.deleteConfirm", { name: itemName })}</h2>
+        <p className="text-base text-slate-800">{t("items.deleteExplanation")}</p>
+        {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
+        <PosPrimaryButton type="button" disabled={busy} onClick={onBack} className="min-h-20 text-xl">{t("items.keep", { name: itemName })}</PosPrimaryButton>
+        <button type="button" disabled={busy} onClick={() => void confirmDelete()} className="min-h-14 rounded-2xl border-[3px] border-rose-900 bg-white px-4 text-lg font-extrabold text-rose-900 disabled:opacity-50">
+          {busy ? t("items.deleting") : t("items.confirmDelete")}
+        </button>
+      </section>
+    </PosPage>
+  );
+}
+
+function StarterList({ params, onBack, onAdd, onCompleteSetup }) {
+  const result = useActiveProducts();
+  const [selected, setSelected] = useState(() => new Set(STARTER_ITEMS));
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const existingNames = new Set((result?.products ?? []).map((product) => product.name.toLowerCase()));
+  const availableItems = STARTER_ITEMS.filter((name) => !existingNames.has(name.toLowerCase()));
+  const selectedCount = availableItems.filter((name) => selected.has(name)).length;
+
+  async function addSelected() {
+    if (saving || selectedCount === 0) return;
+    setSaving(true);
+    setError("");
+    try {
+      await onAdd(availableItems.filter((name) => selected.has(name)));
+      void requestBackgroundSync();
+      if (params.setupFlow) await onCompleteSetup();
+      else onBack();
+    } catch (saveError) {
+      console.error("Could not add starter items.", saveError);
+      setError(params.setupFlow ? t("setup.saveFailed") : t("items.starterFailed"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function finishSetup() {
+    if (saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      await onCompleteSetup();
+    } catch (saveError) {
+      console.error("Could not finish POS setup.", saveError);
+      setError(t("setup.saveFailed"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <PosPage className="flex flex-col gap-3">
+      <ScreenHeader title={t("items.starterTitle")} onBack={onBack} />
+      <p className="text-base text-slate-800">{t("items.starterHint")}</p>
+      {result === undefined ? <p role="status">{t("items.loading")}</p> : (
+        <div className="flex flex-col gap-2">
+          {availableItems.map((name) => {
+            const checked = selected.has(name);
+            return (
+              <button key={name} type="button" aria-pressed={checked} onClick={() => setSelected((current) => {
+                const next = new Set(current);
+                if (next.has(name)) next.delete(name);
+                else next.add(name);
+                return next;
+              })} className="flex min-h-14 items-center gap-3 rounded-2xl border-2 border-slate-500 bg-white px-3 text-left text-lg font-extrabold">
+                <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg border-[3px] ${checked ? "border-emerald-900 bg-emerald-900 text-white" : "border-slate-500 bg-white"}`}>
+                  {checked && <Check size={21} aria-hidden="true" />}
+                </span>{name}
+              </button>
+            );
+          })}
+          {!availableItems.length && <p className="rounded-xl border-2 border-slate-300 bg-white p-4 font-semibold">{t("items.starterEmpty")}</p>}
+        </div>
+      )}
+      <p className="text-sm text-slate-700">{t("items.priceLater")}</p>
+      {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
+      <PosPrimaryButton type="button" disabled={saving || result === undefined || selectedCount === 0} onClick={() => void addSelected()} className="mt-auto">
+        {saving
+          ? t("items.saving")
+          : selectedCount === 1
+            ? t("items.addOne")
+            : t("items.addCount", { count: selectedCount })}
+      </PosPrimaryButton>
+      {params.setupFlow && (
+        <PosSecondaryButton type="button" disabled={saving} onClick={() => void finishSetup()}>
+          {t("setup.finish")}
+        </PosSecondaryButton>
+      )}
+    </PosPage>
+  );
+}
+
+export default function ItemScreens({ route, params = {}, onBack, onNavigate, onReturnToItems, onCompleteSetup }) {
+  if (route === "MyItems") return <MyItems onBack={onBack} onNavigate={onNavigate} />;
+  if (route === "NewItem") return <ItemEditor onBack={onBack} onSave={createProduct} onNavigate={onNavigate} />;
+  if (route === "EditItem") {
+    return <EditItem itemId={params.itemId} onBack={onBack} onNavigate={onNavigate} />;
+  }
+  if (route === "DeleteItem") {
+    return <DeleteItem itemId={params.itemId} itemName={params.itemName ?? t("items.nameFallback")} onBack={onBack} onReturnToItems={onReturnToItems} onDelete={removeProduct} />;
+  }
+  if (route === "YourStarterList") return <StarterList params={params} onBack={onBack} onAdd={addStarterProducts} onCompleteSetup={onCompleteSetup} />;
+  return null;
+}
+
+function EditItem({ itemId, onBack, onNavigate }) {
+  const item = useLiveQuery(() => Number.isSafeInteger(itemId) ? db.products.get(itemId) : null, [itemId], undefined);
+  if (item === undefined) return <PosPage><p role="status">{t("items.loading")}</p></PosPage>;
+  if (!item || item.active === false) {
+    return <PosPage className="flex flex-col gap-3"><ScreenHeader title={t("items.title")} onBack={onBack} /><p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{t("items.notFound")}</p></PosPage>;
+  }
+  return <ItemEditor key={item.id} item={item} onBack={onBack} onNavigate={onNavigate} onSave={(input) => updateProduct(item.id, input)} />;
+}

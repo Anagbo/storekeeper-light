@@ -23,6 +23,30 @@ function isPaymentFrequency(value) {
   return PAYMENT_FREQUENCIES.some((frequency) => frequency.value === value);
 }
 
+export function getCreditBalanceAfterSale(currentDebtPesewas, saleAmountPesewas) {
+  if (!Number.isSafeInteger(currentDebtPesewas) || currentDebtPesewas < 0 ||
+    !Number.isSafeInteger(saleAmountPesewas) || saleAmountPesewas <= 0) {
+    throw new TypeError("Current debt and sale amounts must be valid whole-pesewa amounts.");
+  }
+  const balance = currentDebtPesewas + saleAmountPesewas;
+  if (!Number.isSafeInteger(balance)) throw new RangeError("The customer's credit balance exceeds the supported amount.");
+  return balance;
+}
+
+export function getMaximumInstallmentAmountPesewas(currentDebtPesewas, saleAmountPesewas, startToday = false) {
+  return getCreditBalanceAfterSale(currentDebtPesewas, saleAmountPesewas);
+}
+
+export function assertInstallmentAmountWithinBalance(installmentAmountPesewas, maximumCreditPesewas) {
+  if (!Number.isSafeInteger(installmentAmountPesewas) || installmentAmountPesewas <= 0 ||
+    !Number.isSafeInteger(maximumCreditPesewas) || maximumCreditPesewas <= 0) {
+    throw new TypeError("Installment and credit amounts must be positive whole-pesewa amounts.");
+  }
+  if (installmentAmountPesewas > maximumCreditPesewas) {
+    throw new TypeError("Installment amount cannot exceed the customer's total credit balance.");
+  }
+}
+
 export function getNextCycleDate(today, frequency) {
   if (!isValidDateString(today) || !isPaymentFrequency(frequency)) {
     throw new TypeError("A valid date and installment frequency are required.");
@@ -36,6 +60,9 @@ export function createInstallmentPlan({ amountPesewas, installmentAmountPesewas,
   }
   if (!Number.isSafeInteger(installmentAmountPesewas) || installmentAmountPesewas <= 0) {
     throw new TypeError("Installment amount must be a positive integer number of pesewas.");
+  }
+  if (installmentAmountPesewas > amountPesewas) {
+    throw new TypeError("Installment amount cannot exceed the debt amount.");
   }
   if (!isPaymentFrequency(frequency)) {
     throw new TypeError("Installment frequency must be weekly, bi-weekly, or monthly.");
@@ -60,28 +87,58 @@ export function prepareInstallmentPlan({
   installmentAmountPesewas,
   frequency,
   nextDueDate,
-  startToday = false
+  startToday = false,
+  initialPaymentLimitPesewas = installmentAmountPesewas
 }) {
-  const plan = createInstallmentPlan({
-    amountPesewas,
-    installmentAmountPesewas,
-    frequency,
-    nextDueDate
-  });
-  if (!startToday) return { plan, initialPaymentPesewas: 0 };
+  if (!Number.isSafeInteger(amountPesewas) || amountPesewas <= 0) {
+    throw new TypeError("Debt amount must be a positive integer number of pesewas.");
+  }
+  if (!isPaymentFrequency(frequency) || !isValidDateString(nextDueDate)) {
+    throw new TypeError("A valid installment frequency and due date are required.");
+  }
+  if (!Number.isSafeInteger(initialPaymentLimitPesewas) || initialPaymentLimitPesewas < 0) {
+    throw new TypeError("The initial payment limit must be a non-negative integer number of pesewas.");
+  }
+  if (!Number.isSafeInteger(installmentAmountPesewas) || installmentAmountPesewas <= 0) {
+    throw new TypeError("Installment amount must be a positive integer number of pesewas.");
+  }
+  if (!startToday) {
+    return {
+      plan: createInstallmentPlan({ amountPesewas, installmentAmountPesewas, frequency, nextDueDate }),
+      initialPaymentPesewas: 0
+    };
+  }
 
-  const initialPaymentPesewas = Math.min(amountPesewas, installmentAmountPesewas);
+  const initialPaymentPesewas = Math.min(
+    amountPesewas,
+    initialPaymentLimitPesewas
+  );
   const remainingAmountPesewas = amountPesewas - initialPaymentPesewas;
-  const installmentsRemaining = Math.ceil(remainingAmountPesewas / installmentAmountPesewas);
+  if (remainingAmountPesewas === 0) {
+    return {
+      initialPaymentPesewas,
+      plan: {
+        isInstallmentPlan: false,
+        installmentAmount: initialPaymentPesewas,
+        frequency,
+        nextDueDate: "",
+        installmentsRemaining: 0,
+        totalInstallments: 1
+      }
+    };
+  }
+
+  const preparedInstallmentAmountPesewas = Math.min(installmentAmountPesewas, remainingAmountPesewas);
+  const installmentsRemaining = Math.ceil(remainingAmountPesewas / preparedInstallmentAmountPesewas);
   return {
     initialPaymentPesewas,
     plan: {
-      ...plan,
-      isInstallmentPlan: installmentsRemaining > 0,
-      nextDueDate: installmentsRemaining > 0
-        ? addDueCycles(nextDueDate, frequency, 1)
-        : "",
-      installmentsRemaining
+      isInstallmentPlan: true,
+      installmentAmount: preparedInstallmentAmountPesewas,
+      frequency,
+      nextDueDate: addDueCycles(nextDueDate, frequency, 1),
+      installmentsRemaining,
+      totalInstallments: installmentsRemaining + 1
     }
   };
 }
@@ -96,16 +153,34 @@ export function addDueCycles(dateString, frequency, cycles) {
 
   const date = new Date(`${dateString}T00:00:00.000Z`);
   const { daysPerCycle } = PAYMENT_FREQUENCIES.find((option) => option.value === frequency);
-  date.setUTCDate(date.getUTCDate() + cycles * daysPerCycle);
-  return date.toISOString().slice(0, 10);
+  const dayOffset = cycles * daysPerCycle;
+  const updatedTime = date.getTime() + dayOffset * 86_400_000;
+  if (!Number.isSafeInteger(dayOffset) || !Number.isFinite(updatedTime) || Math.abs(updatedTime) > 8.64e15) {
+    throw new RangeError("The installment date exceeds the supported range.");
+  }
+  date.setTime(updatedTime);
+  const result = date.toISOString().slice(0, 10);
+  if (!isValidDateString(result)) throw new RangeError("The installment date exceeds the supported range.");
+  return result;
 }
 
 export function reconcileInstallmentPayment(debt, paymentPesewas, remainingPesewas) {
+  const debtAmountPesewas = debt?.amountPesewas ?? debt?.total_owed;
+  const reconciledBalancePesewas = paymentPesewas + remainingPesewas;
+  if (!debt || !Number.isSafeInteger(reconciledBalancePesewas) ||
+    !Number.isSafeInteger(paymentPesewas) || paymentPesewas <= 0 ||
+    !Number.isSafeInteger(remainingPesewas) || remainingPesewas < 0 ||
+    (debtAmountPesewas !== undefined &&
+      (!Number.isSafeInteger(debtAmountPesewas) || debtAmountPesewas < 0 ||
+        reconciledBalancePesewas !== debtAmountPesewas))) {
+    throw new TypeError("Installment reconciliation requires a valid payment and matching debt balance.");
+  }
   if (!debt.isInstallmentPlan || remainingPesewas <= 0) {
     return {
       isInstallmentPlan: false,
       installmentsRemaining: 0,
-      nextDueDate: ""
+      nextDueDate: "",
+      installmentPaymentCarryPesewas: 0
     };
   }
 
@@ -116,13 +191,33 @@ export function reconcileInstallmentPayment(debt, paymentPesewas, remainingPesew
   if (!isPaymentFrequency(debt.frequency) || !isValidDateString(debt.nextDueDate)) {
     throw new TypeError("This installment plan has invalid schedule details.");
   }
+  if (debt.installmentsRemaining !== undefined &&
+    (!Number.isSafeInteger(debt.installmentsRemaining) || debt.installmentsRemaining <= 0)) {
+    throw new TypeError("This installment plan has an invalid number of remaining payments.");
+  }
+  if (debt.installmentsRemaining === undefined &&
+    (!Number.isSafeInteger(debtAmountPesewas) || debtAmountPesewas <= 0)) {
+    throw new TypeError("This installment plan has no valid remaining balance.");
+  }
+  const carryPesewas = debt.installmentPaymentCarryPesewas ?? 0;
+  if (!Number.isSafeInteger(carryPesewas) || carryPesewas < 0 || carryPesewas >= installmentAmountPesewas) {
+    throw new TypeError("This installment plan has an invalid partial payment balance.");
+  }
+  const paidTowardInstallmentsPesewas = carryPesewas + paymentPesewas;
+  if (!Number.isSafeInteger(paidTowardInstallmentsPesewas)) {
+    throw new RangeError("The installment payment total exceeds the supported amount.");
+  }
 
   const remainingInstallments = Number.isSafeInteger(debt.installmentsRemaining)
-    ? Math.max(0, debt.installmentsRemaining)
-    : Math.ceil(debt.amountPesewas / installmentAmountPesewas);
+    ? debt.installmentsRemaining
+    : Math.ceil(debtAmountPesewas / installmentAmountPesewas);
+  if (Number.isSafeInteger(debtAmountPesewas) &&
+    remainingInstallments < Math.ceil(debtAmountPesewas / installmentAmountPesewas)) {
+    throw new TypeError("This installment plan has fewer payments than its remaining balance requires.");
+  }
   const completedCycles = Math.min(
     remainingInstallments,
-    Math.floor(paymentPesewas / installmentAmountPesewas)
+    Math.floor(paidTowardInstallmentsPesewas / installmentAmountPesewas)
   );
   const nextInstallmentsRemaining = remainingInstallments - completedCycles;
 
@@ -131,7 +226,10 @@ export function reconcileInstallmentPayment(debt, paymentPesewas, remainingPesew
     installmentsRemaining: nextInstallmentsRemaining,
     nextDueDate: nextInstallmentsRemaining > 0 && completedCycles > 0
       ? addDueCycles(debt.nextDueDate, debt.frequency, completedCycles)
-      : debt.nextDueDate
+      : debt.nextDueDate,
+    installmentPaymentCarryPesewas: nextInstallmentsRemaining > 0
+      ? paidTowardInstallmentsPesewas % installmentAmountPesewas
+      : 0
   };
 }
 

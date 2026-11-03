@@ -20,6 +20,7 @@ test("aggregates cash sales, recovered debt, expenses, and new credit", () => {
     cashReceived: 9000,
     momoReceived: 0,
     expenses: 2000,
+    totalSales: 14500,
     realCashProfit: 7000,
     newCreditExtended: 7000,
     accruedProfit: 14000
@@ -52,6 +53,29 @@ test("treats legacy Telecel Cash receipts as MoMo and missing methods as cash", 
 
   assert.equal(summary.cashReceived, 1000);
   assert.equal(summary.momoReceived, 2000);
+});
+
+test("supplier payments reduce cash left without being recorded as a second purchase", () => {
+  const summary = summarizeFinancialTransactions([
+    { type: "sale", amountPesewas: 10000, paymentType: "cash" },
+    { type: "expense", category: "stock", amountPesewas: 10000, paidAmountPesewas: 4000, owedAmountPesewas: 6000 },
+    { type: "supplier_payment", amountPesewas: 2000, supplierId: "supplier-1" }
+  ]);
+  assert.equal(summary.expenses, 6000);
+  assert.equal(summary.realCashProfit, 4000);
+});
+
+test("reversed debt collections no longer affect financial totals", () => {
+  const summary = summarizeFinancialTransactions([
+    { id: "cash-part", type: "income", amountPesewas: 1250, payment_method: "cash" },
+    { id: "momo-part", type: "income", amountPesewas: 2750, payment_method: "momo" },
+    { id: "reversal-cash", type: "income_reversal", amountPesewas: 1250, reversalOfTransactionId: "cash-part" },
+    { id: "reversal-momo", type: "income_reversal", amountPesewas: 2750, reversalOfTransactionId: "momo-part" }
+  ]);
+
+  assert.equal(summary.cashInflow, 0);
+  assert.equal(summary.cashReceived, 0);
+  assert.equal(summary.momoReceived, 0);
 });
 
 test("counts Add Debt transaction records as new credit without cash inflow", () => {
@@ -117,6 +141,32 @@ test("counts installment add-ons as only their new deposit and net credit", () =
   }]);
   assert.equal(fullyPaidAddon.momoReceived, 10000);
   assert.equal(fullyPaidAddon.newCreditExtended, 0);
+});
+
+test("counts split cash and MoMo installment payments separately", () => {
+  const summary = summarizeFinancialTransactions([{
+    type: "installment_sale",
+    amountPesewas: 10000,
+    installmentPaymentPesewas: 10000,
+    cashReceivedPesewas: 3000,
+    momoReceivedPesewas: 7000,
+    creditExtendedPesewas: 0,
+    payment_method: null
+  }]);
+
+  assert.equal(summary.cashReceived, 3000);
+  assert.equal(summary.momoReceived, 7000);
+  assert.equal(summary.cashInflow, 10000);
+  assert.equal(summary.totalSales, 10000);
+});
+
+test("rejects installment sale records whose cash and credit do not reconcile to sale amount", () => {
+  assert.throws(() => summarizeFinancialTransactions([{
+    type: "installment_sale",
+    amountPesewas: 10000,
+    installmentPaymentPesewas: 2500,
+    creditExtendedPesewas: 7000
+  }]), /do not match the recorded sale amount/);
 });
 
 test("week date range starts Monday and ends exclusively the next Monday", () => {

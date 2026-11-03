@@ -38,3 +38,25 @@ button {
 .safe-bottom {
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }
+
+.amount-fit-container {
+  container-type: inline-size;
+  min-width: 0;
+}
+
+.amount-fit {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: clamp(0.75rem, 12cqi, 3.75rem);
+  line-height: 1.15;
+}
+
+@media (max-width: 480px) {
+  input[inputmode="decimal"] {
+    min-width: 0;
+    font-size: clamp(1rem, 7vw, 2.125rem);
+  }
+}

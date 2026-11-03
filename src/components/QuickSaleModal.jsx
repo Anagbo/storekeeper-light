@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { Mic, MicOff, X } from "lucide-react";
 import { db } from "../db/db.js";
-import { addDebtToCustomer } from "../db/debts.js";
+import { getPreference } from "../db/preferences.js";
+import { recordCreditSale } from "../db/debts.js";
 import { runTransactionWithTimeout, SaveTimeoutError } from "../db/runTransactionWithTimeout.js";
 import { createId } from "../lib/ids.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { parseSpokenExpense, parseSpokenSale } from "../lib/saleParser.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
-import { normalizeCustomerName, upsertCustomer } from "../db/customers.js";
+import { normalizeCustomerName } from "../db/customers.js";
 import { isValidGhanaCardNumber, normalizeGhanaCardNumber } from "../lib/ghanaCardNumber.js";
 import { formatGhanaCard } from "../utils/formatters.js";
-import { getNextCycleDate, localDateString, PAYMENT_FREQUENCIES, prepareInstallmentPlan } from "../utils/installments.js";
+import { getCreditBalanceAfterSale, getMaximumInstallmentAmountPesewas, getNextCycleDate, localDateString, PAYMENT_FREQUENCIES, prepareInstallmentPlan } from "../utils/installments.js";
 import { playErrorChime, playExpenseChime, playSuccessChime, speakConfirmation } from "../utils/audioFeedback.js";
 import PaymentMethodToggle from "./PaymentMethodToggle.jsx";
 
@@ -49,6 +50,36 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
   const [error, setError] = useState("");
   const recognitionRef = useRef(null);
   const submitLock = useRef(false);
+  const saleAmountPesewas = toPesewas(price) || 0;
+  const existingDebtPesewas = selectedCustomer?.totalDebtPesewas ?? 0;
+  const maximumInstallmentPesewas = saleAmountPesewas > 0
+    ? getMaximumInstallmentAmountPesewas(
+      existingDebtPesewas,
+      saleAmountPesewas,
+      installmentStartMode === "today"
+    )
+    : 0;
+
+  useEffect(() => {
+    let active = true;
+    getPreference("voiceInputLanguage", "en-GB")
+      .then((language) => {
+        if (active && ["en-GB", "en-GH", "en-US"].includes(language)) {
+          setSpeechLanguage(language);
+        }
+      })
+      .catch((preferenceError) => {
+        console.error("Could not load the saved voice input language.", preferenceError);
+      });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    const enteredAmountPesewas = toPesewas(installmentAmount);
+    if (Number.isSafeInteger(enteredAmountPesewas) && enteredAmountPesewas > maximumInstallmentPesewas) {
+      setInstallmentAmount((maximumInstallmentPesewas / 100).toFixed(2));
+    }
+  }, [installmentAmount, maximumInstallmentPesewas]);
 
   useEffect(() => {
     const query = normalizeCustomerName(customerName);
@@ -270,11 +301,12 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
       if (type === "sale" && paymentType === "credit" && isInstallmentPlan) {
         try {
           const preparedPlan = prepareInstallmentPlan({
-            amountPesewas,
+            amountPesewas: getCreditBalanceAfterSale(existingDebtPesewas, amountPesewas),
             installmentAmountPesewas: toPesewas(installmentAmount),
             frequency: installmentFrequency,
             nextDueDate: installmentStartMode === "today" ? localDateString() : nextDueDate,
-            startToday: installmentStartMode === "today"
+            startToday: installmentStartMode === "today",
+            initialPaymentLimitPesewas: amountPesewas
           });
           installmentPlan = preparedPlan.plan;
           if (installmentStartMode === "today" && !installmentPlan.nextDueDate) {
@@ -290,93 +322,58 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
           return;
         }
       }
-      const remainingDebtPesewas = amountPesewas - initialPaymentPesewas;
-
       const now = Date.now();
-      const transaction = {
-        id: createId(),
-        type,
-        amountPesewas,
-        total_amount: amountPesewas,
-        payment_method: initialPaymentPesewas > 0
-          ? installmentPaymentMethod
-          : type === "sale" && paymentType !== "credit" ? paymentType : null,
-        ...(initialPaymentPesewas > 0 && { installmentPaymentPesewas: initialPaymentPesewas }),
-        customer_name: type === "sale" && paymentType === "credit" ? customerName.trim() : "",
-        customer_phone: type === "sale" && paymentType === "credit" ? phone.trim() : "",
-        ghanaCardNumber: type === "sale" && paymentType === "credit" ? normalizeGhanaCardNumber(ghanaCardNumber) : "",
-        items_json: JSON.stringify(type === "sale" ? [{
-          name: itemDescription.trim(),
-          quantity: parsedQuantity,
-          total_amount: amountPesewas
-        }] : []),
-        note: type === "sale"
-          ? `${itemDescription.trim()}${customerName.trim() ? ` · ${customerName.trim()}` : ""}${note.trim() ? ` · ${note.trim()}` : ""}`
-          : note.trim(),
-        ...(type === "sale" && {
-          customerName: paymentType === "credit" ? customerName.trim() : "",
-          phone: paymentType === "credit" ? phone.trim() : "",
-          ghanaCardNumber: paymentType === "credit" ? normalizeGhanaCardNumber(ghanaCardNumber) : "",
+      let transaction = null;
+      if (type === "sale" && paymentType === "credit") {
+        transaction = await recordCreditSale({
+          amountPesewas,
+          name: customerName,
+          phone,
+          ghanaCardNumber: normalizeGhanaCardNumber(ghanaCardNumber),
+          installmentPlan,
+          initialPaymentPesewas,
+          paymentMethod: installmentPaymentMethod,
+          note: itemDescription.trim(),
           itemDescription: itemDescription.trim(),
           quantity: parsedQuantity,
-          pricePesewas: amountPesewas,
-          paymentType
-        }),
-        ...(type === "sale" && paymentType === "credit" && {
-          creditExtendedPesewas: remainingDebtPesewas
-        }),
-        createdAt: now,
-        timestamp: now,
-        updatedAt: now,
-        synced: false,
-        syncStatus: "pending"
-      };
-      if (type === "sale" && paymentType === "credit") {
-        await runTransactionWithTimeout(db, [db.transactions, db.debts, db.customers, db.payments], async () => {
-          let debtResult = null;
-          if (remainingDebtPesewas > 0 || (initialPaymentPesewas > 0 && installmentPlan)) {
-            debtResult = await addDebtToCustomer({
-              name: customerName,
-              phone,
-              ghanaCardNumber: normalizeGhanaCardNumber(ghanaCardNumber),
-              amountPesewas: remainingDebtPesewas,
-              note: itemDescription.trim(),
-              installmentPlan,
-              transactionId: transaction.id,
-              now
-            });
-          }
-          transaction.type = debtResult?.isAddon
-            ? "installment_addon"
-            : initialPaymentPesewas > 0 ? "installment_sale" : type;
-          if (debtResult?.isAddon) {
-            transaction.creditExtendedPesewas = remainingDebtPesewas;
-            transaction.addonAmountPesewas = amountPesewas;
-          }
-          await db.transactions.add(transaction);
-          if (initialPaymentPesewas > 0) {
-            await db.payments.add({
-              id: createId(),
-              debtId: debtResult?.id ?? null,
-              amountPesewas: initialPaymentPesewas,
-              paymentMethod: installmentPaymentMethod,
-              customer_name: customerName.trim(),
-              createdAt: now,
-              updatedAt: now
-            });
-          }
-          await upsertCustomer({
-            name: customerName,
-            phone,
-            ghanaCardNumber: normalizeGhanaCardNumber(ghanaCardNumber),
-            debtDeltaPesewas: remainingDebtPesewas,
-            now
-          });
+          transactionNote: `${itemDescription.trim()} · ${customerName.trim()}${note.trim() ? ` · ${note.trim()}` : ""}`,
+          now
         });
       } else {
+        transaction = {
+          id: createId(),
+          type,
+          amountPesewas,
+          total_amount: amountPesewas,
+          payment_method: type === "sale" ? paymentType : null,
+          customer_name: "",
+          customer_phone: "",
+          items_json: JSON.stringify(type === "sale" ? [{
+            name: itemDescription.trim(),
+            quantity: parsedQuantity,
+            total_amount: amountPesewas
+          }] : []),
+          note: type === "sale"
+            ? `${itemDescription.trim()}${note.trim() ? ` · ${note.trim()}` : ""}`
+            : note.trim(),
+          ...(type === "sale" && {
+            customerName: "",
+            phone: "",
+            ghanaCardNumber: "",
+            itemDescription: itemDescription.trim(),
+            quantity: parsedQuantity,
+            pricePesewas: amountPesewas,
+            paymentType
+          }),
+          createdAt: now,
+          timestamp: now,
+          updatedAt: now,
+          synced: false,
+          syncStatus: "pending"
+        };
         await runTransactionWithTimeout(db, [db.transactions], () => db.transactions.add(transaction));
       }
-      console.log("Saved offline successfully:", transaction);
+      console.log("Saved offline successfully.", transaction);
       void requestBackgroundSync();
       if (type === "expense") {
         playExpenseChime();
@@ -405,9 +402,13 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
     } catch (saveError) {
       console.error("Offline save error:", saveError);
       playErrorChime();
-      setError(saveError instanceof SaveTimeoutError
-        ? "Saving took too long and was canceled. Check available storage, then try again."
-        : "This entry could not be saved. Please check available storage and try again.");
+      if (saveError instanceof SaveTimeoutError) {
+        setError("The save did not finish within 15 seconds and was canceled. This does not indicate that storage is full. Close other StoreKeeper tabs and try again.");
+      } else if (saveError?.name === "QuotaExceededError") {
+        setError("The browser reports that its storage quota is full. Free up device storage, then try again.");
+      } else {
+        setError("This entry could not be saved. No changes were committed. Try again; if it happens again, contact support.");
+      }
     } finally {
       submitLock.current = false;
       setIsSubmitting(false);
@@ -584,7 +585,13 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
                     <fieldset disabled={!isInstallmentPlan} className="min-h-0 overflow-hidden">
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <label className="text-sm font-semibold">Installment amount (GHS)
-                        <input type="number" inputMode="decimal" min="0.01" step="0.01" required value={installmentAmount} onChange={(event) => setInstallmentAmount(event.target.value)} placeholder="0.00" className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 px-3 text-base font-normal outline-none focus:border-leaf" />
+                        <input type="number" inputMode="decimal" min="0.01" max={(maximumInstallmentPesewas / 100).toFixed(2)} step="0.01" required value={installmentAmount} onChange={(event) => {
+                          const nextAmount = toPesewas(event.target.value);
+                          setInstallmentAmount(Number.isSafeInteger(nextAmount) && nextAmount > maximumInstallmentPesewas
+                            ? (maximumInstallmentPesewas / 100).toFixed(2)
+                            : event.target.value);
+                        }} placeholder="0.00" className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 px-3 text-base font-normal outline-none focus:border-leaf" />
+                        <span className="mt-1 block text-xs font-normal text-slate-500">Maximum: {formatGhs(maximumInstallmentPesewas)}</span>
                       </label>
                       <label className="text-sm font-semibold">Frequency
                         <select

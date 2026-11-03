@@ -10,7 +10,8 @@ export default function BackupModal({
   onRestored,
   onManageSubscription,
   subscriptionExpiry,
-  subscriptionNotice
+  subscriptionNotice,
+  showSubscription = FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE
 }) {
   const fileInput = useRef(null);
   const [busy, setBusy] = useState(false);
@@ -102,7 +103,7 @@ export default function BackupModal({
           <input ref={fileInput} type="file" accept="application/json,.json" onChange={(event) => void restoreBackup(event)} className="hidden" />
         </div>
 
-        {FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE && (
+        {showSubscription && FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE && (
           <section className="mt-5 rounded-xl border border-slate-200 p-4" aria-label="Subscription">
             <h3 className="text-sm font-bold text-slate-900">Subscription</h3>
             <p className="mt-1 text-xs text-slate-600">

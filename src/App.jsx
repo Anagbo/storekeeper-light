@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Activity, Check, Cloud, CloudOff, Pencil, RefreshCw, Settings, WalletCards, Wifi, WifiOff, X } from "lucide-react";
 import { db } from "./db/db.js";
@@ -9,6 +9,10 @@ import QuickSaleModal from "./components/QuickSaleModal.jsx";
 import SubscriptionModal from "./components/SubscriptionModal.jsx";
 import { FEATURE_FLAGS, FEATURE_SUBSCRIPTION_LOCKOUT } from "./config/features.js";
 import { useSync } from "./hooks/useSync.js";
+import { posText as t } from "./pos/i18n.js";
+import "./pos/theme.css";
+
+const PosApp = lazy(() => import("./pos/PosApp.jsx"));
 
 function getSavedShopName() {
   try {
@@ -36,7 +40,7 @@ function SyncStatus({ sync }) {
   );
 }
 
-export default function App() {
+function LegacyApp() {
   const [page, setPage] = useState("home");
   const [quickEntryOpen, setQuickEntryOpen] = useState(false);
   const [entryType, setEntryType] = useState("sale");
@@ -253,5 +257,14 @@ export default function App() {
         />
       )}
     </div>
+  );
+}
+
+export default function App() {
+  if (!FEATURE_FLAGS.SHOW_POS_SCREENS) return <LegacyApp />;
+  return (
+    <Suspense fallback={<main role="status" className="p-6 text-base font-semibold">{t("home.loading")}</main>}>
+      <PosApp />
+    </Suspense>
   );
 }
