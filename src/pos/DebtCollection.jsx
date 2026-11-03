@@ -10,19 +10,17 @@ import { loadCustomerHistory } from "../utils/loadCustomerDebtHistory.js";
 import { getOutstandingDebtPesewas } from "../utils/financials.js";
 import { generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { buildCollectionReceiptLink, buildCollectionReceiptMessage } from "./collectionReceipt.js";
-import {
-  getDefaultCollectionSplit,
-  normalizeCollectionAmountInput
-} from "./collectionSplit.js";
+import { normalizeCollectionAmountInput } from "./collectionSplit.js";
 import { getDebtDueLabel } from "./money.js";
 import { posText as t } from "./i18n.js";
 import { PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag } from "./PosComponents.jsx";
 import CustomerContactEditor from "./CustomerContactEditor.jsx";
+import { SplitTenderFields } from "./PaymentSplit.jsx";
+import { areSplitTenderAmountsComplete } from "./splitTender.js";
 
 const PAYMENT_METHODS = [
   { value: "cash", label: "collect.cash", icon: Banknote },
-  { value: "momo", label: "collect.momo", icon: Smartphone },
-  { value: "both", label: "collect.both", icon: null }
+  { value: "momo", label: "collect.momo", icon: Smartphone }
 ];
 
 function groupCollectionHistory(events) {
@@ -85,31 +83,21 @@ function useCollectionDebt(debtId, customerName) {
   }, [debtId, customerName], undefined);
 }
 
-function PaymentMethodPicker({ value, onChange, includeBoth = false }) {
-  const methods = includeBoth ? PAYMENT_METHODS : PAYMENT_METHODS.filter(({ value: method }) => method !== "both");
+function PaymentMethodPicker({ value, onChange }) {
   return (
     <fieldset>
       <legend className="mb-2 text-lg font-extrabold">{t("collect.howPaying")}</legend>
-      <div className={`grid ${includeBoth ? "grid-cols-3" : "grid-cols-2"} gap-2`}>
-        {methods.map(({ value: method, label, icon: Icon }) => (
+      <div className="grid grid-cols-2 gap-2">
+        {PAYMENT_METHODS.map(({ value: method, label, icon: Icon }) => (
           <button
             key={method}
             type="button"
             aria-pressed={value === method}
             onClick={() => onChange(method)}
-            aria-label={method === "both" ? t(label) : undefined}
             className={`flex min-h-14 min-w-0 flex-row items-center justify-center gap-1 rounded-2xl border-[3px] px-1 text-sm font-extrabold sm:min-h-16 sm:gap-1.5 sm:px-2 sm:text-base ${value === method ? "border-emerald-900 bg-green-200 text-slate-950" : "border-slate-500 bg-white text-slate-950"}`}
           >
-            {Icon ? (
-              <Icon size={20} className="shrink-0 sm:h-[22px] sm:w-[22px]" aria-hidden="true" />
-            ) : (
-              <span className="flex shrink-0 items-center gap-0.5 sm:gap-1" aria-hidden="true">
-                <Banknote size={18} />
-                <Plus size={11} strokeWidth={3} />
-                <Smartphone size={18} />
-              </span>
-            )}
-            {method !== "both" && <span className="min-w-0 truncate">{t(label)}</span>}
+            <Icon size={20} className="shrink-0 sm:h-[22px] sm:w-[22px]" aria-hidden="true" />
+            <span className="min-w-0 truncate">{t(label)}</span>
           </button>
         ))}
       </div>
@@ -248,57 +236,51 @@ function appendAmountDigit(current, digit) {
   return fraction?.length > 2 || whole.length > 8 ? current : next;
 }
 
-function CollectionAmountEntry({ value, amountPesewas, onChange, disabled, label }) {
-  return (
-    <label className="block rounded-xl border-2 border-slate-500 bg-white px-3 py-2">
-      <span className="block text-sm font-bold text-slate-800">{label}</span>
-      <span className="flex items-center justify-end gap-2">
-        <span className="text-lg font-bold text-slate-700">GHS</span>
-        <input
-          type="text"
-          inputMode="decimal"
-          autoComplete="off"
-          aria-label={label}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          disabled={disabled}
-          placeholder="0.00"
-          className="w-full min-w-0 bg-transparent text-right text-2xl font-extrabold outline-none placeholder:text-slate-400 disabled:opacity-60"
-        />
-      </span>
-      <output className="sr-only">{formatGhs(amountPesewas ?? 0)}</output>
-    </label>
-  );
+export function CollectPayPart(props) {
+  return <CollectPayPartScreen {...props} />;
 }
 
-export function CollectPayPart({ params, onBack, onUpdateParams, onRecordCollection }) {
+export function CollectPartByPart(props) {
+  return <CollectPayPartScreen {...props} splitOnly />;
+}
+
+function CollectPayPartScreen({ params, onBack, onUpdateParams, onRecordCollection, splitOnly = false }) {
   const debt = useCollectionDebt(params?.debtId, params?.customerName);
   const [amount, setAmount] = useState(() => params?.amount ?? "");
-  const [paymentMethod, setPaymentMethod] = useState(() => params?.paymentMethod ?? "cash");
+  const [paymentMethod, setPaymentMethod] = useState(() => (
+    splitOnly ? "both" : ["cash", "momo"].includes(params?.paymentMethod) ? params.paymentMethod : "cash"
+  ));
   const [cashAmount, setCashAmount] = useState(() => params?.cashAmount ?? "");
+  const [momoAmount, setMomoAmount] = useState(() => params?.momoAmount ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [splitAttempted, setSplitAttempted] = useState(false);
   const amountPesewas = toPesewas(amount);
   const canReceive = debt && Number.isSafeInteger(amountPesewas) && amountPesewas > 0 && amountPesewas <= debt.amountPesewas;
   const cashAmountPesewas = toPesewas(cashAmount);
-  const splitParts = paymentMethod === "both" && Number.isSafeInteger(amountPesewas) && amountPesewas > 1
-    ? getDefaultCollectionSplit(amountPesewas, cashAmountPesewas)
+  const momoAmountPesewas = toPesewas(momoAmount);
+  const splitComplete = areSplitTenderAmountsComplete(amountPesewas, cashAmountPesewas, momoAmountPesewas, true);
+  const splitParts = splitComplete
+    ? [
+      { paymentMethod: "cash", amountPesewas: cashAmountPesewas },
+      { paymentMethod: "momo", amountPesewas: momoAmountPesewas }
+    ]
     : [];
-  const splitComplete = splitParts.length === 2;
-  const momoAmountPesewas = Math.max(0, (amountPesewas ?? 0) - (cashAmountPesewas ?? 0));
 
   function getSplitError() {
-    if (Number.isSafeInteger(cashAmountPesewas) && cashAmountPesewas > 0 && cashAmountPesewas < amountPesewas) return "";
-    if (cashAmountPesewas >= amountPesewas) {
-      return t("collect.splitNeedsMomo", { amount: formatGhs(amountPesewas) });
+    if (!Number.isSafeInteger(cashAmountPesewas) || cashAmountPesewas <= 0 ||
+      !Number.isSafeInteger(momoAmountPesewas) || momoAmountPesewas <= 0) {
+      return t("collect.splitNeedsBoth");
     }
-    return t("collect.splitCashRequired");
+    const paidPesewas = cashAmountPesewas + momoAmountPesewas;
+    if (paidPesewas > amountPesewas) return t("collect.splitOverAmount", { amount: formatGhs(amountPesewas) });
+    if (paidPesewas < amountPesewas) return t("collect.splitMustMatch", { amount: formatGhs(amountPesewas) });
+    return "";
   }
 
   async function receivePayment() {
     if (busy || !canReceive) return;
-    if (paymentMethod === "both" && !splitComplete) {
+    if (splitOnly && !splitComplete) {
       setSplitAttempted(true);
       return;
     }
@@ -307,7 +289,7 @@ export function CollectPayPart({ params, onBack, onUpdateParams, onRecordCollect
     try {
       await onRecordCollection(
         debt.id,
-        paymentMethod === "both" ? splitParts : [{ paymentMethod, amountPesewas }]
+        splitOnly ? splitParts : [{ paymentMethod, amountPesewas }]
       );
     } catch (recordError) {
       console.error("Could not record the partial debt collection.", recordError);
@@ -323,57 +305,75 @@ export function CollectPayPart({ params, onBack, onUpdateParams, onRecordCollect
         <>
           <div className="flex items-center gap-2">
             <button type="button" onClick={onBack} className="min-h-[52px] shrink-0 rounded-[14px] border-2 border-slate-900 bg-white px-4 text-lg font-extrabold">‹ {t("collect.back")}</button>
-            <h1 className="text-2xl font-extrabold">{t("collect.collectFrom", { name: debt.customerName })}</h1>
+            <h1 className="text-2xl font-extrabold">{t(splitOnly ? "collect.splitTitle" : "collect.payPartTitle")}</h1>
           </div>
-          <section className="rounded-[20px] border-2 border-slate-500 bg-white px-4 py-2 text-right">
-            <p className="text-[17px] font-bold text-slate-800">{t("collect.namePays", { name: debt.customerName })}</p>
-            <div className="flex items-center justify-end gap-2">
-              <span className="text-lg font-bold text-slate-700">GHS</span>
-              <input
-                type="text"
-                inputMode="decimal"
-                autoComplete="off"
-                aria-label={t("collect.amountToCollect")}
-                value={amount}
-                onChange={(event) => {
-                  const next = normalizeCollectionAmountInput(event.target.value, amount);
-                  setAmount(next);
-                  onUpdateParams({ amount: next });
-                  setError("");
-                  setSplitAttempted(false);
-                }}
-                disabled={busy}
-                placeholder="0.00"
-                className="w-full min-w-0 bg-transparent text-right text-[46px] font-extrabold outline-none placeholder:text-slate-400 disabled:opacity-60"
-              />
-            </div>
-            <p className="text-lg font-bold text-rose-900">{t("collect.leftToPay", { amount: formatGhs(Math.max(0, debt.amountPesewas - (amountPesewas ?? 0))) })}</p>
-          </section>
-          {amountPesewas > debt.amountPesewas && <CollectionError>{t("collect.amountTooHigh")}</CollectionError>}
-          <DigitKeypad onDigit={(digit) => {
-            const next = appendAmountDigit(amount, digit);
-            setAmount(next);
-            onUpdateParams({ amount: next });
-            setError("");
-            setSplitAttempted(false);
-          }} disabled={busy} />
-          <PaymentMethodPicker value={paymentMethod} includeBoth onChange={(method) => {
-            setPaymentMethod(method);
-            onUpdateParams({ paymentMethod: method });
-            setError("");
-            setSplitAttempted(false);
-          }} />
-          {paymentMethod === "both" && (
+          <p className="text-lg font-bold">{t("collect.collectFrom", { name: debt.customerName })}</p>
+          {splitOnly ? (
+            <section className="rounded-[20px] border-2 border-slate-500 bg-white px-4 py-3">
+              <p className="text-base font-bold text-slate-800">{t("collect.amountToCollect")}</p>
+              <SheetAmount amountPesewas={amountPesewas} />
+              <p className="mt-2 text-base font-bold text-rose-900">
+                {t("collect.splitRemaining", { amount: formatGhs(Math.max(0, amountPesewas - (cashAmountPesewas || 0) - (momoAmountPesewas || 0))) })}
+              </p>
+            </section>
+          ) : (
+            <>
+              <section className="rounded-[20px] border-2 border-slate-500 bg-white px-4 py-2 text-right">
+                <p className="text-[17px] font-bold text-slate-800">{t("collect.namePays", { name: debt.customerName })}</p>
+                <div className="flex items-center justify-end gap-2">
+                  <span className="text-lg font-bold text-slate-700">GHS</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    aria-label={t("collect.amountToCollect")}
+                    value={amount}
+                    onChange={(event) => {
+                      const next = normalizeCollectionAmountInput(event.target.value, amount);
+                      setAmount(next);
+                      onUpdateParams({ amount: next });
+                      setError("");
+                      setSplitAttempted(false);
+                    }}
+                    disabled={busy}
+                    placeholder="0.00"
+                    className="w-full min-w-0 bg-transparent text-right text-[46px] font-extrabold outline-none placeholder:text-slate-400 disabled:opacity-60"
+                  />
+                </div>
+                <p className="text-lg font-bold text-rose-900">{t("collect.leftToPay", { amount: formatGhs(Math.max(0, debt.amountPesewas - (amountPesewas ?? 0))) })}</p>
+              </section>
+              {amountPesewas > debt.amountPesewas && <CollectionError>{t("collect.amountTooHigh")}</CollectionError>}
+              <DigitKeypad onDigit={(digit) => {
+                const next = appendAmountDigit(amount, digit);
+                setAmount(next);
+                onUpdateParams({ amount: next });
+                setError("");
+                setSplitAttempted(false);
+              }} disabled={busy} />
+              <PaymentMethodPicker value={paymentMethod} onChange={(method) => {
+                setPaymentMethod(method);
+                onUpdateParams({ paymentMethod: method });
+                setError("");
+              }} />
+            </>
+          )}
+          {splitOnly && (
             <section className="space-y-2">
-              <CollectionAmountEntry
-                value={cashAmount}
-                amountPesewas={cashAmountPesewas}
-                label={t("collect.cashAmount")}
+              <SplitTenderFields
+                cash={cashAmount}
+                momo={momoAmount}
                 disabled={busy}
-                onChange={(value) => {
+                onCashChange={(value) => {
                   const next = normalizeCollectionAmountInput(value, cashAmount);
                   setCashAmount(next);
                   onUpdateParams({ cashAmount: next });
+                  setSplitAttempted(true);
+                  setError("");
+                }}
+                onMomoChange={(value) => {
+                  const next = normalizeCollectionAmountInput(value, momoAmount);
+                  setMomoAmount(next);
+                  onUpdateParams({ momoAmount: next });
                   setSplitAttempted(true);
                   setError("");
                 }}
@@ -381,14 +381,23 @@ export function CollectPayPart({ params, onBack, onUpdateParams, onRecordCollect
               <p className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-800" aria-live="polite">
                 {t("collect.paymentSplit", {
                   cash: formatGhs(cashAmountPesewas ?? 0),
-                  momo: formatGhs(momoAmountPesewas)
+                  momo: formatGhs(momoAmountPesewas ?? 0)
                 })}
               </p>
               {splitAttempted && !splitComplete && <CollectionError>{getSplitError()}</CollectionError>}
             </section>
           )}
           <CollectionError>{error}</CollectionError>
-          <PosPrimaryButton type="button" disabled={!canReceive || busy} onClick={() => void receivePayment()} className="h-[68px] min-h-0 rounded-[20px] text-2xl">
+          {!splitOnly && (
+            <PosSecondaryButton
+              type="button"
+              disabled={!canReceive || busy}
+              onClick={() => onNavigate("CollectPartByPart", { ...params, amount, paymentMethod: "both", cashAmount: "", momoAmount: "" })}
+            >
+              {t("collect.payPartByPart")}
+            </PosSecondaryButton>
+          )}
+          <PosPrimaryButton type="button" disabled={!canReceive || busy || (splitOnly && !splitComplete)} onClick={() => void receivePayment()} className="h-[68px] min-h-0 rounded-[20px] text-2xl">
             {busy ? t("collect.saving") : <><Check size={28} aria-hidden="true" /> {t("collect.received")}</>}
           </PosPrimaryButton>
         </>

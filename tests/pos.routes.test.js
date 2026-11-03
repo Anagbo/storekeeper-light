@@ -27,7 +27,7 @@ test("every declared route is reachable from Home or first-run setup", () => {
   assert.deepEqual([...knownRoutes].filter((route) => !reachable.has(route)), []);
   const implementedRoutes = new Set([
     "Home", "Menu", "Sell", "MyMoney", "TodaysTransactions",
-    "CollectPayment", "CollectPayPart", "PaymentReceived", "DebtorDetail",
+    "CollectPayment", "CollectPayPart", "CollectPartByPart", "PaymentReceived", "DebtorDetail",
     "WhoOwesYou", "NewPerson", "WhenWillTheyPay", "ALittleAtATime", "CreditSaved", "SellWithItems", "SaleRecorded",
     "MyItems", "NewItem", "EditItem", "DeleteItem", "YourStarterList",
     "HowDoYouWantToSell", "WhatDoYouSell", "HowMuchIsItem", "HowManyItem",
@@ -36,8 +36,9 @@ test("every declared route is reachable from Home or first-run setup", () => {
   for (const route of knownRoutes) {
     if (!implementedRoutes.has(route)) assert.ok(posText(`planned.titles.${route}`));
   }
-  assert.equal(knownRoutes.has("CollectPartByPart"), false);
-  assert.equal(POS_LINKS.some((link) => link.to === "CollectPartByPart"), false);
+  assert.ok(POS_LINKS.some((link) => link.from === "CollectPayPart" && link.action === "payPartByPart" && link.to === "CollectPartByPart"));
+  assert.ok(POS_LINKS.some((link) => link.from === "CollectPartByPart" && link.action === "back" && link.to === "CollectPayPart"));
+  assert.ok(POS_LINKS.some((link) => link.from === "CollectPartByPart" && link.action === "received" && link.to === "PaymentReceived"));
 });
 
 test("implemented setup, split payment and settings screens have complete copy", () => {
@@ -55,7 +56,7 @@ test("implemented setup, split payment and settings screens have complete copy",
     "setup.priceTitle", "setup.quantityTitle", "setup.quantityLess",
     "setup.quantityMore", "setup.addToSale", "split.title", "split.saleTotal",
     "split.paidNow", "split.amountTooHigh", "split.remainingCredit",
-    "split.recordSale", "split.recordRemainingAsCredit", "split.saveFailed",
+    "split.done", "split.owe", "split.saveFailed",
     "language.title", "language.appLanguage", "language.englishOnly",
     "language.english", "language.voiceLanguage", "language.loadFailed",
     "language.saveFailed", "language.saved", "settings.title", "settings.shopName",
@@ -68,13 +69,17 @@ test("implemented setup, split payment and settings screens have complete copy",
   assert.equal(posText("split.remainingCredit", { amount: "12.00" }), "Still to pay: 12.00");
 });
 
-test("partial debt collection supports split tender on its existing screen", () => {
+test("partial debt collection routes split tender through its own screen", () => {
   assert.ok(POS_ROUTES.CollectPayPart);
-  assert.equal(posText("collect.both"), "Both");
-  assert.equal(posText("collect.cashAmount"), "Cash amount");
-  assert.equal(posText("collect.splitNeedsMomo", { amount: "50.00" }), "Cash must be less than GHS 50.00.");
+  assert.ok(POS_ROUTES.CollectPartByPart);
+  assert.ok(POS_LINKS.some((link) => link.from === "PayPartByPart" && link.action === "owe" && link.to === "WhoOwesYou"));
+  assert.ok(POS_LINKS.some((link) => link.from === "PayPartByPart" && link.action === "done" && link.to === "SaleRecorded"));
+  assert.equal(posText("collect.payPartByPart"), "Pay part by part");
+  assert.equal(posText("collect.splitTitle"), "Collect: part by part");
+  assert.equal(posText("collect.splitNeedsBoth"), "Enter an amount for Cash and MoMo.");
+  assert.equal(posText("collect.splitMustMatch", { amount: "50.00" }), "Cash and MoMo must add up to 50.00.");
   assert.equal(posText("collect.paymentSplit", { cash: "20.00", momo: "30.00" }), "Cash 20.00 | MoMo 30.00");
-  assert.equal(POS_LINKS.some((link) => link.from === "CollectPayPart" && link.action === "split"), false);
+  assert.equal(POS_LINKS.some((link) => link.from === "CollectPayPart" && link.action === "payPartByPart"), true);
 });
 
 test("item management routes connect from Menu through save, delete and starter-list flows", () => {

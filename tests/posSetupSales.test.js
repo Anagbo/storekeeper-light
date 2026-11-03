@@ -36,6 +36,9 @@ test("first-run setup is offered only for a new shop that has not completed setu
   await db.settings.clear();
   await db.products.add({ name: "Rice", active: true });
   assert.equal(await shouldShowPosSetup(), false);
+  await db.products.clear();
+  await db.transactions.add({ id: "existing-sale", type: "sale" });
+  assert.equal(await shouldShowPosSetup(), false);
   assert.equal(await getPreference("missing", "fallback"), "fallback");
 });
 

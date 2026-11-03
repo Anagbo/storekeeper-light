@@ -15,7 +15,7 @@ Status audit: 3 Nov 2026. This records the working tree at the time of review, i
 | # | Screen | Status | Where / current state |
 |---|---|---|---|
 | 15 | Sell | done | `src/pos/Sell.jsx` |
-| 16 | Pay part by part | partial | `src/pos/PaymentSplit.jsx`; split cash/MoMo and credit are handled, but the flow is not an exact match for the brief's separate Owe action. |
+| 16 | Pay part by part | done | `src/pos/PaymentSplit.jsx`; shared Cash/MoMo fields, Done only when paid parts equal the total, and Owe routes the remainder to the credit flow. |
 | 17 | Who owes you? | done | `src/pos/CreditScreens.jsx` |
 | 18 | When will they pay? | done | `src/pos/CreditScreens.jsx` |
 | 19 | A little at a time | done | `src/pos/CreditScreens.jsx` |
@@ -26,7 +26,7 @@ Status audit: 3 Nov 2026. This records the working tree at the time of review, i
 | 24 | Today’s transactions | done | `src/pos/TodaysTransactions.jsx` |
 | 25 | Collect payment | done | `src/pos/DebtCollection.jsx` (`CollectPayment`) |
 | 26 | Collect: pay part | done | `src/pos/DebtCollection.jsx` (`CollectPayPart`) |
-| 27 | Collect: part by part | partial | Split collection state exists within `CollectPayPart`, but screen 27 has no distinct route or separate screen. |
+| 27 | Collect: part by part | done | `src/pos/DebtCollection.jsx` (`CollectPartByPart`); its own route reuses the Cash/MoMo split fields shared with screen 16 and requires exact reconciliation. |
 | 28 | Payment received | done | `src/pos/DebtCollection.jsx` (`PaymentReceived`) |
 | 29 | Debtor detail (on-time) | done | `src/pos/DebtCollection.jsx` (`DebtorDetail`), data-derived state |
 | 30 | Sale recorded | done | `src/pos/SaleRecorded.jsx` |
@@ -50,7 +50,7 @@ Status audit: 3 Nov 2026. This records the working tree at the time of review, i
 
 ## Screens next
 
-First-time setup flow requested for manual testing: **21 → 35 → 36**. The mode is persisted; category selection filters the starter items, and setup remains limited to an empty new shop. Verify the complete flow, Back/Skip/Continue paths, and persisted setup completion on device. The collection split route and screen 16 behavior are the remaining implementation tasks before manual testing.
+Ready for manual testing: first-time setup **21 → 35 → 36**, plus the updated sale split and collection split flows. The mode is persisted; category selection filters the starter items, and setup remains limited to an empty new shop. Verify setup Back/Skip/Continue paths and persisted setup completion on device.
 
 ## Database migrations and consistency
 
@@ -75,7 +75,7 @@ There is no general invariant checker/report that runs after migrations and sync
 
 ## Tests
 
-At audit time, `npm.cmd test` passed: **181 tests, 0 failures**. Test files are in `tests/`; coverage includes money/financial summaries, sales and credit, collections and undo, installments, suppliers/expenses, item validation and sale lines, customer/Ghana Card/contact/history, receipts and WhatsApp reminders, backup/restore, POS route-graph checks, setup preference, transaction feed, audio feedback, and subscription endpoints.
+After the setup and split-payment changes, `npm.cmd test` passed: **189 tests, 0 failures**. Test files are in `tests/`; coverage includes money/financial summaries, sales and credit, collections and undo, installments, suppliers/expenses, item validation and sale lines, customer/Ghana Card/contact/history, receipts and WhatsApp reminders, backup/restore, POS route-graph checks, sell-mode persistence, category-based starter items, transaction feed, audio feedback, and subscription endpoints.
 
 Not covered: component/render tests for every screen, full clickable route-walk tests, end-to-end journeys A–K, browser/offline acceptance tests, migration-upgrade tests, real-data migration rehearsal, or a full consistency report. The POS route test checks declared graph reachability and selected source strings, not every UI control.
 
@@ -85,7 +85,6 @@ Run tests with `npm.cmd test` in Windows PowerShell (or `npm test` in a shell wh
 
 - `src/config/features.js` has one POS flag (`VITE_ENABLE_POS_SCREENS`) plus the subscription flag; it does not gate individual screen groups as requested in the rollout section.
 - Setup entry checks that the shop has no products, transactions, debts, customers, or suppliers, as well as no completed-setup preference; this is intentionally stricter than checking only sales and products to protect existing merchants with debt/contact data.
-- Screen 27 still has no independent route, despite the brief's 26 → 27 link.
 - Profit estimate/item-cost views, settings switches, and item cost-price fields are absent. `MyMoney` currently says the spending breakdown is unavailable.
 - Receipt generation is wired in the current POS even though the Decisions section says to present the proposed receipt text for approval before wiring it. Confirm whether the proposed templates are approved.
 - Sync/server migration remains the separate, undecided phase described in the brief. No live server migration or real merchant-data rehearsal is evidenced here.

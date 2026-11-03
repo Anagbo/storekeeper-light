@@ -28,6 +28,7 @@ import { LanguageSettings, SettingsProfitTools } from "./SettingsScreens.jsx";
 
 const CollectPayment = lazy(() => import("./DebtCollection.jsx").then((module) => ({ default: module.CollectPayment })));
 const CollectPayPart = lazy(() => import("./DebtCollection.jsx").then((module) => ({ default: module.CollectPayPart })));
+const CollectPartByPart = lazy(() => import("./DebtCollection.jsx").then((module) => ({ default: module.CollectPartByPart })));
 const DebtorDetail = lazy(() => import("./DebtCollection.jsx").then((module) => ({ default: module.DebtorDetail })));
 const PaymentReceived = lazy(() => import("./DebtCollection.jsx").then((module) => ({ default: module.PaymentReceived })));
 
@@ -236,6 +237,7 @@ export default function PosApp() {
   const isCollectSheet = route === POS_ROUTES.CollectPayment;
   const isFocusedCollectionScreen = [
     POS_ROUTES.CollectPayPart,
+    POS_ROUTES.CollectPartByPart,
     POS_ROUTES.PaymentReceived,
     POS_ROUTES.DebtorDetail
   ].includes(route);
@@ -301,6 +303,13 @@ export default function PosApp() {
     </>
   ) : route === POS_ROUTES.CollectPayPart ? (
     <CollectPayPart
+      params={routeState.params}
+      onBack={navigateBack}
+      onUpdateParams={updateCurrentParams}
+      onRecordCollection={saveDebtCollection}
+    />
+  ) : route === POS_ROUTES.CollectPartByPart ? (
+    <CollectPartByPart
       params={routeState.params}
       onBack={navigateBack}
       onUpdateParams={updateCurrentParams}
