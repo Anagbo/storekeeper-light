@@ -29,7 +29,7 @@ test("every declared route is reachable from Home or first-run setup", () => {
     "Home", "Menu", "Sell", "MyMoney", "TodaysTransactions",
     "CollectPayment", "CollectPayPart", "CollectPartByPart", "PaymentReceived", "DebtorDetail",
     "WhoOwesYou", "NewPerson", "WhenWillTheyPay", "ALittleAtATime", "CreditSaved", "SellWithItems", "SaleRecorded",
-    "MyItems", "NewItem", "EditItem", "DeleteItem", "YourStarterList",
+    "MyItems", "NewItem", "EditItem", "DeleteItem", "YourStarterList", "YourStarterListGrouped", "MoreCategories",
     "HowDoYouWantToSell", "WhatDoYouSell", "HowMuchIsItem", "HowManyItem",
     "PayPartByPart", "LanguageSettings", "SettingsProfitTools"
   ]);

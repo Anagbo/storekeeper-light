@@ -25,7 +25,11 @@ import {
   getPopularCategories,
   isSomethingElseOnly,
   mergeStarterItems,
+  groupCoreItemsByCategory,
+  searchStarterCategories,
   searchStarterItems,
+  shouldGroupStarterList,
+  STARTER_GROUP_THRESHOLD,
   STARTER_CATEGORIES,
   STARTER_ITEMS
 } from "../src/db/starterItems.js";
@@ -98,4 +102,31 @@ test("search covers every starter item, core and more", () => {
   const moreOnly = starterData.categories[0].more[0];
   assert.ok(searchStarterItems(moreOnly.toUpperCase()).some(({ name }) => name === moreOnly));
   assert.deepEqual(searchStarterItems("zzzz-not-an-item"), []);
+});
+
+test("several categories group at screen 52 only when the combined core list is over the threshold", () => {
+  assert.equal(STARTER_GROUP_THRESHOLD, 30);
+  assert.equal(shouldGroupStarterList(["provisions"]), false);
+  assert.equal(shouldGroupStarterList(["provisions", "food"]), false);
+  assert.equal(shouldGroupStarterList(["provisions", "food", "hair"]), true);
+  assert.equal(shouldGroupStarterList(["provisions", "other"]), false);
+  assert.equal(shouldGroupStarterList(["other"]), false);
+});
+
+test("grouped core list has one group per category and no duplicate items", () => {
+  const ids = ["provisions", "food", "hair"];
+  const groups = groupCoreItemsByCategory(ids);
+  assert.deepEqual(groups.map(({ category }) => category), ["Provisions shop", "Food and drinks", "Hair and beauty"]);
+  const names = groups.flatMap(({ items }) => items.map(({ name }) => name.toLowerCase()));
+  assert.equal(new Set(names).size, names.length);
+  assert.equal(names.length, mergeStarterItems(ids).core.length);
+});
+
+test("category search finds categories by name, including hardware splits", () => {
+  assert.deepEqual(searchStarterCategories("PLUMB").map(({ id }) => id), ["plumbing"]);
+  assert.deepEqual(searchStarterCategories("zzz"), []);
+  assert.deepEqual(searchStarterCategories(""), []);
+  const ids = starterData.categories.map(({ id }) => id);
+  for (const id of ["building", "plumbing", "paint", "tools"]) assert.ok(ids.includes(id));
+  assert.equal(starterData.categories.find(({ id }) => id === "electricals").group, "Phones and electronics");
 });

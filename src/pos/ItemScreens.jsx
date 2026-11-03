@@ -3,7 +3,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { ArrowLeft, Check, Plus, Search, Trash2 } from "lucide-react";
 import { db } from "../db/db.js";
 import { createProduct, normalizeProductInput, removeProduct, updateProduct, addStarterProducts } from "../db/products.js";
-import { getAllStarterItems, mergeStarterItems } from "../db/starterItems.js";
+import { getAllStarterItems, groupCoreItemsByCategory, mergeStarterItems } from "../db/starterItems.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { posText as t } from "./i18n.js";
@@ -177,7 +177,9 @@ function DeleteItem({ itemId, itemName, onBack, onReturnToItems, onDelete }) {
   );
 }
 
-function StarterList({ params, onBack, onAdd, onCompleteSetup }) {
+const GROUP_PREVIEW_COUNT = 3;
+
+function StarterList({ grouped = false, params, onBack, onAdd, onCompleteSetup }) {
   const result = useActiveProducts();
   const isSetup = params.setupFlow === true && params.starterCategories?.length > 0;
   const merged = useMemo(() => (isSetup
@@ -196,6 +198,9 @@ function StarterList({ params, onBack, onAdd, onCompleteSetup }) {
   const visibleCore = merged.core.filter(isAvailable).filter(matches);
   const hiddenMore = merged.more.filter(isAvailable);
   const visibleMore = (showMore ? hiddenMore : []).filter(matches);
+  const groupedCore = grouped
+    ? groupCoreItemsByCategory(params.starterCategories ?? []).map(({ category, items }) => ({ category, items: items.filter(isAvailable) })).filter(({ items }) => items.length)
+    : [];
   const selectedItems = availableItems.filter(({ name }) => selected.has(name.toLowerCase()));
   const selectedCount = selectedItems.length;
 
@@ -304,6 +309,7 @@ export default function ItemScreens({ route, params = {}, onBack, onNavigate, on
   if (route === "DeleteItem") {
     return <DeleteItem itemId={params.itemId} itemName={params.itemName ?? t("items.nameFallback")} onBack={onBack} onReturnToItems={onReturnToItems} onDelete={removeProduct} />;
   }
+  if (route === "YourStarterListGrouped") return <StarterList grouped params={params} onBack={onBack} onAdd={addStarterProducts} onCompleteSetup={onCompleteSetup} />;
   if (route === "YourStarterList") return <StarterList params={params} onBack={onBack} onAdd={addStarterProducts} onCompleteSetup={onCompleteSetup} />;
   return null;
 }

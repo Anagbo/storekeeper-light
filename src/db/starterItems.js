@@ -46,6 +46,30 @@ export function mergeStarterItems(categoryIds) {
   };
 }
 
+export const STARTER_GROUP_THRESHOLD = 30;
+
+// Several categories whose combined core list is long are shown grouped (screen 52).
+export function shouldGroupStarterList(categoryIds) {
+  const picked = (categoryIds ?? []).filter((id) => id !== OTHER_CATEGORY_ID && categoriesById.has(id));
+  return picked.length > 1 && mergeStarterItems(picked).core.length > STARTER_GROUP_THRESHOLD;
+}
+
+export function groupCoreItemsByCategory(categoryIds) {
+  const { core } = mergeStarterItems(categoryIds);
+  const groups = [];
+  for (const item of core) {
+    let group = groups.find(({ category }) => category === item.category);
+    if (!group) groups.push(group = { category: item.category, items: [] });
+    group.items.push(item);
+  }
+  return groups;
+}
+
+export function searchStarterCategories(query) {
+  const text = String(query ?? "").trim().toLowerCase();
+  return text ? STARTER_CATEGORIES.filter(({ name }) => name.toLowerCase().includes(text)) : [];
+}
+
 export function getStarterItemsForCategories(categoryIds) {
   const { core, more } = mergeStarterItems(categoryIds);
   return [...core, ...more].map(({ name, category }) => ({ name, category }));

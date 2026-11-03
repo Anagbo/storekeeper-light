@@ -34,8 +34,8 @@ Status audit: 3 Nov 2026. This records the working tree at the time of review, i
 | 32 | People who owe you | done | Existing `src/components/DebtLedger.jsx` |
 | 33 | My money | partial | `src/pos/MyMoney.jsx`; week/month totals and balances exist, but profit views are not implemented and spending breakdown is unavailable. |
 | 34 | New person | done | `src/pos/CreditScreens.jsx`, reuses the existing customer/Ghana Card validation. |
-| 35 | What do you sell? | done | `src/pos/SetupScreens.jsx`; popular tiles, grouped "More categories", multi-select; "Something else" only goes to New item. |
-| 36 | Your starter list | done | `src/pos/ItemScreens.jsx`; core ticked, "Show more" for unticked extras, "Continue ? N items" counts ticked only. My items > Add from starter list searches all items. |
+| 35 | What do you sell? | done | `src/pos/SetupScreens.jsx`; popular tiles, "Find your business" category search, More categories ? (51), multi-select shared with 51, Something else; "Something else" only goes to New item. |
+| 36 | Your starter list | done | `src/pos/ItemScreens.jsx`; core ticked, Show more for unticked extras, "Continue ? N items" counts ticked only, "Skip, I?ll add items later". My items > Add from starter list searches all items. |
 | 37 | How much is {item}? | done | `src/pos/SetupScreens.jsx` |
 | 38 | How many {item}? | done | `src/pos/SetupScreens.jsx` |
 | 39 | My items | done | `src/pos/ItemScreens.jsx` |
@@ -46,6 +46,8 @@ Status audit: 3 Nov 2026. This records the working tree at the time of review, i
 | 44 | Spent money | done | `src/pos/SupplierScreens.jsx` |
 | 45 | Stock on credit | done | `src/pos/SupplierScreens.jsx` |
 | 46 | You owe suppliers | done | `src/pos/SupplierScreens.jsx` |
+| 51 | More categories | done | `MoreCategories` in `src/pos/SetupScreens.jsx`; grouped chips, Done ? returns to 35. |
+| 52 | Your starter list (grouped) | done | `YourStarterListGrouped` via `StarterList` in `src/pos/ItemScreens.jsx`; used when several categories have a combined core list over 30 items (`STARTER_GROUP_THRESHOLD`). Per-category heading, count, first 3 items, Show all N ?. |
 | 47 | Settings: profit tools | partial | `src/pos/SettingsScreens.jsx`; profit controls are unavailable, so the two brief settings switches are not implemented. |
 
 ## Screens next
@@ -75,7 +77,7 @@ There is no general invariant checker/report that runs after migrations and sync
 
 ## Tests
 
-After the setup and split-payment changes, `npm.cmd test` passed: **193 tests, 0 failures**. Test files are in `tests/`; coverage includes money/financial summaries, sales and credit, collections and undo, installments, suppliers/expenses, item validation and sale lines, customer/Ghana Card/contact/history, receipts and WhatsApp reminders, backup/restore, POS route-graph checks, sell-mode persistence, starter-item merge/core-more/search/"Something else only" rules, transaction feed, audio feedback, and subscription endpoints.
+After the setup and split-payment changes, `npm.cmd test` passed: **196 tests, 0 failures**. Test files are in `tests/`; coverage includes money/financial summaries, sales and credit, collections and undo, installments, suppliers/expenses, item validation and sale lines, customer/Ghana Card/contact/history, receipts and WhatsApp reminders, backup/restore, POS route-graph checks, sell-mode persistence, starter-item merge/core-more/search/"Something else only" rules, transaction feed, audio feedback, and subscription endpoints.
 
 Not covered: component/render tests for every screen, full clickable route-walk tests, end-to-end journeys A–K, browser/offline acceptance tests, migration-upgrade tests, real-data migration rehearsal, or a full consistency report. The POS route test checks declared graph reachability and selected source strings, not every UI control.
 

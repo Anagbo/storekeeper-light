@@ -23,7 +23,7 @@ import ItemScreens from "./ItemScreens.jsx";
 import SellWithItems from "./SellWithItems.jsx";
 import SaleRecorded from "./SaleRecorded.jsx";
 import PaymentSplit from "./PaymentSplit.jsx";
-import { HowDoYouWantToSell, HowManyItem, HowMuchIsItem, WhatDoYouSell } from "./SetupScreens.jsx";
+import { HowDoYouWantToSell, HowManyItem, HowMuchIsItem, MoreCategories, WhatDoYouSell } from "./SetupScreens.jsx";
 import { LanguageSettings, SettingsProfitTools } from "./SettingsScreens.jsx";
 
 const CollectPayment = lazy(() => import("./DebtCollection.jsx").then((module) => ({ default: module.CollectPayment })));
@@ -77,6 +77,7 @@ function PlannedScreen({ route, params, onBack, onOpenBackup }) {
 export default function PosApp() {
   const [routeState, setRouteState] = useState(() => createRouteState());
   const [shopName, setShopName] = useState(getSavedShopName);
+  const [setupCategories, setSetupCategories] = useState([]);
   const [setupReady, setSetupReady] = useState(false);
   const [quickEntryOpen, setQuickEntryOpen] = useState(false);
   const [entryType, setEntryType] = useState("expense");
@@ -233,6 +234,8 @@ export default function PosApp() {
   const route = routeState.current;
   const isSetupFlow = route === POS_ROUTES.HowDoYouWantToSell ||
     route === POS_ROUTES.WhatDoYouSell ||
+    route === POS_ROUTES.MoreCategories ||
+    (route === POS_ROUTES.YourStarterListGrouped) ||
     (route === POS_ROUTES.YourStarterList && routeState.params.setupFlow === true) ||
     (route === POS_ROUTES.NewItem && routeState.params.setupFlow === true);
   const isCollectSheet = route === POS_ROUTES.CollectPayment;
@@ -253,7 +256,9 @@ export default function PosApp() {
   ) : route === POS_ROUTES.HowDoYouWantToSell ? (
     <HowDoYouWantToSell onNavigate={navigate} onCompleteSetup={completePosSetup} />
   ) : route === POS_ROUTES.WhatDoYouSell ? (
-    <WhatDoYouSell onBack={navigateBack} onNavigate={navigate} onCompleteSetup={completePosSetup} />
+    <WhatDoYouSell selected={setupCategories} onSelectedChange={setSetupCategories} onBack={navigateBack} onNavigate={navigate} onCompleteSetup={completePosSetup} />
+  ) : route === POS_ROUTES.MoreCategories ? (
+    <MoreCategories selected={setupCategories} onSelectedChange={setSetupCategories} onBack={navigateBack} onDone={navigateBack} />
   ) : route === POS_ROUTES.HowMuchIsItem ? (
     <HowMuchIsItem params={routeState.params} onBack={navigateBack} onNavigate={navigate} />
   ) : route === POS_ROUTES.HowManyItem ? (
