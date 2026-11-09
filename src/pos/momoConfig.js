@@ -1,5 +1,5 @@
 import { db } from "../db/db.js";
-import { getPreference } from "../db/preferences.js";
+import { getPreference, setPreference } from "../db/preferences.js";
 import { runTransactionWithTimeout } from "../db/runTransactionWithTimeout.js";
 import { FEATURE_FLAGS } from "../config/features.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
@@ -12,19 +12,32 @@ export const MOMO_CONFIG = Object.freeze({
   defaultNetwork: "MTN"
 });
 
+// A MoMo method the merchant can use right now: phone only while Phone request is on.
+function isAvailableMomoMethod(method) {
+  return method === "direct" || (method === "phone" && PHONE_REQUEST_ENABLED);
+}
+
 export async function getMerchantMomoSettings() {
-  const [number, network, defaultMethod] = await Promise.all([
+  const [number, network, defaultMethod, lastUsed] = await Promise.all([
     getPreference("momoReceivingNumber", ""),
     getPreference("momoReceivingNetwork", MOMO_CONFIG.defaultNetwork),
-    getPreference("momoDefault", "ask")
+    getPreference("momoDefault", "ask"),
+    getPreference("momoLastUsed", "")
   ]);
   return {
     number: typeof number === "string" ? number : "",
     network: typeof network === "string" ? network : MOMO_CONFIG.defaultNetwork,
     defaultMethod: ["ask", "direct", "phone"].includes(defaultMethod) && (defaultMethod !== "phone" || PHONE_REQUEST_ENABLED)
       ? defaultMethod
-      : "ask"
+      : "ask",
+    // "Last used" on 61 is shown only for a method actually used before (A5).
+    lastUsed: isAvailableMomoMethod(lastUsed) ? lastUsed : ""
   };
+}
+
+export async function recordMomoLastUsed(method) {
+  if (method !== "direct" && method !== "phone") return;
+  await setPreference("momoLastUsed", method);
 }
 
 export const RECEIVING_NETWORKS = Object.freeze(["MTN", "Telecel", "AirtelTigo"]);

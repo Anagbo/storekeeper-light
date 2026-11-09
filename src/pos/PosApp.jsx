@@ -400,7 +400,7 @@ export default function PosApp() {
       trialExpiry={trialExpiry}
     />
   ) : route === POS_ROUTES.MoMoChoice ? (
-    <MoMoChoice params={routeState.params} onBack={navigateBack} onNavigate={navigate} />
+    <MoMoChoice params={routeState.params} onBack={navigateBack} onNavigate={navigate} onReplace={replaceCurrentRoute} />
   ) : route === POS_ROUTES.MoMoDirect ? (
     <MoMoDirect
     params={routeState.params}

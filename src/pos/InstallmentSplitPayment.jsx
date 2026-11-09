@@ -25,7 +25,7 @@ export default function InstallmentSplitPayment({ params = {}, onBack, onReturnT
     <SplitPayment
       totalPesewas={totalPesewas}
       totalLabel={t("credit.amountPaidToday")}
-      doneLabel={t("split.done")}
+      doneLabel={t("collect.received")}
       onBack={onBack}
       onDone={complete}
       onMoMo={(parts, pendingMomoAmountPesewas) => onNavigate("MoMoChoice", {

@@ -31,7 +31,8 @@ export default function SplitPayment({
   onDone,
   onOwe,
   onMoMo,
-  initialParts = []
+  initialParts = [],
+  partDetail = () => ""
 }) {
   const [parts, setParts] = useState(initialParts);
   const [draft, setDraft] = useState(null);
@@ -76,10 +77,14 @@ export default function SplitPayment({
       {parts.map((part) => {
         const Icon = METHOD_ICONS[part.paymentMethod];
         const name = t(`sell.${part.paymentMethod}`);
+        const detail = partDetail(part);
         return (
           <div key={part.paymentMethod} className="flex min-h-16 items-center gap-3 rounded-2xl border-2 border-slate-500 bg-white px-3">
             <Icon size={28} className="text-emerald-900" aria-hidden="true" />
-            <button type="button" disabled={busy || part.paymentMethod === "owe"} onClick={() => startDraft(part.paymentMethod)} className="flex-1 text-left text-xl font-extrabold disabled:opacity-50">{name}</button>
+            <button type="button" disabled={busy || part.paymentMethod === "owe"} onClick={() => startDraft(part.paymentMethod)} className="flex-1 text-left text-xl font-extrabold disabled:opacity-50">
+              {name}
+              {detail && <span className="block text-sm font-semibold text-slate-700">{detail}</span>}
+            </button>
             <strong className="text-[22px]">{formatGhs(part.amountPesewas)}</strong>
             <button
               type="button"

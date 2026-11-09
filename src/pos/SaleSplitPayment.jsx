@@ -2,6 +2,7 @@ import { useState } from "react";
 import { posText as t } from "./i18n.js";
 import { getInitialPaymentParts, getPaidPaymentPesewas } from "./paymentAmount.js";
 import SplitPayment from "./SplitPayment.jsx";
+import { describeSplitPart } from "./splitTender.js";
 
 export default function SaleSplitPayment({ params = {}, onBack, onNavigate, onSaveSale }) {
   const totalPesewas = Number.isSafeInteger(params.amountPesewas) ? params.amountPesewas : 0;
@@ -63,6 +64,7 @@ export default function SaleSplitPayment({ params = {}, onBack, onNavigate, onSa
         pickOnly: true
       })}
       initialParts={getInitialPaymentParts({ ...params, amountPesewas: totalPesewas }, totalPesewas)}
+      partDetail={(part) => describeSplitPart(part, params)}
     />
   );
 }

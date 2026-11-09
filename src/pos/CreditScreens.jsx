@@ -593,7 +593,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onReturnToSplit, onSaveCre
                   key={method}
                   type="button"
                   aria-pressed={paymentMethod === method}
-                  aria-label={method === "split" ? t("credit.method.both") : undefined}
+                  aria-label={method === "split" ? t("split.title") : undefined}
                   onClick={() => {
                     choosePaymentMethod(method);
                   }}

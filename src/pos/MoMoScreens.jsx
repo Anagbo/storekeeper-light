@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Clock3, Copy, Send, Smartphone, UserRound } from "lucide-react";
 import { getPreference, setPreference } from "../db/preferences.js";
 import { formatGhs } from "../lib/money.js";
-import { MOMO_CONFIG, PHONE_REQUEST_ENABLED, RECEIVING_NETWORKS, getMerchantMomoSettings, maskPhoneNumber, normalizeReceivingNumber, saveReceivingNumber } from "./momoConfig.js";
+import { MOMO_CONFIG, PHONE_REQUEST_ENABLED, RECEIVING_NETWORKS, getMerchantMomoSettings, maskPhoneNumber, normalizeReceivingNumber, recordMomoLastUsed, saveReceivingNumber } from "./momoConfig.js";
 import { getMomoAmountPesewas } from "./paymentAmount.js";
 import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag } from "./PosComponents.jsx";
 
@@ -12,27 +12,35 @@ function BackTitle({ title, onBack }) {
   return <div className="flex items-center gap-3"><PosSecondaryButton type="button" onClick={onBack} className="min-h-[52px] px-4 text-lg">‹ Back</PosSecondaryButton><h1 className="text-2xl font-extrabold">{title}</h1></div>;
 }
 
-function ChoiceTile({ icon: Icon, title, detail, disabled = false, selected, onClick, children }) {
-  return <button type="button" aria-pressed={selected} disabled={disabled} onClick={onClick} className={`flex min-h-[92px] items-center gap-3 rounded-[20px] border-[3px] p-3 text-left disabled:cursor-not-allowed disabled:opacity-60 ${selected ? "border-emerald-900 bg-green-200" : "border-slate-900 bg-white"}`}>
+// The tiles on 61 open the next screen; they are links, not toggles (E10: no aria-pressed).
+function ChoiceTile({ icon: Icon, title, detail, disabled = false, highlighted = false, onClick, children }) {
+  return <button type="button" disabled={disabled} onClick={onClick} className={`flex min-h-[92px] items-center gap-3 rounded-[20px] border-[3px] p-3 text-left disabled:cursor-not-allowed disabled:opacity-60 ${highlighted ? "border-emerald-900 bg-green-200" : "border-slate-900 bg-white"}`}>
     <Icon size={30} className="shrink-0 text-emerald-900" aria-hidden="true" />
     <span className="min-w-0 flex-1"><b className="block text-xl">{title}</b><span className="text-base text-slate-800">{detail}</span>{children}</span>
   </button>;
 }
 
-export function MoMoChoice({ params = {}, onBack, onNavigate }) {
-  const [settings, setSettings] = useState({ defaultMethod: "ask" });
+export function MoMoChoice({ params = {}, onBack, onNavigate, onReplace }) {
+  const [settings, setSettings] = useState({ defaultMethod: "ask", lastUsed: "" });
   useEffect(() => { getMerchantMomoSettings().then(setSettings).catch((error) => console.error("Could not load MoMo settings.", error)); }, []);
-  const lastUsed = settings.defaultMethod === "phone" ? "phone" : "direct";
+  // "When I tap MoMo" on 63 can skip this screen (K12). Always: phone request already
+  // falls back to Ask while Phone request is off (getMerchantMomoSettings).
+  useEffect(() => {
+    if (settings.defaultMethod === "direct") onReplace("MoMoDirect", { ...params, momoMethod: "direct" });
+    else if (settings.defaultMethod === "phone") onReplace(params.paystackSetUp ? "MoMoPayment" : "MoMoSetup", { ...params, momoMethod: "paystack", returnToMomo: true });
+  }, [settings.defaultMethod]);
+  // Only a method that was actually used before is tagged Last used (A5).
+  const lastUsed = settings.lastUsed;
   const paymentAmountPesewas = getMomoAmountPesewas(params);
   return <PosPage className="flex flex-col gap-3">
     <BackTitle title="MoMo payment" onBack={onBack} />
     <p className="text-[22px] font-extrabold">Customer pays {formatGhs(paymentAmountPesewas)}</p>
     <h2 className="text-xl font-extrabold">How will they pay?</h2>
-    <ChoiceTile icon={Send} title="Customer sends to my number" detail="Free. You check the MoMo message." selected={lastUsed === "direct"} onClick={() => onNavigate("MoMoDirect", { ...params, momoMethod: "direct" })}>
+    <ChoiceTile icon={Send} title="Customer sends to my number" detail="Free. You check the MoMo message." highlighted={lastUsed === "direct"} onClick={() => { void recordMomoLastUsed("direct"); onNavigate("MoMoDirect", { ...params, momoMethod: "direct" }); }}>
       {lastUsed === "direct" && <PosStatusTag compact>Last used</PosStatusTag>}
     </ChoiceTile>
-    <ChoiceTile icon={Smartphone} title="Phone request" detail={PHONE_REQUEST_ENABLED ? `Customer approves on their phone. Confirmed by itself. Fee ${formatGhs(MOMO_CONFIG.phoneRequestFeePesewas)}.` : "Not available yet"} disabled={!PHONE_REQUEST_ENABLED} selected={PHONE_REQUEST_ENABLED && lastUsed === "phone"} onClick={() => onNavigate(params.paystackSetUp ? "MoMoPayment" : "MoMoSetup", { ...params, momoMethod: "paystack", returnToMomo: true })}>
-      {PHONE_REQUEST_ENABLED && lastUsed === "phone" && <PosStatusTag compact>Last used</PosStatusTag>}
+    <ChoiceTile icon={Smartphone} title="Phone request" detail={PHONE_REQUEST_ENABLED ? `Customer approves on their phone. Confirmed by itself. Fee ${formatGhs(MOMO_CONFIG.phoneRequestFeePesewas)}.` : "Not available yet"} disabled={!PHONE_REQUEST_ENABLED} highlighted={lastUsed === "phone"} onClick={() => { void recordMomoLastUsed("phone"); onNavigate(params.paystackSetUp ? "MoMoPayment" : "MoMoSetup", { ...params, momoMethod: "paystack", returnToMomo: true }); }}>
+      {lastUsed === "phone" && <PosStatusTag compact>Last used</PosStatusTag>}
     </ChoiceTile>
     <p className="text-sm font-medium text-slate-800">Change the usual choice in Settings.</p>
   </PosPage>;
@@ -193,9 +201,12 @@ export function MoMoPayment({ params = {}, onBack, onNavigate }) {
   </PosPage>;
 }
 
+// Wait before Resend request is allowed. The length is an open owner decision.
+const MOMO_WAIT_SECONDS = 120;
+
 export function MoMoWaiting({ params = {}, onCancel }) {
   const paymentAmountPesewas = getMomoAmountPesewas(params);
-  const [secondsRemaining, setSecondsRemaining] = useState(120);
+  const [secondsRemaining, setSecondsRemaining] = useState(MOMO_WAIT_SECONDS);
   useEffect(() => {
     if (secondsRemaining <= 0) return undefined;
     const timer = window.setInterval(() => setSecondsRemaining((value) => Math.max(0, value - 1)), 1000);
@@ -214,7 +225,9 @@ export function MoMoWaiting({ params = {}, onCancel }) {
       <span className="mt-1 inline-block rounded-xl border-2 border-amber-700 bg-amber-100 px-3 py-1 text-lg font-extrabold text-amber-800">Expires in {minutes}:{seconds}</span>
     </div>
     <div className="grid grid-cols-2 gap-2">
-      <button type="button" disabled={secondsRemaining > 0} className="min-h-14 rounded-2xl border-2 border-slate-300 bg-slate-100 px-2 font-extrabold text-slate-500 disabled:opacity-100">Resend request</button>
+      {/* E11: looks disabled only while disabled. Restarting the wait is all it can do until a
+          backend sends the request again; it stays disabled while Phone request is off. */}
+      <button type="button" disabled={secondsRemaining > 0 || !PHONE_REQUEST_ENABLED} onClick={() => setSecondsRemaining(MOMO_WAIT_SECONDS)} className="min-h-14 rounded-2xl border-2 border-emerald-900 bg-white px-2 font-extrabold text-emerald-900 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-100 disabled:text-slate-500">Resend request</button>
       <button type="button" onClick={onCancel} className="min-h-14 rounded-2xl border-2 border-rose-900 bg-white px-2 font-extrabold text-rose-900">Cancel request</button>
     </div>
     <p className="text-center text-base text-slate-700">Nothing is recorded until Paystack confirms the payment.</p>

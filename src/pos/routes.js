@@ -100,6 +100,12 @@ export const POS_LINKS = Object.freeze([
   { from: "WhenWillTheyPay", action: "installments", to: "ALittleAtATime" },
   { from: "WhenWillTheyPay", action: "save", to: "CreditSaved" },
   { from: "ALittleAtATime", action: "savePlan", to: "CreditSaved" },
+  // In a split sale (flow=split), 18 and 19 return to the existing 16 (SAVECREDIT, SAVE19).
+  { from: "WhenWillTheyPay", action: "saveSplit", to: "SplitPayment", via: "history" },
+  { from: "ALittleAtATime", action: "saveSplit", to: "SplitPayment", via: "history" },
+  // Split payment on 19 opens 27; Received returns to the existing 19.
+  { from: "ALittleAtATime", action: "split", to: "SplitPayment" },
+  { from: "SplitPayment", action: "installmentReceived", to: "ALittleAtATime", via: "history" },
   { from: "SellWithItems", action: "next", to: "ReviewAndPay" },
   { from: "SellWithItems", action: "setPrice", to: "HowMuchIsItem" },
   { from: "SellWithItems", action: "quantity", to: "HowManyItem" },
@@ -168,22 +174,37 @@ export const POS_LINKS = Object.freeze([
   { from: "StockOnCredit", action: "back", to: "SpentMoney" },
   { from: "StockOnCredit", action: "save", to: "Home" },
   { from: "YouOweSuppliers", action: "back", to: "MyMoney" },
-  { from: "SettingsProfitTools", action: "back", to: "Home" },
+  // via: "history" = Back goes to the previous screen; `to` is the usual one.
+  { from: "SettingsProfitTools", action: "back", to: "Menu", via: "history" },
   { from: "SettingsProfitTools", action: "momoPayments", to: "PaymentSettings" },
   { from: "SettingsProfitTools", action: "myPlan", to: "MyPlan" },
   { from: "LanguageSettings", action: "back", to: "Menu" },
   { from: "PaymentSettings", action: "setup", to: "MoMoSetup" },
   { from: "PaymentSettings", action: "back", to: "SettingsProfitTools" },
   { from: "MoMoChoice", action: "direct", to: "MoMoDirect" },
+  // "Always: customer sends" on 63 replaces 61 with 62.
+  { from: "MoMoChoice", action: "always", to: "MoMoDirect" },
+  // Phone request opens 60 until the payout account is set up, then 56.
+  { from: "MoMoChoice", action: "phone", to: "MoMoSetup" },
   { from: "MoMoChoice", action: "phone", to: "MoMoPayment" },
+  { from: "MoMoSetup", action: "save", to: "MoMoPayment" },
+  { from: "MoMoSetup", action: "saveFromSettings", to: "PaymentSettings", via: "history" },
   { from: "MoMoDirect", action: "confirmed", to: "SaleRecorded" },
+  { from: "MoMoDirect", action: "collectionConfirmed", to: "PaymentReceived" },
+  // A pick from 16, 27 or 19 returns to the existing screen (returnFromMomoPickState).
+  { from: "MoMoDirect", action: "picked", to: "SplitPayment", via: "history" },
+  { from: "MoMoDirect", action: "picked", to: "ALittleAtATime", via: "history" },
   { from: "MoMoPayment", action: "send", to: "MoMoWaiting" },
   { from: "MoMoPayment", action: "otp", to: "MoMoCode" },
   { from: "MoMoPayment", action: "direct", to: "MoMoDirect" },
-  { from: "MoMoWaiting", action: "cancel", to: "MoMoPayment" },
-  { from: "MoMoWaiting", action: "paystackFailure", to: "MoMoNotCompleted" },
+  // via: "origin" = back to the screen that opened MoMo (15, 55, 16, 19, 25, 26, 27); Sell is the usual one.
+  { from: "MoMoWaiting", action: "cancel", to: "Sell", via: "origin" },
+  // planned: needs the Paystack backend (no charge result exists yet).
+  { from: "MoMoWaiting", action: "paystackFailure", to: "MoMoNotCompleted", planned: true },
   { from: "MoMoCode", action: "submit", to: "MoMoWaiting" },
   { from: "MoMoNotCompleted", action: "retry", to: "MoMoPayment" },
+  { from: "MoMoNotCompleted", action: "payAnotherWay", to: "Sell", via: "origin" },
+  { from: "MoMoNotCompleted", action: "cancelSale", to: "Home" },
   { from: "MyPlan", action: "pay", to: "PlanPayMethod" },
   { from: "PlanPayMethod", action: "cash", to: "PlanPayCash" },
   { from: "PlanPayMethod", action: "momo", to: "PlanPayMoMo" },
@@ -233,12 +254,14 @@ export function isSaleSplitHub(params = {}) {
 const MOMO_FLOW_ROUTES = new Set(["MoMoChoice", "MoMoDirect", "MoMoSetup", "MoMoPayment", "MoMoWaiting", "MoMoCode", "MoMoNotCompleted"]);
 
 // The origin is the screen that opened the MoMo flow (momoFrom): the entry just before the
-// last MoMoChoice. Used by 57 Cancel request (CANCELMOMO) and 59 Pay another way (PAYOTHER).
+// trailing run of MoMo screens. That still works when "Always" on 63 skipped 61 (K12).
+// Used by 57 Cancel request (CANCELMOMO) and 59 Pay another way (PAYOTHER).
 export function returnToMomoOrigin(state) {
-  const choiceIndex = state.history.map((item) => item.current).lastIndexOf("MoMoChoice");
-  if (choiceIndex < 1) return null;
-  const origin = state.history[choiceIndex - 1];
-  return { current: origin.current, params: origin.params, history: state.history.slice(0, choiceIndex - 1) };
+  let originIndex = state.history.length - 1;
+  while (originIndex >= 0 && MOMO_FLOW_ROUTES.has(state.history[originIndex].current)) originIndex -= 1;
+  if (originIndex === state.history.length - 1 || originIndex < 0) return null;
+  const origin = state.history[originIndex];
+  return { current: origin.current, params: origin.params, history: state.history.slice(0, originIndex) };
 }
 
 // Pick-only flags must not leak into later screens (E4).
