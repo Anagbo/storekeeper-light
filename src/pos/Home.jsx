@@ -57,7 +57,7 @@ export default function Home({ onNavigate, onLegacyEntry, notice = "" }) {
         <PosCard className="lg:col-span-2"><p className="text-base font-semibold">{t("home.loading")}</p></PosCard>
       ) : (
         <>
-          <section aria-label={t("home.todayMoney")} className="amount-fit-container rounded-3xl bg-emerald-900 p-[18px] text-white lg:col-span-2 lg:p-7">
+          <section aria-label={t("home.cashLeftToday")} className="amount-fit-container rounded-3xl bg-emerald-900 p-[18px] text-white lg:col-span-2 lg:p-7">
             <p className="text-lg font-bold">{t("home.cashLeftToday")}</p>
             <p className="amount-fit mt-0.5 font-extrabold tracking-tight">{formatGhs(data.totals.cashLeft)}</p>
             <div className="mt-2.5 flex gap-2 lg:mt-5 lg:max-w-2xl lg:gap-4">

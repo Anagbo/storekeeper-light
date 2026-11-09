@@ -152,10 +152,6 @@ export function SettingsProfitTools({
           </PosSecondaryButton>
         </section>
       )}
-      <section className="rounded-2xl border-2 border-amber-700 bg-amber-50 p-4">
-        <h2 className="font-extrabold">{t("settings.profitTitle")}</h2>
-        <p className="mt-1 text-slate-800">{t("settings.profitUnavailable")}</p>
-      </section>
       <PosSecondaryButton type="button" onClick={onOpenBackup}>
         <DatabaseBackup size={20} aria-hidden="true" />{t("settings.backup")}
       </PosSecondaryButton>

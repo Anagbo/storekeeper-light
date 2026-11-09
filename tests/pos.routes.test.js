@@ -63,7 +63,7 @@ test("implemented setup, split payment and settings screens have complete copy",
     "settings.subscriptionTitle", "settings.subscriptionActive", "settings.subscriptionInactive",
     "settings.subscriptionExpires", "settings.manageSubscription", "settings.subscribe",
     "settings.subscriptionTrial",
-    "settings.profitTitle", "settings.profitUnavailable", "settings.backup",
+    "settings.backup",
     "settings.saveFailed", "settings.saved"
   ];
   for (const key of implementedKeys) assert.ok(posText(key), `missing string: ${key}`);
@@ -220,8 +220,8 @@ test("debtor details return to the originating screen instead of resetting to Ho
 });
 
 test("Home and My money summary labels resolve", () => {
-  assert.equal(posText("home.moneyIn"), "Money in");
-  assert.equal(posText("home.moneySpent"), "Money spent");
+  assert.equal(posText("home.moneyIn"), "Cash in"); // 22 uses the prototype headings (Batch 13)
+  assert.equal(posText("home.moneySpent"), "Spent");
   assert.equal(posText("money.back"), "Back");
   assert.equal(posText("money.moneyIn"), "Money in");
   assert.equal(posText("money.moneySpent"), "Money spent");

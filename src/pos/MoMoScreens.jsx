@@ -165,7 +165,6 @@ export function MoMoSetup({ params = {}, onBack, onNavigate, shopName = "My shop
       <div className="grid grid-cols-3 gap-2">{NETWORKS.map((item) => <button key={item} type="button" aria-label={`Payout ${item}`} aria-pressed={network === item} onClick={() => setNetwork(item)} className={`min-h-14 rounded-2xl border-[3px] px-2 font-extrabold ${network === item ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{item}</button>)}</div>
     </fieldset>
     <label className="font-bold">Payout MoMo number<input value={number} onChange={(event) => setNumber(event.target.value)} type="tel" inputMode="tel" className="mt-1 h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-xl" /></label>
-    <p className="text-base font-extrabold text-emerald-900">Account name will appear after verification.</p>
     <p className="text-base text-slate-800">Payouts come on Paystack&apos;s schedule, not the moment a customer pays.</p>
     <div className="flex-1" />
     <PosPrimaryButton type="button" onClick={async () => {
