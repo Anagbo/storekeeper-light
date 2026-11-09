@@ -7,7 +7,7 @@ import { createId } from "../lib/ids.js";
 import { isValidGhanaCardNumber } from "../lib/ghanaCardNumber.js";
 import { formatGhs } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
-import { getMomoDetails, getMomoVerification, MOMO_VERIFICATION } from "../pos/momoMapping.js";
+import { getMomoConfirmedPesewas, getMomoDetails, getMomoVerification, MOMO_VERIFICATION } from "../pos/momoMapping.js";
 import {
   assertInstallmentAmountWithinBalance,
   getCreditBalanceAfterSale,
@@ -325,6 +325,10 @@ export async function recordCreditSale({
   const momoVerification = getMomoVerification(
     initialPaymentParts ?? [{ paymentMethod, amountPesewas: initialPaymentPesewas }]
   ) || MOMO_VERIFICATION.merchantConfirmed;
+  // What 62 confirmed for the MoMo part (refuses a part saved for more than that).
+  const momoConfirmedPesewas = getMomoConfirmedPesewas(
+    initialPaymentParts ?? [{ paymentMethod, amountPesewas: initialPaymentPesewas }]
+  );
 
   // D11: the same attemptId with the same details returns the first save, never a second one.
   const attemptContent = {
@@ -505,7 +509,8 @@ export async function recordCreditSale({
         amountPesewas: methodTotalPesewas,
         total_amount: methodTotalPesewas,
         payment_method: method,
-        ...(method === "momo" && getMomoDetails(momoVerification)),
+        // The confirmed amount is on the sale record when that holds the MoMo money, otherwise here.
+        ...(method === "momo" && getMomoDetails(momoVerification, salePaymentByMethod.momo > 0 ? undefined : momoConfirmedPesewas)),
         customer_name: cleanName,
         customer_phone: cleanPhone,
         items_json: "[]",
@@ -549,7 +554,7 @@ export async function recordCreditSale({
       payment_method: salePaymentMethod,
       cashReceivedPesewas: salePaymentByMethod.cash,
       momoReceivedPesewas: salePaymentByMethod.momo,
-      ...(salePaymentByMethod.momo > 0 && getMomoDetails(momoVerification)),
+      ...(salePaymentByMethod.momo > 0 && getMomoDetails(momoVerification, momoConfirmedPesewas)),
       ...(salePaymentPesewas > 0 && { installmentPaymentPesewas: salePaymentPesewas }),
       paymentType: "credit",
       customer_name: cleanName,
@@ -610,6 +615,8 @@ export async function recordDebtCollection({ debtId, parts, attemptId, now = Dat
   const { normalizedParts, totalPesewas } = normalizeCollectionParts(parts);
   // Read from the raw parts: normalizing keeps only method and amount (F1).
   const momoVerification = getMomoVerification(parts);
+  // What 62 confirmed for each MoMo part (refuses a part saved for more than that).
+  const confirmedByPart = normalizedParts.map((_, index) => (parts[index].paymentMethod === "momo" ? getMomoConfirmedPesewas([parts[index]]) : undefined));
   const collectionId = createId();
 
   // D11: the same attemptId with the same collection returns the first save, never a second one.
@@ -617,7 +624,7 @@ export async function recordDebtCollection({ debtId, parts, attemptId, now = Dat
     db,
     tables: [db.debts, db.payments, db.transactions, db.customers],
     attemptId,
-    content: { debtId, parts: normalizedParts, momoVerification },
+    content: { debtId, parts: normalizedParts, momoVerification, confirmedByPart },
     now
   }, async () => {
     const currentDebt = await db.debts.get(debtId);
@@ -661,7 +668,7 @@ export async function recordDebtCollection({ debtId, parts, attemptId, now = Dat
     });
 
     const transactionIds = [];
-    for (const part of normalizedParts) {
+    for (const [partIndex, part] of normalizedParts.entries()) {
       const paymentId = createId();
       const transactionId = createId();
       transactionIds.push(transactionId);
@@ -671,7 +678,7 @@ export async function recordDebtCollection({ debtId, parts, attemptId, now = Dat
         debtId,
         amountPesewas: part.amountPesewas,
         paymentMethod: part.paymentMethod,
-        ...(part.paymentMethod === "momo" && getMomoDetails(momoVerification)),
+        ...(part.paymentMethod === "momo" && getMomoDetails(momoVerification, confirmedByPart[partIndex])),
         customer_name: customerName,
         collectionId,
         collectionType: "debt_collection",
@@ -692,7 +699,7 @@ export async function recordDebtCollection({ debtId, parts, attemptId, now = Dat
         amountPesewas: part.amountPesewas,
         total_amount: part.amountPesewas,
         payment_method: part.paymentMethod,
-        ...(part.paymentMethod === "momo" && getMomoDetails(momoVerification)),
+        ...(part.paymentMethod === "momo" && getMomoDetails(momoVerification, confirmedByPart[partIndex])),
         customer_name: customerName,
         customer_phone: phone,
         items_json: "[]",
@@ -710,7 +717,7 @@ export async function recordDebtCollection({ debtId, parts, attemptId, now = Dat
       debtId,
       amountPesewas: totalPesewas,
       parts: normalizedParts,
-      ...(momoVerification && getMomoDetails(momoVerification)),
+      ...(momoVerification && getMomoDetails(momoVerification, getMomoConfirmedPesewas(parts))),
       remainingPesewas,
       customerName,
       customerId: updatedCustomer?.id ?? customerId,

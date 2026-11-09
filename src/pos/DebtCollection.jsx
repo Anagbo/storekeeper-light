@@ -330,11 +330,12 @@ export function CollectSplitPayment({ params, onBack, onNavigate, onUpdateParams
       notice={<SaveAttemptNotice saveAttempt={saveAttempt} busy={busy} onTryAgain={() => lastPartsRef.current && void receive(lastPartsRef.current)} />}
       onBack={onBack}
       onDone={(parts) => void receive(parts)}
-      onMoMo={(parts, pendingMomoAmountPesewas) => onNavigate("MoMoChoice", {
+      onMoMo={(parts, pendingMomoAmountPesewas, extra = {}) => onNavigate("MoMoChoice", {
         ...params,
         splitTotalPesewas: totalPesewas,
         splitParts: parts,
         pendingMomoAmountPesewas,
+        ...extra,
         returnRoute: "SplitPayment",
         pickOnly: true
       })}

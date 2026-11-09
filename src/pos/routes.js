@@ -280,7 +280,7 @@ function withoutMomoPickFlags(params = {}) {
 // The values a MoMo pick leaves behind. On 16 and 27 they are merged into splitParts and removed;
 // 19 keeps its own (it shows the chosen method on its button).
 function withoutPendingMomoValues(params = {}) {
-  const { pendingMomoAmountPesewas: _pending, momoMethod: _method, verification: _verification, reference: _reference, ...rest } = params;
+  const { pendingMomoAmountPesewas: _pending, momoRowAmountPesewas: _rowAmount, momoMethod: _method, verification: _verification, reference: _reference, ...rest } = params;
   return rest;
 }
 

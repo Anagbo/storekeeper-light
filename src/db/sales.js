@@ -1,6 +1,6 @@
 import { createId } from "../lib/ids.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
-import { getMomoDetails, getMomoVerification, MOMO_VERIFICATION } from "../pos/momoMapping.js";
+import { getMomoConfirmedPesewas, getMomoDetails, getMomoVerification, MOMO_VERIFICATION } from "../pos/momoMapping.js";
 import { runIdempotentSave } from "./saveAttempts.js";
 import { db } from "./db.js";
 
@@ -31,6 +31,8 @@ export async function recordCashSale({
   const momoVerification = momoReceivedPesewas > 0
     ? getMomoVerification(parts) || MOMO_VERIFICATION.merchantConfirmed
     : "";
+  // What 62 confirmed for the MoMo part, next to what is saved (refuses a part saved for more).
+  const momoConfirmedPesewas = momoReceivedPesewas > 0 ? getMomoConfirmedPesewas(parts, momoReceivedPesewas) : undefined;
   const transaction = {
     id: createId(),
     type: "sale",
@@ -40,7 +42,7 @@ export async function recordCashSale({
     paymentType: paymentMethod,
     cashReceivedPesewas,
     momoReceivedPesewas,
-    ...(momoVerification && getMomoDetails(momoVerification)),
+    ...(momoVerification && getMomoDetails(momoVerification, momoConfirmedPesewas)),
     customer_name: "",
     customer_phone: "",
     items_json: JSON.stringify(items),
@@ -56,7 +58,7 @@ export async function recordCashSale({
     db,
     tables: [db.transactions],
     attemptId,
-    content: { amountPesewas, cashReceivedPesewas, momoReceivedPesewas, saleItems: items, momoVerification },
+    content: { amountPesewas, cashReceivedPesewas, momoReceivedPesewas, saleItems: items, momoVerification, momoConfirmedPesewas },
     now
   }, async () => {
     await db.transactions.add(transaction);

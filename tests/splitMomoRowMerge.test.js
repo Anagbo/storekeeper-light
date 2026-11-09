@@ -64,6 +64,13 @@ async function confirmDirectOn62(app) {
   return textOf(v62.tree);
 }
 
+// The MoMo tile opens the amount editor prefilled with Left to pay (Batch 17); Save goes to 61.
+function tapMomoTile(view) {
+  tile(view.tree, "MoMo").props.onClick();
+  view.rerender();
+  findButton(view.tree, "Save").props.onClick();
+}
+
 async function editRow(view, rowLabel, value) {
   rowButton(view.tree, rowLabel).props.onClick();
   view.rerender();
@@ -78,7 +85,7 @@ async function editRow(view, rowLabel, value) {
 test("after a MoMo pick returns, no pick values stay in the params and the row is in splitParts", async () => {
   const app = makeApp(POS_ROUTES.SplitPayment, { amountPesewas: 800 });
   const mount = await sale16(app);
-  tile(mount().tree, "MoMo").props.onClick();
+  tapMomoTile(mount());
   assert.equal(app.state.params.pendingMomoAmountPesewas, 800);
   const text62 = await confirmDirectOn62(app);
   assert.match(text62, /send GH₵8\.00/);
@@ -91,7 +98,7 @@ test("after a MoMo pick returns, no pick values stay in the params and the row i
 test("an edited MoMo row is not re-created at its old amount when the screen is mounted again", async () => {
   const app = makeApp(POS_ROUTES.SplitPayment, { amountPesewas: 800 });
   const mount = await sale16(app);
-  tile(mount().tree, "MoMo").props.onClick();
+  tapMomoTile(mount());
   await confirmDirectOn62(app);
   const view = mount();
   await editRow(view, "MoMo", "4.00");
@@ -112,7 +119,7 @@ test("an edited MoMo row is not re-created at its old amount when the screen is 
 test("a second MoMo tap grows the MoMo row (GH₵20 + GH₵40 = GH₵60), it does not replace it", async () => {
   const app = makeApp(POS_ROUTES.SplitPayment, { amountPesewas: 6000, splitParts: [{ paymentMethod: "momo", amountPesewas: 2000, ...direct, confirmedPesewas: 2000 }] });
   const mount = await sale16(app);
-  tile(mount().tree, "MoMo").props.onClick();
+  tapMomoTile(mount());
   assert.equal(app.state.params.pendingMomoAmountPesewas, 4000, "the customer is asked for the Left only");
   await confirmDirectOn62(app);
   const momoRows = app.state.params.splitParts.filter((part) => part.paymentMethod === "momo");
@@ -158,7 +165,7 @@ test("19's own MoMo pick is unchanged: it keeps the method and amount it shows o
 test("the draft is restored after Menu > Settings > Back > Back (route params only)", async () => {
   const app = makeApp(POS_ROUTES.SplitPayment, { amountPesewas: 800 });
   const mount = await sale16(app);
-  tile(mount().tree, "MoMo").props.onClick();
+  tapMomoTile(mount());
   await confirmDirectOn62(app);
   const view = mount();
   await editRow(view, "MoMo", "4.00");

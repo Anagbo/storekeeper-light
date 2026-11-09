@@ -80,7 +80,7 @@ test("sale and collection split tender share the SplitPayment route", () => {
 
 test("collection split MoMo handoff preserves the canonical split total", () => {
   const source = readFileSync(new URL("../src/pos/DebtCollection.jsx", import.meta.url), "utf8");
-  assert.match(source, /onMoMo=\{\(parts, pendingMomoAmountPesewas\) => onNavigate\("MoMoChoice", \{\s*\.\.\.params,\s*splitTotalPesewas: totalPesewas,\s*splitParts: parts/s);
+  assert.match(source, /onMoMo=\{\(parts, pendingMomoAmountPesewas, extra = \{\}\) => onNavigate\("MoMoChoice", \{\s*\.\.\.params,\s*splitTotalPesewas: totalPesewas,\s*splitParts: parts/s);
 });
 
 test("item management routes connect from Menu through save, delete and starter-list flows", () => {

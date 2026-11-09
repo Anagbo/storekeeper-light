@@ -36,12 +36,34 @@ export function addRemainingToPart(parts, paymentMethod, totalPesewas) {
   return parts.map((part) => (part === existing ? { ...part, amountPesewas: part.amountPesewas + leftPesewas } : part));
 }
 
+// A MoMo row paid by phone request (verified) is final: its amount cannot be edited and it
+// cannot be removed (brief 3.8 rule 2; a Paystack charge cannot be undone here).
+export function isLockedMomoRow(part) {
+  return part?.paymentMethod === "momo" && part.verification === "verified";
+}
+
+// Editing a MoMo row (brief 3.8 rule 2). Up to the amount already confirmed on 62 the row is
+// simply set (lowering keeps what was confirmed, so the saved record shows both). Above it,
+// only the extra goes to 62: { kind: "confirm", extraPesewas, rowAmountPesewas }. Null when the
+// amount is not allowed.
+export function planMomoRowEdit(parts, amountPesewas, totalPesewas) {
+  const row = parts.find((part) => part.paymentMethod === "momo");
+  if (!row || isLockedMomoRow(row)) return null;
+  const limitPesewas = totalPesewas - sumPartsPesewas(parts) + row.amountPesewas;
+  if (!Number.isSafeInteger(amountPesewas) || amountPesewas <= 0 || amountPesewas > limitPesewas) return null;
+  const confirmedPesewas = row.confirmedPesewas ?? row.amountPesewas;
+  if (amountPesewas <= confirmedPesewas) {
+    return { kind: "set", parts: parts.map((part) => (part === row ? { ...part, amountPesewas, confirmedPesewas } : part)) };
+  }
+  return { kind: "confirm", extraPesewas: amountPesewas - confirmedPesewas, rowAmountPesewas: amountPesewas };
+}
+
 // Tapping a row's amount edits it. The new amount replaces the old one and keeps the row's
 // other fields (the MoMo method). It may use what is left plus the row's own amount.
-// Returns null when the amount is not allowed. Owe is never typed.
+// Returns null when the amount is not allowed. Owe is never typed; a verified row is never edited.
 export function setPartAmount(parts, paymentMethod, amountPesewas, totalPesewas) {
   const existing = parts.find((part) => part.paymentMethod === paymentMethod);
-  if (!existing || paymentMethod === "owe") return null;
+  if (!existing || paymentMethod === "owe" || isLockedMomoRow(existing)) return null;
   const limitPesewas = totalPesewas - sumPartsPesewas(parts) + existing.amountPesewas;
   if (!Number.isSafeInteger(amountPesewas) || amountPesewas <= 0 || amountPesewas > limitPesewas) return null;
   return parts.map((part) => (part === existing ? { ...part, amountPesewas } : part));

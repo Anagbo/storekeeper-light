@@ -27,13 +27,32 @@ export function getMomoVerification(parts) {
   return allVerified ? MOMO_VERIFICATION.verified : MOMO_VERIFICATION.merchantConfirmed;
 }
 
+// What the merchant confirmed on 62 for the MoMo part(s) of a save (confirmedPesewas on the part, the
+// saved amount when the part carries none). A part cannot be saved for more than was confirmed:
+// raising a confirmed amount goes back to 62 (brief 3.8 rule 2). Returns `fallbackPesewas` when
+// there is no MoMo part.
+export function getMomoConfirmedPesewas(parts, fallbackPesewas = 0) {
+  const momoParts = (Array.isArray(parts) ? parts : []).filter((part) => part?.paymentMethod === "momo");
+  if (momoParts.length === 0) return fallbackPesewas;
+  return momoParts.reduce((total, part) => {
+    const confirmedPesewas = part.confirmedPesewas ?? part.amountPesewas;
+    if (!Number.isSafeInteger(confirmedPesewas) || confirmedPesewas < 0 || confirmedPesewas < part.amountPesewas) {
+      throw new TypeError("A MoMo payment cannot be saved for more than the amount confirmed.");
+    }
+    return total + confirmedPesewas;
+  }, 0);
+}
+
 // Fields stored on every record holding MoMo money. momoMethod follows the
 // verification: "paystack" only for a verified part (reserved until the backend
 // exists), otherwise "direct" (customer sent to the merchant's number).
-export function getMomoDetails(momoVerification) {
+// momoConfirmedPesewas is the amount confirmed on 62 for the MoMo part of the save, next to the
+// saved MoMo amount on the same record: they differ when the amount was lowered after confirming.
+export function getMomoDetails(momoVerification, confirmedPesewas) {
   return {
     momoMethod: momoVerification === MOMO_VERIFICATION.verified ? MOMO_METHODS.paystack : MOMO_METHODS.direct,
-    momoVerification
+    momoVerification,
+    ...(Number.isSafeInteger(confirmedPesewas) && confirmedPesewas >= 0 ? { momoConfirmedPesewas: confirmedPesewas } : {})
   };
 }
 

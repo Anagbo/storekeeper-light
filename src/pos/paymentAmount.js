@@ -55,7 +55,10 @@ export function applyMomoPick(details = {}) {
   const total = getPaymentTotalPesewas(details);
   if (existing) {
     if (existing.momoMethod !== details.momoMethod || existing.verification !== details.verification) return parts;
-    const amountPesewas = existing.amountPesewas + pending;
+    // A raise above the confirmed amount names the row's new total; a plain second tap adds the pick.
+    const amountPesewas = Number.isSafeInteger(details.momoRowAmountPesewas) && details.momoRowAmountPesewas > 0
+      ? details.momoRowAmountPesewas
+      : existing.amountPesewas + pending;
     if (otherPaid + amountPesewas > total) return parts;
     return parts.map((part) => (part === existing
       ? { ...part, amountPesewas, confirmedPesewas: (part.confirmedPesewas ?? part.amountPesewas) + pending }

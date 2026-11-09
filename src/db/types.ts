@@ -96,6 +96,8 @@ export interface Payment {
   momoMethod?: MomoMethod;
   verification?: MomoVerification;
   reference?: string;
+  // Amount confirmed on 62 for the MoMo part, next to amountPesewas (they differ if it was lowered).
+  momoConfirmedPesewas?: number;
 }
 
 export interface DraftSale {

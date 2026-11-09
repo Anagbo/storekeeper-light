@@ -70,10 +70,11 @@ export default function SaleSplitPayment({ params = {}, onBack, onNavigate, onUp
         initialPaymentPesewas: getPaidPaymentPesewas(parts),
         initialPaymentParts: parts
       })}
-      onMoMo={(parts, pendingMomoAmountPesewas) => onNavigate("MoMoChoice", {
+      onMoMo={(parts, pendingMomoAmountPesewas, extra = {}) => onNavigate("MoMoChoice", {
         ...params,
         splitParts: parts,
         pendingMomoAmountPesewas,
+        ...extra,
         returnRoute: "SplitPayment",
         pickOnly: true
       })}

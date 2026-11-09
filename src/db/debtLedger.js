@@ -5,7 +5,7 @@ import { runIdempotentSave } from "./saveAttempts.js";
 import { createId } from "../lib/ids.js";
 import { isValidGhanaCardNumber, normalizeGhanaCardNumber } from "../lib/ghanaCardNumber.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
-import { getMomoDetails, getMomoVerification, MOMO_VERIFICATION } from "../pos/momoMapping.js";
+import { getMomoConfirmedPesewas, getMomoDetails, getMomoVerification, MOMO_VERIFICATION } from "../pos/momoMapping.js";
 import {
   isValidDateString,
   isValidInstallmentPlanForBalance,
@@ -231,10 +231,14 @@ export async function recordManualDebt({
   const momoVerification = getMomoVerification(
     initialPaymentParts ?? [{ paymentMethod, amountPesewas: initialPaymentPesewas }]
   ) || MOMO_VERIFICATION.merchantConfirmed;
+  // What 62 confirmed for the MoMo part (refuses a part saved for more than that).
+  const momoConfirmedPesewas = getMomoConfirmedPesewas(
+    initialPaymentParts ?? [{ paymentMethod, amountPesewas: initialPaymentPesewas }]
+  );
 
   // D11: the same attemptId with the same details returns the first save, never a second one.
   const attemptContent = {
-    customerId, name: cleanName, phone, ghanaCardNumber: cleanGhanaCardNumber, debtId, amountPesewas, initialPaymentPesewas,
+    momoConfirmedPesewas, customerId, name: cleanName, phone, ghanaCardNumber: cleanGhanaCardNumber, debtId, amountPesewas, initialPaymentPesewas,
     initialPaymentParts: normalizedPaymentParts, paymentMethod, note: cleanNote, dueDate, installmentPlan, takenOn
   };
   return runIdempotentSave({ db, tables: [db.debts, db.customers, db.transactions, db.payments], attemptId, content: attemptContent, now }, async () => {
@@ -341,7 +345,7 @@ export async function recordManualDebt({
           amountPesewas: methodTotal,
           total_amount: methodTotal,
           payment_method: method,
-          ...(method === "momo" && getMomoDetails(momoVerification)),
+          ...(method === "momo" && getMomoDetails(momoVerification, momoConfirmedPesewas)),
           customer_name: customer.name,
           customer_phone: phone.trim() || customer.phone || "",
           items_json: "[]",

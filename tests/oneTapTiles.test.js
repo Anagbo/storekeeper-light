@@ -50,20 +50,23 @@ test("K1: an edit above the total, at zero, or not a whole number is refused", (
   assert.equal(setPartAmount(parts, "cash", 100, 1300).length, 2);
 });
 
-test("K1: the Cash and MoMo tiles no longer open an amount editor", () => {
-  const tiles = split.slice(split.indexOf('{["cash", "momo", ...(allowOwe'), split.indexOf("{draft && ("));
+test("K1: the Cash tile does not open an amount editor (Batch 17: the MoMo tile asks how much first)", () => {
+  const tiles = split.slice(split.indexOf('{["cash", ...(hasLockedMomoRow'), split.indexOf("{draft && ("));
   assert.ok(tiles.length > 0, "tiles block not found");
   assert.doesNotMatch(tiles, /startDraft\(/);
   assert.match(tiles, /commitParts\(addRemainingToPart\(parts, method, totalPesewas\)\)/);
 });
 
-test("K1: the MoMo tile goes straight to 61 with the whole Left to pay as the amount", () => {
-  const tiles = split.slice(split.indexOf('{["cash", "momo", ...(allowOwe'), split.indexOf("{draft && ("));
-  assert.match(tiles, /method === "momo" && onMoMo\) onMoMo\(parts, leftPesewas\)/);
+test("K1 (Batch 17, brief 3.8 rule 2): the MoMo tile opens the amount editor prefilled with Left to pay, then goes to 61 with that amount", () => {
+  const tiles = split.slice(split.indexOf('{["cash", ...(hasLockedMomoRow'), split.indexOf("{draft && ("));
+  assert.match(tiles, /method === "momo" && onMoMo\) startMomoAdd\(\)/);
+  assert.doesNotMatch(tiles, /onMoMo\(parts, leftPesewas\)/, "no longer straight to 61 with the whole Left");
+  assert.match(split, /setDraft\(\{ paymentMethod: "momo", value: formatDraft\(leftPesewas\), mode: "add" \}\)/);
+  assert.match(split, /onMoMo\(parts, draftPesewas\)/);
 });
 
 test("K1: Owe still takes the whole Left to pay in one tap", () => {
-  const tiles = split.slice(split.indexOf('{["cash", "momo", ...(allowOwe'), split.indexOf("{draft && ("));
+  const tiles = split.slice(split.indexOf('{["cash", ...(hasLockedMomoRow'), split.indexOf("{draft && ("));
   assert.match(tiles, /onOwe\?\.\(\[\.\.\.parts, \{ paymentMethod: "owe", amountPesewas: leftPesewas \}\]\)/);
 });
 
@@ -71,10 +74,11 @@ test("K1: the row amount opens the editor, prefilled with the row's amount, and 
   assert.match(split, /function startEdit\(part\)/);
   assert.match(split, /value: formatDraft\(part\.amountPesewas\)/);
   assert.match(split, /setPartAmount\(parts, draft\.paymentMethod, draftPesewas, totalPesewas\)/);
-  assert.doesNotMatch(split, /onMoMo\(parts, draftPesewas\)/, "editing a row must not reopen 61");
+  // Editing a row only goes to 62 for a raise above the confirmed amount (planMomoRowEdit), and only for the extra.
+  assert.match(split, /onMoMo\(parts, plan\.extraPesewas, \{ momoRowAmountPesewas: plan\.rowAmountPesewas \}\)/);
   assert.equal(posText("split.save"), "Save");
 });
 
 test("K1: the Owe row is still never typed", () => {
-  assert.match(split, /disabled=\{busy \|\| part\.paymentMethod === "owe"\} onClick=\{\(\) => startEdit\(part\)\}/);
+  assert.match(split, /disabled=\{busy \|\| part\.paymentMethod === "owe" \|\| isLockedMomoRow\(part\)\} onClick=\{\(\) => startEdit\(part\)\}/);
 });

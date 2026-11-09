@@ -29,10 +29,11 @@ export default function InstallmentSplitPayment({ params = {}, onBack, onReturnT
       onPartsChange={(parts) => onUpdateParams?.({ splitParts: parts })}
       onBack={onBack}
       onDone={complete}
-      onMoMo={(parts, pendingMomoAmountPesewas) => onNavigate("MoMoChoice", {
+      onMoMo={(parts, pendingMomoAmountPesewas, extra = {}) => onNavigate("MoMoChoice", {
         ...params,
         splitParts: parts,
         pendingMomoAmountPesewas,
+        ...extra,
         returnRoute: "SplitPayment",
         pickOnly: true
       })}

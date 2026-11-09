@@ -38,6 +38,10 @@ function validateRecordValues(tableName, record) {
       throw new TypeError(`The backup contains a ${tableName} record with an invalid amount.`);
     }
   }
+  // The amount confirmed on 62, stored next to the saved MoMo amount (brief 3.8 rule 2).
+  if (record.momoConfirmedPesewas !== undefined && !isPesewas(record.momoConfirmedPesewas)) {
+    throw new TypeError(`The backup contains a ${tableName} record with an invalid amount.`);
+  }
   if (tableName === "transactions" && record.type !== undefined && !TRANSACTION_TYPES.has(record.type)) {
     throw new TypeError("The backup contains an unknown transaction type.");
   }
