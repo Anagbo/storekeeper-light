@@ -98,15 +98,16 @@ test("D4 follow-up: restore returns how many saved rows were kept, and the messa
     transactions: [{ ...sale, updatedAt: 999 }, { ...sale, id: "sale-2" }],
     payments: [payment]
   })));
-  assert.equal(result.skippedLedgerRows, 2);
+  // sale-1, payment-1 and (Batch 6b) debt-1 were already on the phone.
+  assert.equal(result.skippedLedgerRows, 3);
   // 2 transactions + 1 customer + 1 debt + 1 payment in the file.
   assert.equal(
     backupModule.describeRestoreResult(result),
-    "Backup restored and merged (5 records). 2 saved sales or payments were already on this phone and were kept as they are."
+    "Backup restored and merged (5 records). 3 saved sales, payments or debts were already on this phone and were kept as they are."
   );
   assert.equal(
     backupModule.describeRestoreResult({ ...result, skippedLedgerRows: 1 }),
-    "Backup restored and merged (5 records). 1 saved sale or payment was already on this phone and was kept as it is."
+    "Backup restored and merged (5 records). 1 saved sale, payment or debt was already on this phone and was kept as it is."
   );
   assert.equal(backupModule.describeRestoreResult({ ...result, skippedLedgerRows: 0 }), "Backup restored and merged (5 records).");
 });
@@ -114,4 +115,38 @@ test("D4 follow-up: restore returns how many saved rows were kept, and the messa
 test("D4 follow-up: the restore screen shows that message", () => {
   const modal = readFileSync(new URL("../src/components/BackupModal.jsx", import.meta.url), "utf8");
   assert.match(modal, /setMessage\(describeRestoreResult\(result\)\)/);
+});
+test("6b: restore never changes a stored debt balance, even with a newer updatedAt", async () => {
+  await db.customers.add({ id: "customer-1", name: "Ama", nameLower: "ama", totalDebtPesewas: 5000 });
+  await db.debts.add(debt);
+  await importDatabaseFromJson(file(backupWith({
+    debts: [{ ...debt, amountPesewas: 100, total_owed: 100, status: "paid", updatedAt: 999 }]
+  })));
+  const stored = await db.debts.get("debt-1");
+  assert.equal(stored.amountPesewas, 5000);
+  assert.equal(stored.status, "unpaid");
+});
+
+test("6b: restore still adds debts the phone does not have", async () => {
+  await importDatabaseFromJson(file(backupWith({ debts: [{ ...debt, id: "debt-new", amountPesewas: 1200, total_owed: 1200 }] })));
+  assert.equal((await db.debts.get("debt-new")).amountPesewas, 1200);
+});
+
+test("6b: a customer's total owed is recalculated from debts, not taken from the backup; contact details still merge", async () => {
+  await db.customers.add({ id: "customer-1", name: "Ama", nameLower: "ama", phone: "", totalDebtPesewas: 5000, updatedAt: 100 });
+  await db.debts.add(debt);
+  await importDatabaseFromJson(file(backupWith({
+    customers: [{ id: "customer-1", name: "Ama", nameLower: "ama", phone: "0241234567", totalDebtPesewas: 0, updatedAt: 999 }]
+  })));
+  const customer = await db.customers.get("customer-1");
+  assert.equal(customer.totalDebtPesewas, 5000);
+  assert.equal(customer.phone, "0241234567");
+});
+
+test("6b: a customer with no name in the backup does not break the restore", async () => {
+  await importDatabaseFromJson(file(backupWith({
+    customers: [{ id: "customer-1", totalDebtPesewas: 999999 }],
+    debts: [{ ...debt, id: "debt-nameless", amountPesewas: 700, total_owed: 700 }]
+  })));
+  assert.equal((await db.customers.get("customer-1")).totalDebtPesewas, 700);
 });

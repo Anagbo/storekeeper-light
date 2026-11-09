@@ -149,12 +149,13 @@ export async function recalculateCustomerDebtBalance({
   const customer = await findCustomer({ customerId, name }, database);
   if (!customer) throw new Error("The customer could not be found.");
 
-  const normalizedName = customer.nameLower ?? customer.name.trim().toLowerCase();
+  // A restored customer may have no name; match such a customer by id only.
+  const normalizedName = customer.nameLower ?? (typeof customer.name === "string" ? customer.name.trim().toLowerCase() : "");
   const debts = await database.debts.toArray();
   const totalDebtPesewas = debts
     .filter((debt) => debt.status === "unpaid" && (
       (customer.id && debt.customerId === customer.id) ||
-      (!debt.customerId && getCustomerName(debt).toLowerCase() === normalizedName)
+      (normalizedName && !debt.customerId && getCustomerName(debt).toLowerCase() === normalizedName)
     ))
     .reduce((total, debt) => {
       const balance = getDebtBalance(debt);

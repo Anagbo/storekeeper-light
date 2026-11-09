@@ -1,4 +1,5 @@
 import { db } from "../db/db.js";
+import { recalculateCustomerDebtBalance } from "../db/debtLedger.js";
 
 const BACKUP_FORMAT_VERSION = 1;
 const BACKUP_TABLES = ["transactions", "customers", "debts", "products", "payments", "suppliers"];
@@ -12,7 +13,8 @@ const PRIMARY_KEYS = {
 };
 
 // The ledger is append-only: a restore may add missing rows but never change a saved one (D4).
-const LEDGER_TABLES = new Set(["transactions", "payments"]);
+// Debts are included so a backup cannot change a stored debt balance (Batch 6b).
+const LEDGER_TABLES = new Set(["transactions", "payments", "debts"]);
 const TRANSACTION_TYPES = new Set([
   "sale", "cash_sale", "credit_sale", "installment_sale", "installment_addon",
   "income", "income_reversal", "debt_payment", "expense", "supplier_payment",
@@ -189,6 +191,17 @@ export async function importDatabaseFromJson(jsonFile) {
         added[tableName] = records.length;
       }
     }
+    // A customer's total owed is derived from the debts on this phone, never taken
+    // from the backup file (Batch 6b).
+    const customerIds = new Set([
+      ...data.customers.map((record) => record.id),
+      ...data.debts.map((record) => record.customerId).filter((id) => typeof id === "string" && id)
+    ]);
+    for (const customerId of customerIds) {
+      if (await db.customers.get(customerId)) {
+        await recalculateCustomerDebtBalance({ customerId }, db);
+      }
+    }
     // Local record of each restore. Not synced: a real audit trail needs the server.
     const stored = await db.settings.get(RESTORE_LOG_KEY);
     let log = [];
@@ -215,6 +228,6 @@ export function describeRestoreResult(result) {
   const base = `Backup restored and merged (${total} records).`;
   if (skipped === 0) return base;
   return skipped === 1
-    ? `${base} 1 saved sale or payment was already on this phone and was kept as it is.`
-    : `${base} ${skipped} saved sales or payments were already on this phone and were kept as they are.`;
+    ? `${base} 1 saved sale, payment or debt was already on this phone and was kept as it is.`
+    : `${base} ${skipped} saved sales, payments or debts were already on this phone and were kept as they are.`;
 }
