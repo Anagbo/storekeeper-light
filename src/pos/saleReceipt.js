@@ -1,4 +1,5 @@
 import { formatGhs } from "../lib/money.js";
+import { getMomoDisplayLabel } from "./momoMapping.js";
 
 function readSaleItems(transaction, totalPesewas) {
   let items;
@@ -70,6 +71,7 @@ export function getSaleReceiptDetails(transaction) {
 
 export function buildSaleReceiptMessage(transaction, shopName) {
   const details = getSaleReceiptDetails(transaction);
+  const momoLabel = getMomoDisplayLabel(transaction);
   const lines = [
     `Sale recorded by ${shopName.trim() || "StoreKeeper Light"}`,
     `Total: ${formatGhs(details.amountPesewas)}`,
@@ -77,8 +79,8 @@ export function buildSaleReceiptMessage(transaction, shopName) {
       `${name} × ${quantity}: ${formatGhs(amountPesewas)}`
     ),
     ...(details.paymentMethod === "split"
-      ? [`Payment: Cash ${formatGhs(details.cashReceivedPesewas)} · MoMo ${formatGhs(details.momoReceivedPesewas)}`]
-      : [`Payment: ${details.paymentMethod === "momo" ? "MoMo" : "Cash"}`]),
+      ? [`Payment: Cash ${formatGhs(details.cashReceivedPesewas)} · ${momoLabel} ${formatGhs(details.momoReceivedPesewas)}`]
+      : [`Payment: ${details.paymentMethod === "momo" ? momoLabel : "Cash"}`]),
     "Thank you!"
   ];
   return lines.join("\n");

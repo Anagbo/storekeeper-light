@@ -5,6 +5,7 @@ import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosCom
 import { posText as t } from "./i18n.js";
 import { getSaleReceiptDetails } from "./saleReceipt.js";
 import { getSaleReceiptText } from "./receiptTemplates.js";
+import { getMomoDisplayLabel } from "./momoMapping.js";
 
 function WhatsAppIcon({ size = 26 }) {
   return (
@@ -18,6 +19,8 @@ function WhatsAppIcon({ size = 26 }) {
 export default function SaleRecorded({ transaction, shopName, onDone, onNewSale }) {
   const [shareStatus, setShareStatus] = useState("");
   const details = getSaleReceiptDetails(transaction);
+  // Records saved before MoMo verification was stored keep the translated plain label.
+  const momoLabel = transaction?.momoVerification ? getMomoDisplayLabel(transaction) : t("saleRecorded.method.momo");
   const when = new Date(details.timestamp);
   const time = when.toLocaleTimeString("en-GH", { hour: "2-digit", minute: "2-digit" });
   const dateLabel = when.toDateString() === new Date().toDateString()
@@ -81,7 +84,7 @@ export default function SaleRecorded({ transaction, shopName, onDone, onNewSale 
                 <strong>{formatGhs(details.cashReceivedPesewas)}</strong>
               </div>
               <div className="flex justify-between gap-2">
-                <span>{t("saleRecorded.method.momo")}</span>
+                <span>{momoLabel}</span>
                 <strong>{formatGhs(details.momoReceivedPesewas)}</strong>
               </div>
               <div className="border-t-2 border-dashed border-slate-400 pt-1">
@@ -93,7 +96,7 @@ export default function SaleRecorded({ transaction, shopName, onDone, onNewSale 
             </div>
             ) : (
               <div className="flex justify-between gap-2 text-lg">
-                <span>{t(`saleRecorded.method.${details.paymentMethod}`)}</span>
+                <span>{details.paymentMethod === "momo" ? momoLabel : t(`saleRecorded.method.${details.paymentMethod}`)}</span>
                 <strong>{formatGhs(details.amountPesewas)}</strong>
               </div>
             )}

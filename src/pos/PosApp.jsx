@@ -296,14 +296,15 @@ export default function PosApp() {
       amountPesewas: details.amountPesewas,
       cashReceivedPesewas: 0,
       momoReceivedPesewas: details.amountPesewas,
-      saleItems: details.saleItems ?? []
+      saleItems: details.saleItems ?? [],
+      parts: [{ paymentMethod: "momo", amountPesewas: details.amountPesewas, verification: details.verification }]
     });
     void requestBackgroundSync();
-    navigate(POS_ROUTES.SaleRecorded, { transaction, momoVerification: "merchant_confirmed" });
+    navigate(POS_ROUTES.SaleRecorded, { transaction });
   }
 
   async function saveDirectMomoCollection(details) {
-    await saveDebtCollection(details.debtId, [{ paymentMethod: "momo", amountPesewas: details.amountPesewas }]);
+    await saveDebtCollection(details.debtId, [{ paymentMethod: "momo", amountPesewas: details.amountPesewas, verification: details.verification }]);
   }
 
   async function saveExpense(details) {

@@ -1,5 +1,6 @@
 import { createId } from "../lib/ids.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
+import { getMomoVerification, MOMO_VERIFICATION } from "../pos/momoMapping.js";
 import { runTransactionWithTimeout } from "./runTransactionWithTimeout.js";
 import { db } from "./db.js";
 
@@ -8,6 +9,7 @@ export async function recordCashSale({
   cashReceivedPesewas = amountPesewas,
   momoReceivedPesewas = 0,
   saleItems = [],
+  parts = null,
   now = Date.now()
 }) {
   const items = normalizeSaleItems(saleItems);
@@ -25,6 +27,9 @@ export async function recordCashSale({
   const paymentMethod = cashReceivedPesewas > 0 && momoReceivedPesewas > 0
     ? "split"
     : momoReceivedPesewas > 0 ? "momo" : "cash";
+  const momoVerification = momoReceivedPesewas > 0
+    ? getMomoVerification(parts) || MOMO_VERIFICATION.merchantConfirmed
+    : "";
   const transaction = {
     id: createId(),
     type: "sale",
@@ -34,6 +39,7 @@ export async function recordCashSale({
     paymentType: paymentMethod,
     cashReceivedPesewas,
     momoReceivedPesewas,
+    ...(momoVerification && { momoVerification }),
     customer_name: "",
     customer_phone: "",
     items_json: JSON.stringify(items),

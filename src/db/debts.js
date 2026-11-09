@@ -6,6 +6,7 @@ import { createId } from "../lib/ids.js";
 import { isValidGhanaCardNumber } from "../lib/ghanaCardNumber.js";
 import { formatGhs } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
+import { getMomoVerification, MOMO_VERIFICATION } from "../pos/momoMapping.js";
 import {
   assertInstallmentAmountWithinBalance,
   getCreditBalanceAfterSale,
@@ -318,6 +319,10 @@ export async function recordCreditSale({
     throw new TypeError("Choose a valid credit due date.");
   }
   const transactionId = createId();
+  // Stored on every record that holds MoMo money from this sale (F1).
+  const momoVerification = getMomoVerification(
+    initialPaymentParts ?? [{ paymentMethod, amountPesewas: initialPaymentPesewas }]
+  ) || MOMO_VERIFICATION.merchantConfirmed;
 
   return runTransactionWithTimeout(db, [db.debts, db.customers, db.transactions, db.payments], async () => {
     const previousDebtPesewas = await getUnpaidCustomerBalance(cleanName);
@@ -463,6 +468,7 @@ export async function recordCreditSale({
           debtId: debt.id,
           amountPesewas: part.amountPesewas,
           paymentMethod: part.paymentMethod,
+          ...(part.paymentMethod === "momo" && { momoVerification }),
           customer_name: cleanName,
           createdAt: now,
           updatedAt: now,
@@ -491,6 +497,7 @@ export async function recordCreditSale({
         amountPesewas: methodTotalPesewas,
         total_amount: methodTotalPesewas,
         payment_method: method,
+        ...(method === "momo" && { momoVerification }),
         customer_name: cleanName,
         customer_phone: cleanPhone,
         items_json: "[]",
@@ -508,6 +515,7 @@ export async function recordCreditSale({
           debtId: part.debtId,
           amountPesewas: part.amountPesewas,
           paymentMethod: method,
+          ...(method === "momo" && { momoVerification }),
           customer_name: cleanName,
           collectionId: excessPaymentCollectionId,
           collectionType: "debt_collection",
@@ -533,6 +541,7 @@ export async function recordCreditSale({
       payment_method: salePaymentMethod,
       cashReceivedPesewas: salePaymentByMethod.cash,
       momoReceivedPesewas: salePaymentByMethod.momo,
+      ...(salePaymentByMethod.momo > 0 && { momoVerification }),
       ...(salePaymentPesewas > 0 && { installmentPaymentPesewas: salePaymentPesewas }),
       paymentType: "credit",
       customer_name: cleanName,
@@ -591,6 +600,8 @@ export async function recordCreditSale({
 export async function recordDebtCollection({ debtId, parts, now = Date.now() }) {
   if (!debtId) throw new TypeError("A debt is required to record a collection.");
   const { normalizedParts, totalPesewas } = normalizeCollectionParts(parts);
+  // Read from the raw parts: normalizing keeps only method and amount (F1).
+  const momoVerification = getMomoVerification(parts);
   const collectionId = createId();
 
   return runTransactionWithTimeout(db, [db.debts, db.payments, db.transactions, db.customers], async () => {
@@ -645,6 +656,7 @@ export async function recordDebtCollection({ debtId, parts, now = Date.now() }) 
         debtId,
         amountPesewas: part.amountPesewas,
         paymentMethod: part.paymentMethod,
+        ...(part.paymentMethod === "momo" && { momoVerification }),
         customer_name: customerName,
         collectionId,
         collectionType: "debt_collection",
@@ -665,6 +677,7 @@ export async function recordDebtCollection({ debtId, parts, now = Date.now() }) 
         amountPesewas: part.amountPesewas,
         total_amount: part.amountPesewas,
         payment_method: part.paymentMethod,
+        ...(part.paymentMethod === "momo" && { momoVerification }),
         customer_name: customerName,
         customer_phone: phone,
         items_json: "[]",
@@ -682,6 +695,7 @@ export async function recordDebtCollection({ debtId, parts, now = Date.now() }) 
       debtId,
       amountPesewas: totalPesewas,
       parts: normalizedParts,
+      ...(momoVerification && { momoVerification }),
       remainingPesewas,
       customerName,
       customerId: updatedCustomer?.id ?? customerId,

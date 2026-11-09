@@ -71,7 +71,7 @@ export function MoMoDirect({ params = {}, onBack, onConfirm, onPick }) {
     <PosCard><p className="text-[32px] font-extrabold">{settings.number || "—"}</p><p className="text-lg font-semibold">{settings.network || "—"}</p></PosCard>
     <PosSecondaryButton type="button" onClick={() => void copyNumber()}><Copy size={20} aria-hidden="true" />Copy number</PosSecondaryButton>
     {copied && <p role="status">Number copied.</p>}
-    <p className="text-base font-semibold">Wait for the MoMo message. Check the amount and the name before you tap.</p>
+    <p className="text-base font-semibold">Wait for the MoMo message. Check the amount and the name before you tap. Check your MoMo balance, not only the SMS.</p>
     {saveError && <p role="alert" className="text-base font-bold text-rose-900">{saveError}</p>}
     <PosPrimaryButton type="button" disabled={saving} onClick={() => void confirmReceived()}><Check size={28} aria-hidden="true" />Money received</PosPrimaryButton>
     <p className="text-sm font-medium">Saved as MoMo · you confirmed.</p>
@@ -146,7 +146,7 @@ export function MoMoPayment({ params = {}, onBack, onNavigate }) {
     <label className="font-bold">Customer&apos;s MoMo number<input aria-label="Customer's MoMo number" value={phone} onChange={(event) => setPhone(event.target.value)} type="tel" inputMode="tel" className="mt-1 h-14 w-full rounded-xl border-[3px] border-slate-500 px-3 text-xl" /></label>
     <PosPrimaryButton type="button" disabled={!PHONE_REQUEST_ENABLED} onClick={() => onNavigate(network === "Telecel" ? "MoMoCode" : "MoMoWaiting", { ...params, network, phone })}><Smartphone size={24} aria-hidden="true" />Send request</PosPrimaryButton>
     <button type="button" onClick={() => onNavigate("MoMoDirect", params)} className="min-h-10 border-0 bg-transparent font-extrabold text-emerald-900 underline">Customer already paid me directly</button>
-    <p className="-mt-2 text-center text-sm text-slate-700">That sale is marked Not verified.</p>
+    <p className="-mt-2 text-center text-sm text-slate-700">Saved as MoMo · you confirmed.</p>
   </PosPage>;
 }
 

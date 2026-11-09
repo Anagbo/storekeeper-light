@@ -1,4 +1,5 @@
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
+import { getMomoDisplayLabel } from "./momoMapping.js";
 
 function formatReceiptAmount(amountPesewas) {
   if (!Number.isSafeInteger(amountPesewas) || amountPesewas < 0) {
@@ -44,7 +45,7 @@ export function buildCollectionReceiptMessage(result, shopName) {
     `Payment received by ${normalizedShopName}`,
     `${date}, ${time}`,
     `From: ${customerName}`,
-    `Amount: GH₵${formatReceiptAmount(amountPesewas)} (Cash GH₵${formatReceiptAmount(cashPesewas)}, MoMo GH₵${formatReceiptAmount(momoPesewas)})`,
+    `Amount: GH₵${formatReceiptAmount(amountPesewas)} (Cash GH₵${formatReceiptAmount(cashPesewas)}, ${getMomoDisplayLabel(result)} GH₵${formatReceiptAmount(momoPesewas)})`,
     `Still owed: GH₵${formatReceiptAmount(result.remainingPesewas)}`
   ];
 
