@@ -498,6 +498,7 @@ const ENGLISH = Object.freeze({
   "collect.installmentTitle": "A little at a time",
   "collect.installmentPaid": "{paid} paid · {left} left",
   "collect.dueTodayShort": "Due today",
+  "planned.untitled": "This screen",
   "planned.back": "Back",
   "planned.notReady": "{title} is mapped and reachable, but is not part of this review build yet.",
   "planned.backup": "Open backup and restore",
@@ -537,6 +538,12 @@ const ENGLISH = Object.freeze({
   "debt.lateDays": "Late {days} day{plural}",
   "debt.inDays": "In {days} day{plural}"
 });
+
+// True when the string exists. Screens use this to fall back to plain words instead of
+// throwing; posText itself still throws on a missing key so tests catch it.
+export function hasPosText(key) {
+  return Object.prototype.hasOwnProperty.call(ENGLISH, key);
+}
 
 export function posText(key, values = {}) {
   const template = ENGLISH[key];

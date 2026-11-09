@@ -26,7 +26,8 @@ import Menu from "./Menu.jsx";
 import MyMoney from "./MyMoney.jsx";
 import TodaysTransactions from "./TodaysTransactions.jsx";
 import { posText as t } from "./i18n.js";
-import { PosBottomNav, PosHeader, PosPage, PosPrimaryButton, PosSideNav } from "./PosComponents.jsx";
+import { PosBottomNav, PosHeader, PosPage, PosSideNav } from "./PosComponents.jsx";
+import PlannedScreen from "./PlannedScreen.jsx";
 import PosErrorBoundary from "./PosErrorBoundary.jsx";
 import CreditScreens from "./CreditScreens.jsx";
 import Sell from "./Sell.jsx";
@@ -69,28 +70,6 @@ function getStatusLabel(sync) {
     return t("app.syncedAt", { time });
   }
   return t("app.readyToSync");
-}
-
-function PlannedScreen({ route, params, onBack, onOpenBackup }) {
-  const title = t(`planned.titles.${route}`);
-  return (
-    <PosPage className="space-y-4">
-      <h1 className="text-2xl font-extrabold">{title}</h1>
-      <section className="rounded-2xl border-2 border-amber-800 bg-amber-100 p-4">
-        <p className="text-base font-semibold">{t("planned.notReady", { title })}</p>
-        {params?.customerName && <p className="mt-3 text-base font-semibold">{t("planned.customer", { name: params.customerName })}</p>}
-        {params?.amountPesewas > 0 && <p className="mt-3 text-base font-semibold">{t("planned.saleAmount", { amount: formatGhs(params.amountPesewas) })}</p>}
-        {route === "SettingsProfitTools" && (
-          <PosPrimaryButton type="button" onClick={onOpenBackup} className="mt-4">
-            {t("planned.backup")}
-          </PosPrimaryButton>
-        )}
-      </section>
-      <button type="button" onClick={onBack} className="min-h-12 rounded-xl border-2 border-slate-800 px-4 text-base font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800">
-        {t("planned.back")}
-      </button>
-    </PosPage>
-  );
 }
 
 export default function PosApp() {

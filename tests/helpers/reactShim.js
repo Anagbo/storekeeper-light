@@ -42,6 +42,10 @@ export function createContext(value) {
   return context;
 }
 export function useContext(context) { return context?._value; }
+export class Component {
+  constructor(props) { this.props = props; }
+  setState(next) { this.state = { ...this.state, ...(typeof next === "function" ? next(this.state) : next) }; }
+}
 export function memo(component) { return component; }
 export function forwardRef(render) { return (props) => render(props, null); }
 export const Fragment = Symbol.for("test.fragment");
@@ -61,7 +65,7 @@ export function useLiveQuery(query, deps, defaultValue) {
   return value === undefined ? defaultValue : value;
 }
 export function setLiveQuery(handler) { shared.liveQuery = handler; }
-const React = { useState, useReducer, useRef, useEffect, useLayoutEffect, useInsertionEffect, useMemo, useCallback, useId, useTransition, useDeferredValue, useSyncExternalStore, createContext, useContext, memo, forwardRef, Fragment, StrictMode, createElement };
+const React = { Component, useState, useReducer, useRef, useEffect, useLayoutEffect, useInsertionEffect, useMemo, useCallback, useId, useTransition, useDeferredValue, useSyncExternalStore, createContext, useContext, memo, forwardRef, Fragment, StrictMode, createElement };
 export default React;
 
 // Runs the effects recorded by the last render of every component, once each (opt-in).

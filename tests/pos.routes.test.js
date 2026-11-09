@@ -3,6 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { POS_LINKS, POS_ROUTES, backRoute, createRouteState, pushRoute, replaceRoute } from "../src/pos/routes.js";
 import { posText } from "../src/pos/i18n.js";
+import { builtRoutes } from "./helpers/builtRoutes.js";
 
 test("every declared route is reachable from Home or first-run setup", () => {
   const knownRoutes = new Set(Object.values(POS_ROUTES));
@@ -26,16 +27,9 @@ test("every declared route is reachable from Home or first-run setup", () => {
   }
 
   assert.deepEqual([...knownRoutes].filter((route) => !reachable.has(route)), []);
-  const implementedRoutes = new Set([
-    "Home", "Menu", "Sell", "MyMoney", "TodaysTransactions",
-    "CollectPayment", "CollectPayPart", "PaymentReceived", "DebtorDetail",
-    "WhoOwesYou", "NewPerson", "WhenWillTheyPay", "ALittleAtATime", "CreditSaved", "ManualDebtAmount", "ManualDebtSaved", "SellWithItems", "ReviewAndPay", "SaleRecorded",
-    "MyItems", "NewItem", "EditItem", "DeleteItem", "YourStarterList", "YourStarterListGrouped", "MoreCategories",
-    "HowDoYouWantToSell", "WhatDoYouSell", "HowMuchIsItem", "HowManyItem",
-    "MoMoChoice", "MoMoDirect", "PaymentSettings", "MoMoSetup", "MoMoPayment", "MoMoWaiting", "MoMoCode", "MoMoNotCompleted",
-    "MyPlan", "PlanPayMethod", "PlanPayCash", "PlanPayMoMo", "PlanPayPhone", "PlanPaymentResult",
-    "SplitPayment", "LanguageSettings", "SettingsProfitTools"
-  ]);
+  // The screens PosApp really renders, read from its render chain (not a hand-written list).
+  const implementedRoutes = builtRoutes();
+  assert.deepEqual([...knownRoutes].filter((route) => !implementedRoutes.has(route)), [], "every route has a built screen");
   for (const route of knownRoutes) {
     if (!implementedRoutes.has(route)) assert.ok(posText(`planned.titles.${route}`));
   }

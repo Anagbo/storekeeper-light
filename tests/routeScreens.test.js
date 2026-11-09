@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { test } from "node:test";
 import { POS_LINKS, POS_ROUTES } from "../src/pos/routes.js";
 import wiring from "../src/pos/wiring.json" with { type: "json" };
+import { builtRoutes } from "./helpers/builtRoutes.js";
 
 // Every route, and every link to one, must have a built screen. A route with no screen falls to
 // PlannedScreen, which is not meant to be reachable. (63 PaymentSettings and 52
@@ -10,29 +11,10 @@ import wiring from "../src/pos/wiring.json" with { type: "json" };
 // "implementedRoutes" list in pos.routes.test.js claimed they were.)
 const posDirectory = new URL("../src/pos/", import.meta.url);
 const read = (name) => readFileSync(new URL(name, posDirectory), "utf8");
-const app = read("PosApp.jsx");
 
 // Owner decision: no route may fall through to PlannedScreen. An intentional placeholder
 // must be added here with the owner's approval; the list starts empty.
 const PLANNED_ALLOWED = [];
-
-// The routes PosApp really renders: the branches of its render chain.
-function builtRoutes() {
-  const start = app.indexOf("const content = route === POS_ROUTES.Home");
-  const end = app.indexOf("<PlannedScreen route={route}", start);
-  assert.ok(start >= 0 && end > start, "found the render chain in PosApp.jsx");
-  const chain = app.slice(start, end);
-  const built = new Set();
-  for (const name of Object.keys(POS_ROUTES)) {
-    if (chain.includes(`route === POS_ROUTES.${name} ?`)) built.add(name);
-  }
-  if (chain.includes("isCollectSheet ?")) built.add("CollectPayment");
-  // A branch that sends several routes to one screen file: [POS_ROUTES.A, POS_ROUTES.B].includes(route) ? (
-  for (const group of chain.match(/\[[^\]]*\]\.includes\(route\) \?/g) ?? []) {
-    for (const name of Object.keys(POS_ROUTES)) if (group.includes(`POS_ROUTES.${name}`)) built.add(name);
-  }
-  return built;
-}
 
 // The component name in the wiring file may differ from the route name.
 const routeOfComponent = (component) => ({
