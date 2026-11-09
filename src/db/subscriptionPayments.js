@@ -1,6 +1,43 @@
 import { db } from "./db.js";
 import { addSubscriptionMonths } from "../lib/subscriptionDates.js";
 
+export const VERIFY_UNAVAILABLE_MESSAGE = "Could not check the payment. Try again when you are online.";
+
+// The pending checkout saved before the Paystack redirect, or null if missing or invalid.
+export function parsePendingSubscriptionPayment(raw) {
+  if (typeof raw !== "string" || !raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed?.reference !== "string" || typeof parsed?.planId !== "string") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+// Reads the /api/subscription/verify reply. A proxy, captive portal or empty reply
+// gives plain words instead of a JSON parser error (D17).
+export async function readVerifyResponse(response) {
+  let text = "";
+  try {
+    text = await response.text();
+  } catch {
+    throw new Error(VERIFY_UNAVAILABLE_MESSAGE);
+  }
+  try {
+    const parsed = JSON.parse(text);
+    if (!parsed || typeof parsed !== "object") throw new Error("not an object");
+    return parsed;
+  } catch {
+    throw new Error(VERIFY_UNAVAILABLE_MESSAGE);
+  }
+}
+
+// fetch fails with TypeError offline; AbortSignal.timeout gives TimeoutError or AbortError.
+export function isNetworkError(error) {
+  return ["TypeError", "TimeoutError", "AbortError"].includes(error?.name);
+}
+
 const USED_REFERENCES_KEY = "usedSubscriptionReferences";
 const USED_REFERENCES_LIMIT = 50;
 

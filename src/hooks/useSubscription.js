@@ -1,8 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../db/db.js";
 import { FEATURE_FLAGS, FEATURE_SUBSCRIPTION_LOCKOUT } from "../config/features.js";
-import { applyVerifiedSubscriptionPayment } from "../db/subscriptionPayments.js";
+import {
+  applyVerifiedSubscriptionPayment,
+  isNetworkError,
+  parsePendingSubscriptionPayment,
+  readVerifyResponse,
+  VERIFY_UNAVAILABLE_MESSAGE
+} from "../db/subscriptionPayments.js";
 import { getEffectiveTrialNow, getTrialExpiry, normalizeTrialDays } from "../lib/subscriptionTrial.js";
 
 export function useSubscription() {
@@ -14,6 +20,9 @@ export function useSubscription() {
     undefined
   );
   const processedPaymentReference = useRef("");
+  // The automatic verify on open runs once per reference; later tries come only
+  // from reconnecting or the retry button (D2).
+  const attemptedPaymentReference = useRef("");
   const verifyingPayment = useRef(false);
   const subscriptionExpiry = (settings ?? []).find((setting) => setting.key === "subscriptionExpiry")?.value ?? "";
   const trialStartedAt = (settings ?? []).find((setting) => setting.key === "subscriptionTrialStartedAt")?.value ?? "";
@@ -27,20 +36,10 @@ export function useSubscription() {
   const expiryTimestamp = Date.parse(subscriptionExpiry);
   const hasActiveSubscription = Number.isFinite(expiryTimestamp) && expiryTimestamp > Date.now();
   const settingsReady = Array.isArray(settings);
-  const pendingPayment = (() => {
-    const raw = (settings ?? []).find((setting) => setting.key === "pendingSubscriptionPayment")?.value;
-    if (!raw) return null;
-    try {
-      const parsed = JSON.parse(raw);
-      if (
-        typeof parsed?.reference !== "string" ||
-        typeof parsed?.planId !== "string"
-      ) return null;
-      return parsed;
-    } catch {
-      return null;
-    }
-  })();
+  const pendingRaw = (settings ?? []).find((setting) => setting.key === "pendingSubscriptionPayment")?.value ?? "";
+  // Same object between renders unless the stored text changes, so the effects below
+  // do not re-run on every render (D2).
+  const pendingPayment = useMemo(() => parsePendingSubscriptionPayment(pendingRaw), [pendingRaw]);
   const subscriptionRequired = settingsReady && FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE
     && FEATURE_SUBSCRIPTION_LOCKOUT
     && !hasActiveSubscription
@@ -75,7 +74,7 @@ export function useSubscription() {
         body: JSON.stringify({ reference, planId }),
         signal: AbortSignal.timeout(20000)
       });
-      const result = await response.json();
+      const result = await readVerifyResponse(response);
       if (!response.ok || result.success !== true || result.reference !== reference) {
         throw new Error(result.error || "Payment could not be verified.");
       }
@@ -112,7 +111,9 @@ export function useSubscription() {
       console.error("Could not verify the Paystack subscription payment.", verificationError);
       setSubscriptionNotice({
         type: "error",
-        text: verificationError.message || "Payment verification failed. Please try again when you have a connection."
+        text: isNetworkError(verificationError)
+          ? VERIFY_UNAVAILABLE_MESSAGE
+          : verificationError.message || "Payment verification failed. Please try again when you have a connection."
       });
     } finally {
       verifyingPayment.current = false;
@@ -130,7 +131,8 @@ export function useSubscription() {
     const storedPayment = pendingPayment?.reference === callbackReference ? pendingPayment : null;
     const reference = callbackReference || pendingPayment?.reference;
     const planId = storedPayment?.planId || pendingPayment?.planId || callbackUrl.searchParams.get("plan") || "monthly";
-    if (!reference || processedPaymentReference.current === reference) return undefined;
+    if (!reference || processedPaymentReference.current === reference || attemptedPaymentReference.current === reference) return undefined;
+    attemptedPaymentReference.current = reference;
     let active = true;
     async function prepareVerification() {
       if (callbackReference && (!pendingPayment || pendingPayment.reference !== callbackReference)) {
