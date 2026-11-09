@@ -7,7 +7,8 @@ import { db } from "../src/db/db.js";
 import initiate from "../api/subscription/initiate.js";
 import verify from "../api/subscription/verify.js";
 import * as planPayments from "../src/pos/planPayments.js";
-import wiring from "../docs/handoff/journey-wiring.json" with { type: "json" };
+// The tracked copy of the contract (tests/wiringContract.test.js proves it equals the handoff file).
+import wiring from "../src/pos/wiring.json" with { type: "json" };
 
 after(async () => {
   db.close();

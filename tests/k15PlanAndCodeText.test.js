@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { after, beforeEach, test } from "node:test";
 import { db } from "../src/db/db.js";
-import wiring from "../docs/handoff/journey-wiring.json" with { type: "json" };
+// The tracked copy of the contract (tests/wiringContract.test.js proves it equals the handoff file).
+import wiring from "../src/pos/wiring.json" with { type: "json" };
 import * as planPayments from "../src/pos/planPayments.js";
 
 after(async () => {

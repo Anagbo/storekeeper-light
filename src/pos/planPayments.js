@@ -74,6 +74,17 @@ export async function appendPlanPayment({ method, amountPesewas = PLAN_CONFIG.am
 // Plain names for the stored method codes: the same three names as the tiles on 65.
 const PLAN_METHOD_LABELS = Object.freeze({ cash: "Cash", momo_direct: "Mobile money", momo_paystack: "Phone request" });
 
+// Plain words for a stored plan payment status, from the contract: "Waiting to confirm" is the
+// title of screen 70, "Confirmed" is the word the prototype shows on My plan rows, and
+// "Payment not completed" is the name of screen 59. The contract has no wording for "reversed"
+// (a decision for the owner), so that and any other stored value keep their stored word.
+const PLAN_STATUS_LABELS = Object.freeze({ waiting: "Waiting to confirm", confirmed: "Confirmed", failed: "Payment not completed" });
+
+export function planStatusLabel(status) {
+  if (Object.hasOwn(PLAN_STATUS_LABELS, status)) return PLAN_STATUS_LABELS[status];
+  return typeof status === "string" ? status : "";
+}
+
 // What My plan (64) shows for a payment's method. A code that is not one of the three is shown
 // as "Payment", never as the raw stored code.
 export function planMethodLabel(method) {
