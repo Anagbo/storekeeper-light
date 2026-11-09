@@ -124,6 +124,8 @@ export function SettingsProfitTools({
         <span className="flex items-center gap-2 font-extrabold"><Volume2 size={20} aria-hidden="true" />{t("settings.soundFeedback")}</span>
         <input type="checkbox" checked={audioEnabled} onChange={(event) => setAudioEnabled(setAudioFeedbackEnabled(event.target.checked))} className="h-6 w-6 accent-emerald-800" />
       </label>
+      {/* 63 must be reachable without the subscription flag: it holds the number customers send to. */}
+      <PosSecondaryButton type="button" onClick={onOpenMomoSettings}>MoMo payments</PosSecondaryButton>
       {subscriptionEnabled && (
         <section className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-4">
           <h2 className="font-extrabold">{t("settings.subscriptionTitle")}</h2>
@@ -137,7 +139,6 @@ export function SettingsProfitTools({
               {t("settings.subscriptionExpires", { date: new Date(subscriptionExpiry).toLocaleDateString("en-GB") })}
             </p>
           )}
-          <PosSecondaryButton type="button" onClick={onOpenMomoSettings}>MoMo payments</PosSecondaryButton>
           <PosSecondaryButton type="button" onClick={onOpenPlan}>My plan</PosSecondaryButton>
           {trialActive && trialExpiry && (
             <p className="mt-1 text-sm font-semibold text-sky-900">

@@ -15,8 +15,9 @@ function section(source, start, end) {
 test("D1: screen 62 Money received ignores a second tap while saving and shows save errors", () => {
   const direct = section(momoSource, "MoMoDirect", "PaymentSettings");
   assert.match(direct, /const savingRef = useRef\(false\)/);
-  assert.match(direct, /if \(savingRef\.current\) return;\s*savingRef\.current = true;/);
-  assert.match(direct, /disabled=\{saving\}[^\n]*Money received/);
+  // Batch 5b adds "no receiving number" to the same guard.
+  assert.match(direct, /if \(savingRef\.current( \|\| !settings\.number)?\) return;\s*savingRef\.current = true;/);
+  assert.match(direct, /disabled=\{saving( \|\| !settings\.number)?\}[^\n]*Money received/);
   assert.match(direct, /role="alert"/);
 });
 

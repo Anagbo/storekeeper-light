@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Clock3, Copy, Send, Smartphone, UserRound } from "lucide-react";
 import { getPreference, setPreference } from "../db/preferences.js";
 import { formatGhs } from "../lib/money.js";
-import { MOMO_CONFIG, PHONE_REQUEST_ENABLED, getMerchantMomoSettings } from "./momoConfig.js";
+import { MOMO_CONFIG, PHONE_REQUEST_ENABLED, RECEIVING_NETWORKS, getMerchantMomoSettings, maskPhoneNumber, normalizeReceivingNumber, saveReceivingNumber } from "./momoConfig.js";
 import { getMomoAmountPesewas } from "./paymentAmount.js";
 import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag } from "./PosComponents.jsx";
 
@@ -46,7 +46,7 @@ export function MoMoDirect({ params = {}, onBack, onConfirm, onPick }) {
   const savingRef = useRef(false);
   const paymentAmountPesewas = getMomoAmountPesewas(params);
   async function confirmReceived() {
-    if (savingRef.current) return;
+    if (savingRef.current || !settings.number) return;
     savingRef.current = true;
     setSaving(true);
     setSaveError("");
@@ -73,31 +73,68 @@ export function MoMoDirect({ params = {}, onBack, onConfirm, onPick }) {
     {copied && <p role="status">Number copied.</p>}
     <p className="text-base font-semibold">Wait for the MoMo message. Check the amount and the name before you tap. Check your MoMo balance, not only the SMS.</p>
     {saveError && <p role="alert" className="text-base font-bold text-rose-900">{saveError}</p>}
-    <PosPrimaryButton type="button" disabled={saving} onClick={() => void confirmReceived()}><Check size={28} aria-hidden="true" />Money received</PosPrimaryButton>
+    {!settings.number && <p role="status" className="text-base font-bold text-rose-900">Set your MoMo number in Settings first: Menu › Settings › MoMo payments.</p>}
+    <PosPrimaryButton type="button" disabled={saving || !settings.number} onClick={() => void confirmReceived()}><Check size={28} aria-hidden="true" />Money received</PosPrimaryButton>
     <p className="text-sm font-medium">Saved as MoMo · you confirmed.</p>
   </PosPage>;
 }
 
 export function PaymentSettings({ onBack, onNavigate }) {
-  const [settings, setSettings] = useState({ number: "", network: "", defaultMethod: "ask" });
+  const [settings, setSettings] = useState({ number: "", network: MOMO_CONFIG.defaultNetwork, defaultMethod: "ask" });
   const [enabled, setEnabled] = useState(false);
+  const [numberInput, setNumberInput] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
-  useEffect(() => { getMerchantMomoSettings().then((value) => { setSettings(value); setEnabled(Boolean(value.number)); }).catch((error) => console.error("Could not load payment settings.", error)); }, []);
+  const savingRef = useRef(false);
+  useEffect(() => { getMerchantMomoSettings().then((value) => { setSettings(value); setEnabled(Boolean(value.number)); setNumberInput(value.number); }).catch((loadError) => console.error("Could not load payment settings.", loadError)); }, []);
+  const normalizedNumber = enabled ? normalizeReceivingNumber(numberInput) : "";
+  const numberChanged = enabled && normalizedNumber !== null && normalizedNumber !== settings.number;
   async function save() {
-    await Promise.all([
-      setPreference("momoDefault", settings.defaultMethod),
-      setPreference("momoReceivingNumber", enabled ? settings.number : ""),
-      setPreference("momoReceivingNetwork", settings.network)
-    ]);
-    setSaved(true);
-    onBack();
+    if (savingRef.current) return;
+    setError("");
+    if (enabled && normalizedNumber === null) {
+      setError("Enter a Ghana mobile number, like 024 123 4567.");
+      return;
+    }
+    // A new or changed number is confirmed, masked, before it is saved.
+    if (numberChanged && !confirming) {
+      setConfirming(true);
+      return;
+    }
+    savingRef.current = true;
+    try {
+      await saveReceivingNumber({ enabled, number: numberInput, network: settings.network });
+      await setPreference("momoDefault", settings.defaultMethod);
+      setSaved(true);
+      onBack();
+    } catch (saveError) {
+      savingRef.current = false;
+      setConfirming(false);
+      setError(saveError instanceof TypeError ? saveError.message : "Could not save. Please try again.");
+    }
   }
   return <PosPage className="flex flex-col gap-3">
     <BackTitle title="How customers pay me" onBack={onBack} />
     <PosCard>
-      <label className="flex min-h-12 items-center justify-between gap-3 font-extrabold"><span>Customer sends to my number</span><input aria-label="Customer sends to my number" type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} className="h-6 w-6" /></label>
+      <label className="flex min-h-12 items-center justify-between gap-3 font-extrabold"><span>Customer sends to my number</span><input aria-label="Customer sends to my number" type="checkbox" checked={enabled} onChange={(event) => { setEnabled(event.target.checked); setConfirming(false); }} className="h-6 w-6" /></label>
       <p className="mt-1 text-base">{enabled ? `On · ${settings.number || "number not set"} · ${settings.network}` : "Off"}</p>
+      {enabled && <>
+        <label className="mt-2 block font-bold">My MoMo number<input aria-label="My MoMo number" value={numberInput} onChange={(event) => { setNumberInput(event.target.value); setConfirming(false); }} type="tel" inputMode="tel" autoComplete="tel" placeholder="024 123 4567" className="mt-1 h-14 w-full rounded-xl border-[3px] border-slate-500 px-3 text-xl" /></label>
+        <fieldset className="mt-2">
+          <legend className="mb-2 text-lg font-extrabold">Network</legend>
+          <div className="grid grid-cols-3 gap-2">{RECEIVING_NETWORKS.map((item) => <button key={item} type="button" aria-pressed={settings.network === item} onClick={() => { setSettings((current) => ({ ...current, network: item })); setConfirming(false); }} className={`min-h-14 rounded-xl border-[3px] px-2 font-bold ${settings.network === item ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{item}</button>)}</div>
+        </fieldset>
+      </>}
     </PosCard>
+    {confirming && <PosCard className="border-amber-700 bg-amber-50">
+      <p role="alert" className="text-lg font-extrabold">Customers will send money to {maskPhoneNumber(normalizedNumber)} ({settings.network}). Is this your number?</p>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <PosPrimaryButton type="button" onClick={() => void save()}><Check size={24} aria-hidden="true" />Yes, save</PosPrimaryButton>
+        <PosSecondaryButton type="button" onClick={() => setConfirming(false)}>Change</PosSecondaryButton>
+      </div>
+    </PosCard>}
+    {error && <p role="alert" className="text-base font-bold text-rose-900">{error}</p>}
     <PosCard><h2 className="text-lg font-extrabold">Phone request</h2><p className="text-base">Confirmed by itself. Fee {formatGhs(MOMO_CONFIG.phoneRequestFeePesewas)} per payment.</p><PosSecondaryButton type="button" disabled={!PHONE_REQUEST_ENABLED} onClick={() => onNavigate("MoMoSetup")} className="mt-2">{PHONE_REQUEST_ENABLED ? "Phone request: set up ›" : "Not available yet"}</PosSecondaryButton></PosCard>
     <h2 className="text-lg font-extrabold">When I tap MoMo</h2>
     {[["ask", "Ask me each time"], ["direct", "Always: customer sends to my number"], ["phone", "Always: phone request"]].map(([value, label]) => <button key={value} type="button" aria-pressed={settings.defaultMethod === value} disabled={value === "phone" && !PHONE_REQUEST_ENABLED} onClick={() => setSettings((current) => ({ ...current, defaultMethod: value }))} className={`min-h-[72px] rounded-[18px] border-[3px] p-3 text-left text-lg font-extrabold disabled:cursor-not-allowed disabled:opacity-60 ${settings.defaultMethod === value ? "border-emerald-900 bg-green-200" : "border-slate-900 bg-white"}`}><UserRound size={24} className="mr-3 inline text-emerald-900" aria-hidden="true" />{label}</button>)}
