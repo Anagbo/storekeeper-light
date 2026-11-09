@@ -854,7 +854,8 @@
     }
    ],
    "inputs": [],
-   "bottom_bar": false
+   "bottom_bar": true,
+   "bottom_bar_note": "The bar belongs to Home, which shows behind the Collect sheet (as in the prototype)."
   },
   "26": {
    "name": "Collect: pay part",
@@ -3518,7 +3519,7 @@
  },
  "rules_global": {
   "currency": "Show money as GH₵ followed directly by the amount, for example GH₵268.20. Use the app's existing money formatter everywhere. The letters GHS appear only as the currency parameter of API calls.",
-  "bottom_bar_note": "Contract lists the bar on 15, 22 and 32 only; the code shows it on most screens. To be settled against the prototype."
+  "bottom_bar_note": "The bottom bar shows only on 15, 22, 25 and 32, as in the prototype. It is hidden on every other screen so a tap on Home or Owed cannot lose a draft mid-flow. On wide screens the side menu may show instead."
  },
  "built_extras_kept": {
   "24": "row tags Collected Debt, Balance correction, Added to debt",
