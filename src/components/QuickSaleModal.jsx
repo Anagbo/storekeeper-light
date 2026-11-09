@@ -288,7 +288,7 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
       const amountPesewas = toPesewas(price);
       if (!amountPesewas || amountPesewas <= 0) {
         playErrorChime();
-        setError("Enter a total price greater than GH₵0.00.");
+        setError(`Enter a total price greater than ${formatGhs(0)}.`);
         return;
       }
       if (!Number.isSafeInteger(amountPesewas) || amountPesewas <= 0) {
@@ -556,7 +556,7 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
                 </label>
               </div>
               <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-leaf">
-                Total: GH₵{(Number(price) || 0).toFixed(2)}
+                Total: {formatGhs(saleAmountPesewas)}
                 {paymentType === "credit" && " · Added to customer debts"}
               </p>
               {paymentType === "credit" && (

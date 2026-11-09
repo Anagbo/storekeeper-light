@@ -13,7 +13,6 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onSaveManualDebt 
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const amountPesewas = amountDigits ? Number(amountDigits) : 0;
-  const amount = amountPesewas ? (amountPesewas / 100).toFixed(2) : "0.00";
   const amountValid = Number.isSafeInteger(amountPesewas) && amountPesewas > 0;
   const debt = params.customer?.debt;
   const hasPlanRecord = Boolean(debt?.isInstallmentPlan && debt.installmentAmount > 0);
@@ -100,7 +99,7 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onSaveManualDebt 
       </div>
       <div className="rounded-2xl border-2 border-slate-500 bg-white px-4 py-2 text-right">
         <span className="block text-base font-bold text-slate-700">Amount owed</span>
-        <strong className="block text-4xl font-extrabold text-rose-900 sm:text-5xl">GH₵{amount}</strong>
+        <strong className="block text-4xl font-extrabold text-rose-900 sm:text-5xl">{formatGhs(amountPesewas)}</strong>
       </div>
       <div className="grid grid-cols-3 gap-2" aria-label="Amount keypad">
         {["1", "2", "3", "4", "5", "6", "7", "8", "9", "00", "0"].map((key) => (
@@ -174,7 +173,7 @@ export function ManualDebtSaved({ params, onDone, onNavigate, shopName }) {
     : 0;
   const initialPaymentPesewas = result?.initialPaymentPesewas ?? params.initialPaymentPesewas ?? 0;
   const initialPaymentParts = result?.initialPaymentParts ?? params.initialPaymentParts ?? [];
-  const whatsappLink = generateWhatsAppLink(params.customer?.phone, params.customer?.name, balance / 100, shopName);
+  const whatsappLink = generateWhatsAppLink(params.customer?.phone, params.customer?.name, balance, shopName);
   return (
     <PosPage className="flex flex-col gap-4 text-center">
       <div className="pt-2 text-center">

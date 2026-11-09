@@ -89,7 +89,8 @@ export default function SplitPayment({
           </div>
         );
       })}
-      <div className={`flex items-center justify-between gap-3 rounded-[18px] border-[3px] px-4 py-3 ${leftPesewas === 0 ? "border-emerald-900 bg-green-100" : "border-amber-700 bg-amber-100"}`}>
+      {/* Brief 3.8 rule 12: a change to Left to pay is announced ("Left to pay GH₵5.00"). */}
+      <div role="status" aria-live="polite" aria-atomic="true" className={`flex items-center justify-between gap-3 rounded-[18px] border-[3px] px-4 py-3 ${leftPesewas === 0 ? "border-emerald-900 bg-green-100" : "border-amber-700 bg-amber-100"}`}>
         <span className="text-xl font-extrabold">{t("split.leftToPay")}</span>
         <strong className="text-3xl">{formatGhs(leftPesewas)}</strong>
       </div>

@@ -1,13 +1,10 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { db } from "../db/db.js";
+import { SUBSCRIPTION_PLANS as PLANS } from "../config/plans.js";
+import { formatGhs } from "../lib/money.js";
 
 const DEFAULT_EMAIL = "customer@storekeeper.app";
-const PLANS = [
-  { id: "monthly", label: "Monthly", months: 1, amount: import.meta.env?.VITE_SUBSCRIPTION_MONTHLY_AMOUNT_GHS || "15" },
-  { id: "six_months", label: "6 months", months: 6, amount: import.meta.env?.VITE_SUBSCRIPTION_SIX_MONTHS_AMOUNT_GHS || "75" },
-  { id: "yearly", label: "Yearly", months: 12, amount: import.meta.env?.VITE_SUBSCRIPTION_YEARLY_AMOUNT_GHS || "150" }
-];
 
 export default function SubscriptionModal({
   isOpen,
@@ -22,6 +19,7 @@ export default function SubscriptionModal({
   onRetryPayment
 }) {
   const [selectedPlanId, setSelectedPlanId] = useState("monthly");
+  const selectedPlan = PLANS.find((plan) => plan.id === selectedPlanId) ?? PLANS[0];
   const [email, setEmail] = useState(DEFAULT_EMAIL);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
@@ -179,7 +177,7 @@ export default function SubscriptionModal({
                   className={`rounded-xl border p-3 text-left ${selectedPlanId === plan.id ? "border-emerald-700 bg-white ring-2 ring-emerald-200" : "border-emerald-200 bg-emerald-100/60"}`}
                 >
                   <span className="block text-sm font-bold">{plan.label}</span>
-                  <span className="mt-1 block text-lg font-bold text-emerald-950">GH₵{plan.amount}</span>
+                  <span className="mt-1 block text-lg font-bold text-emerald-950">{formatGhs(plan.amountPesewas)}</span>
                 </button>
               ))}
             </div>
@@ -236,7 +234,7 @@ export default function SubscriptionModal({
             >
               {isProcessing
                 ? "Launching checkout…"
-                : `Pay GH₵${PLANS.find((plan) => plan.id === selectedPlanId)?.amount} / ${PLANS.find((plan) => plan.id === selectedPlanId)?.label}`}
+                : `Pay ${formatGhs(selectedPlan.amountPesewas)} / ${selectedPlan.label}`}
             </button>
           </form>
         )}

@@ -172,7 +172,7 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
             const whatsappUrl = generateWhatsAppLink(
               customer.phone,
               customer.customerName,
-              customer.balancePesewas / 100,
+              customer.balancePesewas,
               shopName
             );
             return (

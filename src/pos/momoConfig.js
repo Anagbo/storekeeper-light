@@ -5,12 +5,39 @@ import { FEATURE_FLAGS } from "../config/features.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 export { MOMO_METHODS, MOMO_VERIFICATION } from "./momoMapping.js";
 
-export const PHONE_REQUEST_ENABLED = FEATURE_FLAGS.ENABLE_MOMO_PHONE_REQUEST;
+// The Phone request fee is configuration (who pays it is the owner's decision). It must be a
+// whole number of pesewas: "25", not "0.25" or "abc". Missing means 0.
+export function parseFeePesewas(raw) {
+  if (raw === undefined || raw === null || raw === "") return 0;
+  const text = String(raw);
+  if (!/^\d+$/.test(text) || !Number.isSafeInteger(Number(text))) {
+    throw new TypeError("The Phone request fee must be a whole number of pesewas.");
+  }
+  return Number(text);
+}
+
+// A bad setting must not show a wrong fee: it counts as 0, is marked invalid, and
+// Phone request stays off until the setting is fixed.
+export function readPhoneRequestFee(raw) {
+  try {
+    return { feePesewas: parseFeePesewas(raw), feeValid: true };
+  } catch {
+    return { feePesewas: 0, feeValid: false };
+  }
+}
+
+const phoneRequestFee = readPhoneRequestFee(import.meta.env?.VITE_MOMO_PHONE_REQUEST_FEE_PESEWAS);
+if (!phoneRequestFee.feeValid) {
+  console.error("VITE_MOMO_PHONE_REQUEST_FEE_PESEWAS must be a whole number of pesewas. Phone request stays off.");
+}
 
 export const MOMO_CONFIG = Object.freeze({
-  phoneRequestFeePesewas: Number(import.meta.env?.VITE_MOMO_PHONE_REQUEST_FEE_PESEWAS ?? 0),
+  phoneRequestFeePesewas: phoneRequestFee.feePesewas,
+  phoneRequestFeeValid: phoneRequestFee.feeValid,
   defaultNetwork: "MTN"
 });
+
+export const PHONE_REQUEST_ENABLED = FEATURE_FLAGS.ENABLE_MOMO_PHONE_REQUEST && MOMO_CONFIG.phoneRequestFeeValid;
 
 // A MoMo method the merchant can use right now: phone only while Phone request is on.
 function isAvailableMomoMethod(method) {

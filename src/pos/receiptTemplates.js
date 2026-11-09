@@ -1,6 +1,7 @@
 import { FEATURE_FLAGS } from "../config/features.js";
 import { buildCollectionReceiptMessage } from "./collectionReceipt.js";
 import { buildSaleReceiptMessage, getSaleReceiptDetails } from "./saleReceipt.js";
+import { formatGhs } from "../lib/formatGhs.js";
 
 // Receipts are built only from these fields. Customer phone and Ghana Card numbers are never read.
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -9,7 +10,7 @@ function amount(pesewas) {
   if (!Number.isSafeInteger(pesewas) || pesewas < 0) {
     throw new TypeError("Receipt amounts must be non-negative integer pesewas.");
   }
-  return `GH₵${(pesewas / 100).toFixed(2)}`;
+  return formatGhs(pesewas);
 }
 
 function formatDateTime(timestamp) {

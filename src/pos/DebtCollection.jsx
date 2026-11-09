@@ -591,7 +591,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
     }
   }, [params?.editContact, data]);
   const phone = normalizeWhatsAppPhone(data?.phone);
-  const reminderLink = data && generateWhatsAppLink(data.phone, data.name, data.balancePesewas / 100, shopName);
+  const reminderLink = data && generateWhatsAppLink(data.phone, data.name, data.balancePesewas, shopName);
   const balanceReceiptLink = data && phone
     ? `https://wa.me/${phone.slice(1)}?text=${encodeURIComponent(buildCustomerBalanceReceipt({
         shopName,

@@ -131,7 +131,8 @@ test("credit sale route links and screen copy are available", () => {
   assert.equal(posText("credit.firstPaymentMethod"), "How is it paid?");
   assert.equal(posText("credit.method.both"), "Both");
   assert.equal(posText("credit.method.owe"), "Owe");
-  assert.equal(posText("credit.splitCashTooHigh", { amount: "50.00" }), "Cash must be less than GH₵50.00.");
+  // The amount is passed already formatted (formatGhs); the string no longer hard-codes the symbol.
+  assert.equal(posText("credit.splitCashTooHigh", { amount: "GH₵50.00" }), "Cash must be less than GH₵50.00.");
 });
 
 test("credit saved forwards the contact-save callback to its editor", () => {

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Check, DatabaseBackup, Globe2, Volume2 } from "lucide-react";
 import { getPreference, setPreference } from "../db/preferences.js";
+import { PLAN_PRICES_PESEWAS } from "../config/plans.js";
+import { formatGhs } from "../lib/money.js";
 import { isAudioFeedbackEnabled, setAudioFeedbackEnabled } from "../utils/audioFeedback.js";
 import { posText as t } from "./i18n.js";
 import { PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
@@ -132,7 +134,7 @@ export function SettingsProfitTools({
           <p className="mt-1 text-slate-800">
             {hasActiveSubscription
               ? t("settings.subscriptionActive")
-              : t("settings.subscriptionInactive")}
+              : t("settings.subscriptionInactive", { amount: formatGhs(PLAN_PRICES_PESEWAS.monthly) })}
           </p>
           {hasActiveSubscription && subscriptionExpiry && (
             <p className="mt-1 text-sm font-semibold text-emerald-900">

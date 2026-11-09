@@ -677,7 +677,7 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
   const phone = contact.phone;
   const customerName = result?.customerName ?? params.customer?.name ?? "";
   const totalDebtPesewas = result?.totalDebtPesewas ?? 0;
-  const whatsappLink = generateWhatsAppLink(phone, customerName, totalDebtPesewas / 100, shopName);
+  const whatsappLink = generateWhatsAppLink(phone, customerName, totalDebtPesewas, shopName);
   const receiptLink = buildCreditReceiptLink(result, phone, shopName);
   function openContactEditor(event) {
     event.preventDefault();

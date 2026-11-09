@@ -1,10 +1,12 @@
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
+import { formatGhs } from "../lib/formatGhs.js";
 
+// Receipt amounts are checked, then shown through the one formatter ("GH₵268.20").
 function formatReceiptAmount(amountPesewas) {
   if (!Number.isSafeInteger(amountPesewas) || amountPesewas < 0) {
     throw new TypeError("Receipt amounts must be non-negative integer pesewas.");
   }
-  return (amountPesewas / 100).toFixed(2);
+  return formatGhs(amountPesewas);
 }
 
 function formatReceiptDate(dateString) {
@@ -44,8 +46,8 @@ export function buildCollectionReceiptMessage(result, shopName) {
     `Payment received by ${normalizedShopName}`,
     `${date}, ${time}`,
     `From: ${customerName}`,
-    `Amount: GH₵${formatReceiptAmount(amountPesewas)} (Cash GH₵${formatReceiptAmount(cashPesewas)}, MoMo GH₵${formatReceiptAmount(momoPesewas)})`,
-    `Still owed: GH₵${formatReceiptAmount(result.remainingPesewas)}`
+    `Amount: ${formatReceiptAmount(amountPesewas)} (Cash ${formatReceiptAmount(cashPesewas)}, MoMo ${formatReceiptAmount(momoPesewas)})`,
+    `Still owed: ${formatReceiptAmount(result.remainingPesewas)}`
   ];
 
   if (result.debtAfter?.isInstallmentPlan) {
@@ -54,7 +56,7 @@ export function buildCollectionReceiptMessage(result, shopName) {
       throw new TypeError("The installment amount is invalid.");
     }
     const nextPaymentPesewas = Math.min(result.remainingPesewas, installmentAmountPesewas);
-    lines.push(`Next payment: GH₵${formatReceiptAmount(nextPaymentPesewas)} on ${formatReceiptDate(result.debtAfter.nextDueDate)}`);
+    lines.push(`Next payment: ${formatReceiptAmount(nextPaymentPesewas)} on ${formatReceiptDate(result.debtAfter.nextDueDate)}`);
   }
 
   lines.push("Thank you!");

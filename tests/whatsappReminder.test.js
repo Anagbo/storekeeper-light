@@ -133,3 +133,20 @@ test("sends the approved template using server credentials and normalized phone"
     "Market Shop"
   ]);
 });
+
+test("F4: the server reminder shows larger amounts through the formatter (GH₵1,234.50)", async () => {
+  const calls = [];
+  global.fetch = async (url, options) => {
+    calls.push({ url, options });
+    if (url.endsWith("/auth/v1/user")) return { ok: true, json: async () => ({ id: "allowed-user-id" }) };
+    return { ok: true, json: async () => ({ messages: [{ id: "wamid.example" }] }) };
+  };
+  const response = makeResponse();
+  await handler(makeRequest({
+    token: "valid-token",
+    body: { phone: "024 123 4567", customerName: "Ama", shopName: "Market Shop", amountPesewas: 123450 }
+  }), response);
+  assert.equal(response.statusCode, 200);
+  const payload = JSON.parse(calls[1].options.body);
+  assert.deepEqual(payload.template.components[0].parameters.map(({ text }) => text), ["Ama", "GH₵1,234.50", "Market Shop"]);
+});

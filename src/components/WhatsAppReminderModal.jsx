@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
+import { formatGhs } from "../lib/money.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 
 export default function WhatsAppReminderModal({
@@ -73,7 +74,7 @@ export default function WhatsAppReminderModal({
 
         <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-950">
           {debt.customerName ?? debt.customer_name} has an outstanding balance of{" "}
-          <strong>{`GH₵ ${(debt.amountPesewas / 100).toFixed(2)}`}</strong>.
+          <strong>{formatGhs(debt.amountPesewas)}</strong>.
         </p>
 
         <form onSubmit={(event) => void savePhone(event)} className="mt-4 space-y-4">

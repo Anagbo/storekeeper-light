@@ -57,7 +57,7 @@ export function ConfirmPaymentModal({ debt, initialAmountPesewas = debt.amountPe
       const amountPesewas = toPesewas(paymentType === "full" ? debt.amountPesewas / 100 : amount);
       if (!Number.isSafeInteger(amountPesewas) || amountPesewas <= 0 || amountPesewas > debt.amountPesewas) {
         playErrorChime();
-        setError(`Enter a payment greater than GH₵0.00 and no more than ${formatGhs(debt.amountPesewas)}.`);
+        setError(`Enter a payment greater than ${formatGhs(0)} and no more than ${formatGhs(debt.amountPesewas)}.`);
         return;
       }
       await onConfirm({ debt, amountPesewas, paymentMethod });
@@ -408,7 +408,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
     return generateWhatsAppLink(
       debt.phone || debt.customer_phone,
       debt.customerName || debt.customer_name,
-      debt.amountPesewas / 100,
+      debt.amountPesewas,
       shopName
     );
   }
@@ -803,7 +803,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
             />
             <span id="debt-amount-help" className={`mt-1 block text-xs font-normal ${debtFormSubmitted && (!toPesewas(amount) || toPesewas(amount) <= 0) ? "text-red-700" : "text-slate-500"}`}>
               {debtFormSubmitted && (!toPesewas(amount) || toPesewas(amount) <= 0)
-                ? "Enter an amount greater than GH₵0.00."
+                ? `Enter an amount greater than ${formatGhs(0)}.`
                 : "Required: enter the amount the customer owes."}
             </span>
           </label>

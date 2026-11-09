@@ -340,7 +340,7 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
               const whatsappLink = generateWhatsAppLink(
                 phone,
                 debt.customerName,
-                debt.amountPesewas / 100,
+                debt.amountPesewas,
                 shopName
               );
               const installmentAlert = debt.isInstallmentPlan

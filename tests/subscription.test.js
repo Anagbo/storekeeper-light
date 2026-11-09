@@ -66,9 +66,12 @@ test("new POS subscription journey connects Settings to the shared plan checkout
   assert.match(posAppSource, /isOpen=\{subscriptionOpen \|\| subscriptionRequired\}/);
   assert.match(settingsSource, /subscriptionEnabled &&/);
   assert.match(settingsSource, /onClick=\{onOpenSubscription\}/);
-  assert.match(modalSource, /monthly/);
-  assert.match(modalSource, /six_months/);
-  assert.match(modalSource, /yearly/);
+  // The plans (and their prices, in pesewas) live in one table: src/config/plans.js.
+  const plansSource = readFileSync(new URL("../src/config/plans.js", import.meta.url), "utf8");
+  assert.match(plansSource, /id: "monthly"/);
+  assert.match(plansSource, /id: "six_months"/);
+  assert.match(plansSource, /id: "yearly"/);
+  assert.match(modalSource, /SUBSCRIPTION_PLANS as PLANS/);
   assert.match(modalSource, /planId: selectedPlanId/);
 });
 

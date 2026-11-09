@@ -1,3 +1,5 @@
+import { formatGhs } from "../../src/lib/formatGhs.js";
+
 function respond(res, status, body) {
   return res.status(status).setHeader("Content-Type", "application/json; charset=utf-8").json(body);
 }
@@ -71,7 +73,7 @@ export default async function handler(req, res) {
     }
     const templateName = process.env.WHATSAPP_DEBT_TEMPLATE?.trim() || "debt_reminder";
     const languageCode = process.env.WHATSAPP_TEMPLATE_LANGUAGE?.trim() || "en";
-    const amount = `GH₵${(amountPesewas / 100).toFixed(2)}`;
+    const amount = formatGhs(amountPesewas);
     const graphResponse = await fetch(
       `https://graph.facebook.com/${apiVersion}/${encodeURIComponent(phoneNumberId)}/messages`,
       {

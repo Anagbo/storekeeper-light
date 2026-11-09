@@ -2,13 +2,15 @@ import { db } from "../db/db.js";
 import { getPreference } from "../db/preferences.js";
 import { createId } from "../lib/ids.js";
 import { addSubscriptionMonths } from "../lib/subscriptionDates.js";
+import { PLAN_PRICES_PESEWAS } from "../config/plans.js";
 
 const CLIENT_ENV = import.meta.env ?? {};
 
 export const PLAN_CONFIG = Object.freeze({
   id: "monthly",
   months: 1,
-  amountPesewas: Number(CLIENT_ENV.VITE_SUBSCRIPTION_MONTHLY_AMOUNT_PESEWAS ?? 1500),
+  // The one client price table (src/config/plans.js), in whole pesewas.
+  amountPesewas: PLAN_PRICES_PESEWAS.monthly,
   receivingNumber: CLIENT_ENV.VITE_STOREKEEPER_RECEIVING_NUMBER ?? "",
   receivingName: CLIENT_ENV.VITE_STOREKEEPER_RECEIVING_NAME ?? "StoreKeeper"
 });

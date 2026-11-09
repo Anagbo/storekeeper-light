@@ -1,6 +1,6 @@
 import { recordCreditSale } from "../db/debts.js";
 import { normalizeGhanaCardNumber, isValidGhanaCardNumber } from "../lib/ghanaCardNumber.js";
-import { toPesewas } from "../lib/money.js";
+import { formatGhs, toPesewas } from "../lib/money.js";
 import {
   getCreditBalanceAfterSale,
   getNextCycleDate,
@@ -27,7 +27,7 @@ export function prepareAddDebt({
   const amountPesewas = Number.isSafeInteger(amount) ? amount : toPesewas(amount);
   if (!cleanCustomerName) throw new TypeError("A customer name is required.");
   if (!Number.isSafeInteger(amountPesewas) || amountPesewas <= 0) {
-    throw new TypeError("Enter a debt amount greater than GH₵0.00.");
+    throw new TypeError(`Enter a debt amount greater than ${formatGhs(0)}.`);
   }
   if (!isValidGhanaCardNumber(ghanaCardNumber)) {
     throw new TypeError("Enter a Ghana Card number like GHA-123456789-0 or 1234567890.");

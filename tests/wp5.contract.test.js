@@ -62,7 +62,8 @@ test("wiring exposes all required screen states and excludes prototype demo cont
 });
 
 test("POS user-facing source uses the GH₵ formatter boundary", () => {
-  const allowed = new Set(["money.js", "saleParser.js", "wiring.json"]);
+  // formatGhs.js is the one formatter (money.js re-exports it): the only place GHS is the currency code.
+  const allowed = new Set(["money.js", "formatGhs.js", "saleParser.js", "wiring.json"]);
   const srcDirectory = fileURLToPath(new URL("../src/", import.meta.url));
   for (const entry of readSourceTree(srcDirectory)) {
     if (allowed.has(entry.name)) continue;

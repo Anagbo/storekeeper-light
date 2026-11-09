@@ -44,7 +44,7 @@ export default function Home({ onNavigate, onLegacyEntry, notice = "" }) {
   const whatsappLink = urgentDebt && generateWhatsAppLink(
     urgentDebt.phone,
     urgentDebt.customerName,
-    urgentDebt.amountPesewas / 100
+    urgentDebt.amountPesewas
   );
   const dialablePhone = normalizedPhone?.replace(/[^\d+]/g, "");
   const dueLabel = urgentDebt ? getDebtDueLabel(urgentDebt.dueDate) : "";

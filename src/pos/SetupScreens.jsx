@@ -213,7 +213,7 @@ export function HowMuchIsItem({ params, onBack, onNavigate }) {
     if (!product || saving) return;
     const pricePesewas = toPesewas(price);
     if (!Number.isSafeInteger(pricePesewas) || pricePesewas <= 0) {
-      setError(t("sellItems.invalidPrice"));
+      setError(t("sellItems.invalidPrice", { zero: formatGhs(0) }));
       return;
     }
     setSaving(true);

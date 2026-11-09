@@ -1,6 +1,6 @@
 ﻿import { db } from "./db.js";
 import { runTransactionWithTimeout } from "./runTransactionWithTimeout.js";
-import { toPesewas } from "../lib/money.js";
+import { formatGhs, toPesewas } from "../lib/money.js";
 
 import { findStarterItem, STARTER_CATEGORIES } from "./starterItems.js";
 
@@ -13,7 +13,7 @@ export function normalizeProductInput({ name, price = "" }) {
   if (!cleanName) throw new TypeError("Enter an item name.");
   if (cleanName.length > 80) throw new TypeError("Item names must be 80 characters or fewer.");
   if (!Number.isSafeInteger(pricePesewas) || (priceText && pricePesewas <= 0)) {
-    throw new TypeError("Enter a valid item price greater than GH₵0.00.");
+    throw new TypeError(`Enter a valid item price greater than ${formatGhs(0)}.`);
   }
   return {
     name: cleanName,

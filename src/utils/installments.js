@@ -1,4 +1,5 @@
 import { normalizeWhatsAppPhone } from "./whatsapp.js";
+import { formatGhs } from "../lib/formatGhs.js";
 
 export function localDateString(date = new Date()) {
   const year = date.getFullYear();
@@ -395,6 +396,6 @@ export function createInstallmentReminderLink(phone, customerName, installmentAm
     : alertStatus?.type === "due_soon"
       ? `is due in ${alertStatus.days} day${alertStatus.days === 1 ? "" : "s"}`
       : "is due today";
-  const message = `Hi ${name}, gentle reminder that your installment of GH₵${(installmentAmountPesewas / 100).toFixed(2)} ${duePhrase}. Thank you!`;
+  const message = `Hi ${name}, gentle reminder that your installment of ${formatGhs(installmentAmountPesewas)} ${duePhrase}. Thank you!`;
   return `https://wa.me/${normalizedPhone.slice(1)}?text=${encodeURIComponent(message)}`;
 }
