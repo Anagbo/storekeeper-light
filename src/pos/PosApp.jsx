@@ -40,7 +40,6 @@ import InstallmentSplitPayment from "./InstallmentSplitPayment.jsx";
 import { HowDoYouWantToSell, HowManyItem, HowMuchIsItem, MoreCategories, WhatDoYouSell } from "./SetupScreens.jsx";
 import { LanguageSettings, SettingsProfitTools } from "./SettingsScreens.jsx";
 import PeopleWhoOweYou from "./OwedScreens.jsx";
-import AddDebt from "./AddDebt.jsx";
 import { ManualDebtAmount, ManualDebtSaved } from "./ManualDebtScreens.jsx";
 import { MoMoChoice, MoMoCode, MoMoDirect, MoMoNotCompleted, MoMoPayment, MoMoSetup, MoMoWaiting, PaymentSettings } from "./MoMoScreens.jsx";
 import { MyPlan, PlanPayCash, PlanPayMethod, PlanPayMoMo, PlanPayPhone, PlanPaymentResult } from "./PlanScreens.jsx";
@@ -228,14 +227,6 @@ export default function PosApp() {
     return customer;
   }
 
-  async function saveAddedDebt(details) {
-    const { saveAddedDebt: persistAddedDebt } = await import("../utils/addDebt.js");
-    const result = await persistAddedDebt(details);
-    void requestBackgroundSync();
-    switchTab(POS_ROUTES.PeopleWhoOweYou);
-    return result;
-  }
-
   async function saveCreditSale(details) {
     if (details.manualDebt) {
       const { recordManualDebt } = await import("../db/debtLedger.js");
@@ -252,7 +243,8 @@ export default function PosApp() {
         note: details.note ?? "",
         dueDate: details.dueDate ?? "",
         installmentPlan: details.installmentPlan ?? null,
-        now: details.takenOnTimestamp ?? Date.now()
+        takenOn: details.takenOn ?? "",
+        now: Date.now()
       });
       void requestBackgroundSync();
       navigate(POS_ROUTES.ManualDebtSaved, { ...details, manualDebtResult });
@@ -373,7 +365,7 @@ export default function PosApp() {
   ) : route === POS_ROUTES.MoreCategories ? (
     <MoreCategories selected={setupCategories} onSelectedChange={setSetupCategories} onBack={navigateBack} onDone={navigateBack} />
   ) : route === POS_ROUTES.HowMuchIsItem ? (
-    <HowMuchIsItem params={routeState.params} onBack={navigateBack} onNavigate={navigate} />
+    <HowMuchIsItem params={routeState.params} onBack={navigateBack} onReturnTo={returnTo} />
   ) : route === POS_ROUTES.HowManyItem ? (
     <HowManyItem params={routeState.params} onBack={navigateBack} onReplace={replaceCurrentRoute} />
   ) : route === POS_ROUTES.SplitPayment && routeState.params.installmentSplit ? (
@@ -516,11 +508,6 @@ export default function PosApp() {
       onNavigate={navigate}
       shopName={shopName}
       onCollect={(debt) => navigate(POS_ROUTES.CollectPayment, { debtId: debt.id, customerName: debt.customerName })}
-    />
-  ) : route === POS_ROUTES.AddDebt ? (
-    <AddDebt
-      onBack={navigateBack}
-      onSave={saveAddedDebt}
     />
   ) : route === POS_ROUTES.ManualDebtAmount ? (
     <ManualDebtAmount

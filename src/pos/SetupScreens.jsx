@@ -202,7 +202,7 @@ export function MoreCategories({ selected, onSelectedChange, onBack, onDone }) {
   );
 }
 
-export function HowMuchIsItem({ params, onBack, onNavigate }) {
+export function HowMuchIsItem({ params, onBack, onReturnTo }) {
   const product = params.product;
   const [price, setPrice] = useState("");
   const [saving, setSaving] = useState(false);
@@ -221,7 +221,13 @@ export function HowMuchIsItem({ params, onBack, onNavigate }) {
     try {
       const updatedProduct = await updateProduct(product.id, { name: product.name, price });
       void requestBackgroundSync();
-      onNavigate("HowManyItem", { ...params, product: updatedProduct, unitPricePesewas: pricePesewas });
+      // Save price returns to 20 (contract 37) with the item in the sale, as a tap on a
+      // priced tile does: one more of it.
+      const currentItems = normalizeSaleItems(params.saleItems ?? []);
+      const saleItems = currentItems.some((item) => item.productId === product.id)
+        ? currentItems.map((item) => item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item)
+        : [...currentItems, { productId: product.id, name: updatedProduct?.name ?? product.name, quantity: 1, unitPricePesewas: pricePesewas }];
+      onReturnTo("SellWithItems", { saleItems, amountPesewas: totalSaleItemsPesewas(saleItems) });
     } catch (saveError) {
       console.error("Could not save this item's price.", saveError);
       setError(saveError instanceof TypeError ? saveError.message : t("sellItems.priceSaveFailed"));
@@ -298,7 +304,7 @@ export function HowManyItem({ params, onBack, onReplace }) {
         <PosSecondaryButton type="button" aria-label={t("setup.quantityMore")} onClick={() => setQuantity((current) => current + 1)}>+</PosSecondaryButton>
       </div>
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
-      <PosPrimaryButton type="button" disabled={!product} onClick={addToSale} className="mt-auto">{t("setup.addToSale")}</PosPrimaryButton>
+      <PosPrimaryButton type="button" disabled={!product} onClick={addToSale} className="mt-auto">{t("setup.addQuantity", { quantity })}</PosPrimaryButton>
     </PosPage>
   );
 }

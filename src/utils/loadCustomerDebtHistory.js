@@ -1,4 +1,5 @@
 import { db } from "../db/db.js";
+import { isValidDateString, localDateString } from "./installments.js";
 import {
   getDebtAdjustmentReasonLabel,
   getHistoryCreditAmount,
@@ -84,10 +85,15 @@ export async function loadCustomerHistory(customerId, customerName) {
     if (transaction.type === "manual_debt") {
       const creditAmount = getHistoryCreditAmount(transaction);
       if (creditAmount > 0) {
+        // A debt entered with an earlier Taken on date (53) sits at that date, shown with no
+        // time because only the day is known.
+        const backdated = isValidDateString(transaction.takenOn ?? "") &&
+          transaction.takenOn < localDateString(new Date(timestamp));
         events.push({
           id: `manual-debt-${transaction.id}`,
           type: "manual_debt",
-          timestamp,
+          timestamp: backdated ? new Date(`${transaction.takenOn}T00:00:00`).getTime() : timestamp,
+          ...(backdated && { dateOnly: true, takenOn: transaction.takenOn }),
           amountPesewas: creditAmount,
           detail: "Added to debt",
           note: transaction.note?.trim() || ""

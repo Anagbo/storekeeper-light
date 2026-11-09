@@ -192,7 +192,7 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
                   </PosPrimaryButton>
                   {whatsappUrl ? (
                     <>
-                      <a href={whatsappUrl} aria-label={`WhatsApp reminder for ${customer.customerName}`} className="grid h-14 w-14 place-items-center rounded-2xl border-2 border-emerald-900 bg-white text-emerald-900 max-[380px]:h-12 max-[380px]:w-12">
+                      <a href={whatsappUrl} aria-label={`WhatsApp ${customer.customerName}`} className="grid h-14 w-14 place-items-center rounded-2xl border-2 border-emerald-900 bg-white text-emerald-900 max-[380px]:h-12 max-[380px]:w-12">
                         <WhatsAppIcon />
                       </a>
                       <a href={`tel:${customer.phone}`} aria-label={`Call ${customer.customerName}`} className="grid h-14 w-14 place-items-center rounded-2xl border-2 border-slate-300 bg-slate-300 text-slate-900 max-[380px]:h-12 max-[380px]:w-12">

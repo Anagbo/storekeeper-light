@@ -8,6 +8,7 @@ import { getMomoDetails, getMomoVerification, MOMO_VERIFICATION } from "../pos/m
 import {
   isValidDateString,
   isValidInstallmentPlanForBalance,
+  localDateString,
   reconcileInstallmentBalanceCorrection,
   reconcileInstallmentPlanChange
 } from "../utils/installments.js";
@@ -191,10 +192,16 @@ export async function recordManualDebt({
   note = "",
   dueDate = "",
   installmentPlan = null,
+  takenOn = "",
   now = Date.now()
 }) {
   const cleanName = name.trim();
   const cleanNote = note.trim();
+  // Taken on (53): the day the debt was taken, today or earlier. The record times stay
+  // the time it was entered; history orders the debt by this date.
+  if (takenOn && (!isValidDateString(takenOn) || takenOn > localDateString(new Date(now)))) {
+    throw new TypeError("Taken on must be today or an earlier date.");
+  }
   const cleanGhanaCardNumber = normalizeGhanaCardNumber(ghanaCardNumber);
   if (!cleanName) throw new TypeError("A customer name is required.");
   assertPesewasAmount(amountPesewas, "The manual debt amount");
@@ -300,6 +307,7 @@ export async function recordManualDebt({
           amountPesewas: newBalancePesewas,
           total_owed: newBalancePesewas,
           note: cleanNote,
+          ...(takenOn && { takenOn }),
           status: newBalancePesewas === 0 ? "paid" : "unpaid",
           createdAt: now,
           created_at: now,
@@ -365,6 +373,7 @@ export async function recordManualDebt({
       previousBalancePesewas,
       newBalancePesewas,
       note: cleanNote,
+      ...(takenOn && { takenOn }),
       itemDescription: "",
       customer_name: customer.name,
       createdAt: now,
@@ -569,6 +578,22 @@ export async function correctDebtBalance({
       customer: updatedCustomer,
       adjustment
     };
+  });
+}
+
+// 43: the merchant opened a WhatsApp reminder and came back (brief line 286). Stored on each
+// of the person's unpaid debts, since the reminder covers their whole balance.
+export async function recordDebtReminder({ debtIds, now = Date.now() }) {
+  if (!Array.isArray(debtIds) || !Number.isFinite(now)) throw new TypeError("Debts and a time are required.");
+  return db.transaction("rw", db.debts, async () => {
+    const debts = (await db.debts.bulkGet(debtIds)).filter((debt) => debt?.status === "unpaid");
+    await Promise.all(debts.map((debt) => db.debts.update(debt.id, {
+      lastReminderAt: now,
+      updatedAt: now,
+      synced: false,
+      syncStatus: "pending"
+    })));
+    return debts.length;
   });
 }
 

@@ -21,7 +21,9 @@ after(async () => {
   await db.delete();
 });
 
-test("Owed list exposes Add debt and routes back after saving", () => {
+// The old AddDebt screen was removed in Batch 13 (it was unreachable); 32's Add debt opens 17.
+// saveAddedDebt below is still used by the legacy DebtLedger screen.
+test("Owed list Add debt opens 17 (the add-debt flow), and Done on the saved screen returns to 32", () => {
   const owedSource = readFileSync(new URL("../src/pos/OwedScreens.jsx", import.meta.url), "utf8");
   const appSource = readFileSync(new URL("../src/pos/PosApp.jsx", import.meta.url), "utf8");
 
@@ -30,13 +32,7 @@ test("Owed list exposes Add debt and routes back after saving", () => {
     link.action === "addDebtJourney" &&
     link.to === POS_ROUTES.WhoOwesYou
   )));
-  assert.ok(POS_LINKS.some((link) => (
-    link.from === POS_ROUTES.AddDebt &&
-    link.action === "save" &&
-    link.to === POS_ROUTES.PeopleWhoOweYou
-  )));
   assert.match(owedSource, /onNavigate\("WhoOwesYou", \{ manualDebt: true \}\)/);
-  assert.match(appSource, /route === POS_ROUTES\.AddDebt/);
   assert.match(appSource, /switchTab\(POS_ROUTES\.PeopleWhoOweYou\)/);
 });
 

@@ -187,6 +187,8 @@ function StarterList({ grouped = false, params, onBack, onAdd, onCompleteSetup }
     : { core: [], more: getAllStarterItems() }), [isSetup, params.starterCategories]);
   const [selected, setSelected] = useState(() => new Set(merged.core.map(({ name }) => name.toLowerCase())));
   const [showMore, setShowMore] = useState(!isSetup);
+  // 52: categories whose full list is shown ("Show all {category}").
+  const [expandedGroups, setExpandedGroups] = useState(() => new Set());
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -269,10 +271,47 @@ function StarterList({ grouped = false, params, onBack, onAdd, onCompleteSetup }
               <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("items.starterSearch")} className="min-w-0 flex-1 bg-transparent text-lg font-semibold outline-none" />
             </label>
           )}
-          {visibleCore.map(renderItem)}
-          {visibleMore.map(renderItem)}
-          {isSetup && !showMore && hiddenMore.length > 0 && (
-            <PosSecondaryButton type="button" onClick={() => setShowMore(true)}>{t("items.showMore")}</PosSecondaryButton>
+          {grouped && isSetup ? groupedCore.map(({ category, items }) => {
+            const expanded = expandedGroups.has(category);
+            return (
+              <section key={category} className="flex flex-col gap-2">
+                <div className="flex items-baseline justify-between gap-2">
+                  <h2 className="text-xl font-extrabold">{category}</h2>
+                  <span className="text-base text-slate-700">{t("items.groupCount", { count: items.length })}</span>
+                </div>
+                {(expanded ? items : items.slice(0, GROUP_PREVIEW_COUNT)).map(renderItem)}
+                {items.length > GROUP_PREVIEW_COUNT && (expanded ? (
+                  <PosSecondaryButton
+                    type="button"
+                    aria-expanded
+                    onClick={() => setExpandedGroups((current) => {
+                      const next = new Set(current);
+                      next.delete(category);
+                      return next;
+                    })}
+                  >
+                    {t("items.showFewer")}
+                  </PosSecondaryButton>
+                ) : (
+                  <PosSecondaryButton
+                    type="button"
+                    aria-label={t("items.showAllCategory", { category })}
+                    aria-expanded={false}
+                    onClick={() => setExpandedGroups((current) => new Set(current).add(category))}
+                  >
+                    {t("items.showAll", { count: items.length })}
+                  </PosSecondaryButton>
+                ))}
+              </section>
+            );
+          }) : (
+            <>
+              {visibleCore.map(renderItem)}
+              {visibleMore.map(renderItem)}
+              {isSetup && !showMore && hiddenMore.length > 0 && (
+                <PosSecondaryButton type="button" onClick={() => setShowMore(true)}>{t("items.showMore", { count: hiddenMore.length })}</PosSecondaryButton>
+              )}
+            </>
           )}
           {!availableItems.length && <p className="rounded-xl border-2 border-slate-300 bg-white p-4 font-semibold">{t("items.starterEmpty")}</p>}
           {availableItems.length > 0 && !visibleCore.length && !visibleMore.length && searchText && (
@@ -283,13 +322,7 @@ function StarterList({ grouped = false, params, onBack, onAdd, onCompleteSetup }
       <p className="text-sm text-slate-700">{t("items.priceLater")}</p>
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
       <PosPrimaryButton type="button" disabled={saving || result === undefined || selectedCount === 0} onClick={() => void addSelected()} className="mt-auto">
-        {saving
-          ? t("items.saving")
-          : isSetup
-            ? t("setup.continueCount", { count: selectedCount })
-            : selectedCount === 1
-              ? t("items.addOne")
-              : t("items.addCount", { count: selectedCount })}
+        {saving ? t("items.saving") : t("setup.continueCount", { count: selectedCount })}
       </PosPrimaryButton>
       {params.setupFlow && (
         <PosSecondaryButton type="button" disabled={saving} onClick={() => void finishSetup()}>

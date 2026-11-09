@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Banknote, Check, Delete, Smartphone } from "lucide-react";
+import { Banknote, CalendarDays, Check, Delete, Smartphone } from "lucide-react";
 import { formatGhs } from "../lib/money.js";
 import { generateWhatsAppLink } from "../utils/whatsapp.js";
-import { isValidInstallmentPlanForBalance } from "../utils/installments.js";
+import { isValidInstallmentPlanForBalance, localDateString } from "../utils/installments.js";
 import { PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { getDebtDueLabel } from "./money.js";
 import { posText as t } from "./i18n.js";
@@ -12,6 +12,10 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onSaveManualDebt 
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  // Taken on (brief line 372): defaults to today, can be set to an older date.
+  const today = localDateString();
+  const [takenOn, setTakenOn] = useState(params.takenOn ?? today);
+  const [pickingDate, setPickingDate] = useState(false);
   const amountPesewas = amountDigits ? Number(amountDigits) : 0;
   const amountValid = Number.isSafeInteger(amountPesewas) && amountPesewas > 0;
   const debt = params.customer?.debt;
@@ -58,7 +62,8 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onSaveManualDebt 
     const nextParams = {
       ...params,
       amountPesewas,
-      note
+      note,
+      takenOn
     };
     if (inheritedPlan || hasDueDate) {
       setSaving(true);
@@ -111,6 +116,23 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onSaveManualDebt 
         <span className="sr-only">What for (optional)</span>
         <input value={note} onChange={(event) => setNote(event.target.value)} placeholder="What for? (optional)" className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />
       </label>
+      <button type="button" aria-expanded={pickingDate} onClick={() => setPickingDate((open) => !open)} className="flex h-14 w-full items-center justify-between rounded-2xl border-[3px] border-slate-500 bg-white px-3 text-lg font-bold">
+        <span>{t("manualDebt.takenOn", { date: takenOn === today ? t("manualDebt.today") : new Date(`${takenOn}T00:00:00`).toLocaleDateString("en-GB") })}</span>
+        <CalendarDays size={24} aria-hidden="true" />
+      </button>
+      {pickingDate && (
+        <input
+          type="date"
+          aria-label={t("manualDebt.takenOnLabel")}
+          value={takenOn}
+          max={today}
+          onChange={(event) => {
+            const value = event.target.value;
+            if (value && value <= today) setTakenOn(value);
+          }}
+          className="h-14 w-full rounded-2xl border-[3px] border-slate-500 bg-white px-3 text-lg"
+        />
+      )}
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
       {(hasPlanRecord || hasDueDate) && (
         <section className="min-w-0 rounded-3xl border-2 border-emerald-900 bg-green-100 p-4">
@@ -121,7 +143,7 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onSaveManualDebt 
               disabled={!amountValid}
               className="min-h-11 rounded-xl border-2 border-emerald-900 bg-white px-3 font-extrabold text-emerald-900 disabled:cursor-not-allowed disabled:opacity-50"
               onClick={() => {
-                if (amountValid) onNavigate("WhenWillTheyPay", { ...params, amountPesewas, note });
+                if (amountValid) onNavigate("WhenWillTheyPay", { ...params, amountPesewas, note, takenOn });
               }}
             >
               Modify

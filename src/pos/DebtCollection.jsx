@@ -3,7 +3,8 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { Banknote, Check, Clock3, Delete, MessageCircle, Phone, Plus, ReceiptText, Smartphone, Undo2, UserRoundPen, X } from "lucide-react";
 import { db } from "../db/db.js";
 import { COLLECTION_UNDO_WINDOW_MS, undoDebtCollection } from "../db/debts.js";
-import { correctDebtBalance } from "../db/debtLedger.js";
+import { correctDebtBalance, recordDebtReminder } from "../db/debtLedger.js";
+import { formatLastReminder } from "./reminderLabel.js";
 import { formatGhs, formatGhsAmount, toPesewas } from "../lib/money.js";
 import { formatGhanaCard } from "../utils/formatters.js";
 import { formatHistoryTimestamp } from "../utils/customerDebtHistory.js";
@@ -599,8 +600,25 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
       setContactEditorOpen(true);
     }
   }, [params?.editContact, data]);
+  // 43: lastReminderAt is recorded when the merchant comes back from WhatsApp (brief line 286).
+  const pendingReminderDebtIds = useRef(null);
+  useEffect(() => {
+    function onReturn() {
+      if (document.visibilityState !== "visible" || !pendingReminderDebtIds.current) return;
+      const debtIds = pendingReminderDebtIds.current;
+      pendingReminderDebtIds.current = null;
+      void recordDebtReminder({ debtIds }).catch((error) => console.error("Could not record the reminder time.", error));
+    }
+    document.addEventListener("visibilitychange", onReturn);
+    return () => document.removeEventListener("visibilitychange", onReturn);
+  }, []);
   const phone = normalizeWhatsAppPhone(data?.phone);
   const reminderLink = data && generateWhatsAppLink(data.phone, data.name, data.balancePesewas, shopName);
+  const lastReminderAt = Math.max(0, ...(data?.unpaidDebts ?? []).map((debt) => Number(debt.lastReminderAt) || 0));
+  const lastReminderLabel = formatLastReminder(lastReminderAt || undefined);
+  const markReminderOpened = () => {
+    pendingReminderDebtIds.current = (data?.unpaidDebts ?? []).map((debt) => debt.id);
+  };
   const balanceReceiptLink = data && phone
     ? `https://wa.me/${phone.slice(1)}?text=${encodeURIComponent(buildCustomerBalanceReceipt({
         shopName,
@@ -613,6 +631,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
     : null;
   const dueDate = data?.debt?.isInstallmentPlan ? data.debt.nextDueDate : data?.debt?.dueDate;
   const dueLabel = data?.debt && getDebtDueLabel(dueDate);
+  const isLate = Boolean(dueLabel?.startsWith("Late "));
   const paidInstallments = data?.debt?.isInstallmentPlan
     ? Math.max(0, (data.debt.totalInstallments ?? data.debt.installmentsRemaining ?? 0) - (data.debt.installmentsRemaining ?? 0))
     : 0;
@@ -737,15 +756,25 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
             <p className="amount-fit font-extrabold text-rose-950">{formatGhs(data.balancePesewas)}</p>
             {dueLabel?.startsWith("Late ") && <p className="mt-1 font-bold text-rose-950">{dueLabel}</p>}
           </section>
-          <div className={`grid grid-cols-2 gap-2 sm:gap-3 ${phone && reminderLink ? "sm:grid-cols-4" : ""}`}>
+          {isLate && phone && reminderLink && (
+            <div className="flex flex-col gap-1">
+              <a href={reminderLink} target="_blank" rel="noopener noreferrer" onClick={markReminderOpened} className="flex h-16 w-full items-center justify-center gap-2.5 rounded-[18px] border-[3px] border-emerald-900 bg-white px-3 text-lg font-extrabold text-emerald-900">
+                <WhatsAppIcon /> {t("collect.remindOnWhatsApp")}
+              </a>
+              {lastReminderLabel && <p className="text-center text-base text-slate-800">{lastReminderLabel}</p>}
+            </div>
+          )}
+          <div className={`grid grid-cols-2 gap-2 sm:gap-3 ${phone && reminderLink ? (isLate ? "sm:grid-cols-3" : "sm:grid-cols-4") : ""}`}>
             <button type="button" disabled={data.balancePesewas <= 0 || !data.debt?.id} onClick={() => onCollect(data.debt)} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-emerald-900 px-2 text-base font-extrabold text-white disabled:opacity-50 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
               <Banknote size={26} aria-hidden="true" /> <span className="truncate">{t("collect.collect")}</span>
             </button>
             {phone && reminderLink ? (
               <>
-                <a href={reminderLink} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp reminder for ${data.name}`} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
-                  <WhatsAppIcon /> <span className="truncate">Reminder</span>
-                </a>
+                {!isLate && (
+                  <a href={reminderLink} target="_blank" rel="noopener noreferrer" onClick={markReminderOpened} aria-label={`WhatsApp reminder for ${data.name}`} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
+                    <WhatsAppIcon /> <span className="truncate">Reminder</span>
+                  </a>
+                )}
                 <a href={balanceReceiptLink} target="_blank" rel="noopener noreferrer" aria-label={`Send current balance receipt for ${data.name}`} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
                   <ReceiptText size={26} aria-hidden="true" /> <span className="truncate">Receipt</span>
                 </a>
@@ -848,7 +877,9 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                             : event.type === "addon" ? t("collect.creditAdded") : t("collect.creditTaken")}
                       </strong>
                       <span className="block text-sm text-slate-800">
-                        {event.type === "adjustment" ? `${event.reasonLabel} · ${formatHistoryRowTimestamp(event.timestamp)}` : formatHistoryRowTimestamp(event.timestamp)}
+                        {event.type === "adjustment"
+                          ? `${event.reasonLabel} · ${formatHistoryRowTimestamp(event.timestamp)}`
+                          : event.dateOnly ? new Date(event.timestamp).toLocaleDateString("en-GB") : formatHistoryRowTimestamp(event.timestamp)}
                         {event.type === "manual_debt" && event.note && <> · {event.note}</>}
                         {["credit", "addon"].includes(event.type) && (
                           <> · {getDebtorItemDescription(event)
