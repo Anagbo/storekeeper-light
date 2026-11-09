@@ -21,7 +21,7 @@
   "SAVEMOMO": "Save the payout account and create or update the Paystack subaccount. If the merchant arrived by tapping MoMo, continue to 56. Otherwise return to the previous screen.",
   "DIRECT": "From 61: go to 62. Needs no setup beyond the merchant's own MoMo number. Records the MoMo part as 'you confirmed'.",
   "PHONE": "From 61: if the Paystack payout account is not set up go to 60 (Save and verify continues to 56); otherwise go to 56.",
-  "MOMOPICK": "MoMo tile on 16 (split): go to 61 with pick16 set. DIRECT or PHONE then records the method on the MoMo part and returns to 16. Nothing is requested yet.",
+  "MOMOPICK": "MoMo tile on 16 (split): first ask how much (amount editor prefilled with Left to pay, can be lowered), then go to 61 with pick16 set and that amount. DIRECT or PHONE then records the method on the MoMo part and returns to 16. With a direct MoMo row already present, the tile raises it and only the extra goes to 61/62. Nothing is requested yet.",
   "SAVECREDIT": "Save on 18 or 19. If flow=split, mark the Owe part complete and return to 16 (drop the screens in between from history). Otherwise go to 31.",
   "SAVE19": "Save plan on 19. If today's payment includes MoMo: confirm it first (Direct: 62; Phone request: 56 then 57, 60 for setup, 61 when the method is not chosen yet). Then commit once (debt or sale credit, plan, collection of the amount paid today) and go to 31. In flow=split return to 16 with the Owe part complete. If the request fails go to 59 and stay on 19, nothing saved.",
   "MOMOPICK19": "MoMo on 19: go to 61 with pick19 set. The chosen method returns to 19."
@@ -263,7 +263,11 @@
     }
    ],
    "inputs": [],
-   "bottom_bar": false
+   "bottom_bar": false,
+   "rules": [
+    "A verified (phone request) MoMo row cannot be edited or removed.",
+    "The draft survives Menu > Settings > Back; header Home discards it."
+   ]
   },
   "17": {
    "name": "Who owes you?",
@@ -551,7 +555,10 @@
     }
    ],
    "inputs": [],
-   "bottom_bar": false
+   "bottom_bar": false,
+   "rules": [
+    "Back is kept (built extra)."
+   ]
   },
   "21": {
    "name": "How do you want to sell?",
@@ -1014,8 +1021,9 @@
      "label": "MoMo",
      "role": null,
      "disabled_initially": false,
-     "type": "selection",
-     "effect": "Adds a payment part. Enables Done or Received once the parts add up."
+     "type": "navigate",
+     "to": "MOMOPICK",
+     "to_rule": "Ask how much first (prefilled with Left to pay), then 61 with that amount, same as 16. Returns to 27 with the MoMo part."
     },
     {
      "label": "Received",
