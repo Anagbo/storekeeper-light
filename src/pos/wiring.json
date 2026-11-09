@@ -3013,7 +3013,11 @@
    "inputs": [
     "000000"
    ],
-   "bottom_bar": false
+   "bottom_bar": false,
+   "helper_texts": [
+    "The customer got a code by SMS. Ask them for it. (When the merchant pays for their own plan, say: You got a code by SMS. Enter it.)",
+    "Code not arriving? Go back and send the request again."
+   ]
   },
   "59": {
    "name": "Payment not completed",
@@ -3283,7 +3287,17 @@
    ],
    "inputs": [],
    "bottom_bar": false,
-   "change_request": "2026-11-07 MoMo choice and plan payments"
+   "change_request": "2026-11-07 MoMo choice and plan payments",
+   "tags": {
+    "Cash": "Free",
+    "Mobile money": "Last used · Free (the Last used tag shows only on the stored last-used method)",
+    "Phone request": "Fee GH₵{fee from configuration}"
+   },
+   "helper_texts": {
+    "Cash": "Give cash to a StoreKeeper agent.",
+    "Mobile money": "Send to our number. Enter the message code.",
+    "Phone request": "Approve on your phone. Confirmed by itself."
+   }
   },
   "66": {
    "name": "Pay cash",
@@ -3394,7 +3408,8 @@
    ],
    "inputs": [],
    "bottom_bar": false,
-   "change_request": "2026-11-07 MoMo choice and plan payments"
+   "change_request": "2026-11-07 MoMo choice and plan payments",
+   "detail_text": "Plan runs to {end date} · {method} · {verification label}. Values come from the stored plan payment, never fixed text. Example for a Paystack payment: Plan runs to 19 Dec · Phone request · MoMo · verified."
   },
   "70": {
    "name": "Waiting to confirm",
