@@ -680,7 +680,8 @@ test("split collections reconcile partial installment payments and all unpaid cu
   const customer = await db.customers.get(customerId);
   assert.equal(collection.remainingPesewas, 4000);
   assert.equal(debt.amountPesewas, 4000);
-  assert.equal(debt.installmentsRemaining, 3);
+  // Payments left from the balance: 4000 ÷ 2000 = 2 (DRIFT fix, Batch 14).
+  assert.equal(debt.installmentsRemaining, 2);
   assert.equal(debt.installmentPaymentCarryPesewas, 1000);
   assert.equal(debt.nextDueDate, "2026-05-01");
   assert.equal(customer.totalDebtPesewas, 7000);

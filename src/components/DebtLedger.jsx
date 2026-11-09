@@ -20,6 +20,7 @@ import PaymentMethodToggle from "./PaymentMethodToggle.jsx";
 import {
   createInstallmentReminderLink,
   getInstallmentAlertStatus,
+  getInstallmentsLeft,
   getMaximumInstallmentAmountPesewas,
   getNextCycleDate,
   PAYMENT_FREQUENCIES,
@@ -1005,7 +1006,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
                             ? `Installment due today · ${formatGhs(debt.installmentAmount)}`
                             : installmentAlert?.type === "due_soon"
                               ? `Installment due in ${installmentAlert.days} day${installmentAlert.days === 1 ? "" : "s"} · ${formatGhs(debt.installmentAmount)}`
-                              : `Next ${debt.frequency} installment: ${debt.nextDueDate} · ${debt.installmentsRemaining} remaining`}
+                              : `Next ${debt.frequency} installment: ${debt.nextDueDate} · ${getInstallmentsLeft(debt)} remaining`}
                       </p>
                     )}
                     {debt.note && <p className="mt-1 break-words text-sm text-slate-600">{debt.note}</p>}

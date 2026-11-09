@@ -205,12 +205,9 @@ export function reconcileInstallmentPayment(debt, paymentPesewas, remainingPesew
   if (!isPaymentFrequency(debt.frequency) || !isValidDateString(debt.nextDueDate)) {
     throw new TypeError("This installment plan has invalid schedule details.");
   }
-  if (debt.installmentsRemaining !== undefined &&
-    (!Number.isSafeInteger(debt.installmentsRemaining) || debt.installmentsRemaining <= 0)) {
-    throw new TypeError("This installment plan has an invalid number of remaining payments.");
-  }
-  if (debt.installmentsRemaining === undefined &&
-    (!Number.isSafeInteger(debtAmountPesewas) || debtAmountPesewas <= 0)) {
+  // Payments left come from the balance (DRIFT-1/2/4), never from the stored counter, so a
+  // counter that drifted on an older version cannot block a collection.
+  if (!Number.isSafeInteger(reconciledBalancePesewas) || reconciledBalancePesewas <= 0) {
     throw new TypeError("This installment plan has no valid remaining balance.");
   }
   const carryPesewas = debt.installmentPaymentCarryPesewas ?? 0;
@@ -222,18 +219,9 @@ export function reconcileInstallmentPayment(debt, paymentPesewas, remainingPesew
     throw new RangeError("The installment payment total exceeds the supported amount.");
   }
 
-  const remainingInstallments = Number.isSafeInteger(debt.installmentsRemaining)
-    ? debt.installmentsRemaining
-    : Math.ceil(debtAmountPesewas / installmentAmountPesewas);
-  if (Number.isSafeInteger(debtAmountPesewas) &&
-    remainingInstallments < Math.ceil(debtAmountPesewas / installmentAmountPesewas)) {
-    throw new TypeError("This installment plan has fewer payments than its remaining balance requires.");
-  }
-  const completedCycles = Math.min(
-    remainingInstallments,
-    Math.floor(paidTowardInstallmentsPesewas / installmentAmountPesewas)
-  );
-  const nextInstallmentsRemaining = remainingInstallments - completedCycles;
+  // The carry and the due date still follow whole installments paid (display and schedule).
+  const completedCycles = Math.floor(paidTowardInstallmentsPesewas / installmentAmountPesewas);
+  const nextInstallmentsRemaining = Math.ceil(remainingPesewas / installmentAmountPesewas);
 
   return {
     isInstallmentPlan: nextInstallmentsRemaining > 0,
@@ -358,6 +346,18 @@ export function reconcileInstallmentBalanceCorrection(debt, nextBalancePesewas) 
     nextDueDate: debt.nextDueDate,
     installmentPaymentCarryPesewas: carryPesewas
   };
+}
+
+// Payments left on a plan: balance ÷ installment amount, rounded up (owner rule, Batch 13).
+// The stored installmentsRemaining is only a cache of this value.
+export function getInstallmentsLeft(debt) {
+  const balance = debt?.amountPesewas ?? debt?.total_owed;
+  if (!debt?.isInstallmentPlan || debt.status === "paid" ||
+    !Number.isSafeInteger(balance) || balance <= 0 ||
+    !Number.isSafeInteger(debt.installmentAmount) || debt.installmentAmount <= 0) {
+    return 0;
+  }
+  return Math.ceil(balance / debt.installmentAmount);
 }
 
 export function isInstallmentDue(debt, today = localDateString()) {

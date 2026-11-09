@@ -15,6 +15,7 @@ import { buildCollectionReceiptLink } from "./collectionReceipt.js";
 import { buildCustomerBalanceReceipt, getCollectionReceiptText } from "./receiptTemplates.js";
 import { normalizeCollectionAmountInput } from "./collectionSplit.js";
 import { getDebtDueLabel } from "./money.js";
+import { getInstallmentsLeft } from "../utils/installments.js";
 import { posText as t } from "./i18n.js";
 import { PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, SplitIcons } from "./PosComponents.jsx";
 import CustomerContactEditor from "./CustomerContactEditor.jsx";
@@ -201,9 +202,9 @@ function CollectionSheet({ debt, onClose, onNavigate, onRecordCollection }) {
         {debt.isInstallmentPlan && (
           <p className="mt-2 text-sm font-semibold text-slate-700">
             {t("collect.installmentProgress", {
-              payment: (debt.totalInstallments ?? 0) - (debt.installmentsRemaining ?? 0) + 1,
-              total: debt.totalInstallments ?? 0,
-              left: debt.installmentsRemaining ?? 0
+              payment: Math.max(debt.totalInstallments ?? 0, getInstallmentsLeft(debt)) - getInstallmentsLeft(debt) + 1,
+              total: Math.max(debt.totalInstallments ?? 0, getInstallmentsLeft(debt)),
+              left: getInstallmentsLeft(debt)
             })}
           </p>
         )}
@@ -632,12 +633,12 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
   const dueDate = data?.debt?.isInstallmentPlan ? data.debt.nextDueDate : data?.debt?.dueDate;
   const dueLabel = data?.debt && getDebtDueLabel(dueDate);
   const isLate = Boolean(dueLabel?.startsWith("Late "));
-  const paidInstallments = data?.debt?.isInstallmentPlan
-    ? Math.max(0, (data.debt.totalInstallments ?? data.debt.installmentsRemaining ?? 0) - (data.debt.installmentsRemaining ?? 0))
-    : 0;
+  // Payments left from the balance (DRIFT fix); the stored total is only used for "paid".
+  const installmentsLeft = getInstallmentsLeft(data?.debt);
   const installmentCount = data?.debt?.isInstallmentPlan
-    ? data.debt.totalInstallments ?? paidInstallments + (data.debt.installmentsRemaining ?? 0)
+    ? Math.max(data.debt.totalInstallments ?? 0, installmentsLeft)
     : 0;
+  const paidInstallments = installmentCount - installmentsLeft;
   const progressInstallmentCount = Number.isSafeInteger(installmentCount) && installmentCount > 0
     ? installmentCount
     : 0;
@@ -811,7 +812,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                 <span className="block h-full bg-emerald-900" style={{ width: `${installmentProgress}%` }} />
               </div>
               <div className="flex justify-between gap-2 text-sm font-extrabold">
-                <span>{t("collect.installmentPaid", { paid: paidInstallments, left: data.debt.installmentsRemaining ?? 0 })}</span>
+                <span>{t("collect.installmentPaid", { paid: paidInstallments, left: installmentsLeft })}</span>
                 <span>{t("collect.nextLabel", { date: nextDueDate })}</span>
               </div>
             </section>

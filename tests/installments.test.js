@@ -480,14 +480,17 @@ test("installment reconciliation rejects invalid amounts and inconsistent balanc
   ]) {
     assert.throws(() => reconcileInstallmentPayment(plan, payment, remaining), /valid payment/);
   }
-  assert.throws(() => reconcileInstallmentPayment({
-    ...plan,
-    installmentsRemaining: 0
-  }, 100, 9900), /remaining payments/);
-  assert.throws(() => reconcileInstallmentPayment({
-    ...plan,
-    installmentsRemaining: 1
-  }, 1000, 9000), /fewer payments/);
+});
+
+// DRIFT fix (Batch 14): a stored counter that disagrees with the balance no longer blocks a
+// collection; payments left is written from the balance.
+test("installment reconciliation ignores a stored counter that disagrees with the balance", () => {
+  for (const installmentsRemaining of [0, 1, 99]) {
+    const result = reconcileInstallmentPayment({ ...plan, installmentsRemaining }, 1000, 9000);
+    assert.equal(result.installmentsRemaining, 4);
+    assert.equal(result.installmentPaymentCarryPesewas, 1000);
+    assert.equal(result.nextDueDate, "2026-05-01");
+  }
 });
 
 test("Start Next Cycle does not record an initial payment", () => {
