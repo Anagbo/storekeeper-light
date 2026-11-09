@@ -76,9 +76,6 @@ function sourceTargets() {
   return targets;
 }
 
-// Known gaps, fixed in the next commit (the same todo pattern as the drift tests).
-const KNOWN_GAP = { todo: "63 PaymentSettings and 52 YourStarterListGrouped have no render branch (fixed next)" };
-
 test("the scan itself works: it finds the screens PosApp renders", () => {
   const built = builtRoutes();
   for (const name of ["Home", "Sell", "CollectPayment", "MyItems", "YourStarterList", "MoMoDirect", "MyPlan", "PeopleWhoOweYou"]) {
@@ -87,13 +84,13 @@ test("the scan itself works: it finds the screens PosApp renders", () => {
   assert.ok(built.size >= 45, `found ${built.size} built routes`);
 });
 
-test("every declared route has a built screen, so none falls through to PlannedScreen", KNOWN_GAP, () => {
+test("every declared route has a built screen, so none falls through to PlannedScreen", () => {
   const built = builtRoutes();
   const missing = Object.keys(POS_ROUTES).filter((name) => !built.has(name) && !PLANNED_ALLOWED.includes(name));
   assert.deepEqual(missing, [], `routes with no screen (they would show PlannedScreen): ${missing.join(", ")}`);
 });
 
-test("every POS_LINKS start and end has a built screen", KNOWN_GAP, () => {
+test("every POS_LINKS start and end has a built screen", () => {
   const built = builtRoutes();
   const missing = new Set();
   for (const link of POS_LINKS) {
@@ -105,7 +102,7 @@ test("every POS_LINKS start and end has a built screen", KNOWN_GAP, () => {
   assert.deepEqual([...missing], []);
 });
 
-test("every route a screen navigates to, or keeps in its params, has a built screen", KNOWN_GAP, () => {
+test("every route a screen navigates to, or keeps in its params, has a built screen", () => {
   const built = builtRoutes();
   const problems = [];
   for (const [name, where] of sourceTargets()) {
@@ -115,7 +112,7 @@ test("every route a screen navigates to, or keeps in its params, has a built scr
   assert.deepEqual(problems, []);
 });
 
-test("every screen in the wiring file, and every wiring navigate target, has a built screen", KNOWN_GAP, () => {
+test("every screen in the wiring file, and every wiring navigate target, has a built screen", () => {
   const built = builtRoutes();
   const problems = [];
   for (const [id, screen] of Object.entries(wiring.screens)) {

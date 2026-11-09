@@ -416,6 +416,8 @@ export default function PosApp() {
     }}
     onPick={(details) => returnFromMomoPick(details)}
     />
+  ) : route === POS_ROUTES.PaymentSettings ? (
+    <PaymentSettings onBack={navigateBack} onNavigate={navigate} />
   ) : route === POS_ROUTES.MoMoSetup ? (
     <MoMoSetup params={routeState.params} onBack={navigateBack} onNavigate={navigate} shopName={shopName} />
   ) : route === POS_ROUTES.MoMoPayment ? (
@@ -540,7 +542,8 @@ export default function PosApp() {
     POS_ROUTES.NewItem,
     POS_ROUTES.EditItem,
     POS_ROUTES.DeleteItem,
-    POS_ROUTES.YourStarterList
+    POS_ROUTES.YourStarterList,
+    POS_ROUTES.YourStarterListGrouped
   ].includes(route) ? (
     <ItemScreens
       route={route}

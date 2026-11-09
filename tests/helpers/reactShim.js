@@ -26,8 +26,9 @@ export function useReducer(reducer, initialArg, init) {
 export function useRef(initial) {
   return slot(() => ({ current: initial }));
 }
-export function useEffect() {}
-export function useLayoutEffect() {}
+// Effects are only recorded; a test that wants them to run calls flushEffects(view) (below).
+export function useEffect(effect) { slot(() => ({})).effect = effect; }
+export function useLayoutEffect(effect) { slot(() => ({})).effect = effect; }
 export function useInsertionEffect() {}
 export function useMemo(create) { return create(); }
 export function useCallback(callback) { return callback; }
@@ -62,6 +63,13 @@ export function useLiveQuery(query, deps, defaultValue) {
 export function setLiveQuery(handler) { shared.liveQuery = handler; }
 const React = { useState, useReducer, useRef, useEffect, useLayoutEffect, useInsertionEffect, useMemo, useCallback, useId, useTransition, useDeferredValue, useSyncExternalStore, createContext, useContext, memo, forwardRef, Fragment, StrictMode, createElement };
 export default React;
+
+// Runs the effects recorded by the last render of every component, once each (opt-in).
+export function flushEffects(root) {
+  for (const instance of root.instances.values()) {
+    for (const hook of instance.hooks) if (typeof hook?.effect === "function") hook.effect();
+  }
+}
 
 // Renders an element tree. Function components are called with persistent hook state per
 // position; the result keeps each component node (type and props) with what it rendered.

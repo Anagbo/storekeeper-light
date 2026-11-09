@@ -32,7 +32,7 @@ export async function loadJsx(repoPath) {
   return cache.get(repoPath);
 }
 
-export { render, setLiveQuery } from "./reactShim.js";
+export { flushEffects, render, setLiveQuery } from "./reactShim.js";
 
 // Every node in a rendered tree, depth first.
 export function* walk(node) {
