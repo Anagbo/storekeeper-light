@@ -160,7 +160,8 @@ test("uses a trusted request origin for the Paystack callback", async () => {
   assert.equal(response.statusCode, 200);
 });
 
-test("returns Paystack's error message for a failed API response", async () => {
+// B9: Paystack's own message and technical detail are logged, not sent to the merchant.
+test("answers a failed Paystack API response with plain words, not Paystack's message", async () => {
   global.fetch = async () => ({
     ok: false,
     status: 400,
@@ -171,10 +172,10 @@ test("returns Paystack's error message for a failed API response", async () => {
   await initiate({ method: "POST", body: { email: "buyer@example.com" } }, response);
 
   assert.equal(response.statusCode, 502);
-  assert.equal(response.body.error, "Invalid key");
+  assert.equal(response.body.error, "Checkout could not be started. Please try again.");
 });
 
-test("reports status when Paystack returns an empty or non-JSON response", async () => {
+test("answers an empty or non-JSON Paystack response with plain words", async () => {
   for (const text of ["", "<html>gateway error</html>"]) {
     global.fetch = async () => ({
       ok: false,
@@ -186,7 +187,7 @@ test("reports status when Paystack returns an empty or non-JSON response", async
     await initiate({ method: "POST", body: { email: "buyer@example.com" } }, response);
 
     assert.equal(response.statusCode, 502);
-    assert.match(response.body.error, /HTTP 502/);
+    assert.equal(response.body.error, "Checkout could not be started. Please try again.");
   }
 });
 

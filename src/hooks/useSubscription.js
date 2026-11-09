@@ -4,12 +4,15 @@ import { db } from "../db/db.js";
 import { FEATURE_FLAGS, FEATURE_SUBSCRIPTION_LOCKOUT } from "../config/features.js";
 import {
   applyVerifiedSubscriptionPayment,
+  clearPendingSubscriptionPayment,
+  isFinalPaymentFailure,
   isNetworkError,
   parsePendingSubscriptionPayment,
+  PAYMENT_NOT_COMPLETED_MESSAGE,
   readVerifyResponse,
   VERIFY_UNAVAILABLE_MESSAGE
 } from "../db/subscriptionPayments.js";
-import { getEffectiveTrialNow, getTrialExpiry, normalizeTrialDays } from "../lib/subscriptionTrial.js";
+import { getEffectiveTrialNow, getTrialExpiry, isSubscriptionActive, normalizeTrialDays } from "../lib/subscriptionTrial.js";
 
 export function useSubscription() {
   const [subscriptionNotice, setSubscriptionNotice] = useState(null);
@@ -33,8 +36,8 @@ export function useSubscription() {
   const effectiveTrialNow = getEffectiveTrialNow(Date.now(), trialLastObservedAt);
   const trialActive = Number.isFinite(trialExpiryTimestamp) && trialExpiryTimestamp > effectiveTrialNow;
   const trialInitialized = trialDays <= 0 || Boolean(trialStartedAt);
-  const expiryTimestamp = Date.parse(subscriptionExpiry);
-  const hasActiveSubscription = Number.isFinite(expiryTimestamp) && expiryTimestamp > Date.now();
+  // D12: checked against the last observed time too, so a clock set back does not extend it.
+  const hasActiveSubscription = isSubscriptionActive(subscriptionExpiry, Date.now(), trialLastObservedAt);
   const settingsReady = Array.isArray(settings);
   const pendingRaw = (settings ?? []).find((setting) => setting.key === "pendingSubscriptionPayment")?.value ?? "";
   // Same object between renders unless the stored text changes, so the effects below
@@ -47,12 +50,15 @@ export function useSubscription() {
     && !trialActive;
 
   useEffect(() => {
-    if (!FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE || trialDays <= 0) return undefined;
+    if (!FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE) return undefined;
     db.transaction("rw", db.settings, async () => {
       const now = Date.now();
-      const existing = await db.settings.get("subscriptionTrialStartedAt");
-      if (!existing?.value) {
-        await db.settings.put({ key: "subscriptionTrialStartedAt", value: new Date(now).toISOString() });
+      // The trial starts only when there is one; the last observed time is kept either way (D12).
+      if (trialDays > 0) {
+        const existing = await db.settings.get("subscriptionTrialStartedAt");
+        if (!existing?.value) {
+          await db.settings.put({ key: "subscriptionTrialStartedAt", value: new Date(now).toISOString() });
+        }
       }
       const lastObserved = await db.settings.get("subscriptionTrialLastObservedAt");
       const lastObservedTimestamp = Date.parse(lastObserved?.value ?? "");
@@ -67,6 +73,14 @@ export function useSubscription() {
   const verifyPayment = useCallback(async (reference, planId, cleanCallback = false) => {
     if (!reference || verifyingPayment.current) return;
     verifyingPayment.current = true;
+    function removeCallbackParams() {
+      const callbackUrl = new URL(window.location.href);
+      callbackUrl.searchParams.delete("reference");
+      callbackUrl.searchParams.delete("trxref");
+      callbackUrl.searchParams.delete("status");
+      callbackUrl.searchParams.delete("plan");
+      window.history.replaceState({}, "", `${callbackUrl.pathname}${callbackUrl.search}${callbackUrl.hash}`);
+    }
     try {
       const response = await fetch("/api/subscription/verify", {
         method: "POST",
@@ -75,6 +89,14 @@ export function useSubscription() {
         signal: AbortSignal.timeout(20000)
       });
       const result = await readVerifyResponse(response);
+      // L2: Paystack says it failed, was abandoned or reversed: stop retrying it for good.
+      if (!response.ok && isFinalPaymentFailure(result)) {
+        await clearPendingSubscriptionPayment(reference);
+        if (cleanCallback) removeCallbackParams();
+        processedPaymentReference.current = reference;
+        setSubscriptionNotice({ type: "error", text: PAYMENT_NOT_COMPLETED_MESSAGE });
+        return;
+      }
       if (!response.ok || result.success !== true || result.reference !== reference) {
         throw new Error(result.error || "Payment could not be verified.");
       }
@@ -91,14 +113,7 @@ export function useSubscription() {
         paidAt,
         durationMonths: result.durationMonths
       });
-      if (cleanCallback) {
-        const callbackUrl = new URL(window.location.href);
-        callbackUrl.searchParams.delete("reference");
-        callbackUrl.searchParams.delete("trxref");
-        callbackUrl.searchParams.delete("status");
-        callbackUrl.searchParams.delete("plan");
-        window.history.replaceState({}, "", `${callbackUrl.pathname}${callbackUrl.search}${callbackUrl.hash}`);
-      }
+      if (cleanCallback) removeCallbackParams();
       const activeUntil = new Date(applied.expiresAt).toLocaleDateString("en-GH");
       setSubscriptionNotice({
         type: "success",

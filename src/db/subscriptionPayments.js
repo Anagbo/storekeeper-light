@@ -33,6 +33,17 @@ export async function readVerifyResponse(response) {
   }
 }
 
+export const PAYMENT_NOT_COMPLETED_MESSAGE = "This payment was not completed. You can try again.";
+
+// Paystack says this payment will not complete (L2). Anything else (ongoing, pending, ...)
+// may still succeed, so its pending record is kept. If an abandoned payment is paid later,
+// Paystack sends the merchant back with its reference and the app verifies it again.
+const FINAL_FAILURE_STATUSES = new Set(["failed", "abandoned", "reversed"]);
+
+export function isFinalPaymentFailure(result) {
+  return FINAL_FAILURE_STATUSES.has(result?.paymentStatus);
+}
+
 // fetch fails with TypeError offline; AbortSignal.timeout gives TimeoutError or AbortError.
 export function isNetworkError(error) {
   return ["TypeError", "TimeoutError", "AbortError"].includes(error?.name);
@@ -61,6 +72,11 @@ async function clearPendingPayment(reference) {
   } catch {
     await db.settings.delete("pendingSubscriptionPayment");
   }
+}
+
+// Forget a pending checkout that Paystack says failed (L2). Only its own reference is cleared.
+export async function clearPendingSubscriptionPayment(reference) {
+  return db.transaction("rw", db.settings, () => clearPendingPayment(reference));
 }
 
 // Client cache of a server-verified subscription payment. Display only:

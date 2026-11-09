@@ -116,10 +116,11 @@ export default async function handler(req, res) {
       result = await getPaystackResponse(response);
     } catch (error) {
       console.error("Paystack transaction initialization request failed.", error);
+      // B9: the technical detail is logged above; the merchant gets plain words only.
       return respond(res, 502, {
         error: error.name === "TimeoutError"
           ? "Paystack request timed out. Please try again."
-          : `Paystack request failed: ${error.message || "Unknown network error."}`
+          : "Could not reach Paystack. Please try again."
       });
     }
 
@@ -130,9 +131,8 @@ export default async function handler(req, res) {
         status: response.status,
         message: result?.message ?? "Unexpected response"
       });
-      return respond(res, 502, {
-        error: result?.message || `Paystack transaction initialization failed (HTTP ${response.status}).`
-      });
+      // B9: Paystack's own message (logged above) is not sent to the merchant.
+      return respond(res, 502, { error: "Checkout could not be started. Please try again." });
     }
 
     return respond(res, 200, { success: true, authorization_url: authorizationUrl, reference });

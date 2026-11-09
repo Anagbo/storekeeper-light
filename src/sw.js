@@ -10,7 +10,8 @@ const SYNC_ENDPOINT = import.meta.env.VITE_SYNC_ENDPOINT?.trim();
 
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
-registerRoute(new NavigationRoute(createHandlerBoundToURL("/index.html")));
+// D10: a navigation to /api must reach the server, not be answered with the app shell.
+registerRoute(new NavigationRoute(createHandlerBoundToURL("/index.html"), { denylist: [/^\/api\//] }));
 registerRoute(
   ({ request, url }) =>
     ["script", "style", "font"].includes(request.destination) &&
@@ -24,10 +25,9 @@ registerRoute(
   })
 );
 
-self.addEventListener("install", () => {
-  void self.skipWaiting();
-});
-
+// D9: a new service worker waits for the app to be closed. It used to skip waiting on install,
+// which reloaded the page in the middle of a sale and lost the draft. SKIP_WAITING below is
+// kept for a future "Update ready" prompt.
 self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });

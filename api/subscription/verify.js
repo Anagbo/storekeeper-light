@@ -53,7 +53,13 @@ export default async function handler(req, res) {
       payment.currency !== "GHS" ||
       payment.channel !== "mobile_money"
     ) {
-      return respond(res, 402, { error: "Payment is not yet confirmed for the selected Mobile Money subscription plan." });
+      // L2: report Paystack's own status for this reference, so the app can stop retrying a
+      // payment that failed or was abandoned. It never reports another reference's status.
+      const paymentStatus = payment.reference === reference && typeof payment.status === "string" ? payment.status : "";
+      return respond(res, 402, {
+        error: "Payment is not yet confirmed for the selected Mobile Money subscription plan.",
+        ...(paymentStatus && { paymentStatus })
+      });
     }
 
     const paidAt = Date.parse(payment.paid_at);
