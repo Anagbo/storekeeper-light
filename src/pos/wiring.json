@@ -3199,9 +3199,31 @@
      "to": "BACK"
     }
    ],
-   "inputs": [],
+   "inputs": [
+    {
+     "name": "receivingNumber",
+     "label": "My MoMo number",
+     "note": "Number customers send to. Validated Ghana mobile format. Required before Money received on 62 is enabled."
+    },
+    {
+     "name": "receivingNetwork",
+     "label": "Network",
+     "options": [
+      "MTN",
+      "Telecel",
+      "AirtelTigo"
+     ],
+     "note": "Network of the receiving number."
+    }
+   ],
    "bottom_bar": false,
-   "change_request": "2026-11-07 MoMo choice and plan payments"
+   "change_request": "2026-11-07 MoMo choice and plan payments",
+   "rules": [
+    "Saving a changed receiving number first shows a masked confirmation, for example: Customers will send to 024•••4567 · MTN. Correct?",
+    "Every change is stored as a local audit record: old number, new number, time.",
+    "The Paystack payout number is separate and is never written to the receiving number.",
+    "Change request 2026-11-09: number and network inputs added to complete 'Customer sends to my number (on or off, number, network)'."
+   ]
   },
   "64": {
    "name": "My plan",
