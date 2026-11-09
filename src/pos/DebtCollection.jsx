@@ -288,7 +288,7 @@ export function CollectPayPart(props) {
   return <CollectPayPartScreen {...props} />;
 }
 
-export function CollectSplitPayment({ params, onBack, onNavigate, onRecordCollection }) {
+export function CollectSplitPayment({ params, onBack, onNavigate, onUpdateParams, onRecordCollection }) {
   const debt = useCollectionDebt(params?.debtId, params?.customerName);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -326,6 +326,7 @@ export function CollectSplitPayment({ params, onBack, onNavigate, onRecordCollec
       doneLabel={t("collect.received")}
       busy={busy}
       error={error}
+      onPartsChange={(parts) => onUpdateParams?.({ splitParts: parts })}
       notice={<SaveAttemptNotice saveAttempt={saveAttempt} busy={busy} onTryAgain={() => lastPartsRef.current && void receive(lastPartsRef.current)} />}
       onBack={onBack}
       onDone={(parts) => void receive(parts)}

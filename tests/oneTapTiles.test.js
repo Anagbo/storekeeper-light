@@ -54,7 +54,7 @@ test("K1: the Cash and MoMo tiles no longer open an amount editor", () => {
   const tiles = split.slice(split.indexOf('{["cash", "momo", ...(allowOwe'), split.indexOf("{draft && ("));
   assert.ok(tiles.length > 0, "tiles block not found");
   assert.doesNotMatch(tiles, /startDraft\(/);
-  assert.match(tiles, /setParts\(\(current\) => addRemainingToPart\(current, method, totalPesewas\)\)/);
+  assert.match(tiles, /commitParts\(addRemainingToPart\(parts, method, totalPesewas\)\)/);
 });
 
 test("K1: the MoMo tile goes straight to 61 with the whole Left to pay as the amount", () => {

@@ -42,6 +42,36 @@ export function getMomoPickParams(params = {}, { todayPaymentPesewas, maxCreditP
   };
 }
 
+// Merges a finished MoMo pick (61/62) into the split parts of 16 and 27 (brief 3.8 rule 2: one row
+// per mode). A first MoMo pick adds the row; a later one grows the existing row by the picked amount
+// instead of replacing it. `confirmedPesewas` is what 62 has confirmed so far for the row. A pick
+// that cannot be combined (a different MoMo method, or more than the total) is ignored.
+export function applyMomoPick(details = {}) {
+  const parts = Array.isArray(details.splitParts) ? details.splitParts : [];
+  const pending = details.pendingMomoAmountPesewas;
+  if (!details.momoMethod || !Number.isSafeInteger(pending) || pending <= 0) return parts;
+  const existing = parts.find((part) => part?.paymentMethod === "momo");
+  const otherPaid = parts.reduce((total, part) => (part === existing ? total : total + part.amountPesewas), 0);
+  const total = getPaymentTotalPesewas(details);
+  if (existing) {
+    if (existing.momoMethod !== details.momoMethod || existing.verification !== details.verification) return parts;
+    const amountPesewas = existing.amountPesewas + pending;
+    if (otherPaid + amountPesewas > total) return parts;
+    return parts.map((part) => (part === existing
+      ? { ...part, amountPesewas, confirmedPesewas: (part.confirmedPesewas ?? part.amountPesewas) + pending }
+      : part));
+  }
+  if (otherPaid + pending > total) return parts;
+  return [...parts, {
+    paymentMethod: "momo",
+    amountPesewas: pending,
+    momoMethod: details.momoMethod,
+    verification: details.verification,
+    ...(typeof details.reference === "string" && details.reference ? { reference: details.reference } : {}),
+    confirmedPesewas: pending
+  }];
+}
+
 export function getInitialPaymentParts(params = {}, totalPesewas) {
   const parts = Array.isArray(params.splitParts) ? params.splitParts : [];
   if (!params.momoMethod || !Number.isSafeInteger(params.pendingMomoAmountPesewas) || params.pendingMomoAmountPesewas <= 0) {

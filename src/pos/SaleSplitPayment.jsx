@@ -7,7 +7,7 @@ import { getInitialPaymentParts, getPaidPaymentPesewas } from "./paymentAmount.j
 import SplitPayment from "./SplitPayment.jsx";
 import { describeSplitPart } from "./splitTender.js";
 
-export default function SaleSplitPayment({ params = {}, onBack, onNavigate, onSaveSale }) {
+export default function SaleSplitPayment({ params = {}, onBack, onNavigate, onUpdateParams, onSaveSale }) {
   const totalPesewas = Number.isSafeInteger(params.amountPesewas) ? params.amountPesewas : 0;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -59,6 +59,7 @@ export default function SaleSplitPayment({ params = {}, onBack, onNavigate, onSa
       doneLabel={t("split.done")}
       busy={saving}
       error={error}
+      onPartsChange={(parts) => onUpdateParams?.({ splitParts: parts })}
       notice={<SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => lastPartsRef.current && void saveSale(lastPartsRef.current)} />}
       onBack={onBack}
       onDone={(parts) => void saveSale(parts)}

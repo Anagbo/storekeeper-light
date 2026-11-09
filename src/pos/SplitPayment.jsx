@@ -23,6 +23,7 @@ export default function SplitPayment({
   busy = false,
   error = "",
   notice = null,
+  onPartsChange,
   onBack,
   onDone,
   onOwe,
@@ -33,6 +34,12 @@ export default function SplitPayment({
   const [parts, setParts] = useState(initialParts);
   const [draft, setDraft] = useState(null);
   const [draftError, setDraftError] = useState("");
+  // Every change of the parts is also reported, so the screen's owner can keep the draft in the
+  // route params and it survives a trip to Settings (brief 3.8 rule 13).
+  function commitParts(next) {
+    setParts(next);
+    onPartsChange?.(next);
+  }
   const leftPesewas = Math.max(0, totalPesewas - sumParts(parts));
   const partsTotalPesewas = sumParts(parts);
   const partsValid = parts.every((part) => Number.isSafeInteger(part?.amountPesewas) && part.amountPesewas >= 0) &&
@@ -51,7 +58,7 @@ export default function SplitPayment({
       setDraftError(t("split.amountTooHigh"));
       return;
     }
-    setParts(next);
+    commitParts(next);
     setDraft(null);
     setDraftError("");
   }
@@ -82,7 +89,7 @@ export default function SplitPayment({
               type="button"
               disabled={busy}
               aria-label={t("split.remove", { method: name })}
-              onClick={() => setParts((current) => current.filter((item) => item !== part))}
+              onClick={() => commitParts(parts.filter((item) => item !== part))}
               className="grid h-12 w-12 place-items-center rounded-xl bg-slate-300 text-slate-950 disabled:opacity-50"
             >
               <X size={22} aria-hidden="true" />
@@ -112,7 +119,7 @@ export default function SplitPayment({
                     if (method === "owe") {
                       if (partsValid) onOwe?.([...parts, { paymentMethod: "owe", amountPesewas: leftPesewas }]);
                     } else if (method === "momo" && onMoMo) onMoMo(parts, leftPesewas);
-                    else setParts((current) => addRemainingToPart(current, method, totalPesewas));
+                    else commitParts(addRemainingToPart(parts, method, totalPesewas));
                   }}
                   className="flex h-[76px] flex-col items-center justify-center gap-0.5 rounded-[18px] border-[3px] border-slate-500 bg-white px-2 text-[17px] font-extrabold text-slate-950 disabled:opacity-50"
                 >

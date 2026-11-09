@@ -1,3 +1,5 @@
+import { applyMomoPick } from "./paymentAmount.js";
+
 export const POS_ROUTES = Object.freeze({
   Sell: "Sell",
   SplitPayment: "SplitPayment",
@@ -275,15 +277,26 @@ function withoutMomoPickFlags(params = {}) {
   return rest;
 }
 
+// The values a MoMo pick leaves behind. On 16 and 27 they are merged into splitParts and removed;
+// 19 keeps its own (it shows the chosen method on its button).
+function withoutPendingMomoValues(params = {}) {
+  const { pendingMomoAmountPesewas: _pending, momoMethod: _method, verification: _verification, reference: _reference, ...rest } = params;
+  return rest;
+}
+
 // Return from a MoMo pick (61/62) to the screen that asked for it (16, 19, 27).
 export function returnFromMomoPickState(state, details = {}) {
   const target = details.returnRoute;
   if (!target) return state;
-  const cleanDetails = withoutMomoPickFlags(details);
+  const isSplitHub = target === POS_ROUTES.SplitPayment;
+  const settle = (params) => (isSplitHub ? withoutPendingMomoValues(withoutMomoPickFlags(params)) : withoutMomoPickFlags(params));
+  const cleanDetails = isSplitHub
+    ? { ...settle(details), splitParts: applyMomoPick(details) }
+    : withoutMomoPickFlags(details);
   const popped = popToRoute(state, target, cleanDetails);
-  if (popped) return { ...popped, params: withoutMomoPickFlags(popped.params) };
+  if (popped) return { ...popped, params: settle(popped.params) };
   // Target not in history: drop the trailing MoMo screens so Back cannot reach them again.
   const history = [...state.history];
   while (history.length && MOMO_FLOW_ROUTES.has(history.at(-1).current)) history.pop();
-  return { current: target, params: withoutMomoPickFlags({ ...state.params, ...cleanDetails }), history };
+  return { current: target, params: settle({ ...state.params, ...cleanDetails }), history };
 }

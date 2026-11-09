@@ -3,7 +3,7 @@ import { posText as t } from "./i18n.js";
 import { getInitialPaymentParts } from "./paymentAmount.js";
 import SplitPayment from "./SplitPayment.jsx";
 
-export default function InstallmentSplitPayment({ params = {}, onBack, onReturnTo, onNavigate }) {
+export default function InstallmentSplitPayment({ params = {}, onBack, onReturnTo, onNavigate, onUpdateParams }) {
   const totalPesewas = Number.isSafeInteger(params.splitTotalPesewas)
     ? params.splitTotalPesewas
     : toPesewas(params.todayPaymentAmount ?? "");
@@ -26,6 +26,7 @@ export default function InstallmentSplitPayment({ params = {}, onBack, onReturnT
       totalPesewas={totalPesewas}
       totalLabel={t("credit.amountPaidToday")}
       doneLabel={t("collect.received")}
+      onPartsChange={(parts) => onUpdateParams?.({ splitParts: parts })}
       onBack={onBack}
       onDone={complete}
       onMoMo={(parts, pendingMomoAmountPesewas) => onNavigate("MoMoChoice", {

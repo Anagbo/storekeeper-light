@@ -60,7 +60,9 @@ test("K9/K10: Cancel request and Pay another way return to the screen that opene
   assert.equal(routes.returnToMomoOrigin({ current: "MoMoWaiting", params: {}, history: [entry("Home")] }), null);
 });
 
-test("E4: returning from a MoMo pick strips pickOnly and returnRoute, keeps the chosen method", () => {
+// Batch 17 (brief 3.8 rule 13): on 16 and 27 the pick is merged into splitParts and the pending
+// MoMo values are removed too, so an old amount can never come back.
+test("E4: returning from a MoMo pick strips the pick flags and the pending MoMo values and merges the row into splitParts", () => {
   assert.equal(typeof routes.returnFromMomoPickState, "function");
   const state = {
     current: "MoMoDirect",
@@ -72,8 +74,8 @@ test("E4: returning from a MoMo pick strips pickOnly and returnRoute, keeps the 
   assert.equal(next.current, "SplitPayment");
   assert.equal("pickOnly" in next.params, false);
   assert.equal("returnRoute" in next.params, false);
-  assert.equal(next.params.momoMethod, "direct");
-  assert.equal(next.params.pendingMomoAmountPesewas, 400);
+  for (const key of ["momoMethod", "verification", "pendingMomoAmountPesewas"]) assert.equal(key in next.params, false, key);
+  assert.deepEqual(next.params.splitParts, [{ paymentMethod: "momo", amountPesewas: 400, momoMethod: "direct", verification: "merchant_confirmed", confirmedPesewas: 400 }]);
   assert.deepEqual(next.history, [entry("Sell")]);
 });
 

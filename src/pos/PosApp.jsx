@@ -354,11 +354,11 @@ export default function PosApp() {
   ) : route === POS_ROUTES.HowManyItem ? (
     <HowManyItem params={routeState.params} onBack={navigateBack} onReplace={replaceCurrentRoute} />
   ) : route === POS_ROUTES.SplitPayment && routeState.params.installmentSplit ? (
-    <InstallmentSplitPayment params={routeState.params} onBack={navigateBack} onReturnTo={returnTo} onNavigate={navigate} />
+    <InstallmentSplitPayment params={routeState.params} onBack={navigateBack} onReturnTo={returnTo} onNavigate={navigate} onUpdateParams={updateCurrentParams} />
   ) : route === POS_ROUTES.SplitPayment && routeState.params.debtId ? (
-    <CollectSplitPayment params={routeState.params} onBack={navigateBack} onNavigate={navigate} onRecordCollection={saveDebtCollection} />
+    <CollectSplitPayment params={routeState.params} onBack={navigateBack} onNavigate={navigate} onUpdateParams={updateCurrentParams} onRecordCollection={saveDebtCollection} />
   ) : route === POS_ROUTES.SplitPayment ? (
-    <SaleSplitPayment params={routeState.params} onBack={navigateBack} onNavigate={navigate} onSaveSale={saveSplitSale} />
+    <SaleSplitPayment params={routeState.params} onBack={navigateBack} onNavigate={navigate} onUpdateParams={updateCurrentParams} onSaveSale={saveSplitSale} />
   ) : route === POS_ROUTES.LanguageSettings ? (
     <LanguageSettings onBack={navigateBack} />
   ) : route === POS_ROUTES.SettingsProfitTools ? (
