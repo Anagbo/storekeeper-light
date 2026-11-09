@@ -33,8 +33,8 @@ test("a saved 'Always: phone request' default falls back to Ask while Phone requ
 
 test("screen 61 shows the Phone request tile disabled with Not available yet", () => {
   const choice = section(momoSource, "MoMoChoice", "MoMoDirect");
-  assert.match(choice, /title="Phone request"[^>]*disabled=\{!PHONE_REQUEST_ENABLED\}/s);
-  assert.match(choice, /PHONE_REQUEST_ENABLED \?[^:]+: "Not available yet"/s);
+  assert.match(choice, /title="Phone request"[\s\S]*?disabled=\{!PHONE_REQUEST_ENABLED\}/);
+  assert.match(choice, /PHONE_REQUEST_ENABLED \?[\s\S]+: "Not available yet"/);
 });
 
 test("screen 63 disables Phone request set up and the Always: phone request option", () => {

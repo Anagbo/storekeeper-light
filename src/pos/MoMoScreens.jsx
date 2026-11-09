@@ -43,7 +43,7 @@ export function MoMoChoice({ params = {}, onBack, onNavigate, onReplace }) {
     <ChoiceTile icon={Send} title="Customer sends to my number" detail="Free. You check the MoMo message." highlighted={lastUsed === "direct"} onClick={() => { void recordMomoLastUsed("direct"); onNavigate("MoMoDirect", { ...params, momoMethod: "direct" }); }}>
       {lastUsed === "direct" && <PosStatusTag compact>Last used</PosStatusTag>}
     </ChoiceTile>
-    <ChoiceTile icon={Smartphone} title="Phone request" detail={PHONE_REQUEST_ENABLED ? `Customer approves on their phone. Confirmed by itself. Fee ${formatGhs(MOMO_CONFIG.phoneRequestFeePesewas)}.` : "Not available yet"} disabled={!PHONE_REQUEST_ENABLED} highlighted={lastUsed === "phone"} onClick={() => { void recordMomoLastUsed("phone"); onNavigate(params.paystackSetUp ? "MoMoPayment" : "MoMoSetup", { ...params, momoMethod: "paystack", returnToMomo: true }); }}>
+    <ChoiceTile icon={Smartphone} title="Phone request" detail={PHONE_REQUEST_ENABLED ? `Customer approves on their phone. Confirmed by itself.${MOMO_CONFIG.phoneRequestFeePesewas > 0 ? ` Fee ${formatGhs(MOMO_CONFIG.phoneRequestFeePesewas)}.` : ""}` : "Not available yet"} disabled={!PHONE_REQUEST_ENABLED} highlighted={lastUsed === "phone"} onClick={() => { void recordMomoLastUsed("phone"); onNavigate(params.paystackSetUp ? "MoMoPayment" : "MoMoSetup", { ...params, momoMethod: "paystack", returnToMomo: true }); }}>
       {lastUsed === "phone" && <PosStatusTag compact>Last used</PosStatusTag>}
     </ChoiceTile>
     <p className="text-sm font-medium text-slate-800">Change the usual choice in Settings.</p>
@@ -172,7 +172,7 @@ export function MoMoSetup({ params = {}, onBack, onNavigate, shopName = "My shop
     <label className="font-bold">Business name<input value={shopName} readOnly className="mt-1 h-14 w-full rounded-2xl border-[3px] border-slate-500 bg-white px-3 text-xl" /></label>
     <fieldset>
       <legend className="mb-2 text-lg font-extrabold">Payout network</legend>
-      <div className="grid grid-cols-3 gap-2">{NETWORKS.map((item) => <button key={item} type="button" aria-label={`Payout ${item}`} aria-pressed={network === item} onClick={() => setNetwork(item)} className={`min-h-14 rounded-2xl border-[3px] px-2 font-extrabold ${network === item ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{item}</button>)}</div>
+      <div className="flex flex-wrap gap-2">{NETWORKS.map((item) => <button key={item} type="button" aria-label={`Payout ${item}`} aria-pressed={network === item} onClick={() => setNetwork(item)} className={`min-h-14 min-w-[6.5rem] flex-1 rounded-2xl border-[3px] px-2 font-extrabold ${network === item ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{item}</button>)}</div>
     </fieldset>
     <label className="font-bold">Payout MoMo number<input value={number} onChange={(event) => setNumber(event.target.value)} type="tel" inputMode="tel" className="mt-1 h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-xl" /></label>
     <p className="text-base text-slate-800">Payouts come on Paystack&apos;s schedule, not the moment a customer pays.</p>
@@ -191,18 +191,20 @@ export function MoMoPayment({ params = {}, onBack, onNavigate }) {
   const [network, setNetwork] = useState("MTN");
   const [phone, setPhone] = useState(params.customer?.phone ?? params.phone ?? "");
   const paymentAmountPesewas = getMomoAmountPesewas(params);
-  const feePesewas = MOMO_CONFIG.phoneRequestFeePesewas;
+  // The contract never shows a zero fee: the fee shows only with Phone request on and a fee above zero.
+  const showFee = PHONE_REQUEST_ENABLED && MOMO_CONFIG.phoneRequestFeePesewas > 0;
+  const feePesewas = showFee ? MOMO_CONFIG.phoneRequestFeePesewas : 0;
   const merchantReceivesPesewas = Math.max(0, paymentAmountPesewas - feePesewas);
   return <PosPage className="flex flex-col gap-3">
     <BackTitle title="MoMo payment" onBack={onBack} />
     <section className="rounded-[20px] bg-emerald-900 p-3 text-white">
       <p className="text-lg font-bold text-white">Customer pays</p>
       <p className="text-4xl font-extrabold text-white">{formatGhs(paymentAmountPesewas)}</p>
-      <p className="text-base text-white">Fee {formatGhs(feePesewas)} · You receive {formatGhs(merchantReceivesPesewas)}</p>
+      <p className="text-base text-white">{showFee ? `Fee ${formatGhs(feePesewas)} · ` : ""}You receive {formatGhs(merchantReceivesPesewas)}</p>
     </section>
     <fieldset>
       <legend className="mb-2 text-lg font-extrabold">Customer&apos;s network</legend>
-      <div className="grid grid-cols-3 gap-2">{NETWORKS.map((item) => <button key={item} type="button" aria-label={`Network ${item}`} aria-pressed={network === item} onClick={() => setNetwork(item)} className={`min-h-14 rounded-xl border-[3px] px-2 font-bold ${network === item ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{item}</button>)}</div>
+      <div className="flex flex-wrap gap-2">{NETWORKS.map((item) => <button key={item} type="button" aria-label={`Network ${item}`} aria-pressed={network === item} onClick={() => setNetwork(item)} className={`min-h-14 min-w-[6.5rem] flex-1 rounded-xl border-[3px] px-2 font-bold ${network === item ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{item}</button>)}</div>
     </fieldset>
     <label className="font-bold">Customer&apos;s MoMo number<input aria-label="Customer's MoMo number" value={phone} onChange={(event) => setPhone(event.target.value)} type="tel" inputMode="tel" className="mt-1 h-14 w-full rounded-xl border-[3px] border-slate-500 px-3 text-xl" /></label>
     <PosPrimaryButton type="button" disabled={!PHONE_REQUEST_ENABLED} onClick={() => onNavigate(network === "Telecel" ? "MoMoCode" : "MoMoWaiting", { ...params, network, phone })}><Smartphone size={24} aria-hidden="true" />Send request</PosPrimaryButton>
