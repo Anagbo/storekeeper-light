@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Download, Upload, X } from "lucide-react";
-import { exportDatabaseToJson, importDatabaseFromJson } from "../utils/backup.js";
+import { describeRestoreResult, exportDatabaseToJson, importDatabaseFromJson } from "../utils/backup.js";
 import { isAudioFeedbackEnabled, setAudioFeedbackEnabled } from "../utils/audioFeedback.js";
 import { FEATURE_FLAGS } from "../config/features.js";
 
@@ -62,8 +62,8 @@ export default function BackupModal({
     setMessage("");
     setError("");
     try {
-      const counts = await importDatabaseFromJson(file);
-      setMessage(`Backup restored and merged (${Object.values(counts).reduce((sum, count) => sum + count, 0)} records).`);
+      const result = await importDatabaseFromJson(file);
+      setMessage(describeRestoreResult(result));
       onRestored?.();
     } catch (restoreError) {
       console.error("Could not restore the local database.", restoreError);

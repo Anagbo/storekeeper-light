@@ -2,7 +2,10 @@ import "fake-indexeddb/auto";
 import assert from "node:assert/strict";
 import { after, beforeEach, test } from "node:test";
 import { db } from "../src/db/db.js";
-import { importDatabaseFromJson, validateBackupData } from "../src/utils/backup.js";
+import { readFileSync } from "node:fs";
+import * as backupModule from "../src/utils/backup.js";
+
+const { importDatabaseFromJson, validateBackupData } = backupModule;
 
 after(async () => {
   db.close();
@@ -83,4 +86,32 @@ test("D4: restore records a local log entry with what was added and skipped", as
   assert.equal(log[0].added.transactions, 1);
   assert.ok(Number.isFinite(Date.parse(log[0].restoredAt)));
   assert.equal(result.transactions, 2, "the returned counts keep their meaning: records in the backup");
+});
+
+test("D4 follow-up: restore returns how many saved rows were kept, and the message tells the merchant", async () => {
+  assert.equal(typeof backupModule.describeRestoreResult, "function", "backup.js must export describeRestoreResult");
+  await db.transactions.add(sale);
+  await db.customers.add({ id: "customer-1" });
+  await db.debts.add(debt);
+  await db.payments.add(payment);
+  const result = await importDatabaseFromJson(file(backupWith({
+    transactions: [{ ...sale, updatedAt: 999 }, { ...sale, id: "sale-2" }],
+    payments: [payment]
+  })));
+  assert.equal(result.skippedLedgerRows, 2);
+  // 2 transactions + 1 customer + 1 debt + 1 payment in the file.
+  assert.equal(
+    backupModule.describeRestoreResult(result),
+    "Backup restored and merged (5 records). 2 saved sales or payments were already on this phone and were kept as they are."
+  );
+  assert.equal(
+    backupModule.describeRestoreResult({ ...result, skippedLedgerRows: 1 }),
+    "Backup restored and merged (5 records). 1 saved sale or payment was already on this phone and was kept as it is."
+  );
+  assert.equal(backupModule.describeRestoreResult({ ...result, skippedLedgerRows: 0 }), "Backup restored and merged (5 records).");
+});
+
+test("D4 follow-up: the restore screen shows that message", () => {
+  const modal = readFileSync(new URL("../src/components/BackupModal.jsx", import.meta.url), "utf8");
+  assert.match(modal, /setMessage\(describeRestoreResult\(result\)\)/);
 });

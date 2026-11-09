@@ -201,5 +201,20 @@ export async function importDatabaseFromJson(jsonFile) {
     log.push({ restoredAt: new Date().toISOString(), exportedAt: typeof backup.exportedAt === "string" ? backup.exportedAt : "", added, skippedLedgerRows });
     await db.settings.put({ key: RESTORE_LOG_KEY, value: JSON.stringify(log.slice(-RESTORE_LOG_LIMIT)) });
   });
-  return Object.fromEntries(BACKUP_TABLES.map((tableName) => [tableName, data[tableName].length]));
+  return {
+    ...Object.fromEntries(BACKUP_TABLES.map((tableName) => [tableName, data[tableName].length])),
+    skippedLedgerRows
+  };
+}
+
+// Message for the restore screen. Counts are records in the backup file; skipped
+// ledger rows were already on this phone and were kept unchanged (D4).
+export function describeRestoreResult(result) {
+  const total = BACKUP_TABLES.reduce((sum, tableName) => sum + (Number.isSafeInteger(result?.[tableName]) ? result[tableName] : 0), 0);
+  const skipped = Number.isSafeInteger(result?.skippedLedgerRows) ? result.skippedLedgerRows : 0;
+  const base = `Backup restored and merged (${total} records).`;
+  if (skipped === 0) return base;
+  return skipped === 1
+    ? `${base} 1 saved sale or payment was already on this phone and was kept as it is.`
+    : `${base} ${skipped} saved sales or payments were already on this phone and were kept as they are.`;
 }
