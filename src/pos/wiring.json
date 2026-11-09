@@ -651,7 +651,11 @@
     }
    ],
    "inputs": [],
-   "bottom_bar": true
+   "bottom_bar": true,
+   "rules": [
+    "Tapping the debtor name opens 43 (brief line 122).",
+    "Built extras kept: People-who-owe link, Add contact."
+   ]
   },
   "23": {
    "name": "Menu",
@@ -1018,11 +1022,15 @@
      "disabled_initially": true,
      "type": "navigate",
      "to": "MOMO27",
-     "note": "If opened from 19 (flow from19): returns to 19"
+     "note": "If opened from 19 (flow from19): returns to 19",
+     "rule_note": "MoMo tile opens 61 so the MoMo method is recorded."
     }
    ],
    "inputs": [],
-   "bottom_bar": false
+   "bottom_bar": false,
+   "decisions": [
+    "MoMo opens 61 (not a plain selection), so the chosen MoMo method is recorded."
+   ]
   },
   "28": {
    "name": "Payment received",
@@ -1069,7 +1077,8 @@
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
-     "to": "22"
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history (keeps the user's place when opened from 32 or 22)."
     },
     {
      "label": "Edit contact",
@@ -1372,7 +1381,11 @@
     }
    ],
    "inputs": [],
-   "bottom_bar": true
+   "bottom_bar": true,
+   "rules": [
+    "Collect for a person with several debts opens 43 so the merchant chooses the debt.",
+    "Extras kept: Load more."
+   ]
   },
   "33": {
    "name": "My money",
@@ -1447,7 +1460,8 @@
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
-     "to": "18"
+     "to": "NEXT17",
+     "to_rule": "In the add-debt flow follow the NEXT17 rule (go to 53); in other flows go to 18."
     }
    ],
    "inputs": [
@@ -1544,7 +1558,10 @@
    "inputs": [
     "Find your business"
    ],
-   "bottom_bar": false
+   "bottom_bar": false,
+   "rules": [
+    "If only \"Something else\" is chosen, Continue goes to 41 (brief line 359)."
+   ]
   },
   "36": {
    "name": "Your starter list",
@@ -1829,7 +1846,11 @@
     }
    ],
    "inputs": [],
-   "bottom_bar": false
+   "bottom_bar": false,
+   "rules": [
+    "Save price goes to 20.",
+    "Uses the number pad (like the other money screens)."
+   ]
   },
   "38": {
    "name": "How many {item}?",
@@ -1935,7 +1956,12 @@
     }
    ],
    "inputs": [],
-   "bottom_bar": false
+   "bottom_bar": false,
+   "rules": [
+    "Button reads \"Add {quantity}\".",
+    "Uses the number pad.",
+    "Extra kept: \"{amount} each\" line."
+   ]
   },
   "39": {
    "name": "My items",
@@ -2104,7 +2130,8 @@
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
-     "to": "22"
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history (keeps the user's place when opened from 32 or 22)."
     },
     {
      "label": "Edit contact",
@@ -2151,7 +2178,11 @@
     }
    ],
    "inputs": [],
-   "bottom_bar": false
+   "bottom_bar": false,
+   "rules": [
+    "Late state button: \"Send reminder on WhatsApp\" (full width) and \"Last reminder: {n} days ago\" from lastReminderAt.",
+    "Extra kept: Open debt entries list with \"Correct this entry\". A correction adds a debt_adjustment entry (old and new balance, reason) and lowers the balance in one transaction; raising is refused (\"Use Add to debt\")."
+   ]
   },
   "44": {
    "name": "Spent money",
@@ -2364,7 +2395,10 @@
     }
    ],
    "inputs": [],
-   "bottom_bar": false
+   "bottom_bar": false,
+   "rules": [
+    "No \"Profit estimates\" text while the profit switches are deferred."
+   ]
   },
   "51": {
    "name": "More categories",
@@ -2775,7 +2809,26 @@
    "inputs": [
     "What for (optional)"
    ],
-   "bottom_bar": false
+   "bottom_bar": false,
+   "existing_terms_card": {
+    "shows_when": "The debt passed to 53 has an installment plan, or no plan but one due date. From 29/43 it is the debt on that screen; from 17 it is the person's largest single debt.",
+    "lines": [
+     "GH₵{installment} every week | 2 weeks | month (words from the translation file)",
+     "due tag",
+     "progress bar",
+     "Paid this week | Paid in these 2 weeks | Paid this month: GH₵{carry} (current cycle; wording follows the frequency, from the translation file)",
+     "Still needed this week | in these 2 weeks | this month: GH₵{installment minus carry}",
+     "Next: {dd/mm/yyyy}",
+     "{n} payments left now (computed live after adding the new amount, not from the stored counter)",
+     "A short line naming which debt the card describes, e.g. Plan for the debt of GH₵150.00"
+    ],
+    "removed": "The '{paid} paid · {left} left' line is not shown on 53.",
+    "button": {
+     "label": "Change",
+     "effect": "Disabled until an amount is typed. Goes to 18 with the amount and note so new terms are set. Without Change, Next inherits the terms."
+    },
+    "amounts": "All through formatGhs."
+   }
   },
   "54": {
    "name": "Correct balance (sheet over Debtor detail)",
@@ -2942,7 +2995,8 @@
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
-     "to": "MOMOOK"
+     "to": "62",
+     "to_rule": "Goes to 62 (DIRECT) so the merchant must do the balance check before confirming."
     }
    ],
    "inputs": [
@@ -3093,7 +3147,10 @@
     "bn",
     "pn2"
    ],
-   "bottom_bar": false
+   "bottom_bar": false,
+   "rules": [
+    "No \"Account name will appear after verification\" text until the backend verifies names."
+   ]
   },
   "61": {
    "name": "MoMo: how will they pay?",
@@ -3154,7 +3211,10 @@
    "inputs": [],
    "bottom_bar": false,
    "change_request": "2026-11-07 MoMo choice and plan payments",
-   "advice_text": "Wait for the MoMo message. Check the amount and the name, and check your MoMo balance, not only the SMS. Then tap Money received."
+   "advice_text": "Wait for the MoMo message. Check the amount and the name, and check your MoMo balance, not only the SMS. Then tap Money received.",
+   "rules": [
+    "Balance-check wording: check the MoMo balance, not only the SMS."
+   ]
   },
   "63": {
    "name": "How customers pay me",
@@ -3385,14 +3445,18 @@
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
-     "to": "69"
+     "to": "70",
+     "to_rule": "Goes to 70 (waiting) until the server confirms the plan payment. Goes to 69 only when the server has confirmed it."
     }
    ],
    "inputs": [
     "mp"
    ],
    "bottom_bar": false,
-   "change_request": "2026-11-07 MoMo choice and plan payments"
+   "change_request": "2026-11-07 MoMo choice and plan payments",
+   "rules": [
+    "Fee shown through the formatter from configuration (e.g. Fee GH₵0.59). No developer placeholder text."
+   ]
   },
   "69": {
    "name": "Plan paid",
@@ -3409,7 +3473,13 @@
    "inputs": [],
    "bottom_bar": false,
    "change_request": "2026-11-07 MoMo choice and plan payments",
-   "detail_text": "Plan runs to {end date} · {method} · {verification label}. Values come from the stored plan payment, never fixed text. Example for a Paystack payment: Plan runs to 19 Dec · Phone request · MoMo · verified."
+   "detail_text": "Plan runs to {end date} · {method} · {verification label}. Values come from the stored plan payment, never fixed text. Example for a Paystack payment: Plan runs to 19 Dec · Phone request · MoMo · verified.",
+   "status_words": {
+    "waiting": "Waiting to confirm",
+    "confirmed": "Confirmed",
+    "failed": "Payment not completed",
+    "reversed": "Payment reversed"
+   }
   },
   "70": {
    "name": "Waiting to confirm",
@@ -3425,7 +3495,21 @@
    ],
    "inputs": [],
    "bottom_bar": false,
-   "change_request": "2026-11-07 MoMo choice and plan payments"
+   "change_request": "2026-11-07 MoMo choice and plan payments",
+   "status_words": {
+    "waiting": "Waiting to confirm",
+    "confirmed": "Confirmed",
+    "failed": "Payment not completed",
+    "reversed": "Payment reversed"
+   }
+  },
+  "ManualDebtSaved": {
+   "name": "Debt saved (add-debt flow)",
+   "component": "ManualDebtSaved",
+   "controls": [],
+   "inputs": [],
+   "bottom_bar": false,
+   "note": "Stands in for 31 after the add-debt flow (53 NEXT53). Built; kept."
   }
  },
  "integration": {
@@ -3433,6 +3517,28 @@
   "notes": "Paystack secret key stays on the server. See the Paystack section of agent-conformance-prompt.md."
  },
  "rules_global": {
-  "currency": "Show money as GH₵ followed directly by the amount, for example GH₵268.20. Use the app's existing money formatter everywhere. The letters GHS appear only as the currency parameter of API calls."
- }
+  "currency": "Show money as GH₵ followed directly by the amount, for example GH₵268.20. Use the app's existing money formatter everywhere. The letters GHS appear only as the currency parameter of API calls.",
+  "bottom_bar_note": "Contract lists the bar on 15, 22 and 32 only; the code shows it on most screens. To be settled against the prototype."
+ },
+ "built_extras_kept": {
+  "24": "row tags Collected Debt, Balance correction, Added to debt",
+  "25": "Payment {n} of {total} · {left} left (installment-sized steps, not payments)",
+  "19": "Payment received today / Total received panel; notice 'The installment was capped at the maximum allowed amount.'",
+  "20": "search box",
+  "44": "optional note field",
+  "33": "Cash / MoMo breakdown under Money in",
+  "46": "Total owed card",
+  "17": "Back",
+  "29/43": "Done",
+  "42/59": "Back",
+  "28/31": "Add/Edit contact; 31 Send receipt",
+  "36/52": "search box",
+  "27": "Remove MoMo",
+  "16/18/25": "Back, Split payment"
+ },
+ "built_design_pending": [
+  "23 Language screen",
+  "45 + New supplier",
+  "46 Pay (records locally only, no payment provider)"
+ ]
 }
