@@ -11,6 +11,42 @@ const PRIMARY_KEYS = {
   suppliers: "id"
 };
 
+// The ledger is append-only: a restore may add missing rows but never change a saved one (D4).
+const LEDGER_TABLES = new Set(["transactions", "payments"]);
+const TRANSACTION_TYPES = new Set([
+  "sale", "cash_sale", "credit_sale", "installment_sale", "installment_addon",
+  "income", "income_reversal", "debt_payment", "expense", "supplier_payment",
+  "manual_debt", "debt_adjustment"
+]);
+const PAYMENT_METHODS = new Set(["cash", "momo"]);
+const DEBT_STATUSES = new Set(["unpaid", "paid"]);
+const RESTORE_LOG_KEY = "backupRestoreLog";
+const RESTORE_LOG_LIMIT = 20;
+
+function isPesewas(value, { positive = false } = {}) {
+  return Number.isSafeInteger(value) && (positive ? value > 0 : value >= 0);
+}
+
+function validateRecordValues(tableName, record) {
+  const amountFields = { transactions: ["amountPesewas", "total_amount"], payments: ["amountPesewas"], debts: ["amountPesewas", "total_owed"] }[tableName] ?? [];
+  for (const field of amountFields) {
+    const required = tableName === "payments";
+    if (record[field] === undefined && !required) continue;
+    if (!isPesewas(record[field], { positive: tableName === "payments" })) {
+      throw new TypeError(`The backup contains a ${tableName} record with an invalid amount.`);
+    }
+  }
+  if (tableName === "transactions" && record.type !== undefined && !TRANSACTION_TYPES.has(record.type)) {
+    throw new TypeError("The backup contains an unknown transaction type.");
+  }
+  if (tableName === "payments" && !PAYMENT_METHODS.has(record.paymentMethod)) {
+    throw new TypeError("The backup contains an unknown payment method.");
+  }
+  if (tableName === "debts" && record.status !== undefined && !DEBT_STATUSES.has(record.status)) {
+    throw new TypeError("The backup contains an unknown debt status.");
+  }
+}
+
 export function shouldRestoreBackupRecord(existing, incoming) {
   if (!existing) return true;
   if (Number.isFinite(existing.updatedAt) && Number.isFinite(incoming.updatedAt)) {
@@ -75,6 +111,10 @@ export function validateBackupData(backup) {
       throw new TypeError(`The backup contains a payment with an unknown debt ID.`);
     }
   }
+  // Amounts, types, methods and statuses are checked after IDs and relationships.
+  for (const tableName of BACKUP_TABLES) {
+    for (const record of backup.data[tableName] ?? []) validateRecordValues(tableName, record);
+  }
   return { ...backup.data, payments: backup.data.payments ?? [], suppliers: backup.data.suppliers ?? [] };
 }
 
@@ -121,8 +161,10 @@ export async function importDatabaseFromJson(jsonFile) {
     throw new TypeError("The selected file is not valid JSON.");
   }
   const data = validateBackupData(backup);
+  const added = Object.fromEntries(BACKUP_TABLES.map((tableName) => [tableName, 0]));
+  let skippedLedgerRows = 0;
 
-  await db.transaction("rw", ...BACKUP_TABLES.map((tableName) => db.table(tableName)), async () => {
+  await db.transaction("rw", ...BACKUP_TABLES.map((tableName) => db.table(tableName)), db.settings, async () => {
     for (const tableName of BACKUP_TABLES) {
       if (data[tableName].length) {
         const incomingRecords = ["customers", "debts"].includes(tableName)
@@ -133,13 +175,31 @@ export async function importDatabaseFromJson(jsonFile) {
           : data[tableName];
         const table = db.table(tableName);
         const existingRecords = await table.bulkGet(incomingRecords.map((record) => record[PRIMARY_KEYS[tableName]]));
-        const records = incomingRecords.filter((record, index) => (
-          shouldRestoreBackupRecord(existingRecords[index], record)
-        ));
+        const isLedger = LEDGER_TABLES.has(tableName);
+        const records = incomingRecords.filter((record, index) => {
+          if (isLedger && existingRecords[index]) {
+            skippedLedgerRows += 1;
+            return false;
+          }
+          return shouldRestoreBackupRecord(existingRecords[index], record);
+        });
         if (!records.length) continue;
-        await table.bulkPut(records);
+        if (isLedger) await table.bulkAdd(records);
+        else await table.bulkPut(records);
+        added[tableName] = records.length;
       }
     }
+    // Local record of each restore. Not synced: a real audit trail needs the server.
+    const stored = await db.settings.get(RESTORE_LOG_KEY);
+    let log = [];
+    try {
+      const parsed = JSON.parse(stored?.value ?? "[]");
+      log = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      log = [];
+    }
+    log.push({ restoredAt: new Date().toISOString(), exportedAt: typeof backup.exportedAt === "string" ? backup.exportedAt : "", added, skippedLedgerRows });
+    await db.settings.put({ key: RESTORE_LOG_KEY, value: JSON.stringify(log.slice(-RESTORE_LOG_LIMIT)) });
   });
   return Object.fromEntries(BACKUP_TABLES.map((tableName) => [tableName, data[tableName].length]));
 }
