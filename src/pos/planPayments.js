@@ -76,9 +76,15 @@ const PLAN_METHOD_LABELS = Object.freeze({ cash: "Cash", momo_direct: "Mobile mo
 
 // Plain words for a stored plan payment status, from the contract: "Waiting to confirm" is the
 // title of screen 70, "Confirmed" is the word the prototype shows on My plan rows, and
-// "Payment not completed" is the name of screen 59. The contract has no wording for "reversed"
-// (a decision for the owner), so that and any other stored value keep their stored word.
-const PLAN_STATUS_LABELS = Object.freeze({ waiting: "Waiting to confirm", confirmed: "Confirmed", failed: "Payment not completed" });
+// "Payment not completed" is the name of screen 59 (accepted by the owner for a failed plan
+// payment). "Payment reversed" is the owner's wording: the contract has none for "reversed".
+// A stored value outside the data model (PlanPaymentStatus) keeps its stored word.
+const PLAN_STATUS_LABELS = Object.freeze({
+  waiting: "Waiting to confirm",
+  confirmed: "Confirmed",
+  failed: "Payment not completed",
+  reversed: "Payment reversed"
+});
 
 export function planStatusLabel(status) {
   if (Object.hasOwn(PLAN_STATUS_LABELS, status)) return PLAN_STATUS_LABELS[status];

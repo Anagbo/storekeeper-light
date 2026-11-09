@@ -35,8 +35,17 @@ test("status labels: confirmed is the word the prototype shows on My plan rows",
   assert.match(section, /Mobile money · GH₵30\.00 Confirmed/);
 });
 
-test("status labels: reversed has no wording in the contract, so it keeps its stored word until the owner decides", () => {
-  assert.equal(planPayments.planStatusLabel("reversed"), "reversed");
+test("status labels: reversed reads 'Payment reversed' (owner wording: the wiring file, prototype and brief have none)", () => {
+  assert.equal(planPayments.planStatusLabel("reversed"), "Payment reversed");
+  // Every status the data model allows (PlanPaymentStatus in src/db/types.ts) now has plain wording.
+  const allowed = read("src/db/types.ts").match(/export type PlanPaymentStatus = ([^;]+);/)[1].match(/"(\w+)"/g).map((value) => value.replace(/"/g, ""));
+  assert.deepEqual(allowed, ["waiting", "confirmed", "failed", "reversed"]);
+  for (const status of allowed) {
+    assert.notEqual(planPayments.planStatusLabel(status), status, `${status} must not show as its stored word`);
+  }
+});
+
+test("status labels: a value outside the data model keeps its stored word, and an empty one shows nothing", () => {
   assert.equal(planPayments.planStatusLabel("something_new"), "something_new");
   for (const missing of [undefined, null, ""]) assert.equal(planPayments.planStatusLabel(missing), "", String(missing));
   // Not a prototype key, so a stored value can never pick up an object's own property.
