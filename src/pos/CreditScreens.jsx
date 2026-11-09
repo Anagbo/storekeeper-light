@@ -13,6 +13,9 @@ import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosCom
 import { buildCollectionReceiptLink } from "./collectionReceipt.js";
 import { buildCreditSaleReceipt, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
 import { posText as t } from "./i18n.js";
+import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
+import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
+import { useSaveAttempt } from "./useSaveAttempt.js";
 import { getCarriedPaymentParts, getMomoPickParams, getPaidPaymentPesewas } from "./paymentAmount.js";
 
 function amountInputValue(amountPesewas) {
@@ -240,6 +243,7 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onReturnToSplit, onSaveCr
   const [error, setError] = useState("");
   // E8: a ref, not the state, so a second tap in the same frame sees the first one.
   const savingRef = useRef(false);
+  const saveAttempt = useSaveAttempt();
   const customerName = params.customer?.name ?? "";
   const choices = [
     { value: "today", label: t("credit.today") },
@@ -264,11 +268,11 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onReturnToSplit, onSaveCr
         // SAVECREDIT: back to the existing 16, dropping 17 and 18 from history (K4).
         onReturnToSplit({ ...details, splitParts: params.initialPaymentParts ?? [] });
       } else {
-        await onSaveCredit(details);
+        await saveAttempt.run(details, (attemptId) => onSaveCredit({ ...details, attemptId }));
       }
     } catch (saveError) {
       console.error("Could not save this credit sale.", saveError);
-      setError(t("credit.saveFailed"));
+      setError(isSaveOutcomeUnknown(saveError) ? "" : t("credit.saveFailed"));
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -288,6 +292,7 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onReturnToSplit, onSaveCr
         <span className="text-sm font-semibold text-slate-700">{t("credit.installmentSubtitle")}</span>
       </button>
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
+      <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => void save()} />
       <div className="mt-auto grid grid-cols-2 gap-2">
         <PosSecondaryButton type="button" onClick={onBack}>{t("credit.back")}</PosSecondaryButton>
         <PosPrimaryButton type="button" disabled={saving} onClick={() => void save()}>{saving ? t("credit.saving") : t("credit.saveAmount", { name: customerName, amount: formatGhs(totalAfterSalePesewas) })}</PosPrimaryButton>
@@ -315,6 +320,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onReturnToSplit, onSaveCre
   const [error, setError] = useState("");
   // E8: a ref, not the state, so a second tap in the same frame sees the first one.
   const savingRef = useRef(false);
+  const saveAttempt = useSaveAttempt();
   const installmentPesewas = toPesewas(installmentAmount);
   const amountPesewas = params.amountPesewas ?? 0;
   const currentDebtPesewas = params.customer?.totalDebtPesewas ?? 0;
@@ -400,7 +406,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onReturnToSplit, onSaveCre
         });
         return;
       }
-      await onSaveCredit({
+      const content = {
         ...params,
         dueDate: "",
         installmentPlan: plan,
@@ -408,10 +414,11 @@ function ALittleAtATime({ params, onBack, onNavigate, onReturnToSplit, onSaveCre
         initialPaymentParts,
         paymentMethod: paymentMethod === "momo" ? "momo" : "cash",
         payBackLabel
-      });
+      };
+      await saveAttempt.run(content, (attemptId) => onSaveCredit({ ...content, attemptId }));
     } catch (saveError) {
       console.error("Could not save this installment plan.", saveError);
-      setError(saveError?.message === "Choose a valid next installment due date."
+      setError(isSaveOutcomeUnknown(saveError) ? "" : saveError?.message === "Choose a valid next installment due date."
         ? t("credit.invalidDueDate")
         : t("credit.invalidInstallment"));
     } finally {
@@ -634,6 +641,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onReturnToSplit, onSaveCre
         </div>
       )}
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
+      <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => void savePlan()} />
       <div className="mt-auto grid grid-cols-2 gap-2">
         <PosSecondaryButton type="button" onClick={onBack}>{t("credit.back")}</PosSecondaryButton>
         <PosPrimaryButton type="button" disabled={saving || !planReady} onClick={() => void savePlan()}>{saving ? t("credit.saving") : t("credit.savePlan")}</PosPrimaryButton>

@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Banknote, Check, Delete, Plus, Smartphone, UserRound } from "lucide-react";
 import { recordCashSale } from "../db/sales.js";
-import { SaveTimeoutError } from "../db/runTransactionWithTimeout.js";
+import { isSaveOutcomeUnknown, isSaveTimeout } from "../lib/saveAttempt.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { PosCard, SplitIcons, PosPage, PosPrimaryButton } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
+import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
+import { useSaveAttempt } from "./useSaveAttempt.js";
 
 const paymentChoices = [
   { value: "cash", label: "sell.cash", icon: Banknote },
@@ -14,7 +16,7 @@ const paymentChoices = [
   { value: "credit", label: "sell.owe", icon: UserRound }
 ];
 
-export default function Sell({ params = {}, onNavigate }) {
+export default function Sell({ params = {}, onNavigate, recordSale = recordCashSale }) {
   const [amount, setAmount] = useState(Number.isSafeInteger(params.amountPesewas) && params.amountPesewas > 0
     ? (params.amountPesewas / 100).toFixed(2)
     : "");
@@ -22,6 +24,7 @@ export default function Sell({ params = {}, onNavigate }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const submitLock = useRef(false);
+  const saveAttempt = useSaveAttempt();
   const saleItems = normalizeSaleItems(params.saleItems ?? []);
   const amountPesewas = toPesewas(amount);
   const itemTotalPesewas = totalSaleItemsPesewas(saleItems);
@@ -54,17 +57,21 @@ export default function Sell({ params = {}, onNavigate }) {
     setBusy(true);
     setError("");
     try {
-      const transaction = await recordCashSale({
+      // D11: the attempt key follows this content; Try again with the same sale reuses it.
+      const content = {
         amountPesewas,
         cashReceivedPesewas: paymentMethod === "cash" ? amountPesewas : 0,
         momoReceivedPesewas: paymentMethod === "momo" ? amountPesewas : 0,
         saleItems
-      });
+      };
+      const transaction = await saveAttempt.run(content, (attemptId) => recordSale({ ...content, attemptId }));
       void requestBackgroundSync();
       onNavigate("SaleRecorded", { transaction });
     } catch (saveError) {
       console.error("Could not save the sale.", saveError);
-      setError(saveError instanceof SaveTimeoutError
+      setError(isSaveOutcomeUnknown(saveError)
+        ? ""
+        : isSaveTimeout(saveError)
         ? t("sell.saveTimedOut")
         : saveError?.name === "QuotaExceededError"
           ? t("sell.storageFull")
@@ -164,6 +171,7 @@ export default function Sell({ params = {}, onNavigate }) {
             </button>
           </div>
           {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 text-base font-semibold text-rose-950">{error}</p>}
+          <SaveAttemptNotice saveAttempt={saveAttempt} busy={busy} onTryAgain={() => void saveSale()} />
           <PosPrimaryButton type="button" onClick={() => void saveSale()} disabled={!canSave || busy} className="mb-4 h-[68px] min-h-0 rounded-[20px] border-0 text-[26px] lg:mb-0 lg:h-20 lg:text-3xl">
             <Check size={32} aria-hidden="true" /> {busy ? t("sell.saving") : t("sell.done")}
           </PosPrimaryButton>

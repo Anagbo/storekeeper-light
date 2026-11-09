@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import assert from "node:assert/strict";
 import { after, before, beforeEach, test } from "node:test";
 import Dexie from "dexie";
-import { runTransactionWithTimeout, SaveTimeoutError } from "../src/db/runTransactionWithTimeout.js";
+import { runTransactionWithTimeout, SaveOutcomeUnknownError, SaveTimeoutError } from "../src/db/runTransactionWithTimeout.js";
 const atomicDb = new Dexie(`StoreKeeperAtomicity-${process.pid}`);
 atomicDb.version(1).stores({ transactions: "id, syncStatus" });
 
@@ -38,15 +38,17 @@ test("runs transaction operations and returns their result", async () => {
   assert.equal(result, "saved");
 });
 
-test("rejects operations that exceed the save deadline", async () => {
+// D11 (Batch 14): a save with no answer after the deadline is "unknown", not "not saved".
+test("rejects operations that exceed the save deadline with an unknown outcome", async () => {
   await assert.rejects(
     runTransactionWithTimeout(
       createFakeDb(),
       ["transactions"],
       () => new Promise(() => {}),
-      10
+      10,
+      20
     ),
-    SaveTimeoutError
+    SaveOutcomeUnknownError
   );
 });
 

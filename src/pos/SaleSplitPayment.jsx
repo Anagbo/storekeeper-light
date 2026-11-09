@@ -1,5 +1,8 @@
 import { useRef, useState } from "react";
 import { posText as t } from "./i18n.js";
+import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
+import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
+import { useSaveAttempt } from "./useSaveAttempt.js";
 import { getInitialPaymentParts, getPaidPaymentPesewas } from "./paymentAmount.js";
 import SplitPayment from "./SplitPayment.jsx";
 import { describeSplitPart } from "./splitTender.js";
@@ -10,6 +13,8 @@ export default function SaleSplitPayment({ params = {}, onBack, onNavigate, onSa
   const [error, setError] = useState("");
   // E8: a ref, not the state, so a second tap in the same frame sees the first one.
   const savingRef = useRef(false);
+  const saveAttempt = useSaveAttempt();
+  const lastPartsRef = useRef(null);
 
   async function saveSale(parts) {
     if (savingRef.current) return;
@@ -17,19 +22,21 @@ export default function SaleSplitPayment({ params = {}, onBack, onNavigate, onSa
     const amountOf = (method) => parts.filter((part) => part.paymentMethod === method).reduce((sum, part) => sum + part.amountPesewas, 0);
     setSaving(true);
     setError("");
+    lastPartsRef.current = parts;
     try {
       // E9: the route params come first, so they cannot override the tender computed below.
-      await onSaveSale({
+      const content = {
         ...params,
         amountPesewas: totalPesewas,
         cashReceivedPesewas: amountOf("cash"),
         momoReceivedPesewas: amountOf("momo"),
         saleItems: params.saleItems ?? [],
         parts
-      });
+      };
+      await saveAttempt.run(content, (attemptId) => onSaveSale({ ...content, attemptId }));
     } catch (saveError) {
       console.error("Could not save the split-payment sale.", saveError);
-      setError(saveError?.name === "QuotaExceededError" ? t("sell.storageFull") : t("split.saveFailed"));
+      setError(isSaveOutcomeUnknown(saveError) ? "" : saveError?.name === "QuotaExceededError" ? t("sell.storageFull") : t("split.saveFailed"));
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -52,6 +59,7 @@ export default function SaleSplitPayment({ params = {}, onBack, onNavigate, onSa
       doneLabel={t("split.done")}
       busy={saving}
       error={error}
+      notice={<SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => lastPartsRef.current && void saveSale(lastPartsRef.current)} />}
       onBack={onBack}
       onDone={(parts) => void saveSale(parts)}
       onOwe={(parts) => onNavigate("WhoOwesYou", {

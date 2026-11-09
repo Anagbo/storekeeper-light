@@ -1,7 +1,7 @@
 import { createId } from "../lib/ids.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
 import { getMomoDetails, getMomoVerification, MOMO_VERIFICATION } from "../pos/momoMapping.js";
-import { runTransactionWithTimeout } from "./runTransactionWithTimeout.js";
+import { runIdempotentSave } from "./saveAttempts.js";
 import { db } from "./db.js";
 
 export async function recordCashSale({
@@ -10,6 +10,7 @@ export async function recordCashSale({
   momoReceivedPesewas = 0,
   saleItems = [],
   parts = null,
+  attemptId,
   now = Date.now()
 }) {
   const items = normalizeSaleItems(saleItems);
@@ -50,6 +51,15 @@ export async function recordCashSale({
     synced: false,
     syncStatus: "pending"
   };
-  await runTransactionWithTimeout(db, [db.transactions], () => db.transactions.add(transaction));
-  return transaction;
+  // D11: the same attemptId with the same sale returns the first save; nothing is added twice.
+  return runIdempotentSave({
+    db,
+    tables: [db.transactions],
+    attemptId,
+    content: { amountPesewas, cashReceivedPesewas, momoReceivedPesewas, saleItems: items, momoVerification },
+    now
+  }, async () => {
+    await db.transactions.add(transaction);
+    return transaction;
+  });
 }

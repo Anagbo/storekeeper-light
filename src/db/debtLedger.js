@@ -1,6 +1,7 @@
 import { db } from "./db.js";
 import { upsertCustomer } from "./customers.js";
 import { runTransactionWithTimeout } from "./runTransactionWithTimeout.js";
+import { runIdempotentSave } from "./saveAttempts.js";
 import { createId } from "../lib/ids.js";
 import { isValidGhanaCardNumber, normalizeGhanaCardNumber } from "../lib/ghanaCardNumber.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
@@ -193,6 +194,7 @@ export async function recordManualDebt({
   dueDate = "",
   installmentPlan = null,
   takenOn = "",
+  attemptId,
   now = Date.now()
 }) {
   const cleanName = name.trim();
@@ -230,7 +232,12 @@ export async function recordManualDebt({
     initialPaymentParts ?? [{ paymentMethod, amountPesewas: initialPaymentPesewas }]
   ) || MOMO_VERIFICATION.merchantConfirmed;
 
-  return runTransactionWithTimeout(db, [db.debts, db.customers, db.transactions, db.payments], async () => {
+  // D11: the same attemptId with the same details returns the first save, never a second one.
+  const attemptContent = {
+    customerId, name: cleanName, phone, ghanaCardNumber: cleanGhanaCardNumber, debtId, amountPesewas, initialPaymentPesewas,
+    initialPaymentParts: normalizedPaymentParts, paymentMethod, note: cleanNote, dueDate, installmentPlan, takenOn
+  };
+  return runIdempotentSave({ db, tables: [db.debts, db.customers, db.transactions, db.payments], attemptId, content: attemptContent, now }, async () => {
     const customer = await resolveCustomer({
       customerId,
       name: cleanName,

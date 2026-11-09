@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Banknote, Check, Smartphone, UserRound } from "lucide-react";
-import { SaveTimeoutError } from "../db/runTransactionWithTimeout.js";
+import { isSaveOutcomeUnknown, isSaveTimeout } from "../lib/saveAttempt.js";
 import { formatGhs } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
 import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, SplitIcons } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
+import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
+import { useSaveAttempt } from "./useSaveAttempt.js";
 
 const paymentChoices = [
   { value: "cash", label: "sell.cash", icon: Banknote },
@@ -18,6 +20,7 @@ export default function ReviewAndPay({ params = {}, onBack, onNavigate, onSaveSa
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const saveAttempt = useSaveAttempt();
 
   function continueToCredit() {
     onNavigate("WhoOwesYou", {
@@ -32,15 +35,18 @@ export default function ReviewAndPay({ params = {}, onBack, onNavigate, onSaveSa
     setBusy(true);
     setError("");
     try {
-      await onSaveSale({
+      const content = {
         amountPesewas: totalPesewas,
         cashReceivedPesewas: paymentMethod === "cash" ? totalPesewas : 0,
         momoReceivedPesewas: paymentMethod === "momo" ? totalPesewas : 0,
         saleItems
-      });
+      };
+      await saveAttempt.run(content, (attemptId) => onSaveSale({ ...content, attemptId }));
     } catch (saveError) {
       console.error("Could not save the reviewed sale.", saveError);
-      setError(saveError instanceof SaveTimeoutError
+      setError(isSaveOutcomeUnknown(saveError)
+        ? ""
+        : isSaveTimeout(saveError)
         ? t("sell.saveTimedOut")
         : saveError?.name === "QuotaExceededError"
           ? t("sell.storageFull")

@@ -6,12 +6,16 @@ import { isValidInstallmentPlanForBalance, localDateString } from "../utils/inst
 import { PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { getDebtDueLabel } from "./money.js";
 import { posText as t } from "./i18n.js";
+import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
+import { useSaveAttempt } from "./useSaveAttempt.js";
+import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
 
 export function ManualDebtAmount({ params, onBack, onNavigate, onSaveManualDebt }) {
   const [amountDigits, setAmountDigits] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const saveAttempt = useSaveAttempt();
   // Taken on (brief line 372): defaults to today, can be set to an older date.
   const today = localDateString();
   const [takenOn, setTakenOn] = useState(params.takenOn ?? today);
@@ -71,13 +75,14 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onSaveManualDebt 
     if (inheritedPlan || hasDueDate) {
       setSaving(true);
       setError("");
-      void onSaveManualDebt({
+      const content = {
         ...nextParams,
         dueDate: hasDueDate ? debt.dueDate : "",
         installmentPlan: inheritedPlan
-      }).catch((saveError) => {
+      };
+      void saveAttempt.run(content, (attemptId) => onSaveManualDebt({ ...content, attemptId })).catch((saveError) => {
         console.error("Could not save the manual debt.", saveError);
-        setError(saveError?.message === "The manual debt installment plan is invalid."
+        setError(isSaveOutcomeUnknown(saveError) ? "" : saveError?.message === "The manual debt installment plan is invalid."
           ? t("manualDebt.invalidTermsSave")
           : "This debt could not be saved. No changes were committed. Try again.");
       }).finally(() => setSaving(false));
@@ -137,6 +142,7 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onSaveManualDebt 
         />
       )}
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
+      <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={continueFlow} />
       {(hasPlanRecord || hasDueDate) && (
         <section className="min-w-0 rounded-3xl border-2 border-emerald-900 bg-green-100 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">

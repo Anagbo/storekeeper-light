@@ -63,7 +63,9 @@ test("E6: the Undo timer on 28 clears its own interval when the window has passe
 
 test("E9: the sale tender (total, cash, MoMo, parts) is set after the route params, so params cannot override it", () => {
   const source = read("src/pos/SaleSplitPayment.jsx");
-  const call = part(source, "await onSaveSale({", "});");
+  // D11 (Batch 14): the sale is built as `content`, then saved with its attempt key last.
+  const call = part(source, "const content = {", "};");
+  assert.match(source, /onSaveSale\(\{ \.\.\.content, attemptId \}\)/);
   const at = (text) => call.indexOf(text);
   assert.ok(at("...params") >= 0);
   for (const field of ["amountPesewas: totalPesewas", "cashReceivedPesewas: amountOf(\"cash\")", "momoReceivedPesewas: amountOf(\"momo\")", "parts"]) {

@@ -2,6 +2,7 @@ import { db } from "./db.js";
 import { upsertCustomer } from "./customers.js";
 import { recalculateCustomerDebtBalance } from "./debtLedger.js";
 import { runTransactionWithTimeout } from "./runTransactionWithTimeout.js";
+import { runIdempotentSave } from "./saveAttempts.js";
 import { createId } from "../lib/ids.js";
 import { isValidGhanaCardNumber } from "../lib/ghanaCardNumber.js";
 import { formatGhs } from "../lib/money.js";
@@ -277,6 +278,7 @@ export async function recordCreditSale({
   quantity = 1,
   transactionNote = "",
   saleItems = [],
+  attemptId,
   now = Date.now()
 }) {
   const cleanName = name.trim();
@@ -324,7 +326,13 @@ export async function recordCreditSale({
     initialPaymentParts ?? [{ paymentMethod, amountPesewas: initialPaymentPesewas }]
   ) || MOMO_VERIFICATION.merchantConfirmed;
 
-  return runTransactionWithTimeout(db, [db.debts, db.customers, db.transactions, db.payments], async () => {
+  // D11: the same attemptId with the same details returns the first save, never a second one.
+  const attemptContent = {
+    amountPesewas, name: cleanName, phone: cleanPhone, ghanaCardNumber: cleanGhanaCardNumber, dueDate, installmentPlan,
+    initialPaymentPesewas, initialPaymentParts, paymentMethod, note: cleanNote, itemDescription: cleanItemDescription,
+    quantity, transactionNote: cleanTransactionNote, saleItems: cleanSaleItems
+  };
+  return runIdempotentSave({ db, tables: [db.debts, db.customers, db.transactions, db.payments], attemptId, content: attemptContent, now }, async () => {
     const previousDebtPesewas = await getUnpaidCustomerBalance(cleanName);
     const existingDebtsBeforeSale = await db.debts
       .where("status")
@@ -597,14 +605,21 @@ export async function recordCreditSale({
   });
 }
 
-export async function recordDebtCollection({ debtId, parts, now = Date.now() }) {
+export async function recordDebtCollection({ debtId, parts, attemptId, now = Date.now() }) {
   if (!debtId) throw new TypeError("A debt is required to record a collection.");
   const { normalizedParts, totalPesewas } = normalizeCollectionParts(parts);
   // Read from the raw parts: normalizing keeps only method and amount (F1).
   const momoVerification = getMomoVerification(parts);
   const collectionId = createId();
 
-  return runTransactionWithTimeout(db, [db.debts, db.payments, db.transactions, db.customers], async () => {
+  // D11: the same attemptId with the same collection returns the first save, never a second one.
+  return runIdempotentSave({
+    db,
+    tables: [db.debts, db.payments, db.transactions, db.customers],
+    attemptId,
+    content: { debtId, parts: normalizedParts, momoVerification },
+    now
+  }, async () => {
     const currentDebt = await db.debts.get(debtId);
     const currentAmount = currentDebt?.amountPesewas ?? currentDebt?.total_owed;
     if (!currentDebt || currentDebt.status !== "unpaid" ||

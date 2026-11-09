@@ -213,9 +213,10 @@ export default function PosApp() {
     setQuickEntryOpen(true);
   }
 
-  async function saveDebtCollection(debtId, parts) {
+  // D11: attemptId comes from the screen (useSaveAttempt) and is passed to every writer.
+  async function saveDebtCollection(debtId, parts, attemptId) {
     const { recordDebtCollection } = await import("../db/debts.js");
-    const result = await recordDebtCollection({ debtId, parts });
+    const result = await recordDebtCollection({ debtId, parts, attemptId });
     void requestBackgroundSync();
     navigate(POS_ROUTES.PaymentReceived, result);
   }
@@ -244,6 +245,7 @@ export default function PosApp() {
         dueDate: details.dueDate ?? "",
         installmentPlan: details.installmentPlan ?? null,
         takenOn: details.takenOn ?? "",
+        attemptId: details.attemptId,
         now: Date.now()
       });
       void requestBackgroundSync();
@@ -264,7 +266,8 @@ export default function PosApp() {
       note: details.itemDescription ?? details.saleItems?.map((item) =>
         item.quantity > 1 ? `${item.name} × ${item.quantity}` : item.name
       ).join(", ") ?? "Sale",
-      saleItems: details.saleItems
+      saleItems: details.saleItems,
+      attemptId: details.attemptId
     });
     void requestBackgroundSync();
     navigate(POS_ROUTES.CreditSaved, { ...details, creditResult });
@@ -286,7 +289,8 @@ export default function PosApp() {
         initialPaymentParts: paidParts,
         paymentMethod: paidParts.some((part) => part.paymentMethod === "momo") ? "momo" : "cash",
         note: details.saleItems?.map((item) => item.name).join(", ") || "Sale",
-        saleItems: details.saleItems ?? []
+        saleItems: details.saleItems ?? [],
+        attemptId: details.attemptId
       });
       void requestBackgroundSync();
       navigate(POS_ROUTES.SaleRecorded, { transaction: creditResult.saleTransaction, creditResult });
@@ -303,14 +307,15 @@ export default function PosApp() {
       cashReceivedPesewas: 0,
       momoReceivedPesewas: details.amountPesewas,
       saleItems: details.saleItems ?? [],
-      parts: [{ paymentMethod: "momo", amountPesewas: details.amountPesewas, verification: details.verification }]
+      parts: [{ paymentMethod: "momo", amountPesewas: details.amountPesewas, verification: details.verification }],
+      attemptId: details.attemptId
     });
     void requestBackgroundSync();
     navigate(POS_ROUTES.SaleRecorded, { transaction });
   }
 
   async function saveDirectMomoCollection(details) {
-    await saveDebtCollection(details.debtId, [{ paymentMethod: "momo", amountPesewas: details.amountPesewas, verification: details.verification }]);
+    await saveDebtCollection(details.debtId, [{ paymentMethod: "momo", amountPesewas: details.amountPesewas, verification: details.verification }], details.attemptId);
   }
 
   async function saveExpense(details) {

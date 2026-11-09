@@ -6,6 +6,9 @@ import { secondsUntil } from "../lib/countdown.js";
 import { MOMO_CONFIG, PHONE_REQUEST_ENABLED, RECEIVING_NETWORKS, getMerchantMomoSettings, maskPhoneNumber, normalizeReceivingNumber, recordMomoLastUsed, saveReceivingNumber } from "./momoConfig.js";
 import { getMomoAmountPesewas } from "./paymentAmount.js";
 import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag } from "./PosComponents.jsx";
+import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
+import { useSaveAttempt } from "./useSaveAttempt.js";
+import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
 
 const NETWORKS = ["MTN", "Telecel", "AirtelTigo"];
 
@@ -53,6 +56,7 @@ export function MoMoDirect({ params = {}, onBack, onConfirm, onPick }) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const savingRef = useRef(false);
+  const saveAttempt = useSaveAttempt();
   const paymentAmountPesewas = getMomoAmountPesewas(params);
   async function confirmReceived() {
     if (savingRef.current || !settings.number) return;
@@ -61,12 +65,15 @@ export function MoMoDirect({ params = {}, onBack, onConfirm, onPick }) {
     setSaveError("");
     const details = { ...params, momoMethod: "direct", verification: "merchant_confirmed" };
     try {
-      await (params.pickOnly ? onPick(details) : onConfirm(details));
-    } catch {
+      // D11: only a real save (not a pick) gets an attempt key.
+      await (params.pickOnly
+        ? onPick(details)
+        : saveAttempt.run(details, (attemptId) => onConfirm({ ...details, attemptId })));
+    } catch (saveFailure) {
       // Release the guard only on failure; on success this screen is replaced.
       savingRef.current = false;
       setSaving(false);
-      setSaveError("Could not save the payment. Check it was not saved, then try again.");
+      setSaveError(isSaveOutcomeUnknown(saveFailure) ? "" : "Could not save the payment. Check it was not saved, then try again.");
     }
   }
   useEffect(() => { getMerchantMomoSettings().then(setSettings).catch((error) => console.error("Could not load receiving settings.", error)); }, []);
@@ -82,6 +89,7 @@ export function MoMoDirect({ params = {}, onBack, onConfirm, onPick }) {
     {copied && <p role="status">Number copied.</p>}
     <p className="text-base font-semibold">Wait for the MoMo message. Check the amount and the name before you tap. Check your MoMo balance, not only the SMS.</p>
     {saveError && <p role="alert" className="text-base font-bold text-rose-900">{saveError}</p>}
+    <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => void confirmReceived()} />
     {!settings.number && <p role="status" className="text-base font-bold text-rose-900">Set your MoMo number in Settings first: Menu › Settings › MoMo payments.</p>}
     <PosPrimaryButton type="button" disabled={saving || !settings.number} onClick={() => void confirmReceived()}><Check size={28} aria-hidden="true" />Money received</PosPrimaryButton>
     <p className="text-sm font-medium">Saved as MoMo · you confirmed.</p>

@@ -22,6 +22,7 @@ export default function SplitPayment({
   doneLabel,
   busy = false,
   error = "",
+  notice = null,
   onBack,
   onDone,
   onOwe,
@@ -146,6 +147,7 @@ export default function SplitPayment({
         </section>
       )}
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
+      {notice}
       <div className="flex-1" />
       <PosPrimaryButton type="button" aria-disabled={busy || leftPesewas !== 0 || parts.length === 0 || !partsValid ? "true" : undefined} disabled={busy || leftPesewas !== 0 || parts.length === 0 || !partsValid} onClick={() => onDone(parts)} className="h-[68px] min-h-0 rounded-[20px] text-2xl">
         {busy ? t("sell.saving") : <><Check size={28} aria-hidden="true" />{doneLabel}</>}

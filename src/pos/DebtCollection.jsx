@@ -19,6 +19,9 @@ import { getInstallmentsLeft } from "../utils/installments.js";
 import { posText as t } from "./i18n.js";
 import { PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, SplitIcons } from "./PosComponents.jsx";
 import CustomerContactEditor from "./CustomerContactEditor.jsx";
+import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
+import { useSaveAttempt } from "./useSaveAttempt.js";
+import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
 import SplitPayment from "./SplitPayment.jsx";
 import { getInitialPaymentParts } from "./paymentAmount.js";
 import { getMomoDisplayLabel } from "./momoMapping.js";
@@ -148,6 +151,7 @@ function CollectionSheet({ debt, onClose, onNavigate, onRecordCollection }) {
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const saveAttempt = useSaveAttempt();
   const dueAmount = debt.isInstallmentPlan && Number.isSafeInteger(debt.installmentAmount) && debt.installmentAmount > 0
     ? Math.min(debt.amountPesewas, debt.installmentAmount)
     : debt.amountPesewas;
@@ -158,10 +162,11 @@ function CollectionSheet({ debt, onClose, onNavigate, onRecordCollection }) {
     setBusy(true);
     setError("");
     try {
-      await onRecordCollection(debt.id, [{ paymentMethod, amountPesewas }]);
+      const parts = [{ paymentMethod, amountPesewas }];
+      await saveAttempt.run({ debtId: debt.id, parts }, (attemptId) => onRecordCollection(debt.id, parts, attemptId));
     } catch (recordError) {
       console.error("Could not record the debt collection.", recordError);
-      setError(t("collect.saveFailed"));
+      setError(isSaveOutcomeUnknown(recordError) ? "" : t("collect.saveFailed"));
     } finally {
       setBusy(false);
     }
@@ -227,6 +232,7 @@ function CollectionSheet({ debt, onClose, onNavigate, onRecordCollection }) {
           />
         </div>
         <CollectionError>{error}</CollectionError>
+        <SaveAttemptNotice saveAttempt={saveAttempt} busy={busy} onTryAgain={() => void receivePayment()} />
         <PosPrimaryButton type="button" onClick={() => void receivePayment()} disabled={busy || amountPesewas <= 0} className="mt-4 h-[68px] min-h-0 rounded-[20px] text-2xl">
           <Check size={28} aria-hidden="true" /> {busy ? t("collect.saving") : t("collect.received")}
         </PosPrimaryButton>
@@ -288,6 +294,8 @@ export function CollectSplitPayment({ params, onBack, onNavigate, onRecordCollec
   const [error, setError] = useState("");
   // E8: a ref, not the state, so a second tap in the same frame sees the first one.
   const busyRef = useRef(false);
+  const saveAttempt = useSaveAttempt();
+  const lastPartsRef = useRef(null);
   const totalPesewas = toPesewas(params?.amount ?? "");
 
   if (debt === undefined) return <PosPage><p role="status">{t("collect.loading")}</p></PosPage>;
@@ -300,11 +308,12 @@ export function CollectSplitPayment({ params, onBack, onNavigate, onRecordCollec
     busyRef.current = true;
     setBusy(true);
     setError("");
+    lastPartsRef.current = parts;
     try {
-      await onRecordCollection(debt.id, parts);
+      await saveAttempt.run({ debtId: debt.id, parts }, (attemptId) => onRecordCollection(debt.id, parts, attemptId));
     } catch (recordError) {
       console.error("Could not record the split debt collection.", recordError);
-      setError(t("collect.saveFailed"));
+      setError(isSaveOutcomeUnknown(recordError) ? "" : t("collect.saveFailed"));
       busyRef.current = false;
       setBusy(false);
     }
@@ -317,6 +326,7 @@ export function CollectSplitPayment({ params, onBack, onNavigate, onRecordCollec
       doneLabel={t("collect.received")}
       busy={busy}
       error={error}
+      notice={<SaveAttemptNotice saveAttempt={saveAttempt} busy={busy} onTryAgain={() => lastPartsRef.current && void receive(lastPartsRef.current)} />}
       onBack={onBack}
       onDone={(parts) => void receive(parts)}
       onMoMo={(parts, pendingMomoAmountPesewas) => onNavigate("MoMoChoice", {
@@ -340,6 +350,7 @@ function CollectPayPartScreen({ params, onBack, onNavigate, onUpdateParams, onRe
   ));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const saveAttempt = useSaveAttempt();
   const amountPesewas = toPesewas(amount);
   const canReceive = debt && Number.isSafeInteger(amountPesewas) && amountPesewas > 0 && amountPesewas <= debt.amountPesewas;
 
@@ -348,10 +359,11 @@ function CollectPayPartScreen({ params, onBack, onNavigate, onUpdateParams, onRe
     setBusy(true);
     setError("");
     try {
-      await onRecordCollection(debt.id, [{ paymentMethod, amountPesewas }]);
+      const parts = [{ paymentMethod, amountPesewas }];
+      await saveAttempt.run({ debtId: debt.id, parts }, (attemptId) => onRecordCollection(debt.id, parts, attemptId));
     } catch (recordError) {
       console.error("Could not record the partial debt collection.", recordError);
-      setError(t("collect.saveFailed"));
+      setError(isSaveOutcomeUnknown(recordError) ? "" : t("collect.saveFailed"));
     } finally {
       setBusy(false);
     }
@@ -410,6 +422,7 @@ function CollectPayPartScreen({ params, onBack, onNavigate, onUpdateParams, onRe
             onSplit={() => onNavigate("SplitPayment", { ...params, amount })}
           />
           <CollectionError>{error}</CollectionError>
+          <SaveAttemptNotice saveAttempt={saveAttempt} busy={busy} onTryAgain={() => void receivePayment()} />
           <PosPrimaryButton type="button" disabled={!canReceive || busy} onClick={() => void receivePayment()} className="h-[68px] min-h-0 rounded-[20px] text-2xl">
             {busy ? t("collect.saving") : <><Check size={28} aria-hidden="true" /> {t("collect.received")}</>}
           </PosPrimaryButton>
