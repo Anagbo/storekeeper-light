@@ -30,7 +30,8 @@ test("47: no profit text while the profit switches are deferred", async () => {
   assert.doesNotMatch(read("src/pos/SettingsScreens.jsx"), /settings\.profit/);
 });
 
-test("22: the money card uses the prototype's headings (Cash left today, Cash in, Spent)", async () => {
+// Owner decision (Batch 14): "Money in" includes MoMo (cash + MoMo received), so 22 no longer says "Cash".
+test("22: the money card uses the owner's headings (Money left today, Money in, Spent)", async () => {
   const { default: Home } = await loadJsx("src/pos/Home.jsx");
   setLiveQuery(() => ({ totals: { cashLeft: 0, moneyIn: 0, moneySpent: 0 }, debtPesewas: 0, urgentDebt: null }));
   try {
@@ -40,13 +41,13 @@ test("22: the money card uses the prototype's headings (Cash left today, Cash in
       if (!node || typeof node !== "object") return;
       yield node;
       yield* walkAll("rendered" in node ? node.rendered : node.props?.children);
-    })(view.tree)].find((node) => node.type === "section" && textOf(node).includes("Cash left today"));
-    assert.ok(card, "Cash left today");
+    })(view.tree)].find((node) => node.type === "section" && textOf(node).includes("Money left today"));
+    assert.ok(card, "Money left today");
     const text = textOf(card);
-    assert.match(text, /Cash in/);
+    assert.match(text, /Money in/);
     assert.match(text, /Spent/);
-    assert.doesNotMatch(text, /Money in|Money spent/);
-    assert.equal(card.props["aria-label"], "Cash left today");
+    assert.doesNotMatch(text, /Cash left today|Cash in|Money spent/);
+    assert.equal(card.props["aria-label"], "Money left today");
   } finally {
     setLiveQuery(null);
   }

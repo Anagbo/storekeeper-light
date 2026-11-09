@@ -220,7 +220,8 @@ test("debtor details return to the originating screen instead of resetting to Ho
 });
 
 test("Home and My money summary labels resolve", () => {
-  assert.equal(posText("home.moneyIn"), "Cash in"); // 22 uses the prototype headings (Batch 13)
+  assert.equal(posText("home.cashLeftToday"), "Money left today"); // 22 headings (owner, Batch 14)
+  assert.equal(posText("home.moneyIn"), "Money in");
   assert.equal(posText("home.moneySpent"), "Spent");
   assert.equal(posText("money.back"), "Back");
   assert.equal(posText("money.moneyIn"), "Money in");
