@@ -3,13 +3,14 @@ import { posText as t } from "./i18n.js";
 import { getInitialPaymentParts } from "./paymentAmount.js";
 import SplitPayment from "./SplitPayment.jsx";
 
-export default function InstallmentSplitPayment({ params = {}, onBack, onReplace, onNavigate }) {
+export default function InstallmentSplitPayment({ params = {}, onBack, onReturnTo, onNavigate }) {
   const totalPesewas = Number.isSafeInteger(params.splitTotalPesewas)
     ? params.splitTotalPesewas
     : toPesewas(params.todayPaymentAmount ?? "");
 
+  // Back to the existing 19, not a second copy on top of it (E3).
   function complete(parts) {
-    onReplace("ALittleAtATime", {
+    onReturnTo("ALittleAtATime", {
       ...params,
       paymentMethod: "split",
       firstPaymentParts: parts

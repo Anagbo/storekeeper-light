@@ -230,6 +230,6 @@ export function MoMoCode({ params = {}, onBack, onNavigate }) {
   </PosPage>;
 }
 
-export function MoMoNotCompleted({ params = {}, onBack, onNavigate }) {
-  return <PosPage className="flex flex-col gap-3"><BackTitle title="Payment not completed" onBack={onBack} /><p className="text-lg font-semibold">The phone request was not completed. Nothing was saved.</p><PosPrimaryButton type="button" onClick={() => onNavigate("MoMoPayment", params)}>Try again</PosPrimaryButton><PosSecondaryButton type="button" onClick={onBack}>Pay another way</PosSecondaryButton><PosSecondaryButton type="button" onClick={() => onNavigate("Home")}>Cancel sale</PosSecondaryButton></PosPage>;
+export function MoMoNotCompleted({ params = {}, onBack, onNavigate, onPayAnotherWay }) {
+  return <PosPage className="flex flex-col gap-3"><BackTitle title="Payment not completed" onBack={onBack} /><p className="text-lg font-semibold">The phone request was not completed. Nothing was saved.</p><PosPrimaryButton type="button" onClick={() => onNavigate("MoMoPayment", params)}>Try again</PosPrimaryButton><PosSecondaryButton type="button" onClick={onPayAnotherWay}>Pay another way</PosSecondaryButton><PosSecondaryButton type="button" onClick={() => onNavigate("Home")}>Cancel sale</PosSecondaryButton></PosPage>;
 }

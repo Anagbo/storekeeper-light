@@ -211,3 +211,51 @@ export function backRoute(state, fallback = POS_ROUTES.Home) {
   if (!previous) return createRouteState(fallback);
   return { current: previous.current, params: previous.params, history: state.history.slice(0, -1) };
 }
+
+// Return to the most recent history entry for `route` (that also matches `predicate`),
+// merging `params` into it and dropping every screen opened after it. Returns null when
+// there is no such entry. Used to go back to a hub (16, 19) instead of stacking a copy.
+export function popToRoute(state, route, params = {}, predicate = () => true) {
+  for (let index = state.history.length - 1; index >= 0; index -= 1) {
+    const item = state.history[index];
+    if (item.current === route && predicate(item.params ?? {})) {
+      return { current: route, params: { ...item.params, ...params }, history: state.history.slice(0, index) };
+    }
+  }
+  return null;
+}
+
+// SplitPayment is the sale hub (16) unless it is 27 opened from 19 or a collection split.
+export function isSaleSplitHub(params = {}) {
+  return !params.installmentSplit && !params.debtId;
+}
+
+const MOMO_FLOW_ROUTES = new Set(["MoMoChoice", "MoMoDirect", "MoMoSetup", "MoMoPayment", "MoMoWaiting", "MoMoCode", "MoMoNotCompleted"]);
+
+// The origin is the screen that opened the MoMo flow (momoFrom): the entry just before the
+// last MoMoChoice. Used by 57 Cancel request (CANCELMOMO) and 59 Pay another way (PAYOTHER).
+export function returnToMomoOrigin(state) {
+  const choiceIndex = state.history.map((item) => item.current).lastIndexOf("MoMoChoice");
+  if (choiceIndex < 1) return null;
+  const origin = state.history[choiceIndex - 1];
+  return { current: origin.current, params: origin.params, history: state.history.slice(0, choiceIndex - 1) };
+}
+
+// Pick-only flags must not leak into later screens (E4).
+function withoutMomoPickFlags(params = {}) {
+  const { pickOnly: _pickOnly, returnRoute: _returnRoute, ...rest } = params;
+  return rest;
+}
+
+// Return from a MoMo pick (61/62) to the screen that asked for it (16, 19, 27).
+export function returnFromMomoPickState(state, details = {}) {
+  const target = details.returnRoute;
+  if (!target) return state;
+  const cleanDetails = withoutMomoPickFlags(details);
+  const popped = popToRoute(state, target, cleanDetails);
+  if (popped) return { ...popped, params: withoutMomoPickFlags(popped.params) };
+  // Target not in history: drop the trailing MoMo screens so Back cannot reach them again.
+  const history = [...state.history];
+  while (history.length && MOMO_FLOW_ROUTES.has(history.at(-1).current)) history.pop();
+  return { current: target, params: withoutMomoPickFlags({ ...state.params, ...cleanDetails }), history };
+}

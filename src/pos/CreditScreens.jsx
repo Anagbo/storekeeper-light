@@ -234,7 +234,7 @@ function NewPerson({ params, onBack, onNavigate }) {
   );
 }
 
-function WhenWillTheyPay({ params, onBack, onNavigate, onSaveCredit }) {
+function WhenWillTheyPay({ params, onBack, onNavigate, onReturnToSplit, onSaveCredit }) {
   const [dueChoice, setDueChoice] = useState(params.creditDueChoice ?? "week");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -257,7 +257,8 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onSaveCredit }) {
         payBackLabel: choices.find((choice) => choice.value === dueChoice)?.label ?? t("credit.inOneWeek")
       };
       if (params.flow === "split") {
-        onNavigate("SplitPayment", { ...details, splitParts: params.initialPaymentParts ?? [] });
+        // SAVECREDIT: back to the existing 16, dropping 17 and 18 from history (K4).
+        onReturnToSplit({ ...details, splitParts: params.initialPaymentParts ?? [] });
       } else {
         await onSaveCredit(details);
       }
@@ -290,14 +291,16 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onSaveCredit }) {
   );
 }
 
-function ALittleAtATime({ params, onBack, onNavigate, onSaveCredit }) {
+function ALittleAtATime({ params, onBack, onNavigate, onReturnToSplit, onSaveCredit }) {
   const today = localDateString();
   const [installmentAmount, setInstallmentAmount] = useState(params.installmentAmount ?? "");
   const [frequency, setFrequency] = useState(params.frequency ?? "weekly");
   const carriedPaymentParts = getCarriedPaymentParts(params);
   const paidTodayPesewas = getPaidPaymentPesewas(carriedPaymentParts);
+  // In a split sale (flow=split) the payment today is taken on 16, so 19 hides its own
+  // payment section and passes 16's parts through unchanged (K5, E2).
   const paymentAlreadyMadeToday = params.paymentAlreadyMadeToday === true ||
-    (params.flow === "split" && paidTodayPesewas > 0);
+    params.flow === "split";
   const [startToday, setStartToday] = useState(paymentAlreadyMadeToday ? false : (params.startToday ?? false));
   const [nextDueDate, setNextDueDate] = useState(params.nextDueDate ?? getNextCycleDate(today, params.frequency ?? "weekly"));
   const [paymentMethod, setPaymentMethod] = useState(params.paymentMethod ?? "cash");
@@ -323,12 +326,18 @@ function ALittleAtATime({ params, onBack, onNavigate, onSaveCredit }) {
   const validTodayPayment = Number.isSafeInteger(todayPaymentPesewas) &&
     todayPaymentPesewas > 0 &&
     todayPaymentPesewas <= maxCreditPesewas;
+  // Save plan stays disabled until the plan is valid (K5): an amount each time, a next
+  // payment date from today on, and, when paying today on this screen, a valid amount.
+  const planReady = Number.isSafeInteger(installmentPesewas) && installmentPesewas > 0 &&
+    isValidDateString(nextDueDate) && nextDueDate >= today &&
+    (!startToday || paymentAlreadyMadeToday || validTodayPayment);
 
+  // Back from a MoMo pick (61/62): returnRoute is stripped on return (E4), so use the method.
   useEffect(() => {
-    if (params.returnRoute === "ALittleAtATime" && params.momoMethod) {
+    if (params.paymentMethod === "momo" && params.momoMethod) {
       setPaymentMethod("momo");
     }
-  }, [params.returnRoute, params.momoMethod]);
+  }, [params.paymentMethod, params.momoMethod]);
 
   function selectFrequency(nextFrequency) {
     setFrequency(nextFrequency);
@@ -372,7 +381,8 @@ function ALittleAtATime({ params, onBack, onNavigate, onSaveCredit }) {
           ? [...(params.initialPaymentParts ?? []), { paymentMethod, amountPesewas: prepared.initialPaymentPesewas }]
           : (params.initialPaymentParts ?? []);
       if (params.flow === "split") {
-        onNavigate("SplitPayment", {
+        // SAVE19 in a split: back to the existing 16 with the Owe part complete (K4).
+        onReturnToSplit({
           ...params,
           dueDate: "",
           installmentPlan: plan,
@@ -602,7 +612,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onSaveCredit }) {
           )}
         </fieldset>
       )}
-      {paymentAlreadyMadeToday && splitParts.length > 0 && (
+      {paymentAlreadyMadeToday && paidTodayPesewas > 0 && splitParts.length > 0 && (
         <div className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
         <p className="mb-2 font-extrabold text-emerald-950">{t("credit.paymentRecorded")}</p>
         <div className="flex flex-col gap-2">
@@ -622,7 +632,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onSaveCredit }) {
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
       <div className="mt-auto grid grid-cols-2 gap-2">
         <PosSecondaryButton type="button" onClick={onBack}>{t("credit.back")}</PosSecondaryButton>
-        <PosPrimaryButton type="button" disabled={saving || !Number.isSafeInteger(installmentPesewas) || installmentPesewas <= 0} onClick={() => void savePlan()}>{saving ? t("credit.saving") : t("credit.savePlan")}</PosPrimaryButton>
+        <PosPrimaryButton type="button" disabled={saving || !planReady} onClick={() => void savePlan()}>{saving ? t("credit.saving") : t("credit.savePlan")}</PosPrimaryButton>
       </div>
     </PosPage>
   );
@@ -767,11 +777,11 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
   );
 }
 
-export default function CreditScreens({ route, params, onBack, onNavigate, onSaveCredit, onSaveCustomerContact, onHome, shopName }) {
+export default function CreditScreens({ route, params, onBack, onNavigate, onReturnToSplit, onSaveCredit, onSaveCustomerContact, onHome, shopName }) {
   if (route === "WhoOwesYou") return <WhoOwesYou params={params} onBack={onBack} onNavigate={onNavigate} />;
   if (route === "NewPerson") return <NewPerson params={params} onBack={onBack} onNavigate={onNavigate} />;
-  if (route === "WhenWillTheyPay") return <WhenWillTheyPay params={params} onBack={onBack} onNavigate={onNavigate} onSaveCredit={onSaveCredit} />;
-  if (route === "ALittleAtATime") return <ALittleAtATime params={params} onBack={onBack} onNavigate={onNavigate} onSaveCredit={onSaveCredit} />;
+  if (route === "WhenWillTheyPay") return <WhenWillTheyPay params={params} onBack={onBack} onNavigate={onNavigate} onReturnToSplit={onReturnToSplit} onSaveCredit={onSaveCredit} />;
+  if (route === "ALittleAtATime") return <ALittleAtATime params={params} onBack={onBack} onNavigate={onNavigate} onReturnToSplit={onReturnToSplit} onSaveCredit={onSaveCredit} />;
   if (route === "CreditSaved") return <CreditSaved params={params} onHome={onHome} onNavigate={onNavigate} onSaveCustomerContact={onSaveCustomerContact} shopName={shopName} />;
   return null;
 }

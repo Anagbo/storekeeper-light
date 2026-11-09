@@ -9,7 +9,17 @@ import { useSubscription } from "../hooks/useSubscription.js";
 import { FEATURE_FLAGS } from "../config/features.js";
 import { formatGhs } from "../lib/money.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
-import { backRoute, createRouteState, POS_ROUTES, pushRoute, replaceRoute } from "./routes.js";
+import {
+  backRoute,
+  createRouteState,
+  isSaleSplitHub,
+  popToRoute,
+  POS_ROUTES,
+  pushRoute,
+  replaceRoute,
+  returnFromMomoPickState,
+  returnToMomoOrigin
+} from "./routes.js";
 import Home from "./Home.jsx";
 import Menu from "./Menu.jsx";
 import MyMoney from "./MyMoney.jsx";
@@ -169,17 +179,21 @@ export default function PosApp() {
   }
 
   function returnFromMomoPick(details) {
-    const target = details.returnRoute;
-    if (!target) return;
-    setRouteState((current) => {
-      const targetIndex = current.history.map((entry) => entry.current).lastIndexOf(target);
-      if (targetIndex < 0) return { ...current, current: target, params: { ...current.params, ...details } };
-      return {
-        current: target,
-        params: { ...current.history[targetIndex].params, ...details },
-        history: current.history.slice(0, targetIndex)
-      };
-    });
+    if (!details.returnRoute) return;
+    setRouteState((current) => returnFromMomoPickState(current, details));
+  }
+
+  // Go back to an existing hub screen (16, 19) instead of stacking a copy (K4, E3).
+  // If it is not in history, open it as before.
+  function returnTo(route, params = {}, predicate) {
+    setRouteState((current) => popToRoute(current, route, params, predicate) ?? pushRoute(current, route, params));
+    setNotice("");
+  }
+
+  // 57 Cancel request and 59 Pay another way: back to the screen that opened MoMo (K9, K10).
+  function returnToOrigin() {
+    setRouteState((current) => returnToMomoOrigin(current) ?? backRoute(current));
+    setNotice("");
   }
 
   async function completePosSetup() {
@@ -363,7 +377,7 @@ export default function PosApp() {
   ) : route === POS_ROUTES.HowManyItem ? (
     <HowManyItem params={routeState.params} onBack={navigateBack} onReplace={replaceCurrentRoute} />
   ) : route === POS_ROUTES.SplitPayment && routeState.params.installmentSplit ? (
-    <InstallmentSplitPayment params={routeState.params} onBack={navigateBack} onReplace={replaceCurrentRoute} onNavigate={navigate} />
+    <InstallmentSplitPayment params={routeState.params} onBack={navigateBack} onReturnTo={returnTo} onNavigate={navigate} />
   ) : route === POS_ROUTES.SplitPayment && routeState.params.debtId ? (
     <CollectSplitPayment params={routeState.params} onBack={navigateBack} onNavigate={navigate} onRecordCollection={saveDebtCollection} />
   ) : route === POS_ROUTES.SplitPayment ? (
@@ -412,14 +426,13 @@ export default function PosApp() {
     <MoMoWaiting
       params={routeState.params}
       onCancel={() => {
-        setRouteState((current) => backRoute(backRoute(current)));
-        setNotice("");
+        returnToOrigin();
       }}
     />
   ) : route === POS_ROUTES.MoMoCode ? (
     <MoMoCode params={routeState.params} onBack={navigateBack} onNavigate={navigate} />
   ) : route === POS_ROUTES.MoMoNotCompleted ? (
-    <MoMoNotCompleted params={routeState.params} onBack={navigateBack} onNavigate={navigate} />
+    <MoMoNotCompleted params={routeState.params} onPayAnotherWay={returnToOrigin} onBack={navigateBack} onNavigate={navigate} />
   ) : route === POS_ROUTES.MyPlan ? (
     <MyPlan expiry={subscriptionExpiry} onBack={navigateBack} onNavigate={navigate} />
   ) : route === POS_ROUTES.PlanPayMethod ? (
@@ -556,6 +569,7 @@ export default function PosApp() {
       params={routeState.params}
       onBack={navigateBack}
       onNavigate={navigate}
+      onReturnToSplit={(details) => returnTo(POS_ROUTES.SplitPayment, details, isSaleSplitHub)}
       onSaveCredit={saveCreditSale}
       onSaveCustomerContact={saveCustomerContact}
       onHome={() => switchTab(POS_ROUTES.Home)}
