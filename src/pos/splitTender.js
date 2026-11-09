@@ -21,6 +21,32 @@ export function describeSplitPart(part, params = {}) {
   ].filter(Boolean).join(" · ");
 }
 
+function sumPartsPesewas(parts) {
+  return parts.reduce((sum, part) => sum + part.amountPesewas, 0);
+}
+
+// One tap on a Cash or MoMo tile (K1, brief 3.8 rule 2): the whole Left to pay goes into that
+// mode's row. One row per mode, so an existing row grows. Computed from the parts passed in,
+// so a second quick tap, when nothing is left, changes nothing.
+export function addRemainingToPart(parts, paymentMethod, totalPesewas) {
+  const leftPesewas = totalPesewas - sumPartsPesewas(parts);
+  if (!Number.isSafeInteger(leftPesewas) || leftPesewas <= 0) return parts;
+  const existing = parts.find((part) => part.paymentMethod === paymentMethod);
+  if (!existing) return [...parts, { paymentMethod, amountPesewas: leftPesewas }];
+  return parts.map((part) => (part === existing ? { ...part, amountPesewas: part.amountPesewas + leftPesewas } : part));
+}
+
+// Tapping a row's amount edits it. The new amount replaces the old one and keeps the row's
+// other fields (the MoMo method). It may use what is left plus the row's own amount.
+// Returns null when the amount is not allowed. Owe is never typed.
+export function setPartAmount(parts, paymentMethod, amountPesewas, totalPesewas) {
+  const existing = parts.find((part) => part.paymentMethod === paymentMethod);
+  if (!existing || paymentMethod === "owe") return null;
+  const limitPesewas = totalPesewas - sumPartsPesewas(parts) + existing.amountPesewas;
+  if (!Number.isSafeInteger(amountPesewas) || amountPesewas <= 0 || amountPesewas > limitPesewas) return null;
+  return parts.map((part) => (part === existing ? { ...part, amountPesewas } : part));
+}
+
 export function areSplitTenderAmountsValid(totalPesewas, cashPesewas, momoPesewas) {
   const paidPesewas = cashPesewas + momoPesewas;
   return Number.isSafeInteger(totalPesewas) && totalPesewas > 0 &&

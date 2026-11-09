@@ -167,6 +167,7 @@ const ENGLISH = Object.freeze({
   "split.leftToPay": "Left to pay",
   "split.addTheRest": "Add the rest:",
   "split.add": "Add",
+  "split.save": "Save",
   "split.remove": "Remove {method}",
   "split.howMuch": "How much {method}?",
   "split.collectPays": "{name} pays",

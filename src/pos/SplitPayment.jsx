@@ -3,17 +3,12 @@ import { Banknote, Check, Smartphone, UserRound, X } from "lucide-react";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { posText as t } from "./i18n.js";
 import { PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
+import { addRemainingToPart, setPartAmount } from "./splitTender.js";
 
 const METHOD_ICONS = { cash: Banknote, momo: Smartphone, owe: UserRound };
 
 function sumParts(parts) {
   return parts.reduce((sum, part) => sum + part.amountPesewas, 0);
-}
-
-function addPart(parts, paymentMethod, amountPesewas) {
-  const existing = parts.find((part) => part.paymentMethod === paymentMethod);
-  if (!existing) return [...parts, { paymentMethod, amountPesewas }];
-  return parts.map((part) => (part === existing ? { ...part, amountPesewas: part.amountPesewas + amountPesewas } : part));
 }
 
 function formatDraft(amountPesewas) {
@@ -43,23 +38,19 @@ export default function SplitPayment({
     partsTotalPesewas <= totalPesewas;
   const draftPesewas = draft ? toPesewas(draft.value) : 0;
 
-  function startDraft(paymentMethod) {
-    setDraft({ paymentMethod, value: formatDraft(leftPesewas) });
+  // Tapping a row's amount edits it (brief 3.8 rule 2). Adding a part is one tap on a tile.
+  function startEdit(part) {
+    setDraft({ paymentMethod: part.paymentMethod, value: formatDraft(part.amountPesewas) });
     setDraftError("");
   }
 
   function confirmDraft() {
-    if (!Number.isSafeInteger(draftPesewas) || draftPesewas <= 0 || draftPesewas > leftPesewas) {
+    const next = setPartAmount(parts, draft.paymentMethod, draftPesewas, totalPesewas);
+    if (!next) {
       setDraftError(t("split.amountTooHigh"));
       return;
     }
-    if (draft.paymentMethod === "momo" && onMoMo) {
-      onMoMo(parts, draftPesewas);
-      setDraft(null);
-      setDraftError("");
-      return;
-    }
-    setParts((current) => addPart(current, draft.paymentMethod, draftPesewas));
+    setParts(next);
     setDraft(null);
     setDraftError("");
   }
@@ -81,7 +72,7 @@ export default function SplitPayment({
         return (
           <div key={part.paymentMethod} className="flex min-h-16 items-center gap-3 rounded-2xl border-2 border-slate-500 bg-white px-3">
             <Icon size={28} className="text-emerald-900" aria-hidden="true" />
-            <button type="button" disabled={busy || part.paymentMethod === "owe"} onClick={() => startDraft(part.paymentMethod)} className="flex-1 text-left text-xl font-extrabold disabled:opacity-50">
+            <button type="button" disabled={busy || part.paymentMethod === "owe"} onClick={() => startEdit(part)} className="flex-1 text-left text-xl font-extrabold disabled:opacity-50">
               {name}
               {detail && <span className="block text-sm font-semibold text-slate-700">{detail}</span>}
             </button>
@@ -114,13 +105,12 @@ export default function SplitPayment({
                   type="button"
                   disabled={busy}
                   onClick={() => {
+                    // One tap puts the whole Left to pay into the mode (K1). MoMo first
+                    // opens 61 to choose how the customer pays; nothing is requested yet.
                     if (method === "owe") {
                       if (partsValid) onOwe?.([...parts, { paymentMethod: "owe", amountPesewas: leftPesewas }]);
-                    } else if (method === "momo" && onMoMo) {
-                      startDraft(method);
-                    } else {
-                      startDraft(method);
-                    }
+                    } else if (method === "momo" && onMoMo) onMoMo(parts, leftPesewas);
+                    else setParts((current) => addRemainingToPart(current, method, totalPesewas));
                   }}
                   className="flex h-[76px] flex-col items-center justify-center gap-0.5 rounded-[18px] border-[3px] border-slate-500 bg-white px-2 text-[17px] font-extrabold text-slate-950 disabled:opacity-50"
                 >
@@ -150,7 +140,7 @@ export default function SplitPayment({
           {draftError && <p role="alert" className="font-semibold text-rose-900">{draftError}</p>}
           <div className="grid grid-cols-2 gap-2">
             <PosSecondaryButton type="button" onClick={() => { setDraft(null); setDraftError(""); }}>{t("credit.cancel")}</PosSecondaryButton>
-            <PosPrimaryButton type="button" onClick={confirmDraft}>{t("split.add")}</PosPrimaryButton>
+            <PosPrimaryButton type="button" onClick={confirmDraft}>{t("split.save")}</PosPrimaryButton>
           </div>
         </section>
       )}
