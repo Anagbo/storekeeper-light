@@ -20,6 +20,7 @@ import CustomerContactEditor from "./CustomerContactEditor.jsx";
 import SplitPayment from "./SplitPayment.jsx";
 import { getInitialPaymentParts } from "./paymentAmount.js";
 import { getMomoDisplayLabel } from "./momoMapping.js";
+import { secondsUntil } from "../lib/countdown.js";
 import { getDebtorItemDescription } from "../utils/debtorItemDescription.js";
 
 const PAYMENT_METHODS = [
@@ -448,9 +449,13 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
     }));
   }, [savedCustomer]);
 
+  // E6: the timer stops itself once the Undo window has passed (it used to tick forever).
   useEffect(() => {
+    if (secondsUntil(result.undoExpiresAt, Date.now()) <= 0) return undefined;
     const timer = window.setInterval(() => {
-      setRemainingSeconds(Math.max(0, Math.ceil((result.undoExpiresAt - Date.now()) / 1000)));
+      const left = secondsUntil(result.undoExpiresAt, Date.now());
+      setRemainingSeconds(left);
+      if (left <= 0) window.clearInterval(timer);
     }, 250);
     return () => window.clearInterval(timer);
   }, [result.undoExpiresAt]);

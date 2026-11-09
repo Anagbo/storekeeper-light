@@ -15,13 +15,14 @@ export default function SaleSplitPayment({ params = {}, onBack, onNavigate, onSa
     setSaving(true);
     setError("");
     try {
+      // E9: the route params come first, so they cannot override the tender computed below.
       await onSaveSale({
+        ...params,
         amountPesewas: totalPesewas,
         cashReceivedPesewas: amountOf("cash"),
         momoReceivedPesewas: amountOf("momo"),
         saleItems: params.saleItems ?? [],
-        parts,
-        ...params
+        parts
       });
     } catch (saveError) {
       console.error("Could not save the split-payment sale.", saveError);

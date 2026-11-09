@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Clock3, Copy, Send, Smartphone, UserRound } from "lucide-react";
 import { getPreference, setPreference } from "../db/preferences.js";
 import { formatGhs } from "../lib/money.js";
+import { secondsUntil } from "../lib/countdown.js";
 import { MOMO_CONFIG, PHONE_REQUEST_ENABLED, RECEIVING_NETWORKS, getMerchantMomoSettings, maskPhoneNumber, normalizeReceivingNumber, recordMomoLastUsed, saveReceivingNumber } from "./momoConfig.js";
 import { getMomoAmountPesewas } from "./paymentAmount.js";
 import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag } from "./PosComponents.jsx";
@@ -206,12 +207,17 @@ const MOMO_WAIT_SECONDS = 120;
 
 export function MoMoWaiting({ params = {}, onCancel }) {
   const paymentAmountPesewas = getMomoAmountPesewas(params);
-  const [secondsRemaining, setSecondsRemaining] = useState(MOMO_WAIT_SECONDS);
+  // E5: the wait is an end time, recomputed from the clock on each tick, so it stays right
+  // when the browser slows a background tab.
+  const [expiresAt, setExpiresAt] = useState(() => Date.now() + MOMO_WAIT_SECONDS * 1000);
+  const [now, setNow] = useState(() => Date.now());
+  const secondsRemaining = secondsUntil(expiresAt, now);
+  const expired = secondsRemaining <= 0;
   useEffect(() => {
-    if (secondsRemaining <= 0) return undefined;
-    const timer = window.setInterval(() => setSecondsRemaining((value) => Math.max(0, value - 1)), 1000);
+    if (expired) return undefined;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
-  }, [secondsRemaining]);
+  }, [expiresAt, expired]);
   const minutes = Math.floor(secondsRemaining / 60);
   const seconds = String(secondsRemaining % 60).padStart(2, "0");
   const phone = params.phone ?? params.customer?.phone ?? "";
@@ -227,7 +233,7 @@ export function MoMoWaiting({ params = {}, onCancel }) {
     <div className="grid grid-cols-2 gap-2">
       {/* E11: looks disabled only while disabled. Restarting the wait is all it can do until a
           backend sends the request again; it stays disabled while Phone request is off. */}
-      <button type="button" disabled={secondsRemaining > 0 || !PHONE_REQUEST_ENABLED} onClick={() => setSecondsRemaining(MOMO_WAIT_SECONDS)} className="min-h-14 rounded-2xl border-2 border-emerald-900 bg-white px-2 font-extrabold text-emerald-900 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-100 disabled:text-slate-500">Resend request</button>
+      <button type="button" disabled={secondsRemaining > 0 || !PHONE_REQUEST_ENABLED} onClick={() => { setExpiresAt(Date.now() + MOMO_WAIT_SECONDS * 1000); setNow(Date.now()); }} className="min-h-14 rounded-2xl border-2 border-emerald-900 bg-white px-2 font-extrabold text-emerald-900 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-100 disabled:text-slate-500">Resend request</button>
       <button type="button" onClick={onCancel} className="min-h-14 rounded-2xl border-2 border-rose-900 bg-white px-2 font-extrabold text-rose-900">Cancel request</button>
     </div>
     <p className="text-center text-base text-slate-700">Nothing is recorded until Paystack confirms the payment.</p>
@@ -241,7 +247,9 @@ export function MoMoCode({ params = {}, onBack, onNavigate }) {
     {/* 58 is reached only from a customer sale (56), so the customer wording applies (K15). */}
     <p className="text-lg font-semibold">The customer got a code by SMS. Ask them for it.</p>
     <label className="font-bold">Code<input value={code} onChange={(event) => setCode(event.target.value)} inputMode="numeric" autoComplete="one-time-code" className="mt-1 h-14 w-full rounded-xl border-2 border-slate-500 px-3 text-xl" /></label>
-    <PosPrimaryButton type="button" disabled={!code.trim()} onClick={() => onNavigate("MoMoWaiting", { ...params, code })}>Submit code</PosPrimaryButton>
+    {/* L3: the code stays in this screen's own state. It is not copied into the route params,
+        where it would sit in the history. The backend call will send it from here. */}
+    <PosPrimaryButton type="button" disabled={!code.trim()} onClick={() => onNavigate("MoMoWaiting", params)}>Submit code</PosPrimaryButton>
     <p className="text-base text-slate-700">Code not arriving? Go back and send the request again.</p>
   </PosPage>;
 }

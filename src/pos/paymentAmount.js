@@ -25,6 +25,23 @@ export function getMomoAmountPesewas(params = {}) {
   return pendingAmount;
 }
 
+// What 19 sends to 61 when the merchant taps MoMo for the payment today (A3). That payment can
+// be up to the customer's whole balance (old debt plus this sale), not only the sale, so the
+// balance is the total the MoMo amount is checked against. Without it, a customer who owes
+// GH₵50.00 and buys GH₵20.00 on credit paying GH₵60.00 today made 61 throw while rendering.
+// With no valid amount today, nothing changes from before.
+export function getMomoPickParams(params = {}, { todayPaymentPesewas, maxCreditPesewas } = {}) {
+  const validAmount = Number.isSafeInteger(todayPaymentPesewas) && todayPaymentPesewas > 0;
+  return {
+    ...params,
+    paymentMethod: "momo",
+    pendingMomoAmountPesewas: todayPaymentPesewas,
+    ...(validAmount && { splitTotalPesewas: Math.max(maxCreditPesewas ?? 0, todayPaymentPesewas) }),
+    returnRoute: "ALittleAtATime",
+    pickOnly: true
+  };
+}
+
 export function getInitialPaymentParts(params = {}, totalPesewas) {
   const parts = Array.isArray(params.splitParts) ? params.splitParts : [];
   if (!params.momoMethod || !Number.isSafeInteger(params.pendingMomoAmountPesewas) || params.pendingMomoAmountPesewas <= 0) {

@@ -19,6 +19,27 @@ export async function listPlanPayments(planId = PLAN_CONFIG.id) {
   return db.planPayments.where("planId").equals(planId).sortBy("createdAt");
 }
 
+// A confirmation is a new row that points at the original (the table is append-only), so
+// the raw list holds a payment twice (F5). For display, a payment shows once: its own date
+// and amount, with the status of the latest confirmation. A confirmation whose original is
+// missing still shows.
+export function groupPlanPayments(rows) {
+  const latestConfirmation = new Map();
+  for (const row of rows) {
+    if (!row.originalPaymentId) continue;
+    const current = latestConfirmation.get(row.originalPaymentId);
+    if (!current || row.createdAt >= current.createdAt) latestConfirmation.set(row.originalPaymentId, row);
+  }
+  const originals = rows.filter((row) => !row.originalPaymentId);
+  const originalIds = new Set(originals.map((row) => row.id));
+  const shown = originals.map((row) => {
+    const confirmation = latestConfirmation.get(row.id);
+    return confirmation ? { ...row, status: confirmation.status, confirmedBy: confirmation.confirmedBy } : row;
+  });
+  const orphans = rows.filter((row) => row.originalPaymentId && !originalIds.has(row.originalPaymentId));
+  return [...shown, ...orphans].sort((left, right) => left.createdAt - right.createdAt);
+}
+
 // Six random digits for screen 66. Client-generated, so it is not yet single-use,
 // expiring or bound to the merchant: the server must issue and check it (B7).
 export function createPlanCashCode() {

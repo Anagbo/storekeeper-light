@@ -13,7 +13,7 @@ import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosCom
 import { buildCollectionReceiptLink } from "./collectionReceipt.js";
 import { buildCreditSaleReceipt, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
 import { posText as t } from "./i18n.js";
-import { getCarriedPaymentParts, getPaidPaymentPesewas } from "./paymentAmount.js";
+import { getCarriedPaymentParts, getMomoPickParams, getPaidPaymentPesewas } from "./paymentAmount.js";
 
 function amountInputValue(amountPesewas) {
   return (amountPesewas / 100).toFixed(2);
@@ -412,13 +412,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onReturnToSplit, onSaveCre
 
   function choosePaymentMethod(method) {
     if (method === "momo") {
-      onNavigate("MoMoChoice", {
-        ...params,
-        paymentMethod: "momo",
-        pendingMomoAmountPesewas: todayPaymentPesewas,
-        returnRoute: "ALittleAtATime",
-        pickOnly: true
-      });
+      onNavigate("MoMoChoice", getMomoPickParams(params, { todayPaymentPesewas, maxCreditPesewas }));
       return;
     }
     if (method !== "split") {

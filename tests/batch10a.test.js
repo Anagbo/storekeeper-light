@@ -91,7 +91,8 @@ test("A5/E10: 61 shows Last used only from the stored value, and its tiles are l
 test("E11: Resend on 57 looks and acts disabled only while it is disabled, and restarts the wait", () => {
   const waiting = section("MoMoWaiting", "MoMoCode");
   assert.match(waiting, /disabled=\{secondsRemaining > 0 \|\| !PHONE_REQUEST_ENABLED\}/);
-  assert.match(waiting, /onClick=\{\(\) => setSecondsRemaining\(MOMO_WAIT_SECONDS\)\}/);
+  // Resend restarts the wait: a new end time (E5 made the wait an end time, not a tick count).
+  assert.match(waiting, /onClick=\{\(\) => \{ setExpiresAt\(Date\.now\(\) \+ MOMO_WAIT_SECONDS \* 1000\); setNow\(Date\.now\(\)\); \}\}/);
   assert.doesNotMatch(waiting, /disabled:opacity-100/);
 });
 
