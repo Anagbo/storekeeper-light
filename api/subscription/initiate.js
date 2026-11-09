@@ -89,7 +89,9 @@ export default async function handler(req, res) {
   try {
     plan = getSubscriptionPlan(req.body?.planId);
   } catch (error) {
-    return respond(res, 500, { error: error.message });
+    // B9: a pricing configuration error names a server setting; log it, do not send it.
+    console.error("Subscription plan prices are not configured correctly.", error);
+    return respond(res, 500, { error: "Checkout is temporarily unavailable. Please try again." });
   }
   if (!plan) return respond(res, 400, { error: "Choose a valid subscription plan." });
 

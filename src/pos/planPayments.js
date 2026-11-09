@@ -71,7 +71,14 @@ export async function appendPlanPayment({ method, amountPesewas = PLAN_CONFIG.am
   return payment;
 }
 
+// Plain names for the stored method codes: the same three names as the tiles on 65.
 const PLAN_METHOD_LABELS = Object.freeze({ cash: "Cash", momo_direct: "Mobile money", momo_paystack: "Phone request" });
+
+// What My plan (64) shows for a payment's method. A code that is not one of the three is shown
+// as "Payment", never as the raw stored code.
+export function planMethodLabel(method) {
+  return Object.hasOwn(PLAN_METHOD_LABELS, method) ? PLAN_METHOD_LABELS[method] : "Payment";
+}
 
 export async function getPlanLastUsedMethod() {
   const value = (await db.settings.get("planLastUsedMethod"))?.value;
