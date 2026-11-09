@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Banknote, Check, Smartphone } from "lucide-react";
 import { formatGhs } from "../lib/money.js";
 import { getPreference } from "../db/preferences.js";
-import { appendPlanPayment, getPlanPaymentConfiguration, listPlanPayments, PLAN_CONFIG } from "./planPayments.js";
+import { appendPlanPayment, createPlanCashCode, getPlanPaymentConfiguration, listPlanPayments, PLAN_CONFIG } from "./planPayments.js";
 import { PHONE_REQUEST_ENABLED } from "./momoConfig.js";
 import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag } from "./PosComponents.jsx";
 
@@ -40,23 +40,51 @@ export function PlanPayMethod({ onBack, onNavigate }) {
   return <PosPage className="flex flex-col gap-3"><BackTitle title="Pay for my plan" onBack={onBack} /><p className="text-[22px] font-extrabold">{formatGhs(PLAN_CONFIG.amountPesewas)} for 1 month</p><h2 className="text-lg font-bold">How do you want to pay?</h2><MethodTile icon={Banknote} title="Cash" detail="Give cash to a StoreKeeper agent." onClick={() => onNavigate("PlanPayCash")} /><MethodTile icon={Smartphone} title="Mobile money" detail="Send to our number. Enter the message code." onClick={() => onNavigate("PlanPayMoMo")} /><MethodTile icon={Smartphone} title="Phone request" detail={PHONE_REQUEST_ENABLED ? "Approve on your phone. Confirmed by itself." : "Not available yet"} disabled={!PHONE_REQUEST_ENABLED} onClick={() => onNavigate("PlanPayPhone")} /></PosPage>;
 }
 
+// One save at a time for plan payment buttons (66, 67, 68). The guard is released
+// only when the save fails; on success the screen is replaced by the result.
+function useSavePlanPayment(onNavigate) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const savingRef = useRef(false);
+  async function save(details) {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    setError("");
+    try {
+      const payment = await appendPlanPayment(details);
+      onNavigate("PlanPaymentResult", { state: "waiting", payment });
+    } catch (saveError) {
+      console.error("Could not save the plan payment.", saveError);
+      savingRef.current = false;
+      setSaving(false);
+      setError("Could not save the payment. Please try again.");
+    }
+  }
+  const errorMessage = error ? <p role="alert" className="text-base font-bold text-rose-900">{error}</p> : null;
+  return { saving, save, errorMessage };
+}
+
 export function PlanPayCash({ onBack, onNavigate }) {
-  const [reference] = useState(() => `plan-${Date.now()}`);
-  return <PosPage className="flex flex-col gap-3"><BackTitle title="Pay cash" onBack={onBack} /><p className="text-xl font-extrabold">Give {formatGhs(PLAN_CONFIG.amountPesewas)} to a StoreKeeper agent.</p><PosCard><p className="font-semibold">Show this code to the agent</p><p className="text-4xl font-extrabold">{reference.slice(-6).replace(/(.{3})/, "$1 ")}</p></PosCard><p className="font-semibold">The agent enters the code. Your plan starts when they confirm.</p><PosPrimaryButton type="button" onClick={async () => { const payment = await appendPlanPayment({ method: "cash", reference }); onNavigate("PlanPaymentResult", { state: "waiting", payment }); }}>I gave the cash</PosPrimaryButton></PosPage>;
+  const [reference] = useState(() => `plan-${createPlanCashCode()}`);
+  const { saving, save, errorMessage } = useSavePlanPayment(onNavigate);
+  return <PosPage className="flex flex-col gap-3"><BackTitle title="Pay cash" onBack={onBack} /><p className="text-xl font-extrabold">Give {formatGhs(PLAN_CONFIG.amountPesewas)} to a StoreKeeper agent.</p><PosCard><p className="font-semibold">Show this code to the agent</p><p className="text-4xl font-extrabold">{reference.slice(-6).replace(/(.{3})/, "$1 ")}</p></PosCard><p className="font-semibold">The agent enters the code. Your plan starts when they confirm.</p>{errorMessage}<PosPrimaryButton type="button" disabled={saving} onClick={() => void save({ method: "cash", reference })}>I gave the cash</PosPrimaryButton></PosPage>;
 }
 
 export function PlanPayMoMo({ onBack, onNavigate }) {
   const [config, setConfig] = useState({ receivingNumber: "", shopPhone: "" });
   const [code, setCode] = useState("");
+  const { saving, save, errorMessage } = useSavePlanPayment(onNavigate);
   useEffect(() => { getPlanPaymentConfiguration().then(setConfig).catch((error) => console.error("Could not load plan payment configuration.", error)); }, []);
-  return <PosPage className="flex flex-col gap-3"><BackTitle title="Send to StoreKeeper" onBack={onBack} /><p className="text-lg font-bold">Send {formatGhs(PLAN_CONFIG.amountPesewas)} by MoMo to</p><PosCard><p className="text-3xl font-extrabold">{config.receivingNumber || "Receiving number not configured"}</p><p className="text-lg font-semibold">{PLAN_CONFIG.receivingName}</p></PosCard><p className="font-bold">Reference: write your shop phone</p><input value={config.shopPhone} readOnly className="h-14 rounded-xl border-2 border-slate-700 px-3 text-xl font-bold" /><label className="font-bold">Code from the MoMo message<input value={code} onChange={(event) => setCode(event.target.value)} className="mt-1 h-14 w-full rounded-xl border-2 border-slate-700 px-3 text-xl" /></label><PosPrimaryButton type="button" disabled={!code.trim()} onClick={async () => { const payment = await appendPlanPayment({ method: "momo_direct", reference: code }); onNavigate("PlanPaymentResult", { state: "waiting", payment }); }}>I sent it</PosPrimaryButton><p className="text-sm">We check it and confirm your plan.</p></PosPage>;
+  return <PosPage className="flex flex-col gap-3"><BackTitle title="Send to StoreKeeper" onBack={onBack} /><p className="text-lg font-bold">Send {formatGhs(PLAN_CONFIG.amountPesewas)} by MoMo to</p><PosCard><p className="text-3xl font-extrabold">{config.receivingNumber || "Receiving number not configured"}</p><p className="text-lg font-semibold">{PLAN_CONFIG.receivingName}</p></PosCard><p className="font-bold">Reference: write your shop phone</p><input value={config.shopPhone} readOnly className="h-14 rounded-xl border-2 border-slate-700 px-3 text-xl font-bold" /><label className="font-bold">Code from the MoMo message<input value={code} onChange={(event) => setCode(event.target.value)} className="mt-1 h-14 w-full rounded-xl border-2 border-slate-700 px-3 text-xl" /></label>{errorMessage}<PosPrimaryButton type="button" disabled={!code.trim() || saving} onClick={() => void save({ method: "momo_direct", reference: code })}>I sent it</PosPrimaryButton><p className="text-sm">We check it and confirm your plan.</p></PosPage>;
 }
 
 export function PlanPayPhone({ onBack, onNavigate }) {
   const [network, setNetwork] = useState("MTN");
   const [number, setNumber] = useState("");
+  const { saving, save, errorMessage } = useSavePlanPayment(onNavigate);
   useEffect(() => { getPreference("momoReceivingNumber", "").then(setNumber).catch((error) => console.error("Could not load MoMo number.", error)); }, []);
-  return <PosPage className="flex flex-col gap-3"><BackTitle title="Phone request" onBack={onBack} /><p className="text-2xl font-extrabold">{formatGhs(PLAN_CONFIG.amountPesewas)}</p><p>Fee is configuration-driven.</p><fieldset><legend className="font-bold">Your network</legend><div className="grid grid-cols-3 gap-2">{NETWORKS.map((item) => <button key={item} type="button" aria-label={`Network ${item}`} aria-pressed={network === item} onClick={() => setNetwork(item)} className={`min-h-14 rounded-xl border-2 font-bold ${network === item ? "border-emerald-900 bg-green-200" : "border-slate-700 bg-white"}`}>Network {item}</button>)}</div></fieldset><label className="font-bold">Your MoMo number<input value={number} onChange={(event) => setNumber(event.target.value)} className="mt-1 h-14 w-full rounded-xl border-2 border-slate-700 px-3 text-xl" /></label><PosPrimaryButton type="button" disabled={!PHONE_REQUEST_ENABLED || !number.trim()} onClick={async () => { const payment = await appendPlanPayment({ method: "momo_paystack" }); onNavigate("PlanPaymentResult", { state: "waiting", payment }); }}>Send request</PosPrimaryButton><p className="text-sm">Each month you get a new request. It does not renew by itself.</p></PosPage>;
+  return <PosPage className="flex flex-col gap-3"><BackTitle title="Phone request" onBack={onBack} /><p className="text-2xl font-extrabold">{formatGhs(PLAN_CONFIG.amountPesewas)}</p><p>Fee is configuration-driven.</p><fieldset><legend className="font-bold">Your network</legend><div className="grid grid-cols-3 gap-2">{NETWORKS.map((item) => <button key={item} type="button" aria-label={`Network ${item}`} aria-pressed={network === item} onClick={() => setNetwork(item)} className={`min-h-14 rounded-xl border-2 font-bold ${network === item ? "border-emerald-900 bg-green-200" : "border-slate-700 bg-white"}`}>Network {item}</button>)}</div></fieldset><label className="font-bold">Your MoMo number<input value={number} onChange={(event) => setNumber(event.target.value)} className="mt-1 h-14 w-full rounded-xl border-2 border-slate-700 px-3 text-xl" /></label>{errorMessage}<PosPrimaryButton type="button" disabled={!PHONE_REQUEST_ENABLED || !number.trim() || saving} onClick={() => void save({ method: "momo_paystack" })}>Send request</PosPrimaryButton><p className="text-sm">Each month you get a new request. It does not renew by itself.</p></PosPage>;
 }
 
 export function PlanPaymentResult({ params = {}, onNavigate }) {

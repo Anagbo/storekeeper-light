@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Clock3, Copy, Send, Smartphone, UserRound } from "lucide-react";
 import { getPreference, setPreference } from "../db/preferences.js";
 import { formatGhs } from "../lib/money.js";
@@ -41,7 +41,25 @@ export function MoMoChoice({ params = {}, onBack, onNavigate }) {
 export function MoMoDirect({ params = {}, onBack, onConfirm, onPick }) {
   const [settings, setSettings] = useState({ number: "", network: "" });
   const [copied, setCopied] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const savingRef = useRef(false);
   const paymentAmountPesewas = getMomoAmountPesewas(params);
+  async function confirmReceived() {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    setSaveError("");
+    const details = { ...params, momoMethod: "direct", verification: "merchant_confirmed" };
+    try {
+      await (params.pickOnly ? onPick(details) : onConfirm(details));
+    } catch {
+      // Release the guard only on failure; on success this screen is replaced.
+      savingRef.current = false;
+      setSaving(false);
+      setSaveError("Could not save the payment. Check it was not saved, then try again.");
+    }
+  }
   useEffect(() => { getMerchantMomoSettings().then(setSettings).catch((error) => console.error("Could not load receiving settings.", error)); }, []);
   async function copyNumber() {
     if (!settings.number) return;
@@ -54,7 +72,8 @@ export function MoMoDirect({ params = {}, onBack, onConfirm, onPick }) {
     <PosSecondaryButton type="button" onClick={() => void copyNumber()}><Copy size={20} aria-hidden="true" />Copy number</PosSecondaryButton>
     {copied && <p role="status">Number copied.</p>}
     <p className="text-base font-semibold">Wait for the MoMo message. Check the amount and the name before you tap.</p>
-    <PosPrimaryButton type="button" onClick={() => (params.pickOnly ? onPick({ ...params, momoMethod: "direct", verification: "merchant_confirmed" }) : onConfirm({ ...params, momoMethod: "direct", verification: "merchant_confirmed" }))}><Check size={28} aria-hidden="true" />Money received</PosPrimaryButton>
+    {saveError && <p role="alert" className="text-base font-bold text-rose-900">{saveError}</p>}
+    <PosPrimaryButton type="button" disabled={saving} onClick={() => void confirmReceived()}><Check size={28} aria-hidden="true" />Money received</PosPrimaryButton>
     <p className="text-sm font-medium">Saved as MoMo · you confirmed.</p>
   </PosPage>;
 }

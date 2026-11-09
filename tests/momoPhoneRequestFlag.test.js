@@ -45,7 +45,7 @@ test("screen 63 disables Phone request set up and the Always: phone request opti
 
 test("screens 56 and 68 cannot send a request while Phone request is off", () => {
   assert.match(section(momoSource, "MoMoPayment", "MoMoWaiting"), /disabled=\{!PHONE_REQUEST_ENABLED\} onClick=\{\(\) => onNavigate\(network === "Telecel"/);
-  assert.match(section(planSource, "PlanPayPhone", "PlanPaymentResult"), /disabled=\{!PHONE_REQUEST_ENABLED \|\| !number\.trim\(\)\}/);
+  assert.match(section(planSource, "PlanPayPhone", "PlanPaymentResult"), /disabled=\{!PHONE_REQUEST_ENABLED \|\| !number\.trim\(\)( \|\| saving)?\}/);
 });
 
 test("screen 65 shows the Phone request tile disabled with Not available yet", () => {
@@ -57,5 +57,9 @@ test("screen 68 never records a plan payment as confirmed and never stores the p
   const phone = section(planSource, "PlanPayPhone", "PlanPaymentResult");
   assert.doesNotMatch(phone, /status:\s*"confirmed"/);
   assert.doesNotMatch(phone, /reference:\s*`\$\{network\}:\$\{number\}`/);
-  assert.match(phone, /state: "waiting"/);
+  // 68 saves through the shared guard, which always goes to the Waiting to confirm result.
+  assert.match(phone, /useSavePlanPayment\(onNavigate\)/);
+  const guard = planSource.slice(planSource.indexOf("function useSavePlanPayment"), planSource.indexOf("export function PlanPayCash"));
+  assert.match(guard, /onNavigate\("PlanPaymentResult", \{ state: "waiting", payment \}\)/);
+  assert.doesNotMatch(guard, /state: "paid"/);
 });

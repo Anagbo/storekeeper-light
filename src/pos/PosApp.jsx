@@ -396,7 +396,10 @@ export default function PosApp() {
         return;
       }
       const save = details.debtId ? saveDirectMomoCollection(details) : saveDirectMomoSale(details);
-      void save.catch((error) => console.error("Could not save direct MoMo payment.", error));
+      return save.catch((error) => {
+        console.error("Could not save direct MoMo payment.", error);
+        throw error;
+      });
     }}
     onPick={(details) => returnFromMomoPick(details)}
     />
