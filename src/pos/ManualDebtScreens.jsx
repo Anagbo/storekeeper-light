@@ -25,19 +25,22 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onSaveManualDebt 
     isValidInstallmentPlanForBalance(debt, existingBalancePesewas);
   const hasPlan = hasPlanRecord && hasValidPlan;
   const hasDueDate = !hasPlan && Boolean(debt?.dueDate);
-  const existingTotalInstallments = hasPlan
-    ? debt.totalInstallments ?? debt.installmentsRemaining ?? 0
-    : 0;
-  const existingRemainingInstallments = hasPlan ? debt.installmentsRemaining ?? 0 : 0;
-  const existingPaidInstallments = Math.max(0, existingTotalInstallments - existingRemainingInstallments);
-  const existingProgress = existingTotalInstallments > 0
-    ? Math.min(100, (existingPaidInstallments / existingTotalInstallments) * 100)
-    : 0;
+  // The card's wording follows the plan's frequency (contract 53 existing_terms_card).
+  const frequencyKey = ["weekly", "bi-weekly", "monthly"].includes(debt?.frequency) ? debt.frequency : "weekly";
   const existingInstallmentCarry = hasPlan
     ? debt.installmentPaymentCarryPesewas ?? 0
     : 0;
   const existingInstallmentStillNeeded = hasPlan
     ? Math.max(0, debt.installmentAmount - existingInstallmentCarry)
+    : 0;
+  // This cycle's progress: paid toward this installment out of the installment amount.
+  const cycleProgress = hasPlan
+    ? Math.min(100, (existingInstallmentCarry / debt.installmentAmount) * 100)
+    : 0;
+  // Payments left after adding the amount typed now, worked out here, not read from the
+  // stored counter (contract 53: "{n} payments left now").
+  const paymentsLeftNow = hasPlan
+    ? Math.ceil((existingBalancePesewas + (amountValid ? amountPesewas : 0)) / debt.installmentAmount)
     : 0;
   const existingNextDate = hasPlan
     ? new Date(`${debt.nextDueDate}T00:00:00`).toLocaleDateString("en-GB")
@@ -49,14 +52,14 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onSaveManualDebt 
     installmentAmount: debt.installmentAmount,
     frequency: debt.frequency,
     nextDueDate: debt.nextDueDate,
-    installmentsRemaining: Math.ceil(((debt.amountPesewas ?? debt.total_owed ?? 0) + (amountPesewas || 0)) / debt.installmentAmount),
+    installmentsRemaining: paymentsLeftNow,
     totalInstallments: debt.totalInstallments ?? debt.installmentsRemaining
   } : null;
 
   function continueFlow() {
     if (!amountValid) return;
     if (hasPlanRecord && !hasValidPlan) {
-      setError("The existing payment terms are invalid. Select Modify and set a valid installment amount and due date.");
+      setError(t("manualDebt.invalidTermsSave"));
       return;
     }
     const nextParams = {
@@ -75,7 +78,7 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onSaveManualDebt 
       }).catch((saveError) => {
         console.error("Could not save the manual debt.", saveError);
         setError(saveError?.message === "The manual debt installment plan is invalid."
-          ? "The existing payment terms are invalid. Select Modify and set a valid installment amount and due date."
+          ? t("manualDebt.invalidTermsSave")
           : "This debt could not be saved. No changes were committed. Try again.");
       }).finally(() => setSaving(false));
       return;
@@ -137,7 +140,7 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onSaveManualDebt 
       {(hasPlanRecord || hasDueDate) && (
         <section className="min-w-0 rounded-3xl border-2 border-emerald-900 bg-green-100 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <strong className="text-lg">Existing payment terms</strong>
+            <strong className="text-lg">{t("manualDebt.existingTerms")}</strong>
             <button
               type="button"
               disabled={!amountValid}
@@ -146,37 +149,45 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onSaveManualDebt 
                 if (amountValid) onNavigate("WhenWillTheyPay", { ...params, amountPesewas, note, takenOn });
               }}
             >
-              Modify
+              {t("manualDebt.change")}
             </button>
           </div>
+          <p className="mt-1 text-base text-slate-800">
+            {t(hasPlanRecord ? "manualDebt.planForDebt" : "manualDebt.dueForDebt", { amount: formatGhs(existingBalancePesewas) })}
+          </p>
           {hasPlan ? (
             <>
               <div className="mt-2 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
                 <p className="min-w-0 truncate text-[clamp(0.9rem,5vw,1.125rem)]">
-                  {formatGhs(debt.installmentAmount)} every {debt.frequency === "bi-weekly" ? "2 weeks" : debt.frequency === "monthly" ? "month" : "week"}
+                  {t(`manualDebt.every.${frequencyKey}`, { amount: formatGhs(debt.installmentAmount) })}
                 </p>
                 <span className="inline-flex min-h-8 shrink-0 items-center rounded-xl border-2 border-emerald-900 px-2 font-extrabold text-emerald-950">
                   {getDebtDueLabel(debt.nextDueDate)}
                 </span>
               </div>
-              <div className="mt-2 h-4 overflow-hidden rounded-full border-2 border-emerald-900 bg-white">
-                <div className="h-full bg-emerald-900" style={{ width: `${existingProgress}%` }} />
+              <div
+                role="progressbar"
+                aria-label={t(`manualDebt.paidThis.${frequencyKey}`, { amount: formatGhs(existingInstallmentCarry) })}
+                aria-valuemin={0}
+                aria-valuemax={debt.installmentAmount}
+                aria-valuenow={existingInstallmentCarry}
+                className="mt-2 h-4 overflow-hidden rounded-full border-2 border-emerald-900 bg-white"
+              >
+                <div className="h-full bg-emerald-900" style={{ width: `${cycleProgress}%` }} />
               </div>
               <div className="mt-2 grid min-w-0 grid-cols-1 gap-1 text-sm font-bold sm:grid-cols-2 sm:gap-x-3">
-                <span>Paid toward this installment: {formatGhs(existingInstallmentCarry)}</span>
-                <span className="sm:text-right">Still needed: {formatGhs(existingInstallmentStillNeeded)}</span>
+                <span>{t(`manualDebt.paidThis.${frequencyKey}`, { amount: formatGhs(existingInstallmentCarry) })}</span>
+                <span className="sm:text-right">{t(`manualDebt.stillNeeded.${frequencyKey}`, { amount: formatGhs(existingInstallmentStillNeeded) })}</span>
               </div>
               <div className="mt-2 flex flex-wrap justify-between gap-2 font-extrabold">
-                <span>{existingPaidInstallments} paid · {existingRemainingInstallments} left</span>
-                <span>Next: {existingNextDate}</span>
+                <span>{paymentsLeftNow === 1 ? t("manualDebt.paymentLeftNow") : t("manualDebt.paymentsLeftNow", { count: paymentsLeftNow })}</span>
+                <span>{t("manualDebt.next", { date: existingNextDate })}</span>
               </div>
             </>
           ) : hasPlanRecord ? (
-            <p className="mt-2 text-lg font-bold text-rose-950">
-              These payment terms are invalid for the current balance. Select Modify to set new terms.
-            </p>
+            <p className="mt-2 text-lg font-bold text-rose-950">{t("manualDebt.invalidTerms")}</p>
           ) : (
-            <p className="mt-2 text-lg">Due: {existingNextDate}</p>
+            <p className="mt-2 text-lg">{t("manualDebt.due", { date: existingNextDate })}</p>
           )}
         </section>
       )}
