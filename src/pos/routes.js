@@ -223,6 +223,15 @@ export function replaceRoute(state, route, params = {}) {
   return { ...state, current: route, params };
 }
 
+// The bottom bar shows only on 15 (Sell), 22 (Home), 25 (Home behind the Collect sheet) and 32
+// (Owed), as the wiring file's bottom_bar flags say. Every other screen hides it so a tap on
+// Home or Owed cannot lose a draft mid-flow. The side menu stays on wide screens.
+export const BOTTOM_BAR_ROUTES = [POS_ROUTES.Home, POS_ROUTES.Sell, POS_ROUTES.CollectPayment, POS_ROUTES.PeopleWhoOweYou];
+
+export function showsBottomBar(route) {
+  return BOTTOM_BAR_ROUTES.includes(route);
+}
+
 export function backRoute(state, fallback = POS_ROUTES.Home) {
   const previous = state.history.at(-1);
   if (!previous) return createRouteState(fallback);

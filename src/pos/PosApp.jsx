@@ -18,7 +18,8 @@ import {
   pushRoute,
   replaceRoute,
   returnFromMomoPickState,
-  returnToMomoOrigin
+  returnToMomoOrigin,
+  showsBottomBar
 } from "./routes.js";
 import Home from "./Home.jsx";
 import Menu from "./Menu.jsx";
@@ -591,7 +592,7 @@ export default function PosApp() {
           </PosErrorBoundary>
         </div>
       </div>
-      {!isFocusedCollectionScreen && !isSetupFlow && <PosBottomNav current={route} onNavigate={switchTab} />}
+      {showsBottomBar(route) && <PosBottomNav current={route} onNavigate={switchTab} />}
 
       {quickEntryOpen && (
         <QuickSaleModal
