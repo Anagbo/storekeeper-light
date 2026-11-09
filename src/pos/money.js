@@ -5,7 +5,7 @@ import {
   getOutstandingDebtPesewas,
   summarizeFinancialTransactions,
   summarizePosMoney
-} from "../utils/financials.js";
+} from "../lib/money.js";
 import { posText as t } from "./i18n.js";
 
 function timestampOf(record) {

@@ -8,6 +8,27 @@ import {
   getPreviousMoneyPeriodRange,
   summarizeMoney
 } from "../src/pos/money.js";
+import {
+  getOutstandingDebtPesewas as getSharedOutstandingDebtPesewas,
+  summarizeFinancialTransactions as summarizeSharedFinancialTransactions,
+  summarizePosMoney
+} from "../src/lib/money.js";
+import { getCreditAmountOwedPesewas } from "../src/pos/creditAmount.js";
+
+test("split credit displays and plans only the unpaid portion of the sale", () => {
+  assert.equal(getCreditAmountOwedPesewas({
+    amountPesewas: 8000,
+    initialPaymentPesewas: 6000
+  }), 2000);
+  assert.equal(getCreditAmountOwedPesewas({
+    amountPesewas: 8000,
+    initialPaymentPesewas: 0
+  }), 8000);
+  assert.equal(getCreditAmountOwedPesewas({
+    amountPesewas: 8000,
+    initialPaymentPesewas: 9000
+  }), 0);
+});
 
 test("summarizeMoney classifies cash, MoMo, debt payments, credit and spending", () => {
   const totals = summarizeMoney([
@@ -29,6 +50,47 @@ test("summarizeMoney classifies cash, MoMo, debt payments, credit and spending",
     cashLeft: 8500,
     sales: 15500
   });
+});
+
+test("all POS money surfaces agree on one ledger", () => {
+  const transactions = [
+    { id: "cash-sale", type: "sale", amountPesewas: 10000, paymentType: "cash" },
+    {
+      id: "credit-sale",
+      type: "sale",
+      amountPesewas: 5000,
+      paymentType: "credit",
+      cashReceivedPesewas: 2000,
+      creditExtendedPesewas: 3000
+    },
+    { id: "collection", type: "debt_payment", amountPesewas: 1500, payment_method: "momo" },
+    { id: "expense", type: "expense", amountPesewas: 1000, paidAmountPesewas: 700 },
+    { id: "supplier-payment", type: "supplier_payment", amountPesewas: 300 }
+  ];
+  const debts = [
+    { id: "open-debt", status: "unpaid", amountPesewas: 7000 },
+    { id: "settled-debt", status: "paid", amountPesewas: 9000 }
+  ];
+
+  const homeTotals = summarizePosMoney(transactions);
+  const todayTotals = summarizeSharedFinancialTransactions(transactions);
+  const myMoneyTotals = summarizeMoney(transactions);
+  const peopleWhoOweYouTotal = getSharedOutstandingDebtPesewas(debts);
+
+  assert.deepEqual(homeTotals, {
+    moneyIn: 13500,
+    cashIn: 12000,
+    momoIn: 1500,
+    moneySpent: 1000,
+    cashLeft: 12500,
+    sales: 15000
+  });
+  assert.equal(myMoneyTotals.moneyIn, homeTotals.moneyIn);
+  assert.equal(myMoneyTotals.cashLeft, homeTotals.cashLeft);
+  assert.equal(todayTotals.cashInflow, homeTotals.moneyIn);
+  assert.equal(todayTotals.expenses, homeTotals.moneySpent);
+  assert.equal(todayTotals.newCreditExtended, 3000);
+  assert.equal(peopleWhoOweYouTotal, 7000);
 });
 
 test("money summaries reject malformed amounts rather than hiding them as zero", () => {

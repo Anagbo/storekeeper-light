@@ -2,6 +2,7 @@ import "fake-indexeddb/auto";
 import assert from "node:assert/strict";
 import { after, before, beforeEach, test } from "node:test";
 import { addDebtToCustomer, recordCreditSale, recordDebtCollection, undoDebtCollection } from "../src/db/debts.js";
+import { correctDebtBalance } from "../src/db/debtLedger.js";
 import { db } from "../src/db/db.js";
 import { summarizeFinancialTransactions } from "../src/utils/financials.js";
 import { prepareInstallmentPlan } from "../src/utils/installments.js";
@@ -104,6 +105,118 @@ test("credit sale stores only the unpaid portion and links the initial payment",
   assert.equal(transaction.creditExtendedPesewas, 700);
   assert.equal(customer.totalDebtPesewas, 700);
   assert.equal(result.totalDebtPesewas, 700);
+  assert.equal(result.debtAfter.nextDueDate, "2026-05-01");
+  assert.equal(result.debtAfter.installmentsRemaining, 2);
+});
+
+test("split credit sale and later collection preserve one consistent ledger", async () => {
+  const customerId = await addCustomer();
+
+  const sale = await recordCreditSale({
+    amountPesewas: 10000,
+    initialPaymentPesewas: 7000,
+    initialPaymentParts: [
+      { paymentMethod: "cash", amountPesewas: 5000 },
+      { paymentMethod: "momo", amountPesewas: 2000 }
+    ],
+    name: "Ama Mensah",
+    now: 100
+  });
+
+  const collection = await recordDebtCollection({
+    debtId: sale.debtId,
+    parts: [{ paymentMethod: "cash", amountPesewas: 2500 }],
+    now: 101
+  });
+
+  const debt = await db.debts.get(sale.debtId);
+  const transactions = await db.transactions.toArray();
+  const payments = await db.payments.toArray();
+  const saleTransaction = transactions.find((transaction) => transaction.id === sale.transactionId);
+
+  assert.equal(debt.amountPesewas, 500);
+  assert.equal(collection.remainingPesewas, 500);
+  assert.equal(saleTransaction.amountPesewas, 10000);
+  assert.equal(saleTransaction.payment_method, "split");
+  assert.equal(saleTransaction.creditSaleGrossPesewas, 10000);
+  assert.equal(saleTransaction.creditExtendedPesewas, 3000);
+  assert.equal(payments.reduce((total, payment) => total + payment.amountPesewas, 0), 9500);
+  assert.equal(transactions
+    .filter((transaction) => transaction.type === "income")
+    .reduce((total, transaction) => total + transaction.amountPesewas, 0), 2500);
+
+  await correctDebtBalance({
+    debtId: sale.debtId,
+    expectedUpdatedAt: 101,
+    newBalancePesewas: 0,
+    reasonCode: "customer_dispute",
+    now: 102
+  });
+});
+
+test("Start Today reduces a new GHS 100 installment debt by the GHS 20 paid today", async () => {
+  const sale = await recordCreditSale({
+    amountPesewas: 10000,
+    initialPaymentPesewas: 2000,
+    initialPaymentParts: [{ paymentMethod: "cash", amountPesewas: 2000 }],
+    installmentPlan: {
+      isInstallmentPlan: true,
+      installmentAmount: 2000,
+      frequency: "weekly",
+      nextDueDate: "2026-11-12",
+      installmentsRemaining: 4,
+      totalInstallments: 5
+    },
+    name: "Ama Mensah",
+    now: 110
+  });
+
+  const debt = await db.debts.get(sale.debtId);
+  const customer = await db.customers.get(sale.customerId);
+  const [payment] = await db.payments.toArray();
+
+  assert.equal(debt.amountPesewas, 8000);
+  assert.equal(debt.total_owed, 8000);
+  assert.equal(debt.installmentsRemaining, 4);
+  assert.equal(debt.totalInstallments, 5);
+  assert.equal(payment.amountPesewas, 2000);
+  assert.equal(customer.totalDebtPesewas, 8000);
+});
+
+test("credit sale returns the final active installment schedule after several cycles are paid", async () => {
+  const customerId = await addCustomer({ totalDebtPesewas: 22000 });
+  await addDebt({
+    customerId,
+    amountPesewas: 22000,
+    installmentAmount: 2000,
+    installmentsRemaining: 11,
+    isInstallmentPlan: true,
+    nextDueDate: "2026-11-10"
+  });
+
+  const result = await recordCreditSale({
+    amountPesewas: 8000,
+    initialPaymentPesewas: 20000,
+    initialPaymentParts: [
+      { paymentMethod: "cash", amountPesewas: 9000 },
+      { paymentMethod: "momo", amountPesewas: 11000 }
+    ],
+    installmentPlan: {
+      isInstallmentPlan: true,
+      installmentAmount: 2000,
+      frequency: "weekly",
+      nextDueDate: "2026-11-10",
+      installmentsRemaining: 5,
+      totalInstallments: 5
+    },
+    name: "Ama Mensah",
+    now: 100
+  });
+
+  assert.equal(result.totalDebtPesewas, 10000);
+  assert.equal(result.debtAfter.nextDueDate, "2026-12-22");
+  assert.equal(result.debtAfter.installmentAmount, 2000);
+  assert.equal(result.debtAfter.installmentsRemaining, 5);
 });
 
 test("quick-sale credit entries preserve the item description and entered quantity", async () => {
@@ -831,4 +944,67 @@ test("collection undo restores debt and customer balance once, only inside its t
     undoDebtCollection({ collectionId: collection.collectionId, now: 11_001 }),
     /can no longer be undone/
   );
+});
+
+test("balance correction succeeds after multiple credit sales with initial payments and manual debt additions", async () => {
+  const customerId = await addCustomer({ name: "TEST6" });
+
+  // 1. Initial credit sale of 100 GHS with 20 GHS initial cash payment (debt balance = 80 GHS)
+  const firstSale = await recordCreditSale({
+    customerId,
+    name: "TEST6",
+    amountPesewas: 10000,
+    initialPaymentPesewas: 2000,
+    initialPaymentParts: [{ paymentMethod: "cash", amountPesewas: 2000 }],
+    installmentPlan: {
+      isInstallmentPlan: true,
+      installmentAmount: 2000,
+      frequency: "weekly",
+      nextDueDate: "2026-05-01",
+      installmentsRemaining: 4,
+      totalInstallments: 5
+    },
+    now: 100
+  });
+
+  // 2. Second credit sale (addon) of 50 GHS with 10 GHS initial payment
+  await recordCreditSale({
+    customerId,
+    name: "TEST6",
+    amountPesewas: 5000,
+    initialPaymentPesewas: 1000,
+    initialPaymentParts: [{ paymentMethod: "cash", amountPesewas: 1000 }],
+    installmentPlan: {
+      isInstallmentPlan: true,
+      installmentAmount: 2000,
+      frequency: "weekly",
+      nextDueDate: "2026-05-01",
+      installmentsRemaining: 6,
+      totalInstallments: 7
+    },
+    now: 110
+  });
+
+  // 3. Collection payment of 30 GHS
+  await recordDebtCollection({
+    debtId: firstSale.debtId,
+    parts: [{ paymentMethod: "cash", amountPesewas: 3000 }],
+    now: 120
+  });
+
+  const debt = await db.debts.get(firstSale.debtId);
+  // Current debt: (100 - 20) + (50 - 10) - 30 = 90 GHS (9000 pesewas)
+  assert.equal(debt.amountPesewas, 9000);
+
+  // 4. Correct balance downward to 50 GHS
+  await correctDebtBalance({
+    debtId: firstSale.debtId,
+    expectedUpdatedAt: debt.updatedAt,
+    newBalancePesewas: 5000,
+    reasonCode: "customer_dispute",
+    now: 130
+  });
+
+  const updatedDebt = await db.debts.get(firstSale.debtId);
+  assert.equal(updatedDebt.amountPesewas, 5000);
 });

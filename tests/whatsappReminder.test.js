@@ -129,7 +129,7 @@ test("sends the approved template using server credentials and normalized phone"
   assert.equal(payload.template.name, "approved_debt_template");
   assert.deepEqual(payload.template.components[0].parameters.map(({ text }) => text), [
     "Ama",
-    "GHS 12.50",
+    "GH₵12.50",
     "Market Shop"
   ]);
 });

@@ -10,7 +10,7 @@ The debts ledger pages outstanding debts in descending amount order using the `[
 
 The dashboard's **View Weekly & Monthly Reports** button opens a financial overview modal for this week, this month, or a custom date range. It separates direct cash sales, collected debt payments, expenses, and newly extended credit; all amounts are calculated from locally stored transactions in integer pesewas and remain available offline.
 
-Use the header settings button to download a JSON backup of products, customers, debts, suppliers, payments, and transactions, or restore one offline. Restore merges by record ID: matching rows are replaced by the backup copy, while rows not present in the backup are kept.
+Use the header settings button to download a JSON backup of products, customers, debts, suppliers, payments, and transactions, or restore one offline. Restore merges by record ID: rows not present in the backup are kept, and a backup row is not allowed to replace a newer local row when both have `updatedAt` timestamps. The restore validates IDs, rejects duplicate records and broken debt/payment references, and applies the merge in one IndexedDB transaction.
 
 Sales, expenses, debt payments, and validation errors can play short synthesized audio cues and optional spoken confirmations using browser APIs. Feedback works offline and can be muted from the header settings; the preference is saved on the device.
 
@@ -37,9 +37,13 @@ The PWA is built with `vite-plugin-pwa`; its service worker and install manifest
 
 ## Optional cloud sync
 
-Set `VITE_SYNC_ENDPOINT` to a same-origin or CORS-enabled HTTPS endpoint before building. The app sends a JSON `POST` body shaped as `{ "schemaVersion": 2, "records": { "products": [], "transactions": [], "debts": [] } }`. Each record has a stable ID and `syncStatus: "pending"` (with a matching `synced: false` field). The server must durably accept records and respond with JSON containing string/number ID arrays for every table, for example `{ "acknowledged": { "products": [], "transactions": ["id"], "debts": [] } }`. Only acknowledged records that have not changed since the request are marked synced locally. Return an empty array for a table with no accepted records; rejected records remain pending for a later retry. Payment-detail records are stored locally and included in device backups; they are not sent through the current cloud-sync endpoint.
+Set `VITE_SYNC_ENDPOINT` to a same-origin or CORS-enabled HTTPS endpoint before building. The app sends a JSON `POST` body shaped as `{ "schemaVersion": 2, "records": { "products": [], "transactions": [], "debts": [] } }` and an `Idempotency-Key` header derived deterministically from that exact batch. Each record has a stable ID and `syncStatus: "pending"` (with a matching `synced: false` field). The server must durably accept records transactionally and treat a repeated `Idempotency-Key` as the same request, returning the original acknowledgement rather than applying records twice. This is required because the foreground page and service worker can retry or overlap after a network timeout. The server must respond with JSON containing string/number ID arrays for every table, for example `{ "acknowledged": { "products": [], "transactions": ["id"], "debts": [] } }`. Only acknowledged records that have not changed since the request are marked synced locally. Return an empty array for a table with no accepted records; rejected records remain pending for a later retry. Payment-detail records are stored locally and included in device backups; they are not sent through the current cloud-sync endpoint.
 
-The app retries on connection restoration, when the page becomes visible, and periodically while open. Failed or partially acknowledged records remain pending and are retried without blocking entry or showing sync errors. Where the browser supports Background Sync, the service worker reads and uploads the IndexedDB queue itself, even when no app page is open; the browser controls when that event runs, and failed attempts are left for its retry mechanism. Other browsers sync while the app is open. Without an endpoint, all features remain available locally and the header says data is saved on this device.
+Sync reconciliation is deliberately conservative. `transactions` are append-only: an existing ID with identical content is an idempotent retry, while an existing ID with different content is a conflict and must never overwrite the original event. `products` and `debts` are mutable projections: the server must require a version/precondition for updates and quarantine divergent updates for manual review rather than using device timestamps or last-write-wins. A conflict response should include a `conflicts` array per table alongside `acknowledged`; conflicted IDs must not be acknowledged or marked synced locally. Debt balances must be resolved from their financial events and approved corrections, not by accepting an arbitrary remote materialized balance.
+
+The app retries on connection restoration, when the page becomes visible, and periodically while open. Each sync request has a 30-second deadline so a stalled Ghana mobile-data connection does not hold the sync loop indefinitely. Failed or partially acknowledged records remain pending and are retried without blocking entry or showing sync errors. Where the browser supports Background Sync, the service worker reads and uploads the IndexedDB queue itself, even when no app page is open; the browser controls when that event runs, and failed attempts are left for its retry mechanism. Other browsers sync while the app is open. Without an endpoint, all features remain available locally and the header says data is saved on this device.
+
+Before enabling production sync or subscription lockout, follow the rollout and release gates in `docs/PROGRESS.md`. In particular, run `npm.cmd run test:reliability`, `npm.cmd run build`, and `git diff --check`; rehearse backup restore on a separate profile; verify Paystack recovery and offline reconciliation; and complete representative Ghana SIM/network and Android device checks. Keep subscription lockout disabled until subscription state is server-authoritative and recovery monitoring is available.
 
 ## WhatsApp Business reminders
 
@@ -58,9 +62,27 @@ Create and get approval for a WhatsApp template whose body has exactly three tex
 
 ## Paystack Mobile Money subscription
 
-Subscription UI and payment-return verification are disabled by default. Set `VITE_ENABLE_SUBSCRIPTION=true` before building to show the Settings option and enable verification. If the variable is unset or set to `false`, no subscription UI or lockout is shown, and the PWA remains fully usable for free. The Vercel functions in `api/subscription/`, Dexie schema, and modal remain in the codebase for a future launch.
+Subscription UI and payment-return verification are disabled by default. Set `VITE_ENABLE_SUBSCRIPTION=true` before building to show the Settings option and enable verification. If the variable is unset or set to `false`, no subscription UI or lockout is shown, and the PWA remains fully usable for free.
 
 Configure `PAYSTACK_SECRET_KEY` as a server-only Vercel environment variable and set `APP_URL` to the deployed HTTPS app origin. For local function testing, use Vercel's local development server and sandbox credentials stored only in an ignored `.env.local`; never put the secret in a `VITE_` variable or commit it. Hosted checkout uses Paystack's returned authorization URL, so the public key is not needed in this redirect-based integration.
+
+The checkout offers monthly, six-month, and yearly plans. Configure the authoritative server prices in integer pesewas:
+
+```env
+SUBSCRIPTION_MONTHLY_AMOUNT_PESEWAS=1500
+SUBSCRIPTION_SIX_MONTHS_AMOUNT_PESEWAS=7500
+SUBSCRIPTION_YEARLY_AMOUNT_PESEWAS=15000
+```
+
+Set the matching public display values in GHS before the Vite build:
+
+```env
+VITE_SUBSCRIPTION_MONTHLY_AMOUNT_GHS=15
+VITE_SUBSCRIPTION_SIX_MONTHS_AMOUNT_GHS=75
+VITE_SUBSCRIPTION_YEARLY_AMOUNT_GHS=150
+```
+
+`VITE_SUBSCRIPTION_TRIAL_DAYS` controls the free trial from the first app launch. Set it to `30` for one month or `0` to disable the trial. The trial start date is stored in the device's IndexedDB, so clearing site data resets the local trial.
 
 `FEATURE_SUBSCRIPTION_LOCKOUT` in `src/config/features.js` remains `false`; users are not blocked automatically, even when the subscription UI is enabled. The recorded expiry is stored in IndexedDB and can be altered or removed by a device owner. Do not enable payment lockout until a server-verifiable offline license and a rollout policy for existing users are in place.
 

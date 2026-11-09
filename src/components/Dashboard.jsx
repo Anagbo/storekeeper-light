@@ -3,13 +3,12 @@ import { useLiveQuery } from "dexie-react-hooks";
 import Dexie from "dexie";
 import { ArrowDownLeft, ArrowUpRight, CirclePlus, MessageCircle, Phone, ReceiptText, UserRoundPlus, UsersRound } from "lucide-react";
 import { db } from "../db/db.js";
-import { upsertCustomer } from "../db/customers.js";
 import { recordDebtPayment } from "../db/debts.js";
-import { runTransactionWithTimeout } from "../db/runTransactionWithTimeout.js";
+import { updateCustomerPhone } from "../db/debtLedger.js";
 import FinancialSummaryModal from "./FinancialSummaryModal.jsx";
 import SyncStatusBadge from "./SyncStatusBadge.jsx";
 import InstallPromptBanner from "./InstallPromptBanner.jsx";
-import { formatGhs } from "../lib/money.js";
+import { formatGhs, formatGhsAmount } from "../lib/money.js";
 import { getLargestUnpaidBalances } from "../utils/debtBalances.js";
 import { getFinancialSummary, getOutstandingDebtPesewas } from "../utils/financials.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
@@ -18,6 +17,7 @@ import WhatsAppReminderModal from "./WhatsAppReminderModal.jsx";
 import { formatGhanaCard } from "../utils/formatters.js";
 import GhanaCardBadge from "./GhanaCardBadge.jsx";
 import { createInstallmentReminderLink, getInstallmentAlertStatus } from "../utils/installments.js";
+import { getDebtAdjustmentReasonLabel } from "../utils/customerDebtHistory.js";
 import { ConfirmPaymentModal } from "./DebtLedger.jsx";
 import { playSuccessChime, speakConfirmation } from "../utils/audioFeedback.js";
 import CustomerDebtHistoryModal from "./CustomerDebtHistoryModal.jsx";
@@ -142,26 +142,7 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
   const netProfit = totals ? totals.cashIn - totals.expenses : 0;
 
   async function saveDebtPhone(debt, phone) {
-    const now = Date.now();
-    const normalizedName = debt.customerName.trim().toLowerCase();
-    await runTransactionWithTimeout(db, [db.debts, db.customers], async () => {
-      const unpaidDebts = await db.debts.where("status").equals("unpaid").toArray();
-      const matchingDebts = unpaidDebts.filter((item) => (
-        (item.customer_name ?? item.customerName ?? "").trim().toLowerCase() === normalizedName
-      ));
-      if (matchingDebts.length === 0) {
-        throw new Error(`No unpaid debt found for ${debt.customerName}.`);
-      }
-
-      await Promise.all(matchingDebts.map((item) => db.debts.update(item.id, {
-        phone,
-        customer_phone: phone,
-        updatedAt: now,
-        synced: false,
-        syncStatus: "pending"
-      })));
-      await upsertCustomer({ name: debt.customerName, phone, now });
-    });
+    await updateCustomerPhone({ debt, phone, updateAllMatching: true });
 
     setDebtBreakdown((current) => current.map((item) => (
       item.id === debt.id ? { ...item, phone } : item
@@ -523,6 +504,7 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
               {visibleTransactions.map((transaction, offset) => {
                 const isCreditSale = transaction.type === "sale" && transaction.paymentType === "credit";
                 const isInstallmentSale = transaction.type === "installment_sale" || transaction.type === "installment_addon";
+                const isAdjustment = transaction.type === "debt_adjustment";
                 const isExpense = transaction.type === "expense" || transaction.type === "supplier_payment";
                 const supplierCredit = transaction.type === "expense" && (transaction.owedAmountPesewas ?? 0) > 0;
                 const shownAmount = isExpense
@@ -532,7 +514,7 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
                 const legacyPaymentIsMomo = transaction.payment_method === "momo" || transaction.payment_method === "telecel_cash";
                 const cashReceivedAmount = (transaction.cashReceivedPesewas ?? (legacyPaymentIsMomo ? 0 : legacyInstallmentPayment)) +
                   (transaction.momoReceivedPesewas ?? (legacyPaymentIsMomo ? legacyInstallmentPayment : 0));
-                const isCashIn = isInstallmentSale
+                const isCashIn = isAdjustment ? false : isInstallmentSale
                   ? cashReceivedAmount > 0
                   : !isExpense && !isCreditSale;
                 const transactionLabel = {
@@ -542,11 +524,14 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
                   income: "Debt payment received",
                   debt_payment: "Debt payment",
                   installment_sale: "Installment sale",
-                  installment_addon: "Installment add-on"
+                  installment_addon: "Installment add-on",
+                  debt_adjustment: "Balance correction"
                 }[transaction.type] ?? "Transaction";
                 const displayLabel = transaction.type === "sale" && transaction.paymentType === "credit"
                   ? "Credit sale"
-                  : transactionLabel;
+                  : isAdjustment
+                    ? "Balance corrected"
+                    : transactionLabel;
                 const installmentCustomerName = transaction.customer_name || transaction.customerName || "Customer not recorded";
                 const noteDescription = transaction.note?.split(" · ")[0]?.trim();
                 const customDescription = transaction.itemDescription?.trim() || noteDescription;
@@ -576,15 +561,17 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
                           </p>
                         ) : (
                           <p className="truncate text-xs text-slate-500">
-                            {transaction.note || "No note"}
-                            {" · "}
-                            {new Date(transaction.createdAt).toLocaleTimeString("en-GH", { hour: "2-digit", minute: "2-digit" })}
+                            {isAdjustment
+                              ? `${getDebtAdjustmentReasonLabel(transaction.reasonCode)} · ${new Date(transaction.createdAt).toLocaleDateString("en-GB")} ${formattedTime}`
+                              : `${transaction.note || "No note"} · ${new Date(transaction.createdAt).toLocaleTimeString("en-GH", { hour: "2-digit", minute: "2-digit" })}`}
                           </p>
                         )}
                       </div>
                     </div>
-                    <p className={`shrink-0 text-right font-bold ${isCreditSale || supplierCredit ? "text-amber-800" : isInstallmentSale && !isCashIn ? "text-ink" : isCashIn ? "text-leaf" : "text-ink"}`}>
-                      {isInstallmentSale
+                    <p className={`shrink-0 text-right font-bold ${isAdjustment ? "text-slate-700" : isCreditSale || supplierCredit ? "text-amber-800" : isInstallmentSale && !isCashIn ? "text-ink" : isCashIn ? "text-leaf" : "text-ink"}`}>
+                      {isAdjustment
+                        ? `${formatGhs(transaction.previousBalancePesewas ?? transaction.newBalancePesewas ?? 0)} → ${formatGhsAmount(transaction.newBalancePesewas ?? 0)}`
+                        : isInstallmentSale
                         ? `${isCashIn ? "+" : ""}${formatGhs(cashReceivedAmount)}`
                         : isCreditSale || supplierCredit && !shownAmount ? formatGhs(transaction.owedAmountPesewas ?? transaction.amountPesewas) : `${isCashIn ? "+" : "−"}${formatGhs(shownAmount)}`}
                       {isInstallmentSale && <span className="block text-[10px] font-medium text-amber-800">{formatGhs(transaction.creditExtendedPesewas)} credit</span>}

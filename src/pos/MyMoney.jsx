@@ -2,11 +2,10 @@ import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpRight } from "lucide-react";
 import { db } from "../db/db.js";
-import { formatGhs } from "../lib/money.js";
-import { getFinancialTransactions } from "../utils/financials.js";
+import { formatGhs, getFinancialTransactions, summarizePosMoney } from "../lib/money.js";
 import { getSupplierBalances } from "../utils/suppliers.js";
 import { posText as t } from "./i18n.js";
-import { getMoneyPeriodRange, getOutstandingDebtPesewas, getPreviousMoneyPeriodRange, summarizeMoney } from "./money.js";
+import { getMoneyPeriodRange, getOutstandingDebtPesewas, getPreviousMoneyPeriodRange } from "./money.js";
 import { PosCard, PosPage } from "./PosComponents.jsx";
 
 export default function MyMoney({ onNavigate }) {
@@ -23,8 +22,8 @@ export default function MyMoney({ onNavigate }) {
       db.transactions.toArray(),
       db.suppliers.toArray()
     ]);
-    const totals = summarizeMoney(currentTransactions);
-    const previousTotals = summarizeMoney(previousTransactions);
+    const totals = summarizePosMoney(currentTransactions);
+    const previousTotals = summarizePosMoney(previousTransactions);
     return {
       totals,
       previousCashLeft: previousTotals.cashLeft,

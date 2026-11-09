@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { db } from "../db/db.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
+import { createIdempotencyKey, createSyncPayload, postSyncBatch, TABLES } from "../lib/syncPayload.js";
 
 const SYNC_ENDPOINT = import.meta.env.VITE_SYNC_ENDPOINT?.trim();
-const TABLES = ["products", "transactions", "debts"];
 
 async function readPending() {
   const pending = {};
@@ -49,14 +49,12 @@ export function useSync() {
         return;
       }
 
-      const response = await fetch(SYNC_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ schemaVersion: 2, records })
-      });
-      if (!response.ok) {
-        throw new Error(`Sync server returned HTTP ${response.status}.`);
-      }
+      const { body, serializedBody } = createSyncPayload(records);
+      const response = await postSyncBatch(
+        SYNC_ENDPOINT,
+        body,
+        await createIdempotencyKey(serializedBody)
+      );
       const acknowledged = getAcknowledgedIds(await response.json());
 
       await db.transaction("rw", db.products, db.transactions, db.debts, async () => {

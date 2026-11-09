@@ -11,7 +11,7 @@ export default function BackupModal({
   onManageSubscription,
   subscriptionExpiry,
   subscriptionNotice,
-  showSubscription = FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE
+  showSubscription = false
 }) {
   const fileInput = useRef(null);
   const [busy, setBusy] = useState(false);

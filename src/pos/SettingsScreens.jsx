@@ -68,7 +68,20 @@ export function LanguageSettings({ onBack }) {
   );
 }
 
-export function SettingsProfitTools({ shopName, onShopNameChange, onBack, onOpenBackup }) {
+export function SettingsProfitTools({
+  shopName,
+  onShopNameChange,
+  onBack,
+  onOpenBackup,
+  onOpenMomoSettings,
+  onOpenPlan,
+  onOpenSubscription,
+  subscriptionEnabled = false,
+  hasActiveSubscription = false,
+  subscriptionExpiry = "",
+  trialActive = false,
+  trialExpiry = ""
+}) {
   const [draft, setDraft] = useState(shopName);
   const [audioEnabled, setAudioEnabled] = useState(isAudioFeedbackEnabled);
   const [error, setError] = useState("");
@@ -111,6 +124,31 @@ export function SettingsProfitTools({ shopName, onShopNameChange, onBack, onOpen
         <span className="flex items-center gap-2 font-extrabold"><Volume2 size={20} aria-hidden="true" />{t("settings.soundFeedback")}</span>
         <input type="checkbox" checked={audioEnabled} onChange={(event) => setAudioEnabled(setAudioFeedbackEnabled(event.target.checked))} className="h-6 w-6 accent-emerald-800" />
       </label>
+      {subscriptionEnabled && (
+        <section className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-4">
+          <h2 className="font-extrabold">{t("settings.subscriptionTitle")}</h2>
+          <p className="mt-1 text-slate-800">
+            {hasActiveSubscription
+              ? t("settings.subscriptionActive")
+              : t("settings.subscriptionInactive")}
+          </p>
+          {hasActiveSubscription && subscriptionExpiry && (
+            <p className="mt-1 text-sm font-semibold text-emerald-900">
+              {t("settings.subscriptionExpires", { date: new Date(subscriptionExpiry).toLocaleDateString("en-GB") })}
+            </p>
+          )}
+          <PosSecondaryButton type="button" onClick={onOpenMomoSettings}>MoMo payments</PosSecondaryButton>
+          <PosSecondaryButton type="button" onClick={onOpenPlan}>My plan</PosSecondaryButton>
+          {trialActive && trialExpiry && (
+            <p className="mt-1 text-sm font-semibold text-sky-900">
+              {t("settings.subscriptionTrial", { date: new Date(trialExpiry).toLocaleDateString("en-GB") })}
+            </p>
+          )}
+          <PosSecondaryButton type="button" onClick={onOpenSubscription} className="mt-3">
+            {hasActiveSubscription ? t("settings.manageSubscription") : t("settings.subscribe")}
+          </PosSecondaryButton>
+        </section>
+      )}
       <section className="rounded-2xl border-2 border-amber-700 bg-amber-50 p-4">
         <h2 className="font-extrabold">{t("settings.profitTitle")}</h2>
         <p className="mt-1 text-slate-800">{t("settings.profitUnavailable")}</p>

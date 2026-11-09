@@ -19,7 +19,8 @@ function readSaleItems(transaction, totalPesewas) {
       !Number.isSafeInteger(amountPesewas) || amountPesewas <= 0) {
       throw new TypeError("Sale item details are incomplete.");
     }
-    return { name, quantity, amountPesewas };
+    const subtitle = typeof item?.subtitle === "string" ? item.subtitle.trim() : "";
+    return { name, ...(subtitle ? { subtitle } : {}), quantity, amountPesewas };
   });
   const itemTotal = normalized.reduce((sum, item) => sum + item.amountPesewas, 0);
   if (!Number.isSafeInteger(itemTotal) || (normalized.length && itemTotal !== totalPesewas)) {
@@ -47,10 +48,14 @@ export function getSaleReceiptDetails(transaction) {
   const momoReceivedPesewas = hasSplitParts
     ? transaction.momoReceivedPesewas ?? 0
     : paymentMethod === "momo" ? amountPesewas : 0;
+  const creditExtendedPesewas = transaction.creditExtendedPesewas ?? 0;
+  const expectedPaidPesewas = amountPesewas - creditExtendedPesewas;
   if (!["cash", "momo", "split"].includes(paymentMethod) ||
+    !Number.isSafeInteger(creditExtendedPesewas) || creditExtendedPesewas < 0 ||
+    creditExtendedPesewas > amountPesewas ||
     !Number.isSafeInteger(cashReceivedPesewas) || cashReceivedPesewas < 0 ||
     !Number.isSafeInteger(momoReceivedPesewas) || momoReceivedPesewas < 0 ||
-    cashReceivedPesewas + momoReceivedPesewas !== amountPesewas) {
+    cashReceivedPesewas + momoReceivedPesewas !== expectedPaidPesewas) {
     throw new TypeError("The recorded sale has an invalid payment method.");
   }
   return {

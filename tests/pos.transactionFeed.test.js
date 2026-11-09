@@ -49,6 +49,40 @@ test("transaction filters distinguish sold, spent, and credit rows", () => {
   assert.throws(() => filterPosTransactionRows(rows, "unknown"), /Unknown transaction filter/);
 });
 
+test("transaction feed displays debt adjustments without classifying them as cash or credit", () => {
+  const [row] = createPosTransactionRows([{
+    id: "adjustment-1",
+    type: "debt_adjustment",
+    amountPesewas: 0,
+    deltaPesewas: -2500,
+    createdAt: 100
+  }]);
+
+  assert.equal(row.kind, "adjustment");
+  assert.equal(row.amountPesewas, 0);
+  assert.equal(row.adjustmentDeltaPesewas, -2500);
+  assert.equal(row.cashPesewas, 0);
+  assert.equal(row.momoPesewas, 0);
+  assert.equal(row.isCredit, false);
+});
+
+test("manual debt rows use the credit amount and remain visible as added debt", () => {
+  const [row] = createPosTransactionRows([{
+    id: "manual-debt-1",
+    type: "manual_debt",
+    amountPesewas: 0,
+    creditExtendedPesewas: 10000,
+    customerName: "Ama",
+    createdAt: 100
+  }]);
+
+  assert.equal(row.kind, "debt_added");
+  assert.equal(row.amountPesewas, 10000);
+  assert.equal(row.isCredit, true);
+  assert.equal(row.customerName, "Ama");
+  assert.deepEqual(filterPosTransactionRows([row], "credit").map(({ id }) => id), ["manual-debt-1"]);
+});
+
 test("supplier payments appear as spending, separate from the stock purchase", () => {
   const rows = createPosTransactionRows([
     { id: "stock", type: "expense", category: "stock", amountPesewas: 5000, paidAmountPesewas: 0, createdAt: 100 },

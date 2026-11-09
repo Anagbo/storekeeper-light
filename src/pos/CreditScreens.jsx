@@ -1,15 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
 import { Banknote, Check, Plus, Search, Smartphone, UserRoundPlus } from "lucide-react";
 import { db } from "../db/db.js";
 import { isValidGhanaCardNumber, normalizeGhanaCardNumber } from "../lib/ghanaCardNumber.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { formatGhanaCard } from "../utils/formatters.js";
-import { addDueCycles, getCreditBalanceAfterSale, getMaximumInstallmentAmountPesewas, getNextCycleDate, isValidDateString, localDateString, PAYMENT_FREQUENCIES, prepareInstallmentPlan } from "../utils/installments.js";
+import { addDueCycles, getCreditBalanceAfterSale, getNextCycleDate, isValidDateString, localDateString, PAYMENT_FREQUENCIES, prepareInstallmentPlan } from "../utils/installments.js";
 import { generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
-import { getDefaultCollectionSplit } from "./collectionSplit.js";
+import { getCreditAmountOwedPesewas } from "./creditAmount.js";
 import CustomerContactEditor from "./CustomerContactEditor.jsx";
 import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
+import { buildCollectionReceiptLink } from "./collectionReceipt.js";
+import { buildCreditSaleReceipt, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
 import { posText as t } from "./i18n.js";
+import { getCarriedPaymentParts, getPaidPaymentPesewas } from "./paymentAmount.js";
 
 function amountInputValue(amountPesewas) {
   return (amountPesewas / 100).toFixed(2);
@@ -52,6 +56,7 @@ function WhoOwesYou({ params, onBack, onNavigate }) {
   const [selectedCustomer, setSelectedCustomer] = useState(params.customer ?? null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const amountOwedPesewas = getCreditAmountOwedPesewas(params);
 
   useEffect(() => {
     let active = true;
@@ -78,6 +83,9 @@ function WhoOwesYou({ params, onBack, onNavigate }) {
             totalDebtPesewas: 0
           };
           customer.totalDebtPesewas += debt.amountPesewas ?? debt.total_owed ?? 0;
+          if (!customer.debt || (debt.amountPesewas ?? debt.total_owed ?? 0) > (customer.debt.amountPesewas ?? 0)) {
+            customer.debt = debt;
+          }
           byName.set(nameLower, customer);
         }
         if (active) setCustomers([...byName.values()].sort((left, right) =>
@@ -106,13 +114,13 @@ function WhoOwesYou({ params, onBack, onNavigate }) {
 
   function continueToPaymentDate() {
     if (!selectedCustomer) return;
-    onNavigate("WhenWillTheyPay", { ...params, customer: selectedCustomer });
+    onNavigate(params.manualDebt ? "ManualDebtAmount" : "WhenWillTheyPay", { ...params, customer: selectedCustomer });
   }
 
   return (
     <PosPage className="flex flex-col gap-3">
       <h1 className="text-2xl font-extrabold">{t("credit.whoOwes")}</h1>
-      <CreditAmount amountPesewas={params.amountPesewas ?? 0} />
+      {!params.manualDebt && <CreditAmount amountPesewas={amountOwedPesewas} />}
       <label className="flex min-h-14 items-center gap-2 rounded-2xl border-[3px] border-slate-500 px-3">
         <Search size={24} aria-hidden="true" />
         <span className="sr-only">{t("credit.search")}</span>
@@ -138,7 +146,7 @@ function WhoOwesYou({ params, onBack, onNavigate }) {
         </div>
       )}
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
-      <PosSecondaryButton type="button" onClick={() => onNavigate("NewPerson", { ...params })}>
+      <PosSecondaryButton type="button" onClick={() => onNavigate("NewPerson", { ...params })} className={params.manualDebt ? "border-dashed text-emerald-900" : undefined}>
         <UserRoundPlus size={22} aria-hidden="true" /> {t("credit.newPerson")}
       </PosSecondaryButton>
       <div className="mt-auto grid grid-cols-2 gap-2">
@@ -152,7 +160,11 @@ function WhoOwesYou({ params, onBack, onNavigate }) {
 }
 
 function NewPerson({ params, onBack, onNavigate }) {
-  const [amount, setAmount] = useState(amountInputValue(params.amountPesewas ?? 0));
+  const amountOwedPesewas = getCreditAmountOwedPesewas(params);
+  const isAmountDerivedFromSale = !params.manualDebt &&
+    Number.isSafeInteger(params.initialPaymentPesewas) &&
+    params.initialPaymentPesewas > 0;
+  const [amount, setAmount] = useState(params.manualDebt ? "" : amountInputValue(amountOwedPesewas));
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [ghanaCardNumber, setGhanaCardNumber] = useState("");
@@ -163,7 +175,7 @@ function NewPerson({ params, onBack, onNavigate }) {
   function continueWithNewCustomer(event) {
     event.preventDefault();
     const cleanName = name.trim();
-    if (!cleanName || !Number.isSafeInteger(amountPesewas) || amountPesewas <= 0) {
+    if (!cleanName || (!params.manualDebt && (!Number.isSafeInteger(amountPesewas) || amountPesewas <= 0))) {
       setError(t("credit.nameAndAmountRequired"));
       return;
     }
@@ -175,9 +187,9 @@ function NewPerson({ params, onBack, onNavigate }) {
       setError(t("credit.invalidGhanaCard"));
       return;
     }
-    onNavigate("WhenWillTheyPay", {
+    onNavigate(params.manualDebt ? "ManualDebtAmount" : "WhenWillTheyPay", {
       ...params,
-      amountPesewas,
+      amountPesewas: isAmountDerivedFromSale ? params.amountPesewas : amountPesewas,
       customer: {
         name: cleanName,
         nameLower: cleanName.toLowerCase(),
@@ -196,9 +208,9 @@ function NewPerson({ params, onBack, onNavigate }) {
       </div>
       <form onSubmit={continueWithNewCustomer} className="flex flex-1 flex-col gap-3">
         <label className="block">
-          <span className="mb-1 block font-extrabold">{t("credit.amountOwed")}</span>
-          <input type="number" min="0.01" step="0.01" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} className="h-14 w-full rounded-2xl border-[3px] border-rose-900 bg-rose-100 px-4 text-2xl font-extrabold text-rose-950" />
-          <span className="text-sm text-slate-700">{t("credit.fromThisSale")}</span>
+          <span className="mb-1 block font-extrabold">{params.manualDebt ? "Amount owed later" : t("credit.amountOwed")}</span>
+          <input type="number" min="0.01" step="0.01" inputMode="decimal" value={amount} disabled={isAmountDerivedFromSale} onChange={(event) => setAmount(event.target.value)} className="h-14 w-full rounded-2xl border-[3px] border-rose-900 bg-rose-100 px-4 text-2xl font-extrabold text-rose-950 disabled:cursor-not-allowed disabled:opacity-70" />
+          <span className="text-sm text-slate-700">{params.manualDebt ? "You will enter the amount next." : t("credit.fromThisSale")}</span>
         </label>
         <label className="block">
           <span className="mb-1 block font-extrabold">{t("credit.name")}</span>
@@ -232,18 +244,23 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onSaveCredit }) {
     { value: "week", label: t("credit.inOneWeek") },
     { value: "twoWeeks", label: t("credit.inTwoWeeks") }
   ];
-  const totalAfterSalePesewas = (params.customer?.totalDebtPesewas ?? 0) + (params.amountPesewas ?? 0);
+  const totalAfterSalePesewas = (params.customer?.totalDebtPesewas ?? 0) + getCreditAmountOwedPesewas(params);
 
   async function save() {
     setSaving(true);
     setError("");
     try {
       const days = { today: 0, week: 7, twoWeeks: 14 }[dueChoice];
-      await onSaveCredit({
+      const details = {
         ...params,
         dueDate: addDueCycles(localDateString(), "weekly", days / 7),
         payBackLabel: choices.find((choice) => choice.value === dueChoice)?.label ?? t("credit.inOneWeek")
-      });
+      };
+      if (params.flow === "split") {
+        onNavigate("SplitPayment", { ...details, splitParts: params.initialPaymentParts ?? [] });
+      } else {
+        await onSaveCredit(details);
+      }
     } catch (saveError) {
       console.error("Could not save this credit sale.", saveError);
       setError(t("credit.saveFailed"));
@@ -273,53 +290,45 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onSaveCredit }) {
   );
 }
 
-function ALittleAtATime({ params, onBack, onSaveCredit }) {
+function ALittleAtATime({ params, onBack, onNavigate, onSaveCredit }) {
   const today = localDateString();
-  const [installmentAmount, setInstallmentAmount] = useState("");
-  const [frequency, setFrequency] = useState("weekly");
-  const [startToday, setStartToday] = useState(false);
-  const [nextDueDate, setNextDueDate] = useState(getNextCycleDate(today, "weekly"));
-  const [paymentMethod, setPaymentMethod] = useState("cash");
-  const [todayPaymentAmount, setTodayPaymentAmount] = useState(null);
-  const [splitCashAmount, setSplitCashAmount] = useState("");
-  const [splitSubmitAttempted, setSplitSubmitAttempted] = useState(false);
+  const [installmentAmount, setInstallmentAmount] = useState(params.installmentAmount ?? "");
+  const [frequency, setFrequency] = useState(params.frequency ?? "weekly");
+  const carriedPaymentParts = getCarriedPaymentParts(params);
+  const paidTodayPesewas = getPaidPaymentPesewas(carriedPaymentParts);
+  const paymentAlreadyMadeToday = params.paymentAlreadyMadeToday === true ||
+    (params.flow === "split" && paidTodayPesewas > 0);
+  const [startToday, setStartToday] = useState(paymentAlreadyMadeToday ? false : (params.startToday ?? false));
+  const [nextDueDate, setNextDueDate] = useState(params.nextDueDate ?? getNextCycleDate(today, params.frequency ?? "weekly"));
+  const [paymentMethod, setPaymentMethod] = useState(params.paymentMethod ?? "cash");
+  const [todayPaymentAmount, setTodayPaymentAmount] = useState(params.todayPaymentAmount ?? null);
   const [todayPaymentSubmitAttempted, setTodayPaymentSubmitAttempted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const installmentPesewas = toPesewas(installmentAmount);
   const amountPesewas = params.amountPesewas ?? 0;
   const currentDebtPesewas = params.customer?.totalDebtPesewas ?? 0;
-  const alreadyPaidPesewas = Number.isSafeInteger(params.initialPaymentPesewas) && params.initialPaymentPesewas > 0
-    ? params.initialPaymentPesewas
-    : 0;
+  const alreadyPaidPesewas = Math.max(
+    Number.isSafeInteger(params.initialPaymentPesewas) ? params.initialPaymentPesewas : 0,
+    paidTodayPesewas
+  );
   const creditBalanceBeforeTodayPayment = getCreditBalanceAfterSale(currentDebtPesewas, amountPesewas);
   const maxCreditPesewas = Math.max(0, creditBalanceBeforeTodayPayment - alreadyPaidPesewas);
-  const maxStartTodayInstallmentPesewas = getMaximumInstallmentAmountPesewas(
-    currentDebtPesewas,
-    amountPesewas,
-    true
-  );
-  const maxInstallmentPesewas = getMaximumInstallmentAmountPesewas(
-    currentDebtPesewas,
-    amountPesewas,
-    startToday
-  );
+  const maxStartTodayInstallmentPesewas = creditBalanceBeforeTodayPayment;
+  const maxInstallmentPesewas = maxCreditPesewas;
   const maxInstallmentAmount = (maxInstallmentPesewas / 100).toFixed(2);
   const todayPaymentInput = todayPaymentAmount ?? installmentAmount;
   const todayPaymentPesewas = toPesewas(todayPaymentInput);
-  const splitCashPesewas = toPesewas(splitCashAmount);
-  const splitParts = Number.isSafeInteger(todayPaymentPesewas) && todayPaymentPesewas > 1
-    ? getDefaultCollectionSplit(todayPaymentPesewas, splitCashPesewas)
-    : [];
-  const splitValid = paymentMethod !== "split" || splitParts.length === 2;
-  const splitError = splitCashPesewas >= todayPaymentPesewas
-    ? t("credit.splitCashTooHigh", { amount: Number.isSafeInteger(todayPaymentPesewas) ? formatGhs(todayPaymentPesewas) : "0.00" })
-    : t("credit.splitCashRequired");
-  const showSplitError = paymentMethod === "split" && !splitValid &&
-    (splitCashAmount.trim() !== "" || splitSubmitAttempted);
+  const splitParts = carriedPaymentParts;
   const validTodayPayment = Number.isSafeInteger(todayPaymentPesewas) &&
     todayPaymentPesewas > 0 &&
     todayPaymentPesewas <= maxCreditPesewas;
+
+  useEffect(() => {
+    if (params.returnRoute === "ALittleAtATime" && params.momoMethod) {
+      setPaymentMethod("momo");
+    }
+  }, [params.returnRoute, params.momoMethod]);
 
   function selectFrequency(nextFrequency) {
     setFrequency(nextFrequency);
@@ -331,8 +340,8 @@ function ALittleAtATime({ params, onBack, onSaveCredit }) {
       setTodayPaymentSubmitAttempted(true);
       return;
     }
-    if (startToday && paymentMethod === "split" && !splitValid) {
-      setSplitSubmitAttempted(true);
+    if (startToday && paymentMethod === "split" && splitParts.length === 0) {
+      setError(t("credit.paymentSplitRequired"));
       return;
     }
     setSaving(true);
@@ -355,11 +364,23 @@ function ALittleAtATime({ params, onBack, onSaveCredit }) {
       const payBackLabel = startToday
         ? t("credit.firstPaymentTodayNext", { date: nextDueDate })
         : t("credit.firstPaymentOn", { date: nextDueDate });
-      const initialPaymentParts = startToday && paymentMethod === "split"
+      const initialPaymentParts = paymentAlreadyMadeToday
+        ? carriedPaymentParts
+        : startToday && paymentMethod === "split"
         ? [...(params.initialPaymentParts ?? []), ...splitParts]
         : startToday && prepared.initialPaymentPesewas > 0
           ? [...(params.initialPaymentParts ?? []), { paymentMethod, amountPesewas: prepared.initialPaymentPesewas }]
           : (params.initialPaymentParts ?? []);
+      if (params.flow === "split") {
+        onNavigate("SplitPayment", {
+          ...params,
+          dueDate: "",
+          installmentPlan: plan,
+          splitParts: initialPaymentParts,
+          payBackLabel
+        });
+        return;
+      }
       await onSaveCredit({
         ...params,
         dueDate: "",
@@ -379,6 +400,40 @@ function ALittleAtATime({ params, onBack, onSaveCredit }) {
     }
   }
 
+  function choosePaymentMethod(method) {
+    if (method === "momo") {
+      onNavigate("MoMoChoice", {
+        ...params,
+        paymentMethod: "momo",
+        pendingMomoAmountPesewas: todayPaymentPesewas,
+        returnRoute: "ALittleAtATime",
+        pickOnly: true
+      });
+      return;
+    }
+    if (method !== "split") {
+      setPaymentMethod(method);
+      setError("");
+      return;
+    }
+    if (!Number.isSafeInteger(todayPaymentPesewas) || todayPaymentPesewas <= 0) {
+      setTodayPaymentSubmitAttempted(true);
+      setError(t("credit.paymentTodayRequired"));
+      return;
+    }
+    onNavigate("SplitPayment", {
+      ...params,
+      paymentMethod: "split",
+      installmentSplit: true,
+      splitTotalPesewas: todayPaymentPesewas,
+      todayPaymentAmount: todayPaymentInput,
+      installmentAmount,
+      frequency,
+      startToday: true,
+      nextDueDate
+    });
+  }
+
   return (
     <PosPage className="flex flex-col gap-3">
       <h1 className="text-2xl font-extrabold">{t("credit.aLittleAtATime")}</h1>
@@ -386,7 +441,7 @@ function ALittleAtATime({ params, onBack, onSaveCredit }) {
       <label className="block">
         <span className="mb-1 block text-lg font-extrabold">{t("credit.howMuchEachTime")}</span>
         <span className="flex min-h-16 items-center gap-2 rounded-2xl border-[3px] border-slate-500 px-4">
-          <span className="shrink-0 text-lg font-bold text-slate-700">GHS</span>
+          <span className="shrink-0 text-lg font-bold text-slate-700">GH₵</span>
           <input
             type="number"
             min="0.01"
@@ -429,14 +484,23 @@ function ALittleAtATime({ params, onBack, onSaveCredit }) {
       <fieldset>
         <legend className="mb-1 text-lg font-extrabold">{t("credit.firstPayment")}</legend>
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" aria-pressed={startToday} onClick={() => {
-            setStartToday(true);
-            setTodayPaymentSubmitAttempted(false);
-            setNextDueDate(getNextCycleDate(today, frequency));
-            if (installmentPesewas > maxStartTodayInstallmentPesewas) {
-              setInstallmentAmount((Math.max(0, maxStartTodayInstallmentPesewas) / 100).toFixed(2));
-            }
-          }} className={`min-h-14 rounded-2xl border-[3px] font-extrabold ${startToday ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{t("credit.today")}</button>
+          <button
+            type="button"
+            disabled={paymentAlreadyMadeToday || alreadyPaidPesewas > 0}
+            aria-pressed={startToday}
+            onClick={() => {
+              if (paymentAlreadyMadeToday || alreadyPaidPesewas > 0) return;
+              setStartToday(true);
+              setTodayPaymentSubmitAttempted(false);
+              setNextDueDate(getNextCycleDate(today, frequency));
+              if (installmentPesewas > maxStartTodayInstallmentPesewas) {
+                setInstallmentAmount((Math.max(0, maxStartTodayInstallmentPesewas) / 100).toFixed(2));
+              }
+            }}
+            className={`min-h-14 rounded-2xl border-[3px] font-extrabold ${paymentAlreadyMadeToday || alreadyPaidPesewas > 0 ? "cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400 opacity-60" : startToday ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}
+          >
+            {t("credit.today")}
+          </button>
           <button type="button" aria-pressed={!startToday} onClick={() => {
             setStartToday(false);
             setTodayPaymentSubmitAttempted(false);
@@ -444,11 +508,11 @@ function ALittleAtATime({ params, onBack, onSaveCredit }) {
           }} className={`min-h-14 rounded-2xl border-[3px] font-extrabold ${!startToday ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{t("credit.nextCycle", { frequency: t(`credit.frequency.${frequency}`) })}</button>
         </div>
       </fieldset>
-      {startToday && (
+      {startToday && !paymentAlreadyMadeToday && (
         <label className="block">
           <span className="mb-1 block text-lg font-extrabold">{t("credit.amountPaidToday")}</span>
           <span className={`flex min-h-14 items-center gap-2 rounded-2xl border-[3px] px-4 ${todayPaymentSubmitAttempted && !validTodayPayment ? "border-rose-800" : "border-slate-500"}`}>
-            <span className="shrink-0 text-lg font-bold text-slate-700">GHS</span>
+            <span className="shrink-0 text-lg font-bold text-slate-700">GH₵</span>
             <input
               type="number"
               min="0.01"
@@ -460,17 +524,20 @@ function ALittleAtATime({ params, onBack, onSaveCredit }) {
               aria-describedby="today-payment-limit"
               aria-invalid={todayPaymentSubmitAttempted && !validTodayPayment}
               value={todayPaymentInput}
+              disabled={splitParts.length > 0}
               onChange={(event) => {
                 setTodayPaymentAmount(event.target.value);
                 setTodayPaymentSubmitAttempted(true);
                 setError("");
               }}
               placeholder="0.00"
-              className="w-full min-w-0 bg-transparent text-right text-xl font-extrabold outline-none placeholder:text-slate-400"
+              className="w-full min-w-0 bg-transparent text-right text-xl font-extrabold outline-none placeholder:text-slate-400 disabled:cursor-not-allowed disabled:opacity-70"
             />
           </span>
           <span id="today-payment-limit" className="mt-1 block text-sm font-semibold text-slate-700">
-            {t("credit.paymentTodayMaximum", { amount: formatGhs(maxCreditPesewas) })}
+            {splitParts.length > 0
+              ? t("credit.paymentRecorded")
+              : t("credit.paymentTodayMaximum", { amount: formatGhs(maxCreditPesewas) })}
           </span>
           {todayPaymentSubmitAttempted && !validTodayPayment && (
             <span role="alert" className="mt-1 block text-sm font-semibold text-rose-900">
@@ -485,65 +552,72 @@ function ALittleAtATime({ params, onBack, onSaveCredit }) {
         <span className="mb-1 block text-lg font-extrabold">{t("credit.nextPaymentDate")}</span>
         <input type="date" min={today} value={nextDueDate} onChange={(event) => setNextDueDate(event.target.value)} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg font-bold" />
       </label>
-      {startToday && (
+      {startToday && !paymentAlreadyMadeToday && (
         <fieldset>
           <legend className="mb-1 text-base font-extrabold">{t("credit.firstPaymentMethod")}</legend>
-          <div className="grid grid-cols-3 gap-2">
-            {["cash", "momo", "split"].map((method) => (
-              <button
-                key={method}
-                type="button"
-                aria-pressed={paymentMethod === method}
-                aria-label={method === "split" ? t("credit.method.both") : undefined}
-                onClick={() => {
-                  setPaymentMethod(method);
-                  setError("");
-                  setSplitSubmitAttempted(false);
-                }}
-                className={`min-h-12 rounded-xl border-2 px-1 text-sm font-bold ${paymentMethod === method ? "border-emerald-900 bg-green-100" : "border-slate-500 bg-white"}`}
-              >
-                {method === "split"
-                  ? <span className="flex items-center justify-center gap-1" aria-hidden="true">
-                      <Banknote size={16} aria-hidden="true" />
-                      <Plus size={12} strokeWidth={3} aria-hidden="true" />
-                      <Smartphone size={16} aria-hidden="true" />
+          {splitParts.length > 0 ? (
+            <div className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
+              <p className="mb-2 font-extrabold text-emerald-950">{t("credit.paymentRecorded")}</p>
+              <div className="flex flex-col gap-2">
+                {splitParts.map((part) => (
+                  <div key={`${part.paymentMethod}-${part.amountPesewas}`} className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 font-bold">
+                    <span className="flex min-w-0 items-center gap-2">
+                      {part.paymentMethod === "cash"
+                        ? <Banknote size={18} aria-hidden="true" />
+                        : <Smartphone size={18} aria-hidden="true" />}
+                      <span className="truncate">{t(`credit.method.${part.paymentMethod}`)}</span>
                     </span>
-                  : t(`credit.method.${method}`)}
-              </button>
-            ))}
-          </div>
-          {paymentMethod === "split" && (
-            <div className="mt-3 space-y-2">
-              <label className="block">
-                <span className="mb-1 block text-sm font-bold">{t("credit.splitCashAmount")}</span>
-                <span className="flex h-12 items-center gap-2 rounded-xl border-2 border-slate-500 px-3">
-                  <span className="shrink-0 font-bold text-slate-700">GHS</span>
-                  <input
-                    type="number"
-                    min="0.01"
-                    max={todayPaymentInput}
-                    step="0.01"
-                    inputMode="decimal"
-                    value={splitCashAmount}
-                    placeholder="0.00"
-                    onChange={(event) => {
-                      setSplitCashAmount(event.target.value);
-                      setError("");
-                    }}
-                    className="w-full min-w-0 bg-transparent text-right text-lg font-bold outline-none placeholder:text-slate-400"
-                  />
-                </span>
-              </label>
-              <p className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-bold" aria-live="polite">
-                {t("collect.paymentSplit", {
-                  cash: formatGhs(splitCashPesewas ?? 0),
-                  momo: formatGhs(Math.max(0, (todayPaymentPesewas ?? 0) - (splitCashPesewas ?? 0)))
-                })}
-              </p>
-              {showSplitError && <p role="alert" className="text-sm font-semibold text-rose-900">{splitError}</p>}
+                    <span className="shrink-0">{formatGhs(part.amountPesewas)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 pt-2 font-extrabold text-emerald-950">
+                <span>{t("credit.paymentRecordedTotal")}</span>
+                <span>{formatGhs(splitParts.reduce((total, part) => total + part.amountPesewas, 0))}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              {["cash", "momo", "split"].map((method) => (
+                <button
+                  key={method}
+                  type="button"
+                  aria-pressed={paymentMethod === method}
+                  aria-label={method === "split" ? t("credit.method.both") : undefined}
+                  onClick={() => {
+                    choosePaymentMethod(method);
+                  }}
+                  className={`min-h-12 rounded-xl border-2 px-1 text-sm font-bold ${paymentMethod === method ? "border-emerald-900 bg-green-100" : "border-slate-500 bg-white"}`}
+                >
+                  {method === "split"
+                    ? <span className="flex items-center justify-center gap-1" aria-hidden="true">
+                        <Banknote size={16} aria-hidden="true" />
+                        <Plus size={12} strokeWidth={3} aria-hidden="true" />
+                        <Smartphone size={16} aria-hidden="true" />
+                      </span>
+                    : t(`credit.method.${method}`)}
+                </button>
+              ))}
             </div>
           )}
         </fieldset>
+      )}
+      {paymentAlreadyMadeToday && splitParts.length > 0 && (
+        <div className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
+        <p className="mb-2 font-extrabold text-emerald-950">{t("credit.paymentRecorded")}</p>
+        <div className="flex flex-col gap-2">
+          {splitParts.map((part) => (
+            <div key={`${part.paymentMethod}-${part.amountPesewas}`} className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 font-bold">
+              <span>{t(`credit.method.${part.paymentMethod}`)}</span>
+              <span>{formatGhs(part.amountPesewas)}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 pt-2 font-extrabold text-emerald-950">
+          <span>{t("credit.paymentRecordedTotal")}</span>
+          <span>{formatGhs(paidTodayPesewas)}</span>
+        </div>
+        </div>
       )}
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
       <div className="mt-auto grid grid-cols-2 gap-2">
@@ -554,20 +628,51 @@ function ALittleAtATime({ params, onBack, onSaveCredit }) {
   );
 }
 
+function buildCreditReceiptLink(result, phone, shopName) {
+  if (!isReceiptTemplatesEnabled() || !result?.saleTransaction) return null;
+  try {
+    return buildCollectionReceiptLink(phone, buildCreditSaleReceipt(result, shopName));
+  } catch (receiptError) {
+    console.error("Could not build the credit sale receipt.", receiptError);
+    return null;
+  }
+}
+
 function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopName }) {
   const [contactEditorOpen, setContactEditorOpen] = useState(false);
   const result = params.creditResult;
+  const savedCustomer = useLiveQuery(async () => {
+    const customerId = result?.customerId ?? params.customer?.id;
+    if (customerId) return db.customers.get(customerId);
+    const customerName = result?.customerName ?? params.customer?.name ?? "";
+    if (!customerName.trim()) return null;
+    return db.customers.where("nameLower").equals(customerName.trim().toLowerCase()).first();
+  }, [result?.customerId, params.customer?.id, result?.customerName, params.customer?.name], null);
   const [contact, setContact] = useState({
     customerId: result?.customerId ?? params.customer?.id,
     name: result?.customerName ?? params.customer?.name ?? "",
     phone: result?.phone ?? params.customer?.phone ?? "",
     ghanaCardNumber: params.customer?.ghanaCardNumber ?? ""
   });
+  useEffect(() => {
+    if (!savedCustomer) return;
+    setContact((current) => ({
+      ...current,
+      customerId: savedCustomer.id ?? current.customerId,
+      name: savedCustomer.name ?? current.name,
+      phone: savedCustomer.phone ?? current.phone,
+      ghanaCardNumber: savedCustomer.ghanaCardNumber ?? current.ghanaCardNumber
+    }));
+  }, [savedCustomer]);
   const phone = contact.phone;
   const customerName = result?.customerName ?? params.customer?.name ?? "";
   const totalDebtPesewas = result?.totalDebtPesewas ?? 0;
   const whatsappLink = generateWhatsAppLink(phone, customerName, totalDebtPesewas / 100, shopName);
-
+  const receiptLink = buildCreditReceiptLink(result, phone, shopName);
+  function openContactEditor(event) {
+    event.preventDefault();
+    setContactEditorOpen(true);
+  }
   return (
     <PosPage className="flex flex-col gap-3">
       <div className="pt-2 text-center">
@@ -588,29 +693,67 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
           <span className="min-w-0">{t("credit.thisSale")}</span>
           <strong className="whitespace-nowrap text-right text-rose-900 tabular-nums">+ {formatGhs(result?.addedDebtPesewas ?? 0)}</strong>
         </div>
-        <div className="grid min-w-0 grid-cols-1 gap-1 text-base sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-x-3 sm:text-lg">
-          <span>{t("credit.payBack")}</span>
-          <strong className="min-w-0 break-words sm:text-right">{params.payBackLabel ?? t("credit.notSet")}</strong>
+        <div className="flex min-w-0 items-start justify-between gap-3 text-base sm:text-lg">
+          <span className="shrink-0">{t("credit.payBack")}</span>
+          <strong className="min-w-0 text-right break-words">{params.payBackLabel ?? t("credit.notSet")}</strong>
         </div>
-        {result?.initialPaymentPesewas > 0 && (
-          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 text-base sm:text-lg">
-            <span className="min-w-0">{t("credit.paidToday")}</span>
-            <strong className="whitespace-nowrap text-right tabular-nums">{formatGhs(result.initialPaymentPesewas)}</strong>
-            {result.initialPaymentParts?.length > 1 && (
-              <span className="col-span-2 text-sm text-slate-700">
-                {result.initialPaymentParts.map((part) =>
-                  `${t(`credit.method.${part.paymentMethod}`)} ${formatGhs(part.amountPesewas)}`
-                ).join(" · ")}
-              </span>
+      </PosCard>
+      {result?.initialPaymentPesewas > 0 && (
+        <div className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
+          <p className="mb-2 font-extrabold text-emerald-950">{t("credit.paymentRecorded")}</p>
+          <div className="flex flex-col gap-2">
+            {result.initialPaymentParts && result.initialPaymentParts.length > 0 ? (
+              result.initialPaymentParts.map((part) => (
+                <div key={`${part.paymentMethod}-${part.amountPesewas}`} className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 font-bold text-slate-900">
+                  <span className="flex min-w-0 items-center gap-2">
+                    {part.paymentMethod === "cash"
+                      ? <Banknote size={18} aria-hidden="true" />
+                      : <Smartphone size={18} aria-hidden="true" />}
+                    <span className="truncate">{t(`credit.method.${part.paymentMethod}`)}</span>
+                  </span>
+                  <span className="shrink-0 tabular-nums">{formatGhs(part.amountPesewas)}</span>
+                </div>
+              ))
+            ) : (
+              <div className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 font-bold text-slate-900">
+                <span className="flex min-w-0 items-center gap-2">
+                  {result.saleTransaction?.payment_method === "momo"
+                    ? <Smartphone size={18} aria-hidden="true" />
+                    : <Banknote size={18} aria-hidden="true" />}
+                  <span className="truncate">{t(`credit.method.${result.saleTransaction?.payment_method === "momo" ? "momo" : "cash"}`)}</span>
+                </span>
+                <span className="shrink-0 tabular-nums">{formatGhs(result.initialPaymentPesewas)}</span>
+              </div>
             )}
           </div>
+          <div className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 pt-2 font-extrabold text-emerald-950">
+            <span>{t("credit.paymentRecordedTotal")}</span>
+            <span className="tabular-nums">{formatGhs(result.initialPaymentPesewas)}</span>
+          </div>
+        </div>
+      )}
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {whatsappLink ? (
+          <a href={whatsappLink} target="_blank" rel="noreferrer" className="flex min-h-14 min-w-0 items-center justify-center rounded-2xl border-2 border-emerald-900 px-3 text-center font-extrabold text-emerald-900">
+            {t("credit.whatsapp", { name: customerName })}
+          </a>
+        ) : (
+          <button type="button" onClick={openContactEditor} className="flex min-h-14 min-w-0 items-center justify-center rounded-2xl border-2 border-emerald-900 px-3 text-center font-extrabold text-emerald-900">
+            {t("credit.whatsapp", { name: customerName })}
+          </button>
         )}
-      </PosCard>
-      <div className="grid grid-cols-2 gap-2">
-        {whatsappLink && <a href={whatsappLink} target="_blank" rel="noreferrer" className="flex min-h-14 min-w-0 items-center justify-center rounded-2xl border-2 border-emerald-900 px-2 text-center font-extrabold text-emerald-900 [overflow-wrap:anywhere]">{t("credit.whatsapp", { name: customerName })}</a>}
-        {result?.debtId && <PosSecondaryButton type="button" className="min-w-0 [overflow-wrap:anywhere]" onClick={() => onNavigate("DebtorDetail", { debtId: result.debtId, customerName })}>{t("credit.seeDetails", { name: customerName })}</PosSecondaryButton>}
-        {!whatsappLink && <PosSecondaryButton type="button" className="min-w-0" onClick={() => setContactEditorOpen(true)}>{t("contact.add")}</PosSecondaryButton>}
+        {receiptLink ? (
+          <a href={receiptLink} target="_blank" rel="noopener noreferrer" className="flex min-h-14 min-w-0 items-center justify-center rounded-2xl border-2 border-emerald-900 px-3 text-center font-extrabold text-emerald-900">
+            {t("collect.receiptShare")}
+          </a>
+        ) : (
+          <button type="button" onClick={openContactEditor} className="flex min-h-14 min-w-0 items-center justify-center rounded-2xl border-2 border-emerald-900 px-3 text-center font-extrabold text-emerald-900">
+            {t("collect.receiptShare")}
+          </button>
+        )}
       </div>
+      {result?.debtId && <PosSecondaryButton type="button" className="w-full" onClick={() => onNavigate("DebtorDetail", { debtId: result.debtId, customerName })}>{t("credit.seeDetails", { name: customerName })}</PosSecondaryButton>}
+      {!whatsappLink && <PosSecondaryButton type="button" className="w-full" onClick={() => setContactEditorOpen(true)}>{t("contact.add")}</PosSecondaryButton>}
       {whatsappLink && <PosSecondaryButton type="button" onClick={() => setContactEditorOpen(true)}>{t("collect.editContact")}</PosSecondaryButton>}
       <PosPrimaryButton type="button" onClick={onHome} className="mt-auto h-[68px] text-2xl">{t("credit.done")}</PosPrimaryButton>
       {contactEditorOpen && (
@@ -624,11 +767,11 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
   );
 }
 
-export default function CreditScreens({ route, params, onBack, onNavigate, onSaveCredit, onHome, shopName }) {
+export default function CreditScreens({ route, params, onBack, onNavigate, onSaveCredit, onSaveCustomerContact, onHome, shopName }) {
   if (route === "WhoOwesYou") return <WhoOwesYou params={params} onBack={onBack} onNavigate={onNavigate} />;
   if (route === "NewPerson") return <NewPerson params={params} onBack={onBack} onNavigate={onNavigate} />;
   if (route === "WhenWillTheyPay") return <WhenWillTheyPay params={params} onBack={onBack} onNavigate={onNavigate} onSaveCredit={onSaveCredit} />;
-  if (route === "ALittleAtATime") return <ALittleAtATime params={params} onBack={onBack} onSaveCredit={onSaveCredit} />;
-  if (route === "CreditSaved") return <CreditSaved params={params} onHome={onHome} onNavigate={onNavigate} shopName={shopName} />;
+  if (route === "ALittleAtATime") return <ALittleAtATime params={params} onBack={onBack} onNavigate={onNavigate} onSaveCredit={onSaveCredit} />;
+  if (route === "CreditSaved") return <CreditSaved params={params} onHome={onHome} onNavigate={onNavigate} onSaveCustomerContact={onSaveCustomerContact} shopName={shopName} />;
   return null;
 }

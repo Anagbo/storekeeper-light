@@ -71,7 +71,7 @@ export default async function handler(req, res) {
     }
     const templateName = process.env.WHATSAPP_DEBT_TEMPLATE?.trim() || "debt_reminder";
     const languageCode = process.env.WHATSAPP_TEMPLATE_LANGUAGE?.trim() || "en";
-    const amount = `GHS ${(amountPesewas / 100).toFixed(2)}`;
+    const amount = `GH₵${(amountPesewas / 100).toFixed(2)}`;
     const graphResponse = await fetch(
       `https://graph.facebook.com/${apiVersion}/${encodeURIComponent(phoneNumberId)}/messages`,
       {

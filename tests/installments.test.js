@@ -9,11 +9,13 @@ import {
   getMaximumInstallmentAmountPesewas,
   getInstallmentAlertStatus,
   getNextCycleDate,
+  isValidInstallmentPlanForBalance,
   PAYMENT_FREQUENCIES,
   isInstallmentDue,
   isValidDateString,
   prepareInstallmentPlan,
-  reconcileInstallmentPayment
+  reconcileInstallmentPayment,
+  reconcileInstallmentPlanChange
 } from "../src/utils/installments.js";
 
 const plan = {
@@ -49,6 +51,21 @@ test("installment amount cannot exceed the total debt", () => {
     frequency: "weekly",
     nextDueDate: "2026-05-01"
   }), /cannot exceed the debt amount/);
+});
+
+test("validates an inherited installment plan against the current balance", () => {
+  const validPlan = {
+    isInstallmentPlan: true,
+    installmentAmount: 2000,
+    frequency: "weekly",
+    nextDueDate: "2026-11-09"
+  };
+
+  assert.equal(isValidInstallmentPlanForBalance(validPlan, 885), false);
+  assert.equal(isValidInstallmentPlanForBalance(validPlan, 2000), true);
+  assert.equal(isValidInstallmentPlanForBalance({ ...validPlan, installmentAmount: 20000000000 }, 885), false);
+  assert.equal(isValidInstallmentPlanForBalance({ ...validPlan, frequency: "daily" }, 10000), false);
+  assert.equal(isValidInstallmentPlanForBalance({ ...validPlan, nextDueDate: "2026-02-30" }, 10000), false);
 });
 
 test("maximum credit balance includes existing debt plus the current sale", () => {
@@ -120,6 +137,200 @@ test("two partial payments totaling an installment advance the due date", () => 
     nextDueDate: "2026-05-08",
     installmentPaymentCarryPesewas: 0
   });
+});
+
+test("a partial payment due today remains due until the full installment is paid", () => {
+  const dueToday = {
+    ...plan,
+    amountPesewas: 10000,
+    installmentAmount: 2000,
+    installmentsRemaining: 5,
+    totalInstallments: 5,
+    nextDueDate: "2026-11-04"
+  };
+  const firstPayment = reconcileInstallmentPayment(dueToday, 500, 9500);
+  assert.deepEqual(firstPayment, {
+    isInstallmentPlan: true,
+    installmentsRemaining: 5,
+    nextDueDate: "2026-11-04",
+    installmentPaymentCarryPesewas: 500
+  });
+  assert.deepEqual(reconcileInstallmentPayment({
+    ...dueToday,
+    ...firstPayment,
+    amountPesewas: 9500
+  }, 1500, 8000), {
+    isInstallmentPlan: true,
+    installmentsRemaining: 4,
+    nextDueDate: "2026-11-11",
+    installmentPaymentCarryPesewas: 0
+  });
+});
+
+test("changing a plan preserves completed history and carries partial progress", () => {
+  const changed = reconcileInstallmentPlanChange({
+    ...plan,
+    amountPesewas: 6000,
+    installmentAmount: 2000,
+    installmentsRemaining: 2,
+    totalInstallments: 4,
+    installmentPaymentCarryPesewas: 1500
+  }, 8500, {
+    isInstallmentPlan: true,
+    installmentAmount: 1000,
+    frequency: "monthly",
+    nextDueDate: "2026-05-01"
+  });
+
+  assert.deepEqual(changed, {
+    isInstallmentPlan: true,
+    installmentAmount: 1000,
+    frequency: "monthly",
+    nextDueDate: "2026-05-31",
+    installmentsRemaining: 9,
+    totalInstallments: 12,
+    installmentPaymentCarryPesewas: 500
+  });
+});
+
+test("changing a plan can preserve the existing due date and accepts any frequency", () => {
+  const changed = reconcileInstallmentPlanChange({
+    ...plan,
+    amountPesewas: 10000,
+    installmentsRemaining: 4,
+    totalInstallments: 4,
+    installmentPaymentCarryPesewas: 0
+  }, 12000, {
+    isInstallmentPlan: true,
+    installmentAmount: 3000,
+    frequency: "bi-weekly",
+    nextDueDate: "2026-05-01"
+  });
+
+  assert.equal(changed.frequency, "bi-weekly");
+  assert.equal(changed.installmentsRemaining, 4);
+  assert.equal(changed.totalInstallments, 4);
+  assert.equal(changed.nextDueDate, "2026-05-01");
+});
+
+test("late completion advances only the completed cycles, not the elapsed calendar time", () => {
+  const firstPayment = reconcileInstallmentPayment({
+    ...plan,
+    amountPesewas: 10000,
+    installmentAmount: 2000,
+    installmentsRemaining: 5,
+    totalInstallments: 5,
+    nextDueDate: "2026-11-04"
+  }, 500, 9500);
+  const lateCompletion = reconcileInstallmentPayment({
+    ...plan,
+    ...firstPayment,
+    amountPesewas: 9500,
+    installmentAmount: 2000,
+    installmentsRemaining: 5,
+    totalInstallments: 5,
+    nextDueDate: "2026-11-04"
+  }, 1500, 8000);
+
+  assert.equal(lateCompletion.installmentsRemaining, 4);
+  assert.equal(lateCompletion.nextDueDate, "2026-11-11");
+  assert.equal(lateCompletion.installmentPaymentCarryPesewas, 0);
+});
+
+test("a payment covering several missed cycles advances by exactly those cycles", () => {
+  const result = reconcileInstallmentPayment({
+    ...plan,
+    amountPesewas: 10000,
+    installmentAmount: 2000,
+    installmentsRemaining: 5,
+    totalInstallments: 5,
+    nextDueDate: "2026-11-04"
+  }, 6000, 4000);
+
+  assert.equal(result.installmentsRemaining, 2);
+  assert.equal(result.nextDueDate, "2026-11-25");
+  assert.equal(result.installmentPaymentCarryPesewas, 0);
+});
+
+test("all supported frequency transitions preserve the current due date", () => {
+  for (const from of PAYMENT_FREQUENCIES.map(({ value }) => value)) {
+    for (const to of PAYMENT_FREQUENCIES.map(({ value }) => value)) {
+      const result = reconcileInstallmentPlanChange({
+        ...plan,
+        frequency: from,
+        nextDueDate: "2026-11-04",
+        amountPesewas: 10000,
+        installmentAmount: 2000,
+        installmentsRemaining: 4,
+        totalInstallments: 6,
+        installmentPaymentCarryPesewas: 500
+      }, 12000, {
+        isInstallmentPlan: true,
+        installmentAmount: 3000,
+        frequency: to,
+        nextDueDate: "2026-11-04"
+      });
+
+      assert.equal(result.frequency, to);
+      assert.equal(result.nextDueDate, "2026-11-04");
+      assert.equal(result.installmentPaymentCarryPesewas, 500);
+      assert.equal(result.totalInstallments, 6);
+    }
+  }
+});
+
+test("a smaller replacement amount converts carry into completed cycles and keeps the remainder", () => {
+  const result = reconcileInstallmentPlanChange({
+    ...plan,
+    amountPesewas: 10000,
+    installmentAmount: 2000,
+    installmentsRemaining: 5,
+    totalInstallments: 5,
+    installmentPaymentCarryPesewas: 1900
+  }, 8100, {
+    isInstallmentPlan: true,
+    installmentAmount: 1000,
+    frequency: "weekly",
+    nextDueDate: "2026-11-04"
+  });
+
+  assert.equal(result.installmentsRemaining, 9);
+  assert.equal(result.totalInstallments, 10);
+  assert.equal(result.nextDueDate, "2026-11-11");
+  assert.equal(result.installmentPaymentCarryPesewas, 900);
+});
+
+test("replacement plans reject malformed dates, frequencies, carry, and unsafe payment totals", () => {
+  const baseDebt = {
+    ...plan,
+    amountPesewas: 10000,
+    installmentPaymentCarryPesewas: 500
+  };
+  const replacement = {
+    isInstallmentPlan: true,
+    installmentAmount: 2000,
+    frequency: "weekly",
+    nextDueDate: "2026-11-04"
+  };
+
+  assert.throws(() => reconcileInstallmentPlanChange(baseDebt, 10000, {
+    ...replacement,
+    nextDueDate: "2026-02-30"
+  }), /replacement installment plan is invalid/);
+  assert.throws(() => reconcileInstallmentPlanChange(baseDebt, 10000, {
+    ...replacement,
+    frequency: "daily"
+  }), /replacement installment plan is invalid/);
+  assert.throws(() => reconcileInstallmentPlanChange({
+    ...baseDebt,
+    installmentPaymentCarryPesewas: 2500
+  }, 10000, replacement), /existing installment plan is invalid/);
+  assert.throws(() => reconcileInstallmentPlanChange(
+    baseDebt,
+    10000,
+    replacement,
+    Number.MAX_SAFE_INTEGER
+  ), /supported amount/);
 });
 
 test("overpayment reconciles complete cycles and clears a completed plan", () => {
@@ -293,7 +504,7 @@ test("due alerts compare normalized date strings and reminders use the requested
   assert.equal(isInstallmentDue({ ...plan, nextDueDate: "2026-05-02" }, "2026-05-01"), false);
   const link = createInstallmentReminderLink("024 123 4567", "Ama Mensah", 2500);
   assert.ok(link.startsWith("https://wa.me/233241234567?text="));
-  assert.equal(decodeURIComponent(link.split("text=")[1]), "Hi Ama Mensah, gentle reminder that your installment of GHS 25.00 is due today. Thank you!");
+  assert.equal(decodeURIComponent(link.split("text=")[1]), "Hi Ama Mensah, gentle reminder that your installment of GH₵25.00 is due today. Thank you!");
   assert.equal(createInstallmentReminderLink("invalid", "Ama Mensah", 2500), null);
 });
 
@@ -335,7 +546,7 @@ test("proactive installment reminder copy uses the accurate due interval", () =>
   const link = createInstallmentReminderLink("024 123 4567", "Ama Mensah", 2500, alert);
   assert.equal(
     decodeURIComponent(link.split("text=")[1]),
-    "Hi Ama Mensah, gentle reminder that your installment of GHS 25.00 is due in 3 days. Thank you!"
+    "Hi Ama Mensah, gentle reminder that your installment of GH₵25.00 is due in 3 days. Thank you!"
   );
 });
 

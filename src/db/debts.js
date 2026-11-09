@@ -1,11 +1,19 @@
 import { db } from "./db.js";
 import { upsertCustomer } from "./customers.js";
+import { recalculateCustomerDebtBalance } from "./debtLedger.js";
 import { runTransactionWithTimeout } from "./runTransactionWithTimeout.js";
 import { createId } from "../lib/ids.js";
 import { isValidGhanaCardNumber } from "../lib/ghanaCardNumber.js";
 import { formatGhs } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
-import { addDueCycles, assertInstallmentAmountWithinBalance, getCreditBalanceAfterSale, isValidDateString, PAYMENT_FREQUENCIES, reconcileInstallmentPayment } from "../utils/installments.js";
+import {
+  assertInstallmentAmountWithinBalance,
+  getCreditBalanceAfterSale,
+  isValidDateString,
+  PAYMENT_FREQUENCIES,
+  reconcileInstallmentPayment,
+  reconcileInstallmentPlanChange
+} from "../utils/installments.js";
 
 export const COLLECTION_UNDO_WINDOW_MS = 10_000;
 
@@ -73,9 +81,11 @@ async function getUnpaidCustomerBalance(name) {
 
 export async function refreshCustomerDebtBalance(customer, name, now = Date.now()) {
   if (!customer?.id) return customer;
-  const totalDebtPesewas = await getUnpaidCustomerBalance(name);
-  await db.customers.update(customer.id, { totalDebtPesewas, updatedAt: now });
-  return { ...customer, totalDebtPesewas, updatedAt: now };
+  return recalculateCustomerDebtBalance({
+    customerId: customer.id,
+    name,
+    now
+  }, db);
 }
 
 function isSameDebtState(left, right) {
@@ -419,41 +429,12 @@ export async function recordCreditSale({
       let installmentUpdates = {};
       if (debt.id === debtResult.id && installmentPlan) {
         if (installmentPlan.isInstallmentPlan && remainingCreditPesewas > 0) {
-          const previousInstallmentsRemaining = existingDebtBeforeSale?.isInstallmentPlan
-            ? existingDebtBeforeSale.installmentsRemaining ??
-              Math.ceil((existingDebtBeforeSale.amountPesewas ?? existingDebtBeforeSale.total_owed) / existingDebtBeforeSale.installmentAmount)
-            : 0;
-          const previousPaidInstallments = existingDebtBeforeSale?.isInstallmentPlan
-            ? Math.max(0, (existingDebtBeforeSale.totalInstallments ?? previousInstallmentsRemaining) - previousInstallmentsRemaining)
-            : 0;
-          const previousPaymentCarryPesewas = existingDebtBeforeSale?.isInstallmentPlan
-            ? existingDebtBeforeSale.installmentPaymentCarryPesewas ?? 0
-            : 0;
-          if (!Number.isSafeInteger(previousPaymentCarryPesewas) || previousPaymentCarryPesewas < 0) {
-            throw new TypeError("The existing installment plan has an invalid partial payment balance.");
-          }
-          const accumulatedPaymentProgressPesewas = previousPaymentCarryPesewas + paymentAppliedToExistingDebtPesewas;
-          if (!Number.isSafeInteger(accumulatedPaymentProgressPesewas)) {
-            throw new RangeError("The installment payment progress exceeds the supported amount.");
-          }
-          const completedExistingCycles = Math.floor(
-            accumulatedPaymentProgressPesewas / installmentPlan.installmentAmount
+          installmentUpdates = reconcileInstallmentPlanChange(
+            existingDebtBeforeSale ?? { isInstallmentPlan: false },
+            remainingAmountPesewas,
+            installmentPlan,
+            paymentAppliedToExistingDebtPesewas
           );
-          const existingPaymentCarryPesewas =
-            accumulatedPaymentProgressPesewas % installmentPlan.installmentAmount;
-          installmentUpdates = {
-            isInstallmentPlan: true,
-            installmentAmount: installmentPlan.installmentAmount,
-            frequency: installmentPlan.frequency,
-            nextDueDate: addDueCycles(
-              installmentPlan.nextDueDate,
-              installmentPlan.frequency,
-              completedExistingCycles
-            ),
-            installmentsRemaining: installmentPlan.installmentsRemaining,
-            totalInstallments: installmentPlan.totalInstallments + previousPaidInstallments + completedExistingCycles,
-            installmentPaymentCarryPesewas: existingPaymentCarryPesewas
-          };
         } else {
           installmentUpdates = {
             isInstallmentPlan: false,
@@ -538,7 +519,7 @@ export async function recordCreditSale({
     }
 
     const salePaymentMethod = salePaymentByMethod.cash > 0 && salePaymentByMethod.momo > 0
-      ? null
+      ? "split"
       : salePaymentByMethod.momo > 0 ? "momo" : salePaymentByMethod.cash > 0 ? "cash" : null;
     const transaction = {
       id: transactionId,
@@ -568,6 +549,7 @@ export async function recordCreditSale({
       note: cleanTransactionNote,
       ...(dueDate && !installmentPlan && { dueDate }),
       ...(salePaymentPesewas < amountPesewas && debtResult?.isAddon && { addonAmountPesewas: amountPesewas }),
+      creditSaleGrossPesewas: amountPesewas,
       creditExtendedPesewas: amountPesewas - salePaymentPesewas,
       createdAt: now,
       timestamp: now,
@@ -577,6 +559,14 @@ export async function recordCreditSale({
     };
     await db.transactions.add(transaction);
     const updatedCustomer = await refreshCustomerDebtBalance(customer, cleanName, now);
+    const remainingCustomerDebts = await db.debts
+      .where("status")
+      .equals("unpaid")
+      .and((debt) => (debt.customer_name ?? debt.customerName ?? "").trim().toLowerCase() === cleanName.toLowerCase())
+      .toArray();
+    const activeInstallmentDebt = remainingCustomerDebts
+      .filter((debt) => debt.isInstallmentPlan && debt.nextDueDate)
+      .sort((left, right) => left.nextDueDate.localeCompare(right.nextDueDate))[0];
 
     return {
       customerId: updatedCustomer?.id ?? "",
@@ -590,8 +580,10 @@ export async function recordCreditSale({
       totalDebtPesewas: updatedCustomer?.totalDebtPesewas ?? remainingCreditPesewas,
       dueDate: installmentPlan?.nextDueDate || dueDate,
       installmentPlan,
+      debtAfter: activeInstallmentDebt ? getDebtState(activeInstallmentDebt) : null,
       initialPaymentParts: normalizedPaymentParts,
-      transactionId
+      transactionId,
+      saleTransaction: transaction
     };
   });
 }

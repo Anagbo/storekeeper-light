@@ -1,5 +1,6 @@
 import { db } from "../db/db.js";
 import {
+  getDebtAdjustmentReasonLabel,
   getHistoryCreditAmount,
   getHistoryTimestampValue,
   summarizeCustomerHistory
@@ -80,6 +81,39 @@ export async function loadCustomerHistory(customerId, customerName) {
   for (const transaction of transactions.values()) {
     if (transaction.type === "income_reversal" || reversedTransactionIds.has(transaction.id)) continue;
     const timestamp = getTransactionTimestamp(transaction);
+    if (transaction.type === "manual_debt") {
+      const creditAmount = getHistoryCreditAmount(transaction);
+      if (creditAmount > 0) {
+        events.push({
+          id: `manual-debt-${transaction.id}`,
+          type: "manual_debt",
+          timestamp,
+          amountPesewas: creditAmount,
+          detail: "Added to debt",
+          note: transaction.note?.trim() || ""
+        });
+      }
+      continue;
+    }
+    if (transaction.type === "debt_adjustment") {
+      const deltaPesewas = transaction.deltaPesewas;
+      if (Number.isSafeInteger(deltaPesewas) && deltaPesewas !== 0) {
+        events.push({
+          id: `adjustment-${transaction.id}`,
+          type: "adjustment",
+          timestamp,
+          amountPesewas: Math.abs(deltaPesewas),
+          deltaPesewas,
+          previousBalancePesewas: transaction.previousBalancePesewas,
+          newBalancePesewas: transaction.newBalancePesewas,
+          reasonCode: transaction.reasonCode,
+          reasonNote: transaction.reasonNote?.trim() || "",
+          reasonLabel: getDebtAdjustmentReasonLabel(transaction.reasonCode),
+          detail: transaction.reasonNote?.trim() || getDebtAdjustmentReasonLabel(transaction.reasonCode)
+        });
+      }
+      continue;
+    }
     if (transaction.type === "installment_sale" || transaction.type === "installment_addon") {
       const creditAmount = getHistoryCreditAmount(transaction);
       if (creditAmount > 0) {

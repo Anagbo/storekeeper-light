@@ -252,7 +252,10 @@ export function HowManyItem({ params, onBack, onReplace }) {
   const product = params.product;
   const unitPricePesewas = params.unitPricePesewas ??
     (product ? toPesewas(product.default_price) : null);
-  const [quantity, setQuantity] = useState(1);
+  const isEditingExisting = params.mode === "edit" || params.setQuantity === true;
+  const [quantity, setQuantity] = useState(() => (
+    Number.isSafeInteger(params.quantity) && params.quantity > 0 ? params.quantity : 1
+  ));
   const [error, setError] = useState("");
 
   function addToSale() {
@@ -267,7 +270,7 @@ export function HowManyItem({ params, onBack, onReplace }) {
       const existing = currentItems.find((item) => item.productId === product.id);
       const nextItems = existing
         ? currentItems.map((item) => item.productId === product.id
-          ? { ...item, quantity: item.quantity + quantity }
+          ? { ...item, quantity: isEditingExisting ? quantity : item.quantity + quantity }
           : item)
         : [...currentItems, {
           productId: product.id,

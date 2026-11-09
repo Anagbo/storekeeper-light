@@ -3,7 +3,9 @@ import { getTransactionTimestamp } from "./money.js";
 const SALE_TYPES = new Set(["sale", "cash_sale", "credit_sale", "installment_sale", "installment_addon"]);
 
 function getAmount(transaction) {
-  const amount = transaction.amountPesewas ?? transaction.total_amount;
+  const amount = transaction.type === "manual_debt"
+    ? transaction.creditExtendedPesewas ?? transaction.amountPesewas ?? transaction.total_amount
+    : transaction.amountPesewas ?? transaction.total_amount;
   if (!Number.isSafeInteger(amount) || amount < 0) {
     throw new RangeError(`Transaction ${transaction.id ?? "(unknown)"} has an invalid pesewa amount.`);
   }
@@ -54,6 +56,8 @@ export function createPosTransactionRows(transactions) {
       (transaction.type === "sale" && transaction.paymentType === "credit");
     const isInstallmentSale = transaction.type === "installment_sale" || transaction.type === "installment_addon";
     const isPayment = isDebtPayment(transaction);
+    const isAdjustment = transaction.type === "debt_adjustment";
+    const isDebtAdded = transaction.type === "manual_debt";
     const paymentMethod = getPaymentMethod(transaction);
     const paidExpensePesewas = isExpense
       ? getOptionalAmount(transaction.paidAmountPesewas, amountPesewas, "Expense payment")
@@ -109,9 +113,9 @@ export function createPosTransactionRows(transactions) {
       timestamp,
       kind: isExpense
         ? paidExpensePesewas > 0 || owedExpensePesewas === 0 ? "spent" : "credit"
-        : isPayment ? "payment" : isSale ? "sold" : "other",
+      : isPayment ? "payment" : isSale ? "sold" : isAdjustment ? "adjustment" : isDebtAdded ? "debt_added" : "other",
       isSale,
-      isCredit: owedPesewas > 0 || owedExpensePesewas > 0,
+      isCredit: isDebtAdded || owedPesewas > 0 || owedExpensePesewas > 0,
       amountPesewas: isExpense
         ? paidExpensePesewas > 0 ? paidExpensePesewas : owedExpensePesewas
         : isCreditSale && cashReceivedPesewas === 0
@@ -124,7 +128,8 @@ export function createPosTransactionRows(transactions) {
       cashPesewas: isPayment || isSale ? cashPesewas : 0,
       momoPesewas: isPayment || isSale ? momoPesewas : 0,
       customerName,
-      category: transaction.category ?? transaction.expenseCategory ?? transaction.note ?? ""
+      category: transaction.category ?? transaction.expenseCategory ?? transaction.note ?? "",
+      adjustmentDeltaPesewas: isAdjustment ? transaction.deltaPesewas : 0
     };
   });
   const groupedRows = [];

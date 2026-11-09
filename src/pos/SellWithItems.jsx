@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Minus, Plus, Search, Trash2 } from "lucide-react";
 import { db } from "../db/db.js";
-import { formatGhs, toPesewas } from "../lib/money.js";
+import { formatGhs, formatGhsCompactAmount, toPesewas } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
 import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
@@ -24,11 +24,25 @@ function useSellableProducts() {
   }, [], undefined);
 }
 
+function getCart(params) {
+  const items = normalizeSaleItems(params.saleItems ?? []);
+  if (items.length > 0 || !Number.isSafeInteger(params.amountPesewas) || params.amountPesewas <= 0) {
+    return items;
+  }
+  return normalizeSaleItems([{
+    productId: null,
+    name: "Other amount",
+    subtitle: "From Sell",
+    quantity: 1,
+    unitPricePesewas: params.amountPesewas
+  }, ...items]);
+}
+
 export default function SellWithItems({ params = {}, onBack, onNavigate, onUpdateParams }) {
   const result = useSellableProducts();
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
-  const cart = normalizeSaleItems(params.saleItems ?? []);
+  const cart = getCart(params);
   const total = totalSaleItemsPesewas(cart);
   const normalizedQuery = query.trim().toLowerCase();
   const products = useMemo(() => (result?.products ?? []).filter((product) =>
@@ -38,8 +52,8 @@ export default function SellWithItems({ params = {}, onBack, onNavigate, onUpdat
   function updateCart(nextCart) {
     try {
       const normalized = normalizeSaleItems(nextCart);
-      totalSaleItemsPesewas(normalized);
-      onUpdateParams({ saleItems: normalized });
+      const nextTotal = totalSaleItemsPesewas(normalized);
+      onUpdateParams({ amountPesewas: nextTotal, saleItems: normalized });
       setError("");
     } catch (cartError) {
       setError(cartError instanceof RangeError ? t("sellItems.totalTooLarge") : t("sellItems.updateFailed"));
@@ -81,47 +95,113 @@ export default function SellWithItems({ params = {}, onBack, onNavigate, onUpdat
       ) : result.error ? (
         <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{result.error}</p>
       ) : (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {products.map((product) => (
-            <button key={product.id} type="button" onClick={() => chooseProduct(product)} className="flex min-h-[72px] items-center gap-2 rounded-2xl border-2 border-slate-500 bg-white px-3 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800">
-              <span className="min-w-0 flex-1">
-                <strong className="block whitespace-normal break-words text-base">{product.name}</strong>
-                <span className="block whitespace-normal break-words text-sm font-bold text-emerald-900">{product.default_price > 0 ? formatGhs(toPesewas(product.default_price)) : t("items.setPrice")}</span>
-              </span>
-              <Plus size={20} className="shrink-0 text-emerald-900" aria-hidden="true" />
-            </button>
-          ))}
-          <button type="button" onClick={() => onNavigate("NewItem")} className="min-h-[72px] rounded-2xl border-[3px] border-dashed border-emerald-900 bg-white px-2 text-lg font-extrabold text-emerald-900">
-            <Plus size={22} className="mr-1 inline" aria-hidden="true" />{t("sellItems.newItem")}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {products.map((product) => {
+            const unitPrice = toPesewas(product.default_price);
+            const hasPrice = Number.isSafeInteger(unitPrice) && unitPrice > 0;
+            return (
+              <button
+                key={product.id}
+                type="button"
+                onClick={() => chooseProduct(product)}
+                className="flex min-h-[72px] items-center gap-2.5 rounded-[18px] border-2 border-slate-500 bg-white px-2.5 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800"
+              >
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-emerald-900 text-lg font-extrabold text-white">
+                  {product.name.charAt(0).toUpperCase()}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <strong className="block truncate text-base font-extrabold text-slate-900">{product.name}</strong>
+                  <span className="block whitespace-nowrap text-sm font-bold text-emerald-900">
+                    {hasPrice ? formatGhsCompactAmount(unitPrice) : t("items.setPrice")}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => onNavigate("NewItem")}
+            className="min-h-[72px] rounded-[18px] border-[3px] border-dashed border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800"
+          >
+            + {t("sellItems.newItem")}
           </button>
-          {!products.length && <p className="col-span-2 rounded-xl border-2 border-slate-300 bg-white p-3 font-semibold">{t("sellItems.noMatches")}</p>}
+          {!products.length && <p className="col-span-2 sm:col-span-3 rounded-xl border-2 border-slate-300 bg-white p-3 font-semibold">{t("sellItems.noMatches")}</p>}
         </div>
       )}
 
       {cart.length > 0 && (
-        <PosCard className="space-y-2 p-3">
-          {cart.map((line) => (
-            <div key={line.productId} className="flex flex-col gap-2 border-b border-slate-200 pb-2 last:border-b-0 last:pb-0">
-              <div className="flex items-start justify-between gap-3">
-                <strong className="min-w-0 flex-1 whitespace-normal break-words text-base">{line.name}</strong>
-                <strong className="shrink-0 text-right">{formatGhs(line.total_amount)}</strong>
-              </div>
-              <div className="flex items-center gap-2">
-                <button type="button" aria-label={t("sellItems.remove", { name: line.name })} onClick={() => updateCart(cart.filter((item) => item.productId !== line.productId))} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-slate-500 bg-white text-rose-900"><Trash2 size={20} aria-hidden="true" /></button>
-                <button type="button" aria-label={t("sellItems.less", { name: line.name })} onClick={() => updateCart(cart.map((item) => item.productId === line.productId ? { ...item, quantity: Math.max(1, item.quantity - 1) } : item))} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-slate-500 bg-white"><Minus size={20} aria-hidden="true" /></button>
-                <span aria-label={t("sellItems.quantity", { name: line.name })} className="min-w-7 text-center text-lg font-extrabold">{line.quantity}</span>
-                <button type="button" aria-label={t("sellItems.more", { name: line.name })} onClick={() => updateCart(cart.map((item) => item.productId === line.productId ? { ...item, quantity: item.quantity + 1 } : item))} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-slate-500 bg-white"><Plus size={20} aria-hidden="true" /></button>
-                <span className="min-w-0 flex-1 text-right text-sm font-semibold text-slate-700">{t("sellItems.each", { amount: formatGhs(line.unitPricePesewas) })}</span>
-              </div>
+        <section className="space-y-2 rounded-[18px] border-2 border-slate-500 bg-white p-3">
+          {cart.map((line) => line.productId === null ? (
+            <div key="other-amount" className="flex min-h-12 items-center gap-0.5 border-b border-slate-200 pb-2 last:border-b-0 last:pb-0 sm:gap-2">
+              <span className="min-w-0 flex-1">
+                <strong className="block truncate text-base font-extrabold text-slate-900 sm:text-[19px]">{line.name}</strong>
+                <span className="block text-sm text-slate-700">{line.subtitle}</span>
+              </span>
+              <b className="ml-auto w-20 shrink-0 text-right text-sm font-extrabold tabular-nums text-slate-900 sm:text-[19px]">
+                {formatGhsCompactAmount(line.total_amount)}
+              </b>
+              <button
+                type="button"
+                aria-label={t("sellItems.remove", { name: line.name })}
+                onClick={() => updateCart(cart.filter((item) => item.productId !== null))}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-[12px] border-2 border-slate-500 bg-white text-rose-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 sm:h-12 sm:w-12"
+              >
+                <Trash2 size={20} className="sm:h-[22px] sm:w-[22px]" aria-hidden="true" />
+              </button>
+            </div>
+          ) : (
+            <div key={line.productId} className="flex min-h-12 items-center gap-0.5 border-b border-slate-200 pb-2 last:border-b-0 last:pb-0 sm:gap-2">
+              <strong className="min-w-0 flex-1 truncate text-base font-extrabold text-slate-900 sm:text-[19px]">{line.name}</strong>
+              <button
+                type="button"
+                aria-label={t("sellItems.less", { name: line.name })}
+                disabled={line.quantity === 1}
+                onClick={() => updateCart(cart.map((item) => item.productId === line.productId ? { ...item, quantity: item.quantity - 1 } : item))}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-[12px] border-2 border-slate-500 bg-white text-xl font-extrabold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-40 sm:h-12 sm:w-12"
+              >
+                −
+              </button>
+              <button
+                type="button"
+                aria-label={t("sellItems.quantity", { name: line.name })}
+                onClick={() => onNavigate("HowManyItem", {
+                  product: { id: line.productId, name: line.name, default_price: line.unitPricePesewas / 100 },
+                  quantity: line.quantity,
+                  saleItems: cart,
+                  mode: "edit"
+                })}
+                className="flex h-9 min-w-8 shrink-0 items-center justify-center border-0 border-b-[3px] border-emerald-900 bg-transparent px-0 text-base font-extrabold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 sm:h-12 sm:min-w-11 sm:px-1 sm:text-[22px]"
+              >
+                {line.quantity}
+              </button>
+              <button
+                type="button"
+                aria-label={t("sellItems.more", { name: line.name })}
+                onClick={() => updateCart(cart.map((item) => item.productId === line.productId ? { ...item, quantity: item.quantity + 1 } : item))}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-[12px] border-2 border-slate-500 bg-white text-xl font-extrabold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 sm:h-12 sm:w-12"
+              >
+                +
+              </button>
+              <b className="ml-auto w-20 shrink-0 text-right text-sm font-extrabold tabular-nums text-slate-900 sm:text-[19px]">
+                {formatGhsCompactAmount(line.total_amount)}
+              </b>
+              <button
+                type="button"
+                aria-label={t("sellItems.remove", { name: line.name })}
+                onClick={() => updateCart(cart.filter((item) => item.productId !== line.productId))}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-[12px] border-2 border-slate-500 bg-white text-rose-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 sm:h-12 sm:w-12"
+              >
+                <Trash2 size={20} className="sm:h-[22px] sm:w-[22px]" aria-hidden="true" />
+              </button>
             </div>
           ))}
-        </PosCard>
+        </section>
       )}
 
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
-      <div className="mt-auto grid grid-cols-2 gap-2">
+      <div className="mt-auto mb-2 grid grid-cols-2 gap-2">
         <PosSecondaryButton type="button" onClick={onBack}>{t("sellItems.back")}</PosSecondaryButton>
-        <PosPrimaryButton type="button" disabled={!cart.length || result === undefined} onClick={() => onNavigate("Sell", { amountPesewas: total, saleItems: cart })}>
+        <PosPrimaryButton type="button" disabled={!cart.length || result === undefined} onClick={() => onNavigate("ReviewAndPay", { amountPesewas: total, saleItems: cart })}>
           {t("sellItems.next", { amount: formatGhs(total) })}
         </PosPrimaryButton>
       </div>

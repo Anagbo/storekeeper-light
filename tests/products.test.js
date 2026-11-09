@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { normalizeProductInput } from "../src/db/products.js";
 
-test("item prices are optional but must be positive valid GHS amounts when entered", () => {
+test("item prices are optional but must be positive valid GH₵ amounts when entered", () => {
   assert.deepEqual(normalizeProductInput({ name: "  Bread  " }), {
     name: "Bread",
     default_price: 0
@@ -12,7 +12,7 @@ test("item prices are optional but must be positive valid GHS amounts when enter
     default_price: 3.5
   });
   assert.throws(() => normalizeProductInput({ name: "Water", price: "not money" }), /valid item price/);
-  assert.throws(() => normalizeProductInput({ name: "Water", price: "0" }), /greater than GHS 0.00/);
+  assert.throws(() => normalizeProductInput({ name: "Water", price: "0" }), /greater than GH₵0.00/);
 });
 
 test("item names are required and limited to 80 characters", () => {

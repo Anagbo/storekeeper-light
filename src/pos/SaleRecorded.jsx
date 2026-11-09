@@ -1,9 +1,19 @@
 import { useState } from "react";
 import { Check, Plus } from "lucide-react";
 import { formatGhs } from "../lib/money.js";
-import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag } from "./PosComponents.jsx";
+import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
-import { buildSaleReceiptMessage, getSaleReceiptDetails } from "./saleReceipt.js";
+import { getSaleReceiptDetails } from "./saleReceipt.js";
+import { getSaleReceiptText } from "./receiptTemplates.js";
+
+function WhatsAppIcon({ size = 26 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
+      <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2z" fill="#25D366" />
+      <path d="M8.5 7.2c.3-.5.8-.5 1.1-.3l1 2c.1.3 0 .6-.2.8l-.6.7c.7 1.3 1.7 2.3 3 3l.8-.6c.2-.2.5-.2.8-.1l1.9 1c.3.2.4.6.2 1-.4 1-1.4 1.6-2.4 1.4-3.2-.7-6-3.4-6.8-6.5-.1-.6.1-1.1.3-1.6z" fill="#fff" />
+    </svg>
+  );
+}
 
 export default function SaleRecorded({ transaction, shopName, onDone, onNewSale }) {
   const [shareStatus, setShareStatus] = useState("");
@@ -14,14 +24,18 @@ export default function SaleRecorded({ transaction, shopName, onDone, onNewSale 
     ? t("saleRecorded.today")
     : when.toLocaleDateString("en-GH", { day: "numeric", month: "short", year: "numeric" });
 
-  async function shareReceipt() {
-    const text = buildSaleReceiptMessage(transaction, shopName);
+  const receiptText = getSaleReceiptText(transaction, shopName);
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(receiptText)}`;
+  const owedPesewas = transaction?.creditExtendedPesewas ?? 0;
+  const customerName = transaction?.customer_name ?? transaction?.customerName ?? "";
+
+  async function shareReceiptFallback() {
     try {
       if (typeof navigator.share === "function") {
-        await navigator.share({ title: t("saleRecorded.title"), text });
+        await navigator.share({ title: t("saleRecorded.title"), text: receiptText });
         setShareStatus(t("saleRecorded.shared"));
       } else if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
+        await navigator.clipboard.writeText(receiptText);
         setShareStatus(t("saleRecorded.copied"));
       } else {
         setShareStatus(t("saleRecorded.shareUnavailable"));
@@ -47,30 +61,65 @@ export default function SaleRecorded({ transaction, shopName, onDone, onNewSale 
       <PosCard className="space-y-2">
         {details.items.length ? details.items.map((item, index) => (
           <div key={`${item.name}-${index}`} className="flex justify-between gap-3 text-lg">
-            <span className="min-w-0 flex-1 truncate">{item.name} × {item.quantity}</span>
-            <strong className="shrink-0">{formatGhs(item.amountPesewas)}</strong>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate">{item.name} × {item.quantity}</span>
+              {item.subtitle && <span className="block text-sm text-slate-700">{item.subtitle}</span>}
+            </span>
+            <strong className="shrink-0">{formatGhs(item.amountPesewas).replace("GH₵", "")}</strong>
           </div>
         )) : (
           <div className="flex justify-between gap-3 text-lg">
             <span>{t("saleRecorded.sale")}</span>
-            <strong>{formatGhs(details.amountPesewas)}</strong>
+            <strong>{formatGhs(details.amountPesewas).replace("GH₵", "")}</strong>
           </div>
         )}
         <div className="border-t-2 border-dashed border-slate-400 pt-2">
           {details.paymentMethod === "split" ? (
-            <div className="flex flex-wrap gap-2">
-              <PosStatusTag>{t("saleRecorded.method.cash")} · {formatGhs(details.cashReceivedPesewas)}</PosStatusTag>
-              <PosStatusTag>{t("saleRecorded.method.momo")} · {formatGhs(details.momoReceivedPesewas)}</PosStatusTag>
+            <div className="flex flex-col gap-1 text-lg">
+              <div className="flex justify-between gap-2">
+                <span>{t("saleRecorded.method.cash")}</span>
+                <strong>{formatGhs(details.cashReceivedPesewas)}</strong>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span>{t("saleRecorded.method.momo")}</span>
+                <strong>{formatGhs(details.momoReceivedPesewas)}</strong>
+              </div>
+              <div className="border-t-2 border-dashed border-slate-400 pt-1">
+                <div className="flex justify-between gap-2">
+                  <span>{customerName ? t("collect.customerStillOwes", { name: customerName }) : t("credit.owed")}</span>
+                  <strong className="text-rose-900">{formatGhs(owedPesewas)}</strong>
+                </div>
+              </div>
             </div>
-          ) : (
-            <PosStatusTag>{t(`saleRecorded.method.${details.paymentMethod}`)} · {formatGhs(details.amountPesewas)}</PosStatusTag>
-          )}
+            ) : (
+              <div className="flex justify-between gap-2 text-lg">
+                <span>{t(`saleRecorded.method.${details.paymentMethod}`)}</span>
+                <strong>{formatGhs(details.amountPesewas)}</strong>
+              </div>
+            )}
         </div>
       </PosCard>
 
       <div className="grid grid-cols-2 gap-2">
-        <PosSecondaryButton type="button" onClick={() => void shareReceipt()}>{t("saleRecorded.sendReceipt")}</PosSecondaryButton>
-        <PosSecondaryButton type="button" onClick={onDone}>{t("saleRecorded.done")}</PosSecondaryButton>
+        <a
+          href={whatsappUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => {
+            // Also trigger copy or fallback if opening external link isn't supported
+            if (!whatsappUrl) {
+              e.preventDefault();
+              void shareReceiptFallback();
+            }
+          }}
+          className="flex h-14 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-center text-[17px] font-extrabold text-emerald-900"
+        >
+          <WhatsAppIcon size={26} />
+          <span>{t("saleRecorded.sendReceipt")}</span>
+        </a>
+        <PosSecondaryButton type="button" onClick={onDone} className="h-14 min-h-0 rounded-2xl border-2 border-slate-900 text-[17px]">
+          {t("saleRecorded.done")}
+        </PosSecondaryButton>
       </div>
       {shareStatus && <p role="status" className="text-center text-sm font-semibold text-slate-700">{shareStatus}</p>}
       <PosPrimaryButton type="button" onClick={onNewSale} className="mt-auto h-[68px] text-2xl">

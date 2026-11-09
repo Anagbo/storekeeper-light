@@ -192,6 +192,18 @@ db.version(12).stores({
   suppliers: "id, name, nameLower, phone, createdAt, updatedAt"
 });
 
+db.version(13).stores({
+  products: "++id, name, category, default_price, updatedAt, syncStatus, synced, [name+updatedAt], [syncStatus+updatedAt], [category+name]",
+  transactions: "id, type, customerId, supplierId, createdAt, timestamp, updatedAt, syncStatus, synced, [type+createdAt], [syncStatus+createdAt], [createdAt+id], [type+timestamp], [synced+timestamp], [supplierId+createdAt]",
+  debts: "id, customerId, customerName, customer_name, phone, customer_phone, status, amountPesewas, updatedAt, syncStatus, synced, [status+updatedAt], [customerName+status], [syncStatus+updatedAt], [status+updatedAt+id], [status+amountPesewas+id], [status+created_at], nextDueDate",
+  customers: "id, customerId, name, nameLower, phone, totalDebtPesewas, createdAt, updatedAt",
+  settings: "key",
+  payments: "id, customerId, debtId, createdAt, paymentMethod, syncStatus, synced, [customerId+createdAt], [debtId+createdAt], [syncStatus+createdAt]",
+  suppliers: "id, name, nameLower, phone, createdAt, updatedAt",
+  planPayments: "id, planId, createdAt, status, method, [planId+createdAt]",
+  draftSales: "id, status, flow, updatedAt"
+});
+
 export const storagePersistPromise =
   typeof navigator !== "undefined" && navigator.storage?.persist
     ? navigator.storage.persist().catch((error) => {

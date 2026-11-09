@@ -288,7 +288,7 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
       const amountPesewas = toPesewas(price);
       if (!amountPesewas || amountPesewas <= 0) {
         playErrorChime();
-        setError("Enter a total price greater than GHS 0.00.");
+        setError("Enter a total price greater than GH₵0.00.");
         return;
       }
       if (!Number.isSafeInteger(amountPesewas) || amountPesewas <= 0) {
@@ -541,7 +541,7 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-1.5 block text-sm font-semibold">Total price (GHS)</span>
+                  <span className="mb-1.5 block text-sm font-semibold">Total price (GH₵)</span>
                   <input
                     required
                     type="number"
@@ -556,7 +556,7 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
                 </label>
               </div>
               <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-leaf">
-                Total: GHS {(Number(price) || 0).toFixed(2)}
+                Total: GH₵{(Number(price) || 0).toFixed(2)}
                 {paymentType === "credit" && " · Added to customer debts"}
               </p>
               {paymentType === "credit" && (
@@ -584,7 +584,7 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
                   >
                     <fieldset disabled={!isInstallmentPlan} className="min-h-0 overflow-hidden">
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <label className="text-sm font-semibold">Installment amount (GHS)
+                      <label className="text-sm font-semibold">Installment amount (GH₵)
                         <input type="number" inputMode="decimal" min="0.01" max={(maximumInstallmentPesewas / 100).toFixed(2)} step="0.01" required value={installmentAmount} onChange={(event) => {
                           const nextAmount = toPesewas(event.target.value);
                           setInstallmentAmount(Number.isSafeInteger(nextAmount) && nextAmount > maximumInstallmentPesewas
@@ -669,7 +669,7 @@ export default function QuickSaleModal({ type, onClose, onSaved }) {
             </>
           ) : (
             <label className="block">
-              <span className="mb-1.5 block text-sm font-semibold">Amount (GHS)</span>
+              <span className="mb-1.5 block text-sm font-semibold">Amount (GH₵)</span>
               <input
                 autoFocus
                 required

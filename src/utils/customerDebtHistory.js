@@ -31,8 +31,19 @@ export function getHistoryTimestampValue(timestamp) {
   return timestampValue(timestamp);
 }
 
+export function getDebtAdjustmentReasonLabel(reasonCode) {
+  return {
+    wrong_amount: "Wrong amount entered",
+    customer_dispute: "Customer dispute",
+    returned_goods: "Goods returned",
+    debt_forgiven: "Debt forgiven",
+    other: "Other"
+  }[reasonCode] ?? "Correction";
+}
+
 export function getHistoryCreditAmount(transaction) {
-  const amount = transaction.creditExtendedPesewas ??
+  const amount = transaction.creditSaleGrossPesewas ??
+    transaction.creditExtendedPesewas ??
     (transaction.type === "installment_sale" || transaction.type === "installment_addon"
       ? (transaction.amountPesewas ?? transaction.total_amount ?? 0) - (transaction.installmentPaymentPesewas ?? 0)
       : transaction.amountPesewas ?? transaction.total_amount ?? 0);
@@ -41,7 +52,9 @@ export function getHistoryCreditAmount(transaction) {
 
 export function summarizeCustomerHistory(events, currentBalancePesewas) {
   const totalCreditPesewas = events.reduce((sum, event) => (
-    ["credit", "addon"].includes(event.type) ? sum + event.amountPesewas : sum
+    ["credit", "addon", "manual_debt"].includes(event.type)
+      ? sum + event.amountPesewas
+      : event.type === "adjustment" ? sum + event.deltaPesewas : sum
   ), 0);
   const totalPaidPesewas = events.reduce((sum, event) => (
     event.type === "payment" ? sum + event.amountPesewas : sum

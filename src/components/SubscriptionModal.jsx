@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
+import { db } from "../db/db.js";
 
 const DEFAULT_EMAIL = "customer@storekeeper.app";
+const PLANS = [
+  { id: "monthly", label: "Monthly", months: 1, amount: import.meta.env?.VITE_SUBSCRIPTION_MONTHLY_AMOUNT_GHS || "15" },
+  { id: "six_months", label: "6 months", months: 6, amount: import.meta.env?.VITE_SUBSCRIPTION_SIX_MONTHS_AMOUNT_GHS || "75" },
+  { id: "yearly", label: "Yearly", months: 12, amount: import.meta.env?.VITE_SUBSCRIPTION_YEARLY_AMOUNT_GHS || "150" }
+];
 
 export default function SubscriptionModal({
   isOpen,
@@ -9,8 +15,13 @@ export default function SubscriptionModal({
   expiresAt,
   notice,
   lockout = false,
-  isActive = false
+  isActive = false,
+  trialActive = false,
+  trialExpiresAt = "",
+  paymentPending = false,
+  onRetryPayment
 }) {
+  const [selectedPlanId, setSelectedPlanId] = useState("monthly");
   const [email, setEmail] = useState(DEFAULT_EMAIL);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
@@ -35,7 +46,7 @@ export default function SubscriptionModal({
       const response = await fetch("/api/subscription/initiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ email: email.trim(), planId: selectedPlanId }),
         signal: AbortSignal.timeout(20000)
       });
 
@@ -81,10 +92,18 @@ export default function SubscriptionModal({
         throw new Error(`Checkout endpoint returned HTTP ${response.status} with an empty or invalid JSON response.`);
       }
 
-      if (result.success !== true || typeof result.authorization_url !== "string") {
+      if (result.success !== true || typeof result.authorization_url !== "string" || typeof result.reference !== "string") {
         throw new Error(result.error || "Unable to launch checkout. Please try again.");
       }
 
+      await db.settings.put({
+        key: "pendingSubscriptionPayment",
+        value: JSON.stringify({
+          reference: result.reference,
+          planId: selectedPlanId,
+          startedAt: new Date().toISOString()
+        })
+      });
       const checkoutUrl = new URL(result.authorization_url);
       if (checkoutUrl.protocol !== "https:" || checkoutUrl.hostname !== "checkout.paystack.com") {
         throw new Error("Paystack returned an invalid checkout address.");
@@ -112,7 +131,7 @@ export default function SubscriptionModal({
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <p className="text-sm font-medium text-leaf">StoreKeeper Light</p>
-            <h2 id="subscription-title" className="mt-1 text-xl font-bold">Monthly subscription</h2>
+            <h2 id="subscription-title" className="mt-1 text-xl font-bold">Subscription plans</h2>
           </div>
           {!lockout && (
             <button
@@ -138,11 +157,43 @@ export default function SubscriptionModal({
               </p>
             )}
           </div>
+        ) : trialActive ? (
+          <div className="rounded-xl border border-sky-200 bg-sky-50 p-4">
+            <span className="inline-flex min-h-9 items-center rounded-full bg-sky-100 px-3 text-sm font-bold text-sky-800">
+              Trial active
+            </span>
+            {trialExpiresAt && (
+              <p className="mt-3 text-sm text-sky-900">
+                Trial access until {new Date(trialExpiresAt).toLocaleDateString("en-GH")}
+              </p>
+            )}
+          </div>
         ) : (
           <div className="rounded-xl bg-emerald-50 p-4">
-            <p className="text-2xl font-bold text-emerald-950">GHS 15.00 <span className="text-sm font-medium">/ month</span></p>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {PLANS.map((plan) => (
+                <button
+                  key={plan.id}
+                  type="button"
+                  onClick={() => setSelectedPlanId(plan.id)}
+                  className={`rounded-xl border p-3 text-left ${selectedPlanId === plan.id ? "border-emerald-700 bg-white ring-2 ring-emerald-200" : "border-emerald-200 bg-emerald-100/60"}`}
+                >
+                  <span className="block text-sm font-bold">{plan.label}</span>
+                  <span className="mt-1 block text-lg font-bold text-emerald-950">GH₵{plan.amount}</span>
+                </button>
+              ))}
+            </div>
             <p className="mt-1 text-sm text-emerald-900">Pay securely with Mobile Money through Paystack.</p>
             <p className="mt-2 text-xs text-emerald-800">Choose your mobile network and approve the payment in Paystack checkout.</p>
+            {paymentPending && (
+              <button
+                type="button"
+                onClick={onRetryPayment}
+                className="mt-3 min-h-11 rounded-xl border border-emerald-300 bg-white px-3 text-sm font-semibold text-emerald-800"
+              >
+                Verify pending payment
+              </button>
+            )}
           </div>
         )}
         {notice && (
@@ -183,7 +234,9 @@ export default function SubscriptionModal({
               disabled={isProcessing}
               className="flex min-h-12 w-full items-center justify-center rounded-xl bg-emerald-700 px-4 font-semibold text-white disabled:cursor-wait disabled:opacity-60"
             >
-              {isProcessing ? "Launching checkout…" : "Pay GHS 15.00 / Month"}
+              {isProcessing
+                ? "Launching checkout…"
+                : `Pay GH₵${PLANS.find((plan) => plan.id === selectedPlanId)?.amount} / ${PLANS.find((plan) => plan.id === selectedPlanId)?.label}`}
             </button>
           </form>
         )}

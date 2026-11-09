@@ -1,19 +1,30 @@
 import { useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Banknote, CirclePlus, MessageCircle, Phone, ShoppingCart, UserRoundPen, UsersRound } from "lucide-react";
+import { Banknote, CirclePlus, Phone, ShoppingCart, UserRoundPen, UsersRound } from "lucide-react";
 import { db } from "../db/db.js";
-import { formatGhs } from "../lib/money.js";
-import { getFinancialTransactions } from "../utils/financials.js";
+import {
+  formatGhs,
+  getFinancialTransactions,
+  getOutstandingDebtPesewas,
+  summarizePosMoney
+} from "../lib/money.js";
 import { generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { posText as t } from "./i18n.js";
 import {
   getDebtDueLabel,
   getMoneyPeriodRange,
   getMostUrgentCustomerDebt,
-  getOutstandingDebtPesewas,
-  summarizeMoney
 } from "./money.js";
 import { PosCard, PosPage } from "./PosComponents.jsx";
+
+function WhatsAppIcon({ size = 27 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
+      <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2z" fill="#25D366" />
+      <path d="M8.5 7.2c.3-.5.8-.5 1.1-.3l1 2c.1.3 0 .6-.2.8l-.6.7c.7 1.3 1.7 2.3 3 3l.8-.6c.2-.2.5-.2.8-.1l1.9 1c.3.2.4.6.2 1-.4 1-1.4 1.6-2.4 1.4-3.2-.7-6-3.4-6.8-6.5-.1-.6.1-1.1.3-1.6z" fill="#fff" />
+    </svg>
+  );
+}
 
 export default function Home({ onNavigate, onLegacyEntry, notice = "" }) {
   const range = useMemo(() => getMoneyPeriodRange("day"), []);
@@ -23,7 +34,7 @@ export default function Home({ onNavigate, onLegacyEntry, notice = "" }) {
       db.debts.where("status").equals("unpaid").toArray()
     ]);
     return {
-      totals: summarizeMoney(transactions),
+      totals: summarizePosMoney(transactions),
       debtPesewas: getOutstandingDebtPesewas(debts),
       urgentDebt: getMostUrgentCustomerDebt(debts)
     };
@@ -92,7 +103,7 @@ export default function Home({ onNavigate, onLegacyEntry, notice = "" }) {
                 {dialablePhone ? (
                   <>
                     <a href={whatsappLink || undefined} target={whatsappLink ? "_blank" : undefined} rel={whatsappLink ? "noopener noreferrer" : undefined} aria-label={t("home.whatsappCustomer", { name: urgentDebt.customerName })} aria-disabled={!whatsappLink} className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl border-2 border-emerald-900 bg-white text-emerald-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 lg:h-16 lg:w-16 ${whatsappLink ? "" : "pointer-events-none opacity-40"}`}>
-                      <MessageCircle size={27} aria-hidden="true" />
+                      <WhatsAppIcon />
                     </a>
                     <a href={`tel:${dialablePhone}`} aria-label={t("home.callCustomer", { name: urgentDebt.customerName })} className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-slate-300 text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 lg:h-16 lg:w-16">
                       <Phone size={26} aria-hidden="true" />

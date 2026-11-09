@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Dexie from "dexie";
 import { useLiveQuery } from "dexie-react-hooks";
-import { ArrowLeft, Check, LogOut, MessageCircle, Pencil, UserRoundPlus, X } from "lucide-react";
+import { ArrowLeft, Check, LogOut, MessageCircle, Pencil, ReceiptText, UserRoundPlus, X } from "lucide-react";
 import { db } from "../db/db.js";
-import { recordCreditSale, recordDebtPayment } from "../db/debts.js";
-import { upsertCustomer } from "../db/customers.js";
-import { runTransactionWithTimeout } from "../db/runTransactionWithTimeout.js";
+import { recordDebtPayment } from "../db/debts.js";
+import { correctDebtBalance, updateCustomerPhone, updateCustomerProfile } from "../db/debtLedger.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { supabase } from "../lib/supabase.js";
@@ -15,18 +14,18 @@ import GhanaCardBadge from "./GhanaCardBadge.jsx";
 import WhatsAppReminderModal from "./WhatsAppReminderModal.jsx";
 import CustomerDebtHistoryModal from "./CustomerDebtHistoryModal.jsx";
 import { generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
+import { buildCustomerBalanceReceipt } from "../pos/receiptTemplates.js";
 import { playErrorChime, playSuccessChime, speakConfirmation } from "../utils/audioFeedback.js";
 import PaymentMethodToggle from "./PaymentMethodToggle.jsx";
 import {
   createInstallmentReminderLink,
-  getCreditBalanceAfterSale,
   getInstallmentAlertStatus,
   getMaximumInstallmentAmountPesewas,
   getNextCycleDate,
   PAYMENT_FREQUENCIES,
-  localDateString,
-  prepareInstallmentPlan
+  localDateString
 } from "../utils/installments.js";
+import { saveAddedDebt } from "../utils/addDebt.js";
 
 const PAGE_SIZE = 25;
 
@@ -58,7 +57,7 @@ export function ConfirmPaymentModal({ debt, initialAmountPesewas = debt.amountPe
       const amountPesewas = toPesewas(paymentType === "full" ? debt.amountPesewas / 100 : amount);
       if (!Number.isSafeInteger(amountPesewas) || amountPesewas <= 0 || amountPesewas > debt.amountPesewas) {
         playErrorChime();
-        setError(`Enter a payment greater than GHS 0.00 and no more than ${formatGhs(debt.amountPesewas)}.`);
+        setError(`Enter a payment greater than GH₵0.00 and no more than ${formatGhs(debt.amountPesewas)}.`);
         return;
       }
       await onConfirm({ debt, amountPesewas, paymentMethod });
@@ -110,7 +109,7 @@ export function ConfirmPaymentModal({ debt, initialAmountPesewas = debt.amountPe
 
           {paymentType === "partial" && (
             <label htmlFor="partial-payment-amount" className="block text-sm font-semibold">
-              Amount paid (GHS)
+              Amount paid (GH₵)
               <input
                 id="partial-payment-amount"
                 type="number"
@@ -171,10 +170,14 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
   const [error, setError] = useState("");
   const [busyDebtId, setBusyDebtId] = useState(null);
   const [editingDebt, setEditingDebt] = useState(null);
-  const [phoneDraft, setPhoneDraft] = useState("");
-  const [ghanaCardDraft, setGhanaCardDraft] = useState("");
   const [amountDraft, setAmountDraft] = useState("");
+  const [correctionReason, setCorrectionReason] = useState("");
+  const [correctionNote, setCorrectionNote] = useState("");
   const [editError, setEditError] = useState("");
+  const [editingProfileDebt, setEditingProfileDebt] = useState(null);
+  const [profilePhoneDraft, setProfilePhoneDraft] = useState("");
+  const [profileGhanaCardDraft, setProfileGhanaCardDraft] = useState("");
+  const [profileError, setProfileError] = useState("");
   const [paymentDebt, setPaymentDebt] = useState(null);
   const [historyCustomer, setHistoryCustomer] = useState(null);
   const [reminderDebt, setReminderDebt] = useState(null);
@@ -195,6 +198,13 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
       )).slice(0, 8)
     : [];
   const editedBalancePesewas = toPesewas(amountDraft);
+  const editingDebtBalancePesewas = editingDebt?.amountPesewas ?? editingDebt?.total_owed ?? 0;
+  const editedBalanceValid = amountDraft.trim() !== "" &&
+    Number.isSafeInteger(editedBalancePesewas) &&
+    editedBalancePesewas >= 0 &&
+    editedBalancePesewas < editingDebtBalancePesewas;
+  const editReasonValid = Boolean(correctionReason) &&
+    (correctionReason !== "other" || correctionNote.trim() !== "");
   const newDebtAmountPesewas = toPesewas(amount) || 0;
   const selectedCustomerDebtPesewas = selectedDebtCustomer?.totalDebtPesewas ?? 0;
   const maximumInstallmentPesewas = newDebtAmountPesewas > 0
@@ -312,53 +322,20 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
       playErrorChime();
       return;
     }
-    let installmentPlan = null;
-    let initialPaymentPesewas = 0;
-    if (isInstallmentPlan) {
-      try {
-        const preparedPlan = prepareInstallmentPlan({
-          amountPesewas: getCreditBalanceAfterSale(selectedCustomerDebtPesewas, amountPesewas),
-          installmentAmountPesewas: toPesewas(installmentAmount),
-          frequency: installmentFrequency,
-          nextDueDate: installmentStartMode === "today" ? localDateString() : nextDueDate,
-          startToday: installmentStartMode === "today",
-          initialPaymentLimitPesewas: amountPesewas
-        });
-        installmentPlan = preparedPlan.plan;
-        if (installmentStartMode === "today" && !installmentPlan.nextDueDate) {
-          installmentPlan = {
-            ...installmentPlan,
-            nextDueDate: getNextCycleDate(localDateString(), installmentFrequency)
-          };
-        }
-        initialPaymentPesewas = preparedPlan.initialPaymentPesewas;
-      } catch (planError) {
-        playErrorChime();
-        setError(planError.message);
-        return;
-      }
-    }
-    if (!isValidGhanaCardNumber(ghanaCardNumber)) {
-      playErrorChime();
-      setError("Enter a Ghana Card number like GHA-123456789-0 or 1234567890.");
-      return;
-    }
-    const now = Date.now();
-    const cleanCustomerName = customerName.trim();
-    const cleanNote = note.trim();
     try {
-      await recordCreditSale({
-        amountPesewas,
-        name: cleanCustomerName,
+      await saveAddedDebt({
+        amount,
+        customerName,
         phone,
-        ghanaCardNumber: normalizeGhanaCardNumber(ghanaCardNumber),
-        installmentPlan,
-        initialPaymentPesewas,
-        paymentMethod: installmentPaymentMethod,
-        note: cleanNote || "Debt added",
-        itemDescription: cleanNote || "Debt added",
-        transactionNote: `${cleanNote || "Debt added"} · ${cleanCustomerName}`,
-        now
+        ghanaCardNumber,
+        isInstallmentPlan,
+        installmentAmount,
+        installmentFrequency,
+        installmentStartMode,
+        nextDueDate,
+        installmentPaymentMethod,
+        note,
+        existingDebtPesewas: selectedCustomerDebtPesewas
       });
       void requestBackgroundSync();
       playSuccessChime();
@@ -385,7 +362,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
       playErrorChime();
       setError(saveError?.name === "QuotaExceededError"
         ? "The browser reports that its storage quota is full. Free up device storage, then try again."
-        : "This debt could not be saved. Please try again.");
+        : saveError?.message || "This debt could not be saved. Please try again.");
     }
   }
 
@@ -436,29 +413,28 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
     );
   }
 
+  function balanceReceiptLink(debt) {
+    const phone = normalizeWhatsAppPhone(debt.phone || debt.customer_phone);
+    if (!phone) return null;
+    const customerName = debt.customerName || debt.customer_name;
+    const receipt = buildCustomerBalanceReceipt({
+      shopName,
+      customerName,
+      timestamp: Date.now(),
+      balancePesewas: debt.amountPesewas ?? debt.total_owed ?? 0,
+      installmentPesewas: debt.isInstallmentPlan ? debt.installmentAmount : 0,
+      nextDueDate: debt.nextDueDate
+    });
+    return `https://wa.me/${phone.slice(1)}?text=${encodeURIComponent(receipt)}`;
+  }
+
   async function saveWhatsAppPhone(debt, phone) {
-    const now = Date.now();
     try {
-      await runTransactionWithTimeout(db, [db.debts, db.customers], async () => {
-        const updatedCount = await db.debts.update(debt.id, {
-          phone,
-          customer_phone: phone,
-          updatedAt: now,
-          synced: false,
-          syncStatus: "pending"
-        });
-        if (!updatedCount) throw new Error("The customer debt no longer exists.");
-        await upsertCustomer({
-          name: debt.customerName || debt.customer_name,
-          phone,
-          now
-        });
-      });
-      setDebts((current) => current.map((item) => (
-        item.id === debt.id
-          ? { ...item, phone, customer_phone: phone, updatedAt: now, synced: false, syncStatus: "pending" }
-          : item
-      )));
+      const updatedDebts = await updateCustomerPhone({ debt, phone });
+      setDebts((current) => current.map((item) => {
+        const updatedDebt = updatedDebts.find((candidate) => candidate.id === item.id);
+        return updatedDebt ?? item;
+      }));
       void requestBackgroundSync();
     } catch (saveError) {
       console.error("Could not save the WhatsApp number.", saveError);
@@ -545,85 +521,67 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
   }
 
   function editDebt(debt) {
-    const customer = savedCustomers.find((item) => item.nameLower === (debt.customerName || debt.customer_name || "").trim().toLowerCase());
     setEditingDebt(debt);
-    setPhoneDraft(debt.phone ?? "");
-    setGhanaCardDraft(formatGhanaCard(customer?.ghanaCardNumber || debt.ghanaCardNumber || ""));
     setAmountDraft((debt.amountPesewas / 100).toFixed(2));
+    setCorrectionReason("");
+    setCorrectionNote("");
     setEditError("");
+  }
+
+  function editCustomerProfile(debt) {
+    const customer = savedCustomers.find((item) => (
+      (debt.customerId && item.id === debt.customerId) ||
+      item.nameLower === (debt.customerName || debt.customer_name || "").trim().toLowerCase()
+    ));
+    setEditingProfileDebt(debt);
+    setProfilePhoneDraft(customer?.phone ?? debt.phone ?? debt.customer_phone ?? "");
+    setProfileGhanaCardDraft(formatGhanaCard(customer?.ghanaCardNumber || debt.ghanaCardNumber || ""));
+    setProfileError("");
   }
 
   async function saveDebtChanges(event, debt) {
     event.preventDefault();
-    if (phoneDraft.trim() && !normalizeWhatsAppPhone(phoneDraft)) {
-      playErrorChime();
-      setEditError("Enter a valid Ghana number, such as 024 123 4567.");
-      return;
-    }
-    if (!isValidGhanaCardNumber(ghanaCardDraft)) {
-      playErrorChime();
-      setEditError("Enter a Ghana Card number like GHA-123456789-0 or 1234567890.");
-      return;
-    }
     const nextAmountPesewas = toPesewas(amountDraft);
-    if (!nextAmountPesewas || nextAmountPesewas <= 0) {
+    const currentBalancePesewas = debt.amountPesewas ?? debt.total_owed ?? 0;
+    if (amountDraft.trim() === "" || !Number.isSafeInteger(nextAmountPesewas) || nextAmountPesewas < 0) {
       playErrorChime();
-      setEditError("Enter a remaining balance greater than GHS 0.00. Use Mark as Paid to clear the debt.");
+      setEditError("Enter a valid non-negative balance.");
+      return;
+    }
+    if (nextAmountPesewas > currentBalancePesewas) {
+      playErrorChime();
+      setEditError("Corrections cannot increase debt. Use Add to debt.");
+      return;
+    }
+    if (nextAmountPesewas === currentBalancePesewas) {
+      playErrorChime();
+      setEditError("New balance must be lower.");
+      return;
+    }
+    if (!correctionReason) {
+      playErrorChime();
+      setEditError("Choose a reason for correcting the balance.");
+      return;
+    }
+    if (correctionReason === "other" && !correctionNote.trim()) {
+      playErrorChime();
+      setEditError("Add a note when the correction reason is Other.");
       return;
     }
 
-    const now = Date.now();
-    const nextPhone = phoneDraft.trim();
-    const nextGhanaCardNumber = normalizeGhanaCardNumber(ghanaCardDraft);
-    const debtDeltaPesewas = nextAmountPesewas - debt.amountPesewas;
-    const installmentUpdates = debt.isInstallmentPlan && debt.installmentAmount > 0
-      ? (() => {
-          const previousRemaining = debt.installmentsRemaining ?? Math.ceil(debt.amountPesewas / debt.installmentAmount);
-          const nextRemaining = Math.ceil(nextAmountPesewas / debt.installmentAmount);
-          return {
-            installmentsRemaining: nextRemaining,
-            totalInstallments: (debt.totalInstallments ?? previousRemaining) + nextRemaining - previousRemaining
-          };
-        })()
-      : {};
     setBusyDebtId(debt.id);
     setEditError("");
     try {
-      await runTransactionWithTimeout(db, [db.debts, db.customers], async () => {
-        await db.debts.update(debt.id, {
-          phone: nextPhone,
-          customer_phone: nextPhone,
-          ghanaCardNumber: nextGhanaCardNumber,
-          amountPesewas: nextAmountPesewas,
-          total_owed: nextAmountPesewas,
-          ...installmentUpdates,
-          updatedAt: now,
-          synced: false,
-          syncStatus: "pending"
-        });
-        await upsertCustomer({
-          name: debt.customerName,
-          phone: nextPhone,
-          ghanaCardNumber: nextGhanaCardNumber,
-          replaceGhanaCardNumber: true,
-          debtDeltaPesewas,
-          now
-        });
+      const { debt: updatedDebt } = await correctDebtBalance({
+        debtId: debt.id,
+        expectedUpdatedAt: debt.updatedAt,
+        newBalancePesewas: nextAmountPesewas,
+        reasonCode: correctionReason,
+        reasonNote: correctionNote
       });
       setDebts((current) => current.map((item) => (
         item.id === debt.id
-          ? {
-              ...item,
-              phone: nextPhone,
-              customer_phone: nextPhone,
-              ghanaCardNumber: nextGhanaCardNumber,
-              amountPesewas: nextAmountPesewas,
-              total_owed: nextAmountPesewas,
-              ...installmentUpdates,
-              updatedAt: now,
-              synced: false,
-              syncStatus: "pending"
-            }
+          ? updatedDebt
           : item
       )));
       setEditingDebt(null);
@@ -633,9 +591,52 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
     } catch (saveError) {
       console.error("Could not update the customer debt.", saveError);
       playErrorChime();
-      setEditError("The debt could not be updated. Please try again.");
+      setEditError(
+        saveError.message === "The debt changed before the balance could be corrected."
+          ? "This debt changed after you opened the editor, probably because a payment was recorded. Close and reopen the editor before making another correction."
+          : "The debt could not be updated. Please try again."
+      );
     } finally {
       setBusyDebtId(null);
+    }
+  }
+
+  async function saveCustomerProfile(event, debt) {
+    event.preventDefault();
+    setProfileError("");
+    try {
+      const customer = savedCustomers.find((item) => (
+        (debt.customerId && item.id === debt.customerId) ||
+        item.nameLower === (debt.customerName || debt.customer_name || "").trim().toLowerCase()
+      ));
+      const updatedCustomer = await updateCustomerProfile({
+        customerId: customer?.id ?? debt.customerId,
+        name: debt.customerName || debt.customer_name,
+        phone: profilePhoneDraft,
+        ghanaCardNumber: profileGhanaCardDraft,
+        expectedUpdatedAt: customer?.updatedAt
+      });
+      setDebts((current) => current.map((item) => (
+        item.customerId === updatedCustomer.id ||
+        (item.customerName || item.customer_name || "").trim().toLowerCase() === updatedCustomer.nameLower
+          ? {
+              ...item,
+              customerId: updatedCustomer.id,
+              customerName: updatedCustomer.name,
+              customer_name: updatedCustomer.name,
+              phone: updatedCustomer.phone,
+              customer_phone: updatedCustomer.phone,
+              ghanaCardNumber: updatedCustomer.ghanaCardNumber
+            }
+          : item
+      )));
+      setEditingProfileDebt(null);
+      onDataChanged?.();
+      void requestBackgroundSync();
+    } catch (saveError) {
+      console.error("Could not update the customer profile.", saveError);
+      playErrorChime();
+      setProfileError(saveError.message || "The customer profile could not be updated. Please try again.");
     }
   }
 
@@ -786,7 +787,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
             />
             <span className="mt-1 block text-xs font-normal text-slate-500">e.g., GHA-712345678-9 (National ID for debtor verification)</span>
           </label>
-          <label className="block text-sm font-semibold">Amount (GHS) <span className="text-red-600">*</span>
+          <label className="block text-sm font-semibold">Amount (GH₵) <span className="text-red-600">*</span>
             <input
               required
               type="number"
@@ -802,7 +803,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
             />
             <span id="debt-amount-help" className={`mt-1 block text-xs font-normal ${debtFormSubmitted && (!toPesewas(amount) || toPesewas(amount) <= 0) ? "text-red-700" : "text-slate-500"}`}>
               {debtFormSubmitted && (!toPesewas(amount) || toPesewas(amount) <= 0)
-                ? "Enter an amount greater than GHS 0.00."
+                ? "Enter an amount greater than GH₵0.00."
                 : "Required: enter the amount the customer owes."}
             </span>
           </label>
@@ -830,7 +831,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
             >
               <fieldset disabled={!isInstallmentPlan} className="min-h-0 overflow-hidden">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <label className="text-sm font-semibold">Installment amount (GHS)
+                <label className="text-sm font-semibold">Installment amount (GH₵)
                   <input type="number" inputMode="decimal" min="0.01" max={(maximumInstallmentPesewas / 100).toFixed(2)} step="0.01" required value={installmentAmount} onChange={(event) => {
                     const nextAmount = toPesewas(event.target.value);
                     setInstallmentAmount(Number.isSafeInteger(nextAmount) && nextAmount > maximumInstallmentPesewas
@@ -958,6 +959,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
               ghanaCardNumber: customerGhanaCardNumber
             };
             const whatsappUrl = paymentLink(customerDebt);
+            const balanceReceiptUrl = balanceReceiptLink(customerDebt);
             const installmentAlert = debt.isInstallmentPlan
               ? getInstallmentAlertStatus(debt.nextDueDate, debt.frequency)
               : null;
@@ -1011,7 +1013,7 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
                   <p className="shrink-0 text-lg font-bold text-amber-800">{formatGhs(debt.amountPesewas)}</p>
                 </div>
                 {customerPhone ? (
-                  <div className="mt-4 grid grid-cols-2 gap-2">
+                  <div className="mt-4 grid grid-cols-3 gap-2">
                     <a
                       href={whatsappUrl || undefined}
                       target="_blank"
@@ -1025,6 +1027,15 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
                       className="flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-2.5 text-center text-sm font-medium text-emerald-700 transition hover:bg-emerald-100"
                     >
                       <MessageCircle size={17} aria-hidden="true" /> WhatsApp
+                    </a>
+                    <a
+                      href={balanceReceiptUrl || undefined}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Send current balance receipt for ${debt.customerName || debt.customer_name}`}
+                      className="flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-2 py-2.5 text-center text-sm font-medium text-emerald-700 transition hover:bg-emerald-50"
+                    >
+                      <ReceiptText size={17} aria-hidden="true" /> Receipt
                     </a>
                     <a
                       href={`tel:${dialablePhone}`}
@@ -1064,9 +1075,12 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
                     View Payment History
                   </button>
                   <button type="button" onClick={() => editDebt(debt)} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100">
-                    <Pencil size={15} aria-hidden="true" /> Edit Debt
+                    <Pencil size={15} aria-hidden="true" /> Correct Balance
                   </button>
-                  <button type="button" disabled={busyDebtId === debt.id} onClick={() => onCollect ? onCollect(customerDebt) : setPaymentDebt(customerDebt)} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50">
+                  <button type="button" onClick={() => editCustomerProfile(debt)} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100">
+                    <Pencil size={15} aria-hidden="true" /> Edit Contact
+                  </button>
+                  <button type="button" disabled={busyDebtId === debt.id} onClick={() => onCollect ? onCollect(customerDebt) : setPaymentDebt(customerDebt)} className="col-span-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50">
                     <Check size={17} aria-hidden="true" /> Mark as Paid
                   </button>
                 </div>
@@ -1128,13 +1142,13 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
             </div>
             <form onSubmit={(event) => void saveDebtChanges(event, editingDebt)} className="space-y-3">
               <p className="text-sm text-slate-600">{editingDebt.customerName}</p>
-              <label className="block text-sm font-semibold" htmlFor="edit-debt-amount">New remaining balance (GHS)
+              <label className="block text-sm font-semibold" htmlFor="edit-debt-amount">New remaining balance (GH₵)
                 <input
                   id="edit-debt-amount"
                   required
                   type="number"
                   inputMode="decimal"
-                  min="0.01"
+                  min="0"
                   step="0.01"
                   autoFocus
                   value={amountDraft}
@@ -1142,44 +1156,43 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
                   className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 px-3 text-base font-normal outline-none focus:border-leaf focus:ring-2 focus:ring-leaf/20 sm:text-sm"
                 />
               </label>
+              <p className="text-sm font-bold text-slate-800">Now owed: {formatGhs(editingDebtBalancePesewas)}</p>
               <p className="text-xs text-slate-500">
-                {Number.isSafeInteger(editedBalancePesewas) && editedBalancePesewas > 0
-                  ? `Remaining balance after save: ${formatGhs(editedBalancePesewas)}`
-                  : "Enter a valid balance to preview the amount after saving."}
+                {amountDraft.trim() !== "" && Number.isSafeInteger(editedBalancePesewas) && editedBalancePesewas < editingDebtBalancePesewas
+                  ? `This lowers the debt by ${formatGhs(editingDebtBalancePesewas - editedBalancePesewas)}`
+                  : editedBalancePesewas > editingDebtBalancePesewas
+                    ? "Corrections cannot increase debt. Use Add to debt."
+                    : "New balance must be lower."}
               </p>
-              <p className="text-xs text-slate-500">Editing the balance does not record a payment or add a transaction to your history.</p>
-              <label className="block text-sm font-semibold" htmlFor="edit-debt-phone">WhatsApp number <span className="font-normal text-slate-500">(optional)</span>
-                <input
-                  id="edit-debt-phone"
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  maxLength="30"
-                  value={phoneDraft}
-                  onChange={(event) => { setPhoneDraft(event.target.value); setEditError(""); }}
-                  placeholder="024 123 4567"
-                  aria-invalid={Boolean(editError && phoneDraft.trim() && !normalizeWhatsAppPhone(phoneDraft))}
-                  className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 px-3 text-base font-normal outline-none focus:border-leaf focus:ring-2 focus:ring-leaf/20 sm:text-sm"
-                />
+              <p className="text-sm text-slate-700">No cash moves. Use Collect for money received.</p>
+              <label className="block text-sm font-semibold" htmlFor="edit-debt-reason">Reason for correction
+                <select
+                  id="edit-debt-reason"
+                  required
+                  value={correctionReason}
+                  onChange={(event) => { setCorrectionReason(event.target.value); setEditError(""); }}
+                  className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-base font-normal outline-none focus:border-leaf focus:ring-2 focus:ring-leaf/20 sm:text-sm"
+                >
+                  <option value="">Choose a reason</option>
+                  <option value="wrong_amount">Wrong amount entered</option>
+                  <option value="customer_dispute">Customer dispute</option>
+                  <option value="returned_goods">Returned goods</option>
+                  <option value="debt_forgiven">Debt forgiven</option>
+                  <option value="other">Other</option>
+                </select>
               </label>
-              <p className="text-xs text-slate-500">Use a Ghana number, for example 024 123 4567 or +233 24 123 4567.</p>
-              <label className="block text-sm font-semibold" htmlFor="edit-debt-ghana-card">Ghana Card Number <span className="font-normal text-slate-500">(Optional)</span>
-                <input
-                  id="edit-debt-ghana-card"
-                  type="text"
-                  autoComplete="off"
-                  maxLength="15"
-                  value={ghanaCardDraft}
-                  onChange={(event) => {
-                    setGhanaCardDraft(formatGhanaCard(event.target.value));
-                    setEditError("");
-                  }}
-                  placeholder="GHA-123456789-0"
-                  aria-invalid={Boolean(editError && ghanaCardDraft && !isValidGhanaCardNumber(ghanaCardDraft))}
-                  className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 px-3 text-base font-normal uppercase outline-none focus:border-leaf focus:ring-2 focus:ring-leaf/20 sm:text-sm"
-                />
-                <span className="mt-1 block text-xs font-normal text-slate-500">e.g., GHA-712345678-9 (National ID for debtor verification). Leave blank to remove.</span>
-              </label>
+              {correctionReason === "other" && (
+                <label className="block text-sm font-semibold" htmlFor="edit-debt-reason-note">Correction note
+                  <textarea
+                    id="edit-debt-reason-note"
+                    required
+                    rows="3"
+                    value={correctionNote}
+                    onChange={(event) => { setCorrectionNote(event.target.value); setEditError(""); }}
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-base font-normal outline-none focus:border-leaf focus:ring-2 focus:ring-leaf/20 sm:text-sm"
+                  />
+                </label>
+              )}
               {editError && <p role="alert" className="text-sm text-red-700">{editError}</p>}
               <div className="flex flex-col-reverse items-stretch justify-end gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center">
                 <button
@@ -1191,10 +1204,69 @@ export default function DebtLedger({ shopName = "My shop", onReturnToDashboard, 
                 </button>
                 <button
                   type="submit"
-                  disabled={busyDebtId === editingDebt.id}
+                  disabled={busyDebtId === editingDebt.id || !editedBalanceValid || !editReasonValid}
                   className="w-full rounded-xl bg-emerald-700 px-5 py-3 font-medium text-white shadow-sm transition hover:bg-emerald-800 disabled:opacity-50 sm:w-auto"
                 >
                   Save changes
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+      {editingProfileDebt && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-0 sm:items-center sm:p-4" onMouseDown={(event) => event.target === event.currentTarget && setEditingProfileDebt(null)}>
+          <section role="dialog" aria-modal="true" aria-labelledby="edit-customer-contact-title" className="safe-bottom max-h-[92dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-3xl bg-white p-5 shadow-xl sm:rounded-3xl">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-leaf">Customer details</p>
+                <h2 id="edit-customer-contact-title" className="text-lg font-bold">Edit contact</h2>
+              </div>
+              <button type="button" onClick={() => setEditingProfileDebt(null)} aria-label="Close edit contact" className="grid h-10 w-10 place-items-center rounded-full bg-slate-100">
+                <X size={18} aria-hidden="true" />
+              </button>
+            </div>
+            <form onSubmit={(event) => void saveCustomerProfile(event, editingProfileDebt)} className="space-y-3">
+              <p className="text-sm text-slate-600">{editingProfileDebt.customerName || editingProfileDebt.customer_name}</p>
+              <label className="block text-sm font-semibold" htmlFor="edit-customer-phone">WhatsApp number <span className="font-normal text-slate-500">(optional)</span>
+                <input
+                  id="edit-customer-phone"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  maxLength="30"
+                  value={profilePhoneDraft}
+                  onChange={(event) => { setProfilePhoneDraft(event.target.value); setProfileError(""); }}
+                  placeholder="024 123 4567"
+                  aria-invalid={Boolean(profileError && profilePhoneDraft && !normalizeWhatsAppPhone(profilePhoneDraft))}
+                  className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 px-3 text-base font-normal outline-none focus:border-leaf focus:ring-2 focus:ring-leaf/20 sm:text-sm"
+                />
+              </label>
+              <p className="text-xs text-slate-500">Leave blank to remove the saved phone number.</p>
+              <label className="block text-sm font-semibold" htmlFor="edit-customer-ghana-card">Ghana Card Number <span className="font-normal text-slate-500">(optional)</span>
+                <input
+                  id="edit-customer-ghana-card"
+                  type="text"
+                  autoComplete="off"
+                  maxLength="15"
+                  value={profileGhanaCardDraft}
+                  onChange={(event) => {
+                    setProfileGhanaCardDraft(formatGhanaCard(event.target.value));
+                    setProfileError("");
+                  }}
+                  placeholder="GHA-123456789-0"
+                  aria-invalid={Boolean(profileError && profileGhanaCardDraft && !isValidGhanaCardNumber(profileGhanaCardDraft))}
+                  className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 px-3 text-base font-normal uppercase outline-none focus:border-leaf focus:ring-2 focus:ring-leaf/20 sm:text-sm"
+                />
+                <span className="mt-1 block text-xs font-normal text-slate-500">Leave blank to remove the saved Ghana Card number.</span>
+              </label>
+              {profileError && <p role="alert" className="text-sm text-red-700">{profileError}</p>}
+              <div className="flex flex-col-reverse items-stretch justify-end gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center">
+                <button type="button" onClick={() => setEditingProfileDebt(null)} className="w-full rounded-xl bg-slate-100 px-5 py-3 font-medium text-slate-700 transition hover:bg-slate-200 sm:w-auto">
+                  Cancel
+                </button>
+                <button type="submit" className="w-full rounded-xl bg-emerald-700 px-5 py-3 font-medium text-white shadow-sm transition hover:bg-emerald-800 sm:w-auto">
+                  Save contact
                 </button>
               </div>
             </form>

@@ -1,5 +1,4 @@
-const SUBSCRIPTION_AMOUNT_PESEWAS = 1500;
-const SUBSCRIPTION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
+import { addSubscriptionMonths, getSubscriptionPlan } from "./plans.js";
 
 function respond(res, status, body) {
   return res.status(status).setHeader("Content-Type", "application/json; charset=utf-8").json(body);
@@ -21,6 +20,13 @@ export default async function handler(req, res) {
   if (typeof reference !== "string" || !/^[a-zA-Z0-9._=-]{1,100}$/.test(reference)) {
     return respond(res, 400, { error: "A valid Paystack reference is required." });
   }
+  let plan;
+  try {
+    plan = getSubscriptionPlan(req.body?.planId);
+  } catch (error) {
+    return respond(res, 500, { error: error.message });
+  }
+  if (!plan) return respond(res, 400, { error: "Choose a valid subscription plan." });
 
   try {
     const response = await fetch(
@@ -43,11 +49,11 @@ export default async function handler(req, res) {
     if (
       payment.reference !== reference ||
       payment.status !== "success" ||
-      payment.amount !== SUBSCRIPTION_AMOUNT_PESEWAS ||
+      payment.amount !== plan.amountPesewas ||
       payment.currency !== "GHS" ||
       payment.channel !== "mobile_money"
     ) {
-      return respond(res, 402, { error: "Payment is not yet confirmed as a GHS 15.00 Mobile Money subscription." });
+      return respond(res, 402, { error: "Payment is not yet confirmed for the selected Mobile Money subscription plan." });
     }
 
     const paidAt = Date.parse(payment.paid_at);
@@ -58,7 +64,9 @@ export default async function handler(req, res) {
     return respond(res, 200, {
       success: true,
       reference,
-      expiresAt: new Date(paidAt + SUBSCRIPTION_DURATION_MS).toISOString()
+      paidAt: new Date(paidAt).toISOString(),
+      durationMonths: plan.months,
+      expiresAt: addSubscriptionMonths(paidAt, plan.months).toISOString()
     });
   } catch (error) {
     console.error("Could not verify Paystack payment.", error);

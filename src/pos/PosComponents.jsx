@@ -1,14 +1,14 @@
-import { Banknote, BarChart3, Check, Home as HomeIcon, Menu as MenuIcon, ShoppingCart, Smartphone, UsersRound } from "lucide-react";
+import { Banknote, BarChart3, Check, Home as HomeIcon, Menu as MenuIcon, ShoppingCart, Smartphone, UserRound, UsersRound } from "lucide-react";
 import { posText as t } from "./i18n.js";
 
 export function PosPage({ children, className = "", style }) {
-  return <main style={style} className={`mx-auto min-h-screen w-full max-w-3xl px-4 pb-28 pt-5 sm:px-6 lg:max-w-6xl lg:px-8 lg:pb-10 lg:pt-8 ${className}`}>{children}</main>;
+  return <main style={style} className={`mx-auto box-border min-w-0 max-w-full min-h-[calc(100vh-4rem)] w-full overflow-x-hidden overflow-y-auto px-4 pb-28 pt-5 sm:px-6 lg:max-w-6xl lg:px-8 lg:pb-10 lg:pt-8 ${className}`}>{children}</main>;
 }
 
 export function PosHeader({ shopName, statusLabel, onHome, onMenu, menuActive = false, hideMenu = false }) {
   return (
     <header className="sticky top-0 z-30 border-b-[3px] border-slate-900 bg-white px-4 pt-[max(0.5rem,env(safe-area-inset-top))]">
-      <div className="mx-auto flex min-h-16 max-w-6xl items-center gap-3 py-2">
+      <div className="mx-auto flex min-h-16 min-w-0 max-w-6xl items-center gap-3 py-2">
         <button type="button" onClick={onHome} aria-label={t("nav.home")} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-900 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">
           <HomeIcon size={28} aria-hidden="true" />
         </button>
@@ -76,26 +76,37 @@ export function PosCard({ children, className = "" }) {
   return <section className={`rounded-2xl border-2 border-slate-600 bg-white p-4 ${className}`}>{children}</section>;
 }
 
-export function CashAndMomoLabel() {
+export function SplitIcons({ withOwe = false, size = 20, className = "" }) {
+  const isCompact = size <= 14;
+  const isMedium = size <= 18;
+  const plusSize = isCompact
+    ? "text-[9px] font-black leading-none text-slate-800"
+    : isMedium
+      ? "text-xs font-black leading-none text-slate-800"
+      : "text-base font-extrabold leading-none text-slate-950";
+  const gapSize = isCompact ? "gap-0.5" : isMedium ? "gap-1" : "gap-1.5";
+
   return (
-    <span className="flex min-w-0 items-center justify-center">
-      <span className="flex items-center justify-center gap-1.5 whitespace-nowrap text-sm sm:text-base">
-        <Banknote size={18} aria-hidden="true" />
-        <span>Cash</span>
-        <span aria-hidden="true">+</span>
-        <Smartphone size={18} aria-hidden="true" />
-        <span>MoMo</span>
-      </span>
+    <span className={`inline-flex max-w-full shrink-0 items-center justify-center ${gapSize} ${className}`} aria-hidden="true">
+      <Banknote size={size} className="shrink-0" />
+      <span className={plusSize}>+</span>
+      <Smartphone size={size} className="shrink-0" />
+      {withOwe && (
+        <>
+          <span className={plusSize}>+</span>
+          <UserRound size={size} className="shrink-0" />
+        </>
+      )}
     </span>
   );
 }
 
-export function PosStatusTag({ children, tone = "neutral" }) {
+export function PosStatusTag({ children, tone = "neutral", compact = false }) {
   const styles = {
     neutral: "border-slate-700 bg-slate-100 text-slate-950",
     green: "border-emerald-900 bg-emerald-100 text-emerald-950",
     amber: "border-amber-800 bg-amber-100 text-amber-950",
     red: "border-rose-900 bg-rose-100 text-rose-950"
   };
-  return <span className={`inline-flex min-h-8 items-center rounded-lg border-2 px-2.5 py-0.5 text-sm font-extrabold ${styles[tone]}`}>{children}</span>;
+  return <span className={`inline-flex min-h-8 max-w-full items-center rounded-lg border-2 py-0.5 text-sm font-extrabold ${compact ? "px-2" : "px-2.5"} ${styles[tone]}`}>{children}</span>;
 }

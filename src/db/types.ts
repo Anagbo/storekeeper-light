@@ -1,5 +1,10 @@
-export type TransactionType = "sale" | "installment_sale" | "installment_addon" | "expense" | "supplier_payment" | "income" | "debt_payment" | "income_reversal";
+export type TransactionType = "sale" | "installment_sale" | "installment_addon" | "expense" | "supplier_payment" | "income" | "debt_payment" | "income_reversal" | "debt_adjustment";
 export type PaymentMethod = "cash" | "momo";
+export type MomoMethod = "direct" | "paystack";
+export type MomoVerification = "merchant_confirmed" | "verified";
+export type DraftSaleStatus = "draft" | "committed" | "cancelled";
+export type PlanPaymentMethod = "cash" | "momo_direct" | "momo_paystack";
+export type PlanPaymentStatus = "waiting" | "confirmed" | "failed" | "reversed";
 export type DebtStatus = "unpaid" | "paid";
 export type SyncStatus = "pending" | "synced";
 
@@ -30,12 +35,15 @@ export interface Transaction {
   collectionType?: "debt_collection" | "debt_collection_reversal";
   reversalOfCollectionId?: string;
   reversalOfTransactionId?: string;
+  reasonCode?: string;
+  reasonNote?: string;
   debtBefore?: Partial<Debt>;
   debtAfter?: Partial<Debt>;
   installmentPaymentPesewas?: number;
   cashReceivedPesewas?: number;
   momoReceivedPesewas?: number;
   creditExtendedPesewas?: number;
+  creditSaleGrossPesewas?: number;
   addonAmountPesewas?: number;
   paidAmountPesewas?: number;
   owedAmountPesewas?: number;
@@ -84,6 +92,38 @@ export interface Payment {
   paymentMethod: PaymentMethod;
   createdAt: number;
   updatedAt: number;
+  mode?: "cash" | "momo" | "owe";
+  momoMethod?: MomoMethod;
+  verification?: MomoVerification;
+  reference?: string;
+}
+
+export interface DraftSale {
+  id: string;
+  parts: Array<{
+    mode: "cash" | "momo" | "owe";
+    amount: number;
+    momoMethod?: MomoMethod;
+    verification?: MomoVerification;
+    reference?: string;
+  }>;
+  total: number;
+  flow: string;
+  status: DraftSaleStatus;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface PlanPayment {
+  id: string;
+  planId: string;
+  method: PlanPaymentMethod;
+  amountPesewas: number;
+  reference: string;
+  status: PlanPaymentStatus;
+  confirmedBy: string;
+  createdAt: number;
+  originalPaymentId?: string;
 }
 
 export interface Customer {

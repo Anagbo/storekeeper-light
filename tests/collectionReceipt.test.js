@@ -23,9 +23,9 @@ test("receipt previews split payments and the next installment without including
 
   assert.match(message, /^Payment received by Ama's Store\n/);
   assert.match(message, /\nFrom: Ama Owusu\n/);
-  assert.match(message, /\nAmount: GHS 12\.50 \(Cash GHS 5\.00, MoMo GHS 7\.50\)\n/);
-  assert.match(message, /\nStill owed: GHS 8\.75\n/);
-  assert.match(message, /\nNext payment: GHS 3\.00 on /);
+  assert.match(message, /\nAmount: GH₵12\.50 \(Cash GH₵5\.00, MoMo GH₵7\.50\)\n/);
+  assert.match(message, /\nStill owed: GH₵8\.75\n/);
+  assert.match(message, /\nNext payment: GH₵3\.00 on /);
   assert.match(message, /\nThank you!$/);
   assert.doesNotMatch(message, /233|0241234567|Ghana Card/i);
 });

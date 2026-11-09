@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { POS_LINKS, POS_ROUTES, backRoute, createRouteState, pushRoute, replaceRoute } from "../src/pos/routes.js";
@@ -27,18 +28,20 @@ test("every declared route is reachable from Home or first-run setup", () => {
   assert.deepEqual([...knownRoutes].filter((route) => !reachable.has(route)), []);
   const implementedRoutes = new Set([
     "Home", "Menu", "Sell", "MyMoney", "TodaysTransactions",
-    "CollectPayment", "CollectPayPart", "CollectPartByPart", "PaymentReceived", "DebtorDetail",
-    "WhoOwesYou", "NewPerson", "WhenWillTheyPay", "ALittleAtATime", "CreditSaved", "SellWithItems", "SaleRecorded",
+    "CollectPayment", "CollectPayPart", "PaymentReceived", "DebtorDetail",
+    "WhoOwesYou", "NewPerson", "WhenWillTheyPay", "ALittleAtATime", "CreditSaved", "ManualDebtAmount", "ManualDebtSaved", "SellWithItems", "ReviewAndPay", "SaleRecorded",
     "MyItems", "NewItem", "EditItem", "DeleteItem", "YourStarterList", "YourStarterListGrouped", "MoreCategories",
     "HowDoYouWantToSell", "WhatDoYouSell", "HowMuchIsItem", "HowManyItem",
-    "PayPartByPart", "LanguageSettings", "SettingsProfitTools"
+    "MoMoChoice", "MoMoDirect", "PaymentSettings", "MoMoSetup", "MoMoPayment", "MoMoWaiting", "MoMoCode", "MoMoNotCompleted",
+    "MyPlan", "PlanPayMethod", "PlanPayCash", "PlanPayMoMo", "PlanPayPhone", "PlanPaymentResult",
+    "SplitPayment", "LanguageSettings", "SettingsProfitTools"
   ]);
   for (const route of knownRoutes) {
     if (!implementedRoutes.has(route)) assert.ok(posText(`planned.titles.${route}`));
   }
-  assert.ok(POS_LINKS.some((link) => link.from === "CollectPayPart" && link.action === "payPartByPart" && link.to === "CollectPartByPart"));
-  assert.ok(POS_LINKS.some((link) => link.from === "CollectPartByPart" && link.action === "back" && link.to === "CollectPayPart"));
-  assert.ok(POS_LINKS.some((link) => link.from === "CollectPartByPart" && link.action === "received" && link.to === "PaymentReceived"));
+  assert.ok(POS_LINKS.some((link) => link.from === "CollectPayPart" && link.action === "split" && link.to === "SplitPayment"));
+  assert.ok(POS_LINKS.some((link) => link.from === "SplitPayment" && link.action === "back" && link.to === "CollectPayPart"));
+  assert.ok(POS_LINKS.some((link) => link.from === "SplitPayment" && link.action === "received" && link.to === "PaymentReceived"));
 });
 
 test("implemented setup, split payment and settings screens have complete copy", () => {
@@ -57,6 +60,9 @@ test("implemented setup, split payment and settings screens have complete copy",
     "language.english", "language.voiceLanguage", "language.loadFailed",
     "language.saveFailed", "language.saved", "settings.title", "settings.shopName",
     "settings.shopNameRequired", "settings.saveShopName", "settings.soundFeedback",
+    "settings.subscriptionTitle", "settings.subscriptionActive", "settings.subscriptionInactive",
+    "settings.subscriptionExpires", "settings.manageSubscription", "settings.subscribe",
+    "settings.subscriptionTrial",
     "settings.profitTitle", "settings.profitUnavailable", "settings.backup",
     "settings.saveFailed", "settings.saved"
   ];
@@ -65,17 +71,22 @@ test("implemented setup, split payment and settings screens have complete copy",
   assert.equal(posText("split.remainingCredit", { amount: "12.00" }), "Still to pay: 12.00");
 });
 
-test("partial debt collection routes split tender through its own screen", () => {
+test("sale and collection split tender share the SplitPayment route", () => {
   assert.ok(POS_ROUTES.CollectPayPart);
-  assert.ok(POS_ROUTES.CollectPartByPart);
-  assert.ok(POS_LINKS.some((link) => link.from === "PayPartByPart" && link.action === "owe" && link.to === "WhoOwesYou"));
-  assert.ok(POS_LINKS.some((link) => link.from === "PayPartByPart" && link.action === "done" && link.to === "SaleRecorded"));
-  assert.equal(posText("collect.payPartByPart"), "Pay part by part");
-  assert.equal(posText("collect.splitTitle"), "Collect: part by part");
-  assert.equal(posText("collect.splitNeedsBoth"), "Enter an amount for Cash and MoMo.");
-  assert.equal(posText("collect.splitMustMatch", { amount: "50.00" }), "Cash and MoMo must add up to 50.00.");
+  assert.ok(POS_ROUTES.SplitPayment);
+  assert.equal(POS_ROUTES.PayPartByPart, undefined);
+  assert.equal(POS_ROUTES.CollectPartByPart, undefined);
+  assert.ok(POS_LINKS.some((link) => link.from === "Sell" && link.action === "split" && link.to === "SplitPayment"));
+  assert.ok(POS_LINKS.some((link) => link.from === "SplitPayment" && link.action === "owe" && link.to === "WhoOwesYou"));
+  assert.ok(POS_LINKS.some((link) => link.from === "SplitPayment" && link.action === "done" && link.to === "SaleRecorded"));
+  assert.equal(posText("split.title"), "Split payment");
+  assert.equal(posText("sell.split"), "Split payment");
   assert.equal(posText("collect.paymentSplit", { cash: "20.00", momo: "30.00" }), "Cash 20.00 | MoMo 30.00");
-  assert.equal(POS_LINKS.some((link) => link.from === "CollectPayPart" && link.action === "payPartByPart"), true);
+});
+
+test("collection split MoMo handoff preserves the canonical split total", () => {
+  const source = readFileSync(new URL("../src/pos/DebtCollection.jsx", import.meta.url), "utf8");
+  assert.match(source, /onMoMo=\{\(parts, pendingMomoAmountPesewas\) => onNavigate\("MoMoChoice", \{\s*\.\.\.params,\s*splitTotalPesewas: totalPesewas,\s*splitParts: parts/s);
 });
 
 test("item management routes connect from Menu through save, delete and starter-list flows", () => {
@@ -89,8 +100,13 @@ test("item management routes connect from Menu through save, delete and starter-
 test("itemized sales route from Sell into a selectable item cart", () => {
   assert.ok(POS_LINKS.some((link) => link.from === "Sell" && link.to === "SellWithItems"));
   assert.ok(POS_LINKS.some((link) => link.from === "SellWithItems" && link.to === "NewItem"));
-  assert.ok(POS_LINKS.some((link) => link.from === "SellWithItems" && link.to === "Sell"));
+  assert.ok(POS_LINKS.some((link) => link.from === "SellWithItems" && link.to === "ReviewAndPay"));
+  assert.ok(POS_LINKS.some((link) => link.from === "ReviewAndPay" && link.action === "back" && link.to === "SellWithItems"));
+  assert.ok(POS_LINKS.some((link) => link.from === "ReviewAndPay" && link.action === "split" && link.to === "SplitPayment"));
+  assert.ok(POS_LINKS.some((link) => link.from === "ReviewAndPay" && link.action === "owe" && link.to === "WhoOwesYou"));
+  assert.ok(POS_LINKS.some((link) => link.from === "ReviewAndPay" && link.action === "done" && link.to === "SaleRecorded"));
   assert.equal(posText("sellItems.title"), "Sell with items");
+  assert.equal(posText("review.title"), "Review and pay");
 });
 
 test("completed cash and MoMo sales open the implemented receipt screen", () => {
@@ -114,7 +130,73 @@ test("credit sale route links and screen copy are available", () => {
   assert.equal(posText("credit.done"), "Done");
   assert.equal(posText("credit.firstPaymentMethod"), "How is it paid?");
   assert.equal(posText("credit.method.both"), "Both");
-  assert.equal(posText("credit.splitCashTooHigh", { amount: "50.00" }), "Cash must be less than GHS 50.00.");
+  assert.equal(posText("credit.method.owe"), "Owe");
+  assert.equal(posText("credit.splitCashTooHigh", { amount: "50.00" }), "Cash must be less than GH₵50.00.");
+});
+
+test("credit saved forwards the contact-save callback to its editor", () => {
+  const source = readFileSync(new URL("../src/pos/CreditScreens.jsx", import.meta.url), "utf8");
+  assert.match(source, /CreditScreens\(\{[^}]*onSaveCustomerContact[^}]*\}/s);
+  assert.match(source, /route === "CreditSaved"[\s\S]*onSaveCustomerContact=\{onSaveCustomerContact\}/);
+  assert.match(source, /result\?\.initialPaymentPesewas > 0/);
+  assert.match(source, /t\("credit\.paymentRecorded"\)/);
+  assert.match(source, /t\("credit\.paymentRecordedTotal"\)/);
+  assert.match(source, /whatsappLink \? \(/);
+  assert.match(source, /receiptLink \? \(/);
+  assert.match(source, /onClick=\{openContactEditor\}/);
+  assert.match(source, /useLiveQuery\(async \(\) =>/);
+  assert.match(source, /db\.customers\.where\("nameLower"\)/);
+});
+
+test("screen 19 split payment keeps split as the selected payment method", () => {
+  const source = readFileSync(new URL("../src/pos/CreditScreens.jsx", import.meta.url), "utf8");
+  assert.match(source, /onNavigate\("SplitPayment", \{\s*\.\.\.params,\s*paymentMethod: "split",\s*installmentSplit: true/s);
+  assert.match(source, /const initialPaymentParts = paymentAlreadyMadeToday[\s\S]*?carriedPaymentParts[\s\S]*?startToday && paymentMethod === "split"[\s\S]*?\.\.\.splitParts/);
+});
+
+test("screen 19 locks Today and preserves Cash, MoMo and Owe from a Sell split", () => {
+  const source = readFileSync(new URL("../src/pos/CreditScreens.jsx", import.meta.url), "utf8");
+  const saleSplitSource = readFileSync(new URL("../src/pos/SaleSplitPayment.jsx", import.meta.url), "utf8");
+
+  assert.match(source, /paymentAlreadyMadeToday/);
+  assert.match(source, /getPaidPaymentPesewas\(carriedPaymentParts\)/);
+  assert.match(source, /disabled=\{paymentAlreadyMadeToday \|\| alreadyPaidPesewas > 0\}/);
+  assert.match(source, /paymentAlreadyMadeToday\s*\n\s*\? carriedPaymentParts/);
+  assert.match(source, /startToday && !paymentAlreadyMadeToday/);
+  assert.match(saleSplitSource, /paymentAlreadyMadeToday: getPaidPaymentPesewas\(parts\) > 0/);
+  assert.match(saleSplitSource, /initialPaymentPesewas: getPaidPaymentPesewas\(parts\)/);
+});
+
+test("screen 19 Today and Next cycle controls only toggle local payment state", () => {
+  const source = readFileSync(new URL("../src/pos/CreditScreens.jsx", import.meta.url), "utf8");
+  const screenSource = source.slice(source.indexOf("function ALittleAtATime"), source.indexOf("function CreditSaved"));
+  const todayButton = screenSource.match(/<button[\s\S]*?t\("credit\.today"\)[\s\S]*?<\/button>/)?.[0] ?? "";
+  const nextCycleButton = screenSource.match(/<button[\s\S]*?t\("credit\.nextCycle"[\s\S]*?<\/button>/)?.[0] ?? "";
+
+  assert.doesNotMatch(todayButton, /onNavigate/);
+  assert.doesNotMatch(nextCycleButton, /onNavigate/);
+  assert.match(todayButton, /setStartToday\(true\)/);
+  assert.match(nextCycleButton, /setStartToday\(false\)/);
+});
+
+test("MoMo screens 56 and 57 match the prototype layout contract", () => {
+  const source = readFileSync(new URL("../src/pos/MoMoScreens.jsx", import.meta.url), "utf8");
+  const paymentSource = source.slice(source.indexOf("export function MoMoPayment"), source.indexOf("export function MoMoWaiting"));
+  const waitingSource = source.slice(source.indexOf("export function MoMoWaiting"), source.indexOf("export function MoMoCode"));
+
+  assert.match(paymentSource, /Customer pays/);
+  assert.match(paymentSource, /You receive/);
+  assert.match(paymentSource, /Customer[&']apos;s network|Customer's network/);
+  assert.match(paymentSource, /aria-label=\{`Network \$\{item\}`\}/);
+  assert.match(paymentSource, /Customer[&']apos;s MoMo number|Customer's MoMo number/);
+  assert.match(paymentSource, /Customer already paid me directly/);
+  assert.match(paymentSource, /<Smartphone size=\{24\} aria-hidden="true" \/>Send request/);
+  assert.match(waitingSource, /Clock3/);
+  assert.match(waitingSource, /We sent a request to/);
+  assert.match(waitingSource, /Expires in/);
+  assert.match(waitingSource, /Resend request/);
+  assert.match(waitingSource, /Cancel request/);
+  assert.doesNotMatch(waitingSource, /Demo: approved|Demo: declined/);
 });
 
 test("route state preserves parameters on push and returns to them on back", () => {
@@ -128,6 +210,14 @@ test("route state preserves parameters on push and returns to them on back", () 
   assert.equal(replaceRoute(withDebtor, POS_ROUTES.Home).history.length, 1);
 });
 
+test("debtor details return to the originating screen instead of resetting to Home", () => {
+  const source = readFileSync(new URL("../src/pos/PosApp.jsx", import.meta.url), "utf8");
+  const detailBlock = source.match(/route === POS_ROUTES\.DebtorDetail \? \(([\s\S]*?)\) : route === POS_ROUTES\.PeopleWhoOweYou/);
+  assert.ok(detailBlock, "DebtorDetail route block should exist");
+  assert.match(detailBlock[1], /onBack=\{navigateBack\}/);
+  assert.doesNotMatch(detailBlock[1], /switchTab\(POS_ROUTES\.Home\)/);
+});
+
 test("Home and My money summary labels resolve", () => {
   assert.equal(posText("home.moneyIn"), "Money in");
   assert.equal(posText("home.moneySpent"), "Money spent");
@@ -138,6 +228,6 @@ test("Home and My money summary labels resolve", () => {
   assert.equal(posText("money.openSettings"), "Open Settings ›");
   assert.equal(posText("transactions.title"), "Today’s transactions");
   assert.equal(posText("transactions.filter.credit"), "Credit");
-  assert.equal(posText("collect.creditTaken"), "Took on credit");
-  assert.equal(posText("collect.creditAdded"), "Took on credit");
+  assert.equal(posText("collect.creditTaken"), "Added to debt");
+  assert.equal(posText("collect.creditAdded"), "Added to debt");
 });

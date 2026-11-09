@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { ArrowDownLeft, ArrowUpRight, MessageCircle, X } from "lucide-react";
 import { saveCustomerContact } from "../db/customerContact.js";
-import { formatGhs } from "../lib/money.js";
+import { formatGhs, formatGhsAmount } from "../lib/money.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
-import { formatHistoryTimestamp } from "../utils/customerDebtHistory.js";
+import { formatHistoryTimestamp, getDebtAdjustmentReasonLabel } from "../utils/customerDebtHistory.js";
 import { loadCustomerHistory } from "../utils/loadCustomerDebtHistory.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import CustomerContactEditor from "../pos/CustomerContactEditor.jsx";
@@ -37,7 +37,17 @@ export default function CustomerDebtHistoryModal({ customer, onClose }) {
     "Recent activity:",
     ...recentEvents.slice(0, 5).map((event) => {
       const dateAndTime = formatHistoryTimestamp(event.timestamp);
-      return `${event.type === "payment" ? "Payment" : "Credit"} ${formatGhs(event.amountPesewas)} · ${dateAndTime.date} · ${dateAndTime.time}`;
+      const label = event.type === "payment"
+        ? "Payment"
+        : event.type === "adjustment"
+          ? "Balance corrected"
+          : "Credit";
+      const isAdjustment = event.type === "adjustment";
+      const amount = isAdjustment ? event.newBalancePesewas ?? 0 : event.amountPesewas;
+      const detail = isAdjustment
+        ? `${event.reasonLabel ?? getDebtAdjustmentReasonLabel(event.reasonCode)} · ${dateAndTime.date} · ${dateAndTime.time}`
+        : `${dateAndTime.date} · ${dateAndTime.time}`;
+      return `${label}${isAdjustment ? "" : ` ${formatGhs(amount)}`} · ${detail}`;
     })
   ].join("\n");
   const shareUrl = phone ? `https://wa.me/${phone.slice(1)}?text=${encodeURIComponent(summaryMessage)}` : null;
@@ -96,26 +106,32 @@ export default function CustomerDebtHistoryModal({ customer, onClose }) {
           <ul className="divide-y divide-slate-100">
             {recentEvents.map((event) => {
               const isPayment = event.type === "payment";
+              const isAdjustment = event.type === "adjustment";
               const dateAndTime = formatHistoryTimestamp(event.timestamp);
               return (
                 <li key={event.id} className="flex items-center justify-between gap-3 py-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${isPayment ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>
+                    <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${isPayment ? "bg-emerald-50 text-emerald-700" : isAdjustment ? "bg-slate-100 text-slate-700" : "bg-amber-50 text-amber-800"}`}>
                       {isPayment ? <ArrowDownLeft size={18} aria-hidden="true" /> : <ArrowUpRight size={18} aria-hidden="true" />}
                     </span>
                     <div className="min-w-0">
                       <p className="font-semibold">
                         {isPayment
                           ? "Payment received"
+                          : isAdjustment ? "Balance corrected"
                           : event.type === "addon" ? "Credit add-on" : "Credit purchase"}
                       </p>
                       <p className="truncate text-xs text-slate-500">
-                        {event.detail} · {dateAndTime.date} · {dateAndTime.time}
+                        {isAdjustment
+                          ? `${event.reasonLabel ?? getDebtAdjustmentReasonLabel(event.reasonCode)} · ${dateAndTime.date} · ${dateAndTime.time}`
+                          : `${event.detail} · ${dateAndTime.date} · ${dateAndTime.time}`}
                       </p>
                     </div>
                   </div>
-                  <p className={`shrink-0 font-bold ${isPayment ? "text-emerald-700" : "text-amber-800"}`}>
-                    {isPayment ? "+" : "−"}{formatGhs(event.amountPesewas)}
+                  <p className={`shrink-0 font-bold ${isPayment ? "text-emerald-700" : isAdjustment ? "text-slate-700" : "text-amber-800"}`}>
+                    {isAdjustment
+                      ? `${formatGhs(event.previousBalancePesewas ?? event.newBalancePesewas ?? 0)} → ${formatGhsAmount(event.newBalancePesewas ?? 0)}`
+                      : `${isPayment ? "+" : "−"}${formatGhs(event.amountPesewas)}`}
                   </p>
                 </li>
               );

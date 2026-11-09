@@ -1,13 +1,12 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { useLiveQuery } from "dexie-react-hooks";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Activity, Check, Cloud, CloudOff, Pencil, RefreshCw, Settings, WalletCards, Wifi, WifiOff, X } from "lucide-react";
-import { db } from "./db/db.js";
 import Dashboard from "./components/Dashboard.jsx";
 import BackupModal from "./components/BackupModal.jsx";
 import DebtLedger from "./components/DebtLedger.jsx";
 import QuickSaleModal from "./components/QuickSaleModal.jsx";
 import SubscriptionModal from "./components/SubscriptionModal.jsx";
-import { FEATURE_FLAGS, FEATURE_SUBSCRIPTION_LOCKOUT } from "./config/features.js";
+import { FEATURE_FLAGS } from "./config/features.js";
+import { useSubscription } from "./hooks/useSubscription.js";
 import { useSync } from "./hooks/useSync.js";
 import { posText as t } from "./pos/i18n.js";
 import "./pos/theme.css";
@@ -51,20 +50,17 @@ function LegacyApp() {
   const [shopNameDraft, setShopNameDraft] = useState(shopName);
   const [backupOpen, setBackupOpen] = useState(false);
   const [subscriptionOpen, setSubscriptionOpen] = useState(false);
-  const [subscriptionNotice, setSubscriptionNotice] = useState(null);
   const sync = useSync();
-  const settings = useLiveQuery(
-    () => FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE ? db.settings.toArray() : Promise.resolve([]),
-    [FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE],
-    []
-  );
-  const processedPaymentReference = useRef("");
-  const subscriptionExpiry = settings.find((setting) => setting.key === "subscriptionExpiry")?.value ?? "";
-  const expiryTimestamp = Date.parse(subscriptionExpiry);
-  const hasActiveSubscription = Number.isFinite(expiryTimestamp) && expiryTimestamp > Date.now();
-  const subscriptionRequired = FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE
-    && FEATURE_SUBSCRIPTION_LOCKOUT
-    && !hasActiveSubscription;
+  const {
+    subscriptionExpiry,
+    hasActiveSubscription,
+    trialActive,
+    trialExpiry,
+    subscriptionRequired,
+    subscriptionNotice,
+    paymentPending,
+    retryPendingPayment
+  } = useSubscription();
 
   useEffect(() => {
     const onOnline = () => setIsOnline(true);
@@ -75,56 +71,6 @@ function LegacyApp() {
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
     };
-  }, []);
-
-  useEffect(() => {
-    if (!FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE) return;
-    const callbackUrl = new URL(window.location.href);
-    const reference = callbackUrl.searchParams.get("reference") || callbackUrl.searchParams.get("trxref");
-    if (!reference || processedPaymentReference.current === reference) return;
-    processedPaymentReference.current = reference;
-    callbackUrl.searchParams.delete("reference");
-    callbackUrl.searchParams.delete("trxref");
-    callbackUrl.searchParams.delete("status");
-    window.history.replaceState({}, "", `${callbackUrl.pathname}${callbackUrl.search}${callbackUrl.hash}`);
-
-    async function verifySubscriptionPayment() {
-      try {
-        const response = await fetch("/api/subscription/verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reference }),
-          signal: AbortSignal.timeout(20000)
-        });
-        const result = await response.json();
-        if (!response.ok || result.success !== true || result.reference !== reference) {
-          throw new Error(result.error || "Payment could not be verified.");
-        }
-        const expiresAt = new Date(result.expiresAt);
-        if (!Number.isFinite(expiresAt.getTime())) throw new Error("The payment verification response had an invalid expiry date.");
-
-        await db.transaction("rw", db.settings, async () => {
-          const current = await db.settings.get("subscriptionExpiry");
-          const currentTime = Date.parse(current?.value ?? "");
-          if (!Number.isFinite(currentTime) || expiresAt.getTime() > currentTime) {
-            await db.settings.put({ key: "subscriptionExpiry", value: expiresAt.toISOString() });
-          }
-          await db.settings.put({ key: "isSubscribed", value: true });
-          await db.settings.put({ key: "lastSubscriptionReference", value: reference });
-        });
-        setSubscriptionNotice({
-          type: "success",
-          text: `Payment verified. This subscription is active until ${expiresAt.toLocaleDateString("en-GH")}.`
-        });
-      } catch (verificationError) {
-        console.error("Could not verify the Paystack subscription payment.", verificationError);
-        setSubscriptionNotice({
-          type: "error",
-          text: verificationError.message || "Payment verification failed. Please contact support before paying again."
-        });
-      }
-    }
-    void verifySubscriptionPayment();
   }, []);
 
   function closeQuickEntry() {
@@ -245,12 +191,17 @@ function LegacyApp() {
         onRestored={() => setRefreshKey((current) => current + 1)}
         subscriptionExpiry={subscriptionExpiry}
         subscriptionNotice={subscriptionNotice}
+        showSubscription={FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE}
       />
       {FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE && (
         <SubscriptionModal
           isOpen={subscriptionOpen || subscriptionRequired}
           lockout={subscriptionRequired}
           isActive={hasActiveSubscription}
+          trialActive={trialActive}
+          trialExpiresAt={trialExpiry}
+          paymentPending={paymentPending}
+          onRetryPayment={retryPendingPayment}
           onClose={() => setSubscriptionOpen(false)}
           expiresAt={subscriptionExpiry}
           notice={subscriptionNotice}

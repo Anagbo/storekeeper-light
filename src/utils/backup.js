@@ -11,6 +11,14 @@ const PRIMARY_KEYS = {
   suppliers: "id"
 };
 
+export function shouldRestoreBackupRecord(existing, incoming) {
+  if (!existing) return true;
+  if (Number.isFinite(existing.updatedAt) && Number.isFinite(incoming.updatedAt)) {
+    return existing.updatedAt <= incoming.updatedAt;
+  }
+  return true;
+}
+
 function localTimestamp(date) {
   const pad = (value) => String(value).padStart(2, "0");
   return [
@@ -37,17 +45,34 @@ export function validateBackupData(backup) {
     if (!Array.isArray(records)) {
       throw new TypeError(`The backup is missing a valid ${tableName} record list.`);
     }
+    const ids = new Set();
     for (const record of records) {
       const id = record?.[PRIMARY_KEYS[tableName]];
       if (!record || typeof record !== "object" || Array.isArray(record) || id === undefined || id === null || id === "") {
         throw new TypeError(`The backup contains an invalid record in ${tableName}.`);
       }
+      if (ids.has(id)) {
+        throw new TypeError(`The backup contains duplicate IDs in ${tableName}.`);
+      }
+      ids.add(id);
       if (tableName === "products" && typeof id !== "number") {
         throw new TypeError("The backup contains a product with an invalid ID.");
       }
       if (tableName !== "products" && typeof id !== "string") {
         throw new TypeError(`The backup contains a ${tableName} record with an invalid ID.`);
       }
+    }
+  }
+  const customerIds = new Set(backup.data.customers.map((record) => record.id));
+  const debtIds = new Set(backup.data.debts.map((record) => record.id));
+  for (const debt of backup.data.debts) {
+    if (debt.customerId !== undefined && !customerIds.has(debt.customerId)) {
+      throw new TypeError(`The backup contains a debt with an unknown customer ID.`);
+    }
+  }
+  for (const payment of backup.data.payments ?? []) {
+    if (payment.debtId !== undefined && !debtIds.has(payment.debtId)) {
+      throw new TypeError(`The backup contains a payment with an unknown debt ID.`);
     }
   }
   return { ...backup.data, payments: backup.data.payments ?? [], suppliers: backup.data.suppliers ?? [] };
@@ -100,13 +125,19 @@ export async function importDatabaseFromJson(jsonFile) {
   await db.transaction("rw", ...BACKUP_TABLES.map((tableName) => db.table(tableName)), async () => {
     for (const tableName of BACKUP_TABLES) {
       if (data[tableName].length) {
-        const records = ["customers", "debts"].includes(tableName)
+        const incomingRecords = ["customers", "debts"].includes(tableName)
           ? data[tableName].map((record) => ({
               ...record,
               ghanaCardNumber: record.ghanaCardNumber ?? ""
             }))
           : data[tableName];
-        await db.table(tableName).bulkPut(records);
+        const table = db.table(tableName);
+        const existingRecords = await table.bulkGet(incomingRecords.map((record) => record[PRIMARY_KEYS[tableName]]));
+        const records = incomingRecords.filter((record, index) => (
+          shouldRestoreBackupRecord(existingRecords[index], record)
+        ));
+        if (!records.length) continue;
+        await table.bulkPut(records);
       }
     }
   });

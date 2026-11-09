@@ -44,8 +44,8 @@ export function buildCollectionReceiptMessage(result, shopName) {
     `Payment received by ${normalizedShopName}`,
     `${date}, ${time}`,
     `From: ${customerName}`,
-    `Amount: GHS ${formatReceiptAmount(amountPesewas)} (Cash GHS ${formatReceiptAmount(cashPesewas)}, MoMo GHS ${formatReceiptAmount(momoPesewas)})`,
-    `Still owed: GHS ${formatReceiptAmount(result.remainingPesewas)}`
+    `Amount: GH₵${formatReceiptAmount(amountPesewas)} (Cash GH₵${formatReceiptAmount(cashPesewas)}, MoMo GH₵${formatReceiptAmount(momoPesewas)})`,
+    `Still owed: GH₵${formatReceiptAmount(result.remainingPesewas)}`
   ];
 
   if (result.debtAfter?.isInstallmentPlan) {
@@ -54,7 +54,7 @@ export function buildCollectionReceiptMessage(result, shopName) {
       throw new TypeError("The installment amount is invalid.");
     }
     const nextPaymentPesewas = Math.min(result.remainingPesewas, installmentAmountPesewas);
-    lines.push(`Next payment: GHS ${formatReceiptAmount(nextPaymentPesewas)} on ${formatReceiptDate(result.debtAfter.nextDueDate)}`);
+    lines.push(`Next payment: GH₵${formatReceiptAmount(nextPaymentPesewas)} on ${formatReceiptDate(result.debtAfter.nextDueDate)}`);
   }
 
   lines.push("Thank you!");

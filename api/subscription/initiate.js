@@ -1,4 +1,4 @@
-const SUBSCRIPTION_AMOUNT_PESEWAS = 1500;
+import { getSubscriptionPlan } from "./plans.js";
 
 function respond(res, status, body) {
   return res.status(status).setHeader("Content-Type", "application/json; charset=utf-8").json(body);
@@ -38,14 +38,14 @@ function getTrustedOrigins() {
   }));
 }
 
-function getCallbackUrl(req) {
+function getCallbackUrl(req, planId) {
   const trustedOrigins = getTrustedOrigins();
   const requestOrigin = getHeader(req, "origin");
   if (requestOrigin) {
     try {
       const origin = new URL(requestOrigin);
       if (origin.origin === requestOrigin && trustedOrigins.has(origin.origin)) {
-        return `${origin.origin}/?subscription=verify`;
+        return `${origin.origin}/?subscription=verify&plan=${encodeURIComponent(planId)}`;
       }
     } catch {
       // An invalid Origin is ignored; use the configured canonical app origin.
@@ -58,7 +58,7 @@ function getCallbackUrl(req) {
   if (!trustedOrigins.has(fallbackOrigin)) {
     throw new Error("No trusted subscription callback origin is configured.");
   }
-  return `${fallbackOrigin}/?subscription=verify`;
+  return `${fallbackOrigin}/?subscription=verify&plan=${encodeURIComponent(planId)}`;
 }
 
 async function getPaystackResponse(response) {
@@ -85,6 +85,13 @@ export default async function handler(req, res) {
   if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return respond(res, 400, { error: "Enter a valid email address for your payment receipt." });
   }
+  let plan;
+  try {
+    plan = getSubscriptionPlan(req.body?.planId);
+  } catch (error) {
+    return respond(res, 500, { error: error.message });
+  }
+  if (!plan) return respond(res, 400, { error: "Choose a valid subscription plan." });
 
   try {
     const secretKey = requiredEnvironment("PAYSTACK_SECRET_KEY");
@@ -99,10 +106,10 @@ export default async function handler(req, res) {
         },
         body: JSON.stringify({
           email,
-          amount: SUBSCRIPTION_AMOUNT_PESEWAS,
+          amount: plan.amountPesewas,
           currency: "GHS",
           channels: ["mobile_money"],
-          callback_url: getCallbackUrl(req)
+          callback_url: getCallbackUrl(req, plan.id)
         }),
         signal: AbortSignal.timeout(15000)
       });
@@ -117,7 +124,8 @@ export default async function handler(req, res) {
     }
 
     const authorizationUrl = result?.data?.authorization_url;
-    if (!response.ok || result?.status !== true || typeof authorizationUrl !== "string") {
+    const reference = result?.data?.reference;
+    if (!response.ok || result?.status !== true || typeof authorizationUrl !== "string" || typeof reference !== "string") {
       console.error("Paystack transaction initialization failed.", {
         status: response.status,
         message: result?.message ?? "Unexpected response"
@@ -127,7 +135,7 @@ export default async function handler(req, res) {
       });
     }
 
-    return respond(res, 200, { success: true, authorization_url: authorizationUrl });
+    return respond(res, 200, { success: true, authorization_url: authorizationUrl, reference });
   } catch (error) {
     console.error("Could not initialize Paystack checkout.", error);
     return respond(res, 500, { error: "Checkout is temporarily unavailable. Please try again." });

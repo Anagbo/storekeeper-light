@@ -52,3 +52,40 @@ test("installment sale fallback treats the initial deposit as paid rather than c
     installmentPaymentPesewas: 10000
   }), 0);
 });
+
+test("history uses gross credit when the initial payment is recorded separately", () => {
+  assert.equal(getHistoryCreditAmount({
+    type: "installment_sale",
+    amountPesewas: 10000,
+    creditSaleGrossPesewas: 10000,
+    creditExtendedPesewas: 3000,
+    installmentPaymentPesewas: 7000
+  }), 10000);
+});
+
+test("history totals reconcile multiple credit entries, payments, and a correction", () => {
+  const result = summarizeCustomerHistory([
+    { id: "sale", type: "credit", timestamp: 100, amountPesewas: 10000 },
+    { id: "addon", type: "addon", timestamp: 110, amountPesewas: 5000 },
+    { id: "initial-payment", type: "payment", timestamp: 120, amountPesewas: 7000 },
+    { id: "collection", type: "payment", timestamp: 130, amountPesewas: 3000 },
+    { id: "adjustment", type: "adjustment", timestamp: 140, amountPesewas: 1000, deltaPesewas: -1000 }
+  ], 4000);
+
+  assert.equal(result.totalCreditPesewas, 14000);
+  assert.equal(result.totalPaidPesewas, 10000);
+  assert.equal(result.currentBalancePesewas, 4000);
+  assert.equal(result.unaccountedCreditPesewas, 0);
+});
+
+test("includes balance corrections in debt history reconciliation", () => {
+  const result = summarizeCustomerHistory([
+    { id: "credit", type: "credit", timestamp: 100, amountPesewas: 10000 },
+    { id: "adjustment", type: "adjustment", timestamp: 150, amountPesewas: 2000, deltaPesewas: -2000 },
+    { id: "payment", type: "payment", timestamp: 200, amountPesewas: 3000 }
+  ], 5000);
+
+  assert.equal(result.totalCreditPesewas, 8000);
+  assert.equal(result.totalPaidPesewas, 3000);
+  assert.equal(result.unaccountedCreditPesewas, 0);
+});

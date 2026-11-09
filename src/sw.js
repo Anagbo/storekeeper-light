@@ -3,9 +3,9 @@ import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from
 import { CacheableResponsePlugin } from "workbox-cacheable-response";
 import { ExpirationPlugin } from "workbox-expiration";
 import { StaleWhileRevalidate } from "workbox-strategies";
+import { createIdempotencyKey, createSyncPayload, postSyncBatch, TABLES } from "./lib/syncPayload.js";
 
 const DATABASE_NAME = "StoreKeeperLight";
-const TABLES = ["products", "transactions", "debts"];
 const SYNC_ENDPOINT = import.meta.env.VITE_SYNC_ENDPOINT?.trim();
 
 precacheAndRoute(self.__WB_MANIFEST);
@@ -120,12 +120,12 @@ async function syncPendingRecords() {
     const records = await readPending(db);
     if (!TABLES.some((tableName) => records[tableName].length > 0)) return;
 
-    const response = await fetch(SYNC_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ schemaVersion: 2, records })
-    });
-    if (!response.ok) throw new Error(`Sync server returned HTTP ${response.status}.`);
+    const { body, serializedBody } = createSyncPayload(records);
+    const response = await postSyncBatch(
+      SYNC_ENDPOINT,
+      body,
+      await createIdempotencyKey(serializedBody)
+    );
 
     const acknowledged = getAcknowledgedIds(await response.json());
     await markAcknowledged(db, records, acknowledged);

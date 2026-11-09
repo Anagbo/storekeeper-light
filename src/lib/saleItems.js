@@ -4,10 +4,14 @@ export function normalizeSaleItems(items) {
   return items.map((item) => {
     const name = typeof item?.name === "string" ? item.name.trim() : "";
     const productId = item?.productId;
+    const isOtherAmount = productId === null;
     const quantity = item?.quantity;
     const unitPricePesewas = item?.unitPricePesewas;
-    if (!name || name.length > 80 || !Number.isSafeInteger(productId) || productId <= 0) {
+    if (!name || name.length > 80 || (!isOtherAmount && (!Number.isSafeInteger(productId) || productId <= 0))) {
       throw new TypeError("Choose a valid item for this sale.");
+    }
+    if (isOtherAmount && (name !== "Other amount" || item?.subtitle !== "From Sell" || quantity !== 1)) {
+      throw new TypeError("The carried sale amount is invalid.");
     }
     if (!Number.isSafeInteger(quantity) || quantity <= 0) {
       throw new TypeError("Item quantities must be positive whole numbers.");
@@ -20,7 +24,7 @@ export function normalizeSaleItems(items) {
     if (!Number.isSafeInteger(total_amount)) {
       throw new RangeError("The item total is too large.");
     }
-    return { productId, name, quantity, unitPricePesewas, total_amount };
+    return { productId, name, ...(isOtherAmount ? { subtitle: item.subtitle } : {}), quantity, unitPricePesewas, total_amount };
   });
 }
 

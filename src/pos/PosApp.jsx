@@ -1,10 +1,12 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import BackupModal from "../components/BackupModal.jsx";
-import DebtLedger from "../components/DebtLedger.jsx";
 import QuickSaleModal from "../components/QuickSaleModal.jsx";
+import SubscriptionModal from "../components/SubscriptionModal.jsx";
 import { recordCashSale } from "../db/sales.js";
 import { setPreference, shouldShowPosSetup } from "../db/preferences.js";
 import { useSync } from "../hooks/useSync.js";
+import { useSubscription } from "../hooks/useSubscription.js";
+import { FEATURE_FLAGS } from "../config/features.js";
 import { formatGhs } from "../lib/money.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { backRoute, createRouteState, POS_ROUTES, pushRoute, replaceRoute } from "./routes.js";
@@ -22,13 +24,20 @@ import { SpentMoney, StockOnCredit, YouOweSuppliers } from "./SupplierScreens.js
 import ItemScreens from "./ItemScreens.jsx";
 import SellWithItems from "./SellWithItems.jsx";
 import SaleRecorded from "./SaleRecorded.jsx";
-import PaymentSplit from "./PaymentSplit.jsx";
+import SaleSplitPayment from "./SaleSplitPayment.jsx";
+import ReviewAndPay from "./ReviewAndPay.jsx";
+import InstallmentSplitPayment from "./InstallmentSplitPayment.jsx";
 import { HowDoYouWantToSell, HowManyItem, HowMuchIsItem, MoreCategories, WhatDoYouSell } from "./SetupScreens.jsx";
 import { LanguageSettings, SettingsProfitTools } from "./SettingsScreens.jsx";
+import PeopleWhoOweYou from "./OwedScreens.jsx";
+import AddDebt from "./AddDebt.jsx";
+import { ManualDebtAmount, ManualDebtSaved } from "./ManualDebtScreens.jsx";
+import { MoMoChoice, MoMoCode, MoMoDirect, MoMoNotCompleted, MoMoPayment, MoMoSetup, MoMoWaiting, PaymentSettings } from "./MoMoScreens.jsx";
+import { MyPlan, PlanPayCash, PlanPayMethod, PlanPayMoMo, PlanPayPhone, PlanPaymentResult } from "./PlanScreens.jsx";
 
 const CollectPayment = lazy(() => import("./DebtCollection.jsx").then((module) => ({ default: module.CollectPayment })));
 const CollectPayPart = lazy(() => import("./DebtCollection.jsx").then((module) => ({ default: module.CollectPayPart })));
-const CollectPartByPart = lazy(() => import("./DebtCollection.jsx").then((module) => ({ default: module.CollectPartByPart })));
+const CollectSplitPayment = lazy(() => import("./DebtCollection.jsx").then((module) => ({ default: module.CollectSplitPayment })));
 const DebtorDetail = lazy(() => import("./DebtCollection.jsx").then((module) => ({ default: module.DebtorDetail })));
 const PaymentReceived = lazy(() => import("./DebtCollection.jsx").then((module) => ({ default: module.PaymentReceived })));
 
@@ -82,8 +91,19 @@ export default function PosApp() {
   const [quickEntryOpen, setQuickEntryOpen] = useState(false);
   const [entryType, setEntryType] = useState("expense");
   const [backupOpen, setBackupOpen] = useState(false);
+  const [subscriptionOpen, setSubscriptionOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const sync = useSync();
+  const {
+    subscriptionExpiry,
+    hasActiveSubscription,
+    trialActive,
+    trialExpiry,
+    subscriptionRequired,
+    subscriptionNotice,
+    paymentPending,
+    retryPendingPayment
+  } = useSubscription();
 
   useEffect(() => {
     let active = true;
@@ -148,6 +168,20 @@ export default function PosApp() {
     setNotice("");
   }
 
+  function returnFromMomoPick(details) {
+    const target = details.returnRoute;
+    if (!target) return;
+    setRouteState((current) => {
+      const targetIndex = current.history.map((entry) => entry.current).lastIndexOf(target);
+      if (targetIndex < 0) return { ...current, current: target, params: { ...current.params, ...details } };
+      return {
+        current: target,
+        params: { ...current.history[targetIndex].params, ...details },
+        history: current.history.slice(0, targetIndex)
+      };
+    });
+  }
+
   async function completePosSetup() {
     await setPreference("posSetupCompleted", true);
     switchTab(POS_ROUTES.Home);
@@ -180,7 +214,36 @@ export default function PosApp() {
     return customer;
   }
 
+  async function saveAddedDebt(details) {
+    const { saveAddedDebt: persistAddedDebt } = await import("../utils/addDebt.js");
+    const result = await persistAddedDebt(details);
+    void requestBackgroundSync();
+    switchTab(POS_ROUTES.PeopleWhoOweYou);
+    return result;
+  }
+
   async function saveCreditSale(details) {
+    if (details.manualDebt) {
+      const { recordManualDebt } = await import("../db/debtLedger.js");
+      const manualDebtResult = await recordManualDebt({
+        customerId: details.customer?.id ?? details.customerId,
+        debtId: details.debtId,
+        name: details.customer?.name ?? details.customerName ?? "",
+        phone: details.customer?.phone ?? "",
+        ghanaCardNumber: details.customer?.ghanaCardNumber ?? "",
+        amountPesewas: details.amountPesewas,
+        initialPaymentPesewas: details.initialPaymentPesewas ?? 0,
+        initialPaymentParts: details.initialPaymentParts ?? null,
+        paymentMethod: details.paymentMethod ?? "cash",
+        note: details.note ?? "",
+        dueDate: details.dueDate ?? "",
+        installmentPlan: details.installmentPlan ?? null,
+        now: details.takenOnTimestamp ?? Date.now()
+      });
+      void requestBackgroundSync();
+      navigate(POS_ROUTES.ManualDebtSaved, { ...details, manualDebtResult });
+      return;
+    }
     const { recordCreditSale } = await import("../db/debts.js");
     const creditResult = await recordCreditSale({
       amountPesewas: details.amountPesewas,
@@ -202,9 +265,45 @@ export default function PosApp() {
   }
 
   async function saveSplitSale(details) {
+    const owePart = details.parts?.find((part) => part.paymentMethod === "owe");
+    if (owePart) {
+      const paidParts = details.parts.filter((part) => part.paymentMethod !== "owe");
+      const { recordCreditSale } = await import("../db/debts.js");
+      const creditResult = await recordCreditSale({
+        amountPesewas: details.amountPesewas,
+        name: details.customer?.name ?? "",
+        phone: details.customer?.phone ?? "",
+        ghanaCardNumber: details.customer?.ghanaCardNumber ?? "",
+        dueDate: details.dueDate ?? "",
+        installmentPlan: details.installmentPlan ?? null,
+        initialPaymentPesewas: paidParts.reduce((sum, part) => sum + part.amountPesewas, 0),
+        initialPaymentParts: paidParts,
+        paymentMethod: paidParts.some((part) => part.paymentMethod === "momo") ? "momo" : "cash",
+        note: details.saleItems?.map((item) => item.name).join(", ") || "Sale",
+        saleItems: details.saleItems ?? []
+      });
+      void requestBackgroundSync();
+      navigate(POS_ROUTES.SaleRecorded, { transaction: creditResult.saleTransaction, creditResult });
+      return;
+    }
     const transaction = await recordCashSale(details);
     void requestBackgroundSync();
     navigate(POS_ROUTES.SaleRecorded, { transaction });
+  }
+
+  async function saveDirectMomoSale(details) {
+    const transaction = await recordCashSale({
+      amountPesewas: details.amountPesewas,
+      cashReceivedPesewas: 0,
+      momoReceivedPesewas: details.amountPesewas,
+      saleItems: details.saleItems ?? []
+    });
+    void requestBackgroundSync();
+    navigate(POS_ROUTES.SaleRecorded, { transaction, momoVerification: "merchant_confirmed" });
+  }
+
+  async function saveDirectMomoCollection(details) {
+    await saveDebtCollection(details.debtId, [{ paymentMethod: "momo", amountPesewas: details.amountPesewas }]);
   }
 
   async function saveExpense(details) {
@@ -239,9 +338,8 @@ export default function PosApp() {
     (route === POS_ROUTES.YourStarterList && routeState.params.setupFlow === true) ||
     (route === POS_ROUTES.NewItem && routeState.params.setupFlow === true);
   const isCollectSheet = route === POS_ROUTES.CollectPayment;
-  const isFocusedCollectionScreen = [
+  const isFocusedCollectionScreen = (route === POS_ROUTES.SplitPayment && Boolean(routeState.params.debtId)) || [
     POS_ROUTES.CollectPayPart,
-    POS_ROUTES.CollectPartByPart,
     POS_ROUTES.PaymentReceived,
     POS_ROUTES.DebtorDetail
   ].includes(route);
@@ -263,8 +361,12 @@ export default function PosApp() {
     <HowMuchIsItem params={routeState.params} onBack={navigateBack} onNavigate={navigate} />
   ) : route === POS_ROUTES.HowManyItem ? (
     <HowManyItem params={routeState.params} onBack={navigateBack} onReplace={replaceCurrentRoute} />
-  ) : route === POS_ROUTES.PayPartByPart ? (
-    <PaymentSplit params={routeState.params} onBack={navigateBack} onNavigate={navigate} onSaveSale={saveSplitSale} />
+  ) : route === POS_ROUTES.SplitPayment && routeState.params.installmentSplit ? (
+    <InstallmentSplitPayment params={routeState.params} onBack={navigateBack} onReplace={replaceCurrentRoute} onNavigate={navigate} />
+  ) : route === POS_ROUTES.SplitPayment && routeState.params.debtId ? (
+    <CollectSplitPayment params={routeState.params} onBack={navigateBack} onNavigate={navigate} onRecordCollection={saveDebtCollection} />
+  ) : route === POS_ROUTES.SplitPayment ? (
+    <SaleSplitPayment params={routeState.params} onBack={navigateBack} onNavigate={navigate} onSaveSale={saveSplitSale} />
   ) : route === POS_ROUTES.LanguageSettings ? (
     <LanguageSettings onBack={navigateBack} />
   ) : route === POS_ROUTES.SettingsProfitTools ? (
@@ -273,7 +375,59 @@ export default function PosApp() {
       onShopNameChange={setShopName}
       onBack={navigateBack}
       onOpenBackup={() => setBackupOpen(true)}
+      onOpenMomoSettings={() => navigate(POS_ROUTES.PaymentSettings)}
+      onOpenPlan={() => navigate(POS_ROUTES.MyPlan)}
+      onOpenSubscription={() => setSubscriptionOpen(true)}
+      subscriptionEnabled={FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE}
+      hasActiveSubscription={hasActiveSubscription}
+      subscriptionExpiry={subscriptionExpiry}
+      trialActive={trialActive}
+      trialExpiry={trialExpiry}
     />
+  ) : route === POS_ROUTES.MoMoChoice ? (
+    <MoMoChoice params={routeState.params} onBack={navigateBack} onNavigate={navigate} />
+  ) : route === POS_ROUTES.MoMoDirect ? (
+    <MoMoDirect
+    params={routeState.params}
+    onBack={navigateBack}
+    onConfirm={(details) => {
+      if (details.pickOnly) {
+        returnFromMomoPick({ ...details, momoMethod: "direct", verification: "merchant_confirmed" });
+        return;
+      }
+      const save = details.debtId ? saveDirectMomoCollection(details) : saveDirectMomoSale(details);
+      void save.catch((error) => console.error("Could not save direct MoMo payment.", error));
+    }}
+    onPick={(details) => returnFromMomoPick(details)}
+    />
+  ) : route === POS_ROUTES.MoMoSetup ? (
+    <MoMoSetup params={routeState.params} onBack={navigateBack} onNavigate={navigate} shopName={shopName} />
+  ) : route === POS_ROUTES.MoMoPayment ? (
+    <MoMoPayment params={routeState.params} onBack={navigateBack} onNavigate={navigate} />
+  ) : route === POS_ROUTES.MoMoWaiting ? (
+    <MoMoWaiting
+      params={routeState.params}
+      onCancel={() => {
+        setRouteState((current) => backRoute(backRoute(current)));
+        setNotice("");
+      }}
+    />
+  ) : route === POS_ROUTES.MoMoCode ? (
+    <MoMoCode params={routeState.params} onBack={navigateBack} onNavigate={navigate} />
+  ) : route === POS_ROUTES.MoMoNotCompleted ? (
+    <MoMoNotCompleted params={routeState.params} onBack={navigateBack} onNavigate={navigate} />
+  ) : route === POS_ROUTES.MyPlan ? (
+    <MyPlan expiry={subscriptionExpiry} onBack={navigateBack} onNavigate={navigate} />
+  ) : route === POS_ROUTES.PlanPayMethod ? (
+    <PlanPayMethod onBack={navigateBack} onNavigate={navigate} />
+  ) : route === POS_ROUTES.PlanPayCash ? (
+    <PlanPayCash onBack={navigateBack} onNavigate={navigate} />
+  ) : route === POS_ROUTES.PlanPayMoMo ? (
+    <PlanPayMoMo onBack={navigateBack} onNavigate={navigate} />
+  ) : route === POS_ROUTES.PlanPayPhone ? (
+    <PlanPayPhone onBack={navigateBack} onNavigate={navigate} />
+  ) : route === POS_ROUTES.PlanPaymentResult ? (
+    <PlanPaymentResult params={routeState.params} onNavigate={navigate} />
   ) : route === POS_ROUTES.Sell ? (
     <Sell
       params={routeState.params}
@@ -285,6 +439,13 @@ export default function PosApp() {
       onBack={navigateBack}
       onNavigate={navigate}
       onUpdateParams={updateCurrentParams}
+    />
+  ) : route === POS_ROUTES.ReviewAndPay ? (
+    <ReviewAndPay
+      params={routeState.params}
+      onBack={navigateBack}
+      onNavigate={navigate}
+      onSaveSale={saveSplitSale}
     />
   ) : route === POS_ROUTES.SaleRecorded ? (
     <SaleRecorded
@@ -311,13 +472,7 @@ export default function PosApp() {
     <CollectPayPart
       params={routeState.params}
       onBack={navigateBack}
-      onUpdateParams={updateCurrentParams}
-      onRecordCollection={saveDebtCollection}
-    />
-  ) : route === POS_ROUTES.CollectPartByPart ? (
-    <CollectPartByPart
-      params={routeState.params}
-      onBack={navigateBack}
+      onNavigate={navigate}
       onUpdateParams={updateCurrentParams}
       onRecordCollection={saveDebtCollection}
     />
@@ -332,16 +487,37 @@ export default function PosApp() {
   ) : route === POS_ROUTES.DebtorDetail ? (
     <DebtorDetail
       params={routeState.params}
-      onBack={() => switchTab(POS_ROUTES.Home)}
+      onBack={navigateBack}
+      onNavigate={navigate}
       shopName={shopName}
       onSaveCustomerContact={saveCustomerContact}
       onCollect={(debt) => navigate(POS_ROUTES.CollectPayment, { debtId: debt.id, customerName: debt.customerName ?? debt.customer_name })}
     />
   ) : route === POS_ROUTES.PeopleWhoOweYou ? (
-    <DebtLedger
+    <PeopleWhoOweYou
+      onBack={() => switchTab(POS_ROUTES.Home)}
+      onNavigate={navigate}
       shopName={shopName}
-      onReturnToDashboard={() => switchTab(POS_ROUTES.Home)}
-      onCollect={(debt) => navigate(POS_ROUTES.CollectPayment, { debtId: debt.id, customerName: debt.customerName ?? debt.customer_name })}
+      onCollect={(debt) => navigate(POS_ROUTES.CollectPayment, { debtId: debt.id, customerName: debt.customerName })}
+    />
+  ) : route === POS_ROUTES.AddDebt ? (
+    <AddDebt
+      onBack={navigateBack}
+      onSave={saveAddedDebt}
+    />
+  ) : route === POS_ROUTES.ManualDebtAmount ? (
+    <ManualDebtAmount
+      params={routeState.params}
+      onBack={navigateBack}
+      onNavigate={navigate}
+      onSaveManualDebt={saveCreditSale}
+    />
+  ) : route === POS_ROUTES.ManualDebtSaved ? (
+    <ManualDebtSaved
+      params={routeState.params}
+      onDone={() => switchTab(POS_ROUTES.PeopleWhoOweYou)}
+      onNavigate={navigate}
+      shopName={shopName}
     />
   ) : route === POS_ROUTES.SpentMoney ? (
     <SpentMoney onBack={navigateBack} onNavigate={navigate} onSave={saveExpense} />
@@ -386,14 +562,14 @@ export default function PosApp() {
   );
 
   return (
-    <div className="pos-app min-h-screen bg-white text-slate-950" style={POS_THEME.cssVariables}>
+    <div className="pos-app min-h-screen max-w-full overflow-x-hidden bg-white text-slate-950" style={POS_THEME.cssVariables}>
       <PosHeader
         shopName={shopName}
         statusLabel={getStatusLabel(sync)}
         onHome={() => switchTab(POS_ROUTES.Home)}
         onMenu={openMenu}
         menuActive={route === POS_ROUTES.Menu}
-        hideMenu={isFocusedCollectionScreen || isSetupFlow}
+        hideMenu={isFocusedCollectionScreen || isSetupFlow || route === POS_ROUTES.PeopleWhoOweYou}
       />
       <div className="flex min-h-[calc(100vh-4rem)]">
         {!isSetupFlow && <PosSideNav current={route} onNavigate={switchTab} />}
@@ -418,6 +594,18 @@ export default function PosApp() {
         isOpen={backupOpen}
         onClose={() => setBackupOpen(false)}
         showSubscription={false}
+      />
+      <SubscriptionModal
+        isOpen={subscriptionOpen || subscriptionRequired}
+        lockout={subscriptionRequired}
+        isActive={hasActiveSubscription}
+        trialActive={trialActive}
+        trialExpiresAt={trialExpiry}
+        paymentPending={paymentPending}
+        onRetryPayment={retryPendingPayment}
+        onClose={() => setSubscriptionOpen(false)}
+        expiresAt={subscriptionExpiry}
+        notice={subscriptionNotice}
       />
     </div>
   );

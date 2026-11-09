@@ -12,6 +12,33 @@ test("item sale totals reconcile quantity and unit price in whole pesewas", () =
   assert.equal(totalSaleItemsPesewas(items), 1300);
 });
 
+test("carried Sell amount is a valid line without a product id", () => {
+  const items = normalizeSaleItems([{
+    productId: null,
+    name: "Other amount",
+    subtitle: "From Sell",
+    quantity: 1,
+    unitPricePesewas: 500
+  }]);
+
+  assert.deepEqual(items[0], {
+    productId: null,
+    name: "Other amount",
+    subtitle: "From Sell",
+    quantity: 1,
+    unitPricePesewas: 500,
+    total_amount: 500
+  });
+  assert.equal(totalSaleItemsPesewas(items), 500);
+  assert.throws(() => normalizeSaleItems([{
+    productId: null,
+    name: "Other amount",
+    subtitle: "Wrong source",
+    quantity: 1,
+    unitPricePesewas: 500
+  }]), TypeError);
+});
+
 test("item sale validation rejects invalid quantities, prices and overflowing totals", () => {
   assert.throws(() => normalizeSaleItems([{ productId: 1, name: "Bread", quantity: 0, unitPricePesewas: 100 }]), TypeError);
   assert.throws(() => normalizeSaleItems([{ productId: 1, name: "Bread", quantity: 1, unitPricePesewas: 0 }]), TypeError);

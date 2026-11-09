@@ -47,6 +47,19 @@ export function assertInstallmentAmountWithinBalance(installmentAmountPesewas, m
   }
 }
 
+export function isValidInstallmentPlanForBalance(plan, balancePesewas) {
+  return Boolean(
+    plan?.isInstallmentPlan &&
+    Number.isSafeInteger(balancePesewas) &&
+    balancePesewas > 0 &&
+    Number.isSafeInteger(plan.installmentAmount) &&
+    plan.installmentAmount > 0 &&
+    plan.installmentAmount <= balancePesewas &&
+    isPaymentFrequency(plan.frequency) &&
+    isValidDateString(plan.nextDueDate)
+  );
+}
+
 export function getNextCycleDate(today, frequency) {
   if (!isValidDateString(today) || !isPaymentFrequency(frequency)) {
     throw new TypeError("A valid date and installment frequency are required.");
@@ -233,6 +246,119 @@ export function reconcileInstallmentPayment(debt, paymentPesewas, remainingPesew
   };
 }
 
+export function reconcileInstallmentPlanChange(
+  debt,
+  nextBalancePesewas,
+  replacementPlan,
+  additionalPaymentPesewas = 0
+) {
+  if (!Number.isSafeInteger(nextBalancePesewas) || nextBalancePesewas <= 0 ||
+    !replacementPlan?.isInstallmentPlan ||
+    !Number.isSafeInteger(replacementPlan.installmentAmount) ||
+    replacementPlan.installmentAmount <= 0 ||
+    replacementPlan.installmentAmount > nextBalancePesewas ||
+    !isPaymentFrequency(replacementPlan.frequency) ||
+    !isValidDateString(replacementPlan.nextDueDate)) {
+    throw new TypeError("The replacement installment plan is invalid.");
+  }
+  if (!Number.isSafeInteger(additionalPaymentPesewas) || additionalPaymentPesewas < 0) {
+    throw new TypeError("Additional installment payment must be a non-negative integer.");
+  }
+
+  const hasPreviousPlan = Boolean(debt?.isInstallmentPlan);
+  const previousBalancePesewas = hasPreviousPlan ? debt.amountPesewas ?? debt.total_owed : 0;
+  const previousRemaining = hasPreviousPlan
+    ? debt.installmentsRemaining ?? Math.ceil(previousBalancePesewas / debt.installmentAmount)
+    : 0;
+  const previousTotal = hasPreviousPlan ? debt.totalInstallments ?? previousRemaining : 0;
+  const previousCarry = hasPreviousPlan ? debt.installmentPaymentCarryPesewas ?? 0 : 0;
+  if ((hasPreviousPlan && (
+    !Number.isSafeInteger(previousBalancePesewas) || previousBalancePesewas < 0 ||
+    !Number.isSafeInteger(previousRemaining) || previousRemaining < 0 ||
+    !Number.isSafeInteger(previousTotal) || previousTotal < previousRemaining ||
+    !Number.isSafeInteger(previousCarry) || previousCarry < 0 ||
+    previousCarry >= debt.installmentAmount
+  ))) {
+    throw new TypeError("The existing installment plan is invalid.");
+  }
+
+  const historicalCompleted = previousTotal - previousRemaining;
+  const progressPesewas = previousCarry + additionalPaymentPesewas;
+  if (!Number.isSafeInteger(progressPesewas)) {
+    throw new RangeError("The installment payment progress exceeds the supported amount.");
+  }
+  const completedCycles = Math.floor(progressPesewas / replacementPlan.installmentAmount);
+  const nextCarry = progressPesewas % replacementPlan.installmentAmount;
+  const nextRemaining = Math.ceil(nextBalancePesewas / replacementPlan.installmentAmount);
+  const plannedRemaining = Number.isSafeInteger(replacementPlan.totalInstallments) &&
+    replacementPlan.totalInstallments >= nextRemaining
+    ? replacementPlan.totalInstallments
+    : nextRemaining;
+  const nextTotal = historicalCompleted + completedCycles + plannedRemaining;
+  if (!Number.isSafeInteger(nextTotal) || nextTotal < nextRemaining) {
+    throw new RangeError("The replacement installment schedule exceeds the supported range.");
+  }
+
+  return {
+    ...replacementPlan,
+    installmentsRemaining: nextRemaining,
+    totalInstallments: nextTotal,
+    nextDueDate: completedCycles > 0
+      ? addDueCycles(replacementPlan.nextDueDate, replacementPlan.frequency, completedCycles)
+      : replacementPlan.nextDueDate,
+    installmentPaymentCarryPesewas: nextCarry
+  };
+}
+
+export function reconcileInstallmentBalanceCorrection(debt, nextBalancePesewas) {
+  if (!debt?.isInstallmentPlan) return {};
+  if (!Number.isSafeInteger(nextBalancePesewas) || nextBalancePesewas < 0) {
+    throw new TypeError("An installment correction needs a non-negative remaining balance.");
+  }
+  if (nextBalancePesewas === 0) {
+    return {
+      isInstallmentPlan: false,
+      installmentsRemaining: 0,
+      totalInstallments: 0,
+      nextDueDate: "",
+      installmentPaymentCarryPesewas: 0
+    };
+  }
+  if (!Number.isSafeInteger(debt.installmentAmount) || debt.installmentAmount <= 0 ||
+    !isPaymentFrequency(debt.frequency) || !isValidDateString(debt.nextDueDate)) {
+    throw new TypeError("This installment plan has an invalid schedule.");
+  }
+
+  const carryPesewas = debt.installmentPaymentCarryPesewas ?? 0;
+  if (!Number.isSafeInteger(carryPesewas) || carryPesewas < 0 ||
+    carryPesewas >= debt.installmentAmount || carryPesewas > nextBalancePesewas) {
+    throw new TypeError("This installment plan has an invalid partial payment balance.");
+  }
+
+  const previousRemaining = debt.installmentsRemaining ??
+    Math.ceil((debt.amountPesewas ?? debt.total_owed) / debt.installmentAmount);
+  const previousTotal = debt.totalInstallments ?? previousRemaining;
+  if (!Number.isSafeInteger(previousRemaining) || previousRemaining <= 0 ||
+    !Number.isSafeInteger(previousTotal) || previousTotal < previousRemaining) {
+    throw new TypeError("This installment plan has invalid payment counts.");
+  }
+
+  const completedInstallments = previousTotal - previousRemaining;
+  const nextRemaining = Math.ceil(nextBalancePesewas / debt.installmentAmount);
+  const nextTotal = completedInstallments + nextRemaining;
+  if (!Number.isSafeInteger(nextTotal) || nextTotal < nextRemaining) {
+    throw new RangeError("The installment schedule exceeds the supported range.");
+  }
+
+  return {
+    isInstallmentPlan: true,
+    installmentsRemaining: nextRemaining,
+    totalInstallments: nextTotal,
+    nextDueDate: debt.nextDueDate,
+    installmentPaymentCarryPesewas: carryPesewas
+  };
+}
+
 export function isInstallmentDue(debt, today = localDateString()) {
   return debt.isInstallmentPlan &&
     isValidDateString(debt.nextDueDate) &&
@@ -269,6 +395,6 @@ export function createInstallmentReminderLink(phone, customerName, installmentAm
     : alertStatus?.type === "due_soon"
       ? `is due in ${alertStatus.days} day${alertStatus.days === 1 ? "" : "s"}`
       : "is due today";
-  const message = `Hi ${name}, gentle reminder that your installment of GHS ${(installmentAmountPesewas / 100).toFixed(2)} ${duePhrase}. Thank you!`;
+  const message = `Hi ${name}, gentle reminder that your installment of GH₵${(installmentAmountPesewas / 100).toFixed(2)} ${duePhrase}. Thank you!`;
   return `https://wa.me/${normalizedPhone.slice(1)}?text=${encodeURIComponent(message)}`;
 }
