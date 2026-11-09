@@ -1,0 +1,3401 @@
+{
+ "version": 1,
+ "purpose": "Single source of truth for navigation. Implement every control below exactly. Control labels match the visible text or the accessible name; the prototype matches by prefix.",
+ "start_screen": "21",
+ "history": "Back and BACK mean: return to the previous screen in the history stack.",
+ "special_destinations": {
+  "BACK": "Return to the previous screen in the navigation history.",
+  "FROM": "Setup finished or skipped. If the previous screen is 39 (My items), return to 39. Otherwise go to 22 (Home).",
+  "MULTI": "Go to 52 if several categories are chosen (the prototype uses: More categories was opened). Otherwise go to 36.",
+  "ADD": "Start the add-debt flow (flow=add_debt) and go to 17.",
+  "ADDP": "Start the add-debt-for-a-person flow (flow=add_debt_person) and go to 53.",
+  "NEXT17": "If flow=add_debt go to 53. Otherwise (a sale on credit) go to 18.",
+  "NEXT53": "Apply the inheritance rule: if the person has no balance, or no due date and no plan, go to 18. Otherwise go to 31 and show the inherited terms. (The prototype uses flow=add_debt_person to decide; the brief's inheritance rule is the real rule.)",
+  "MOMO": "Start a MoMo payment from the current screen. Remember the origin screen. Always go to 61 (never block the sale on setup).",
+  "MOMO16": "Done on 16, in this order: (1) parts must sum to the total; (2) if a MoMo part exists, confirm it (Direct: 62; Phone request: 56 then 57, setup via 60 if needed); (3) commit once; (4) go to 30. If the request fails go to 59 and keep the draft on 16.",
+  "MOMO27": "Received on 27: if a MoMo part exists, run the MoMo request for that part (56) before recording the collection. Otherwise go to 28.",
+  "SEND": "Send the request to Paystack. If the charge asks for a code (status send_otp), go to 58. Otherwise go to 57. (The prototype goes to 58 only when Telecel is chosen.)",
+  "MOMOOK": "From 62: the merchant confirms the money arrived (recorded 'MoMo · you confirmed'). From the Paystack flow: charge confirmed (recorded 'MoMo · verified'). Go to 30 for a sale (15, 55, 16) or 28 for a collection (25, 26, 27). From 19: continue the plan commit (31, or 16 in flow=split).",
+  "PAYOTHER": "Return to the origin screen so the merchant can choose another payment method.",
+  "CANCELMOMO": "Cancel the pending request and return to the origin screen.",
+  "SAVEMOMO": "Save the payout account and create or update the Paystack subaccount. If the merchant arrived by tapping MoMo, continue to 56. Otherwise return to the previous screen.",
+  "DIRECT": "From 61: go to 62. Needs no setup beyond the merchant's own MoMo number. Records the MoMo part as 'you confirmed'.",
+  "PHONE": "From 61: if the Paystack payout account is not set up go to 60 (Save and verify continues to 56); otherwise go to 56.",
+  "MOMOPICK": "MoMo tile on 16 (split): go to 61 with pick16 set. DIRECT or PHONE then records the method on the MoMo part and returns to 16. Nothing is requested yet.",
+  "SAVECREDIT": "Save on 18 or 19. If flow=split, mark the Owe part complete and return to 16 (drop the screens in between from history). Otherwise go to 31.",
+  "SAVE19": "Save plan on 19. If today's payment includes MoMo: confirm it first (Direct: 62; Phone request: 56 then 57, 60 for setup, 61 when the method is not chosen yet). Then commit once (debt or sale credit, plan, collection of the amount paid today) and go to 31. In flow=split return to 16 with the Owe part complete. If the request fails go to 59 and stay on 19, nothing saved.",
+  "MOMOPICK19": "MoMo on 19: go to 61 with pick19 set. The chosen method returns to 19."
+ },
+ "flows_and_flags": {
+  "flow=add_debt": "Set by Add debt on 32. Hides the Owed banner on 17. Cleared on arriving at 22 or 15.",
+  "flow=add_debt_person": "Set by + Add to debt on 29 or 43. Cleared on arriving at 22 or 15.",
+  "flags": "estimatedProfit and trackCost (Settings, screen 47). Both off by default. If both are on, the cost-price version of 33 wins. trackCost shows the Cost price field on 40 and 41.",
+  "momo": "Origin screen is remembered (momoFrom). momoReady no longer gates the first MoMo tap: 61 always opens, and only 'Phone request' needs 60. Setting 'When I tap MoMo' (63) can skip 61: Ask me each time (default), Always customer sends, Always phone request.",
+  "flow=split": "Set by Owe on 16. Draft sale holds all parts. Cleared on arriving at 22, 15 or 30."
+ },
+ "states": {
+  "29/43": "One DebtorDetail component. 43 is the late state, 29 the on-time state.",
+  "33/48/49": "One MyMoney component: default, estimated profit, profit from item costs.",
+  "40/50": "One EditItem component: with or without cost price.",
+  "36/52": "One YourStarterList component: single list, or grouped when the combined core list exceeds about 30 items.",
+  "69/70": "PlanPaymentResult: 69 paid and confirmed (Paystack), 70 waiting to confirm (cash or direct MoMo, a StoreKeeper agent or admin confirms).",
+  "16": "SplitPayment draft: one row per mode (Cash, MoMo, Owe). Owe always equals Left to pay. Row status shows MoMo method and Owe person and terms."
+ },
+ "prototype_only_shortcuts_do_not_copy": [
+  "Every debtor name opens Amoto.",
+  "Every item row opens Sugar.",
+  "Keypads do not type; tabs do not filter.",
+  "Sample names, amounts and dates.",
+  "The Not wired in this prototype message.",
+  "21: With items jumps straight to 35. Real app: select an option, then Continue.",
+  "Disabled Done and Received buttons are enabled by tapping Cash or MoMo. Real app: enabled when the parts add up to the total.",
+  "57: the two Demo buttons simulate Paystack results. Real app: advance on the Paystack webhook or status check."
+ ],
+ "screens": {
+  "15": {
+   "name": "Sell",
+   "component": "Sell",
+   "controls": [
+    {
+     "label": "1",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "2",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "3",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "4",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "5",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "6",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "7",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "8",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "9",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "0",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Delete",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Cash",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "MoMo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "MOMO"
+    },
+    {
+     "label": "Owe",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "17"
+    },
+    {
+     "label": "Done",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "30"
+    },
+    {
+     "label": "Add items",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "20"
+    },
+    {
+     "label": "Split payment",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "16"
+    },
+    {
+     "label": "Home",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    },
+    {
+     "label": "Sell",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "15"
+    },
+    {
+     "label": "Owed",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "17"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": true
+  },
+  "16": {
+   "name": "Split payment",
+   "component": "SplitPayment",
+   "controls": [
+    {
+     "label": "Remove Cash",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Remove MoMo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Remove Owe",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Removes the credit part. Left to pay goes back up."
+    },
+    {
+     "label": "Cash",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection",
+     "effect": "Adds a payment part. Enables Done or Received once the parts add up."
+    },
+    {
+     "label": "MoMo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "MOMOPICK"
+    },
+    {
+     "label": "Owe",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "17",
+     "sets_flow": "split"
+    },
+    {
+     "label": "Done",
+     "role": null,
+     "disabled_initially": true,
+     "type": "navigate",
+     "to": "MOMO16"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "17": {
+   "name": "Who owes you?",
+   "component": "WhoOwesYou",
+   "controls": [
+    {
+     "label": "AmotoGH₵30.00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "KofiGH₵25.00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "AkosuaGH₵18.00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "YawGH₵12.00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "EfuaGH₵8.00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "New person",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "34"
+    },
+    {
+     "label": "Next ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "NEXT17",
+     "to_rule": "If flow=add_debt go to 53. Otherwise (a sale on credit) go to 18."
+    }
+   ],
+   "inputs": [
+    "Search by name or phone"
+   ],
+   "bottom_bar": false
+  },
+  "18": {
+   "name": "When will they pay?",
+   "component": "WhenWillTheyPay",
+   "controls": [
+    {
+     "label": "Today",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "In 1 week",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "In 2 weeks",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "A little at a timePay small amounts again and again",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "19"
+    },
+    {
+     "label": "Save · Amoto owes GH₵35.00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "SAVECREDIT"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "19": {
+   "name": "A little at a time",
+   "component": "ALittleAtATime",
+   "controls": [
+    {
+     "label": "Every week",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Every 2 weeks",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Every month",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Today",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects Today. Shows Amount paid today and How is it paid? (hidden when flow=split)."
+    },
+    {
+     "label": "Next cycle",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Label shows the chosen frequency: Next cycle (Every week | Every 2 weeks | Every month). Hides Amount paid today and How is it paid?. Amount paid today counts as 0."
+    },
+    {
+     "label": "Cash",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects Cash for today's payment."
+    },
+    {
+     "label": "MoMo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "MOMOPICK19",
+     "effect": "Opens 61 with the pick flag. DIRECT or PHONE records the method and returns to 19. Nothing is requested yet."
+    },
+    {
+     "label": "Split payment",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "27",
+     "effect": "Opens 27 (cash + MoMo parts of the amount paid today). Received and Back return to 19, not to 28."
+    },
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK"
+    },
+    {
+     "label": "Save plan",
+     "role": null,
+     "disabled_initially": true,
+     "type": "navigate",
+     "to": "SAVE19"
+    }
+   ],
+   "inputs": [
+    {
+     "name": "eachTime",
+     "max": "amount owed",
+     "note": "Maximum: shown under the field"
+    },
+    {
+     "name": "amountPaidToday",
+     "max": "amount owed",
+     "note": "Maximum today: shown under the field. Visible only when First payment is Today and flow is not split"
+    },
+    {
+     "name": "nextPaymentDate",
+     "note": "Prefilled with one cycle after today. Editable. Must be after today."
+    }
+   ],
+   "bottom_bar": false,
+   "rules": [
+    "Save plan stays disabled until: each time is above 0 and not above the maximum; amount paid today (if shown) is not above the maximum; a method is chosen when amount paid today is above 0; the next payment date is valid.",
+    "Amount paid today equal to the full amount owed settles the debt: record the debt and the payment, save NO plan, balance becomes 0. (Decided by the owner, matches the live app.)",
+    "In flow=split the payment section is hidden because the cash and MoMo parts on 16 already cover today. (Decided by the owner, matches the live app.)"
+   ]
+  },
+  "20": {
+   "name": "Sell with items",
+   "component": "SellWithItems",
+   "controls": [
+    {
+     "label": "Bread",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Water",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Sugar",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "37"
+    },
+    {
+     "label": "Rice",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Oil",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "+ New item",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "41"
+    },
+    {
+     "label": "Remove Other amount",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Less Bread",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Quantity Bread",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "38"
+    },
+    {
+     "label": "More Bread",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Next · GH₵13.00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "55"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "21": {
+   "name": "How do you want to sell?",
+   "component": "HowDoYouWantToSell",
+   "controls": [
+    {
+     "label": "Just numbers",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "With items",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "35"
+    },
+    {
+     "label": "Continue ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "22": {
+   "name": "Home",
+   "component": "Home",
+   "controls": [
+    {
+     "label": "Menu",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "23"
+    },
+    {
+     "label": "Sell",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "15"
+    },
+    {
+     "label": "Spent money",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "44"
+    },
+    {
+     "label": "Collect payment from Amoto",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "25"
+    },
+    {
+     "label": "WhatsApp Amoto",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "Open WhatsApp with the existing reminder template (reminders) or the new receipt template (receipts, after approval). The merchant reviews and sends. Nothing is sent automatically."
+    },
+    {
+     "label": "Call Amoto",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "tel: link to the person's valid phone number."
+    },
+    {
+     "label": "Today’s transactions ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "24"
+    },
+    {
+     "label": "Home",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    },
+    {
+     "label": "Owed",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "32"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": true
+  },
+  "23": {
+   "name": "Menu",
+   "component": "Menu",
+   "controls": [
+    {
+     "label": "Close menu",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    },
+    {
+     "label": "Home",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    },
+    {
+     "label": "Today’s transactions",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "24"
+    },
+    {
+     "label": "My money",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "33"
+    },
+    {
+     "label": "Items",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "39"
+    },
+    {
+     "label": "Language",
+     "role": null,
+     "disabled_initially": false,
+     "type": "not_designed",
+     "effect": "Not designed in the prototype. Ask before building. Do not invent a screen."
+    },
+    {
+     "label": "Settings",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "47"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "24": {
+   "name": "Today’s transactions",
+   "component": "TodaysTransactions",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    },
+    {
+     "label": "All",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Sold",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Spent",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Credit",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "+GH₵13.00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "not_designed",
+     "effect": "A list row. Its detail view is not designed. Ask before building anything."
+    },
+    {
+     "label": "+GH₵8.00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "not_designed",
+     "effect": "A list row. Its detail view is not designed. Ask before building anything."
+    },
+    {
+     "label": "+GH₵6.00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "not_designed",
+     "effect": "A list row. Its detail view is not designed. Ask before building anything."
+    },
+    {
+     "label": "GH₵12.00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "not_designed",
+     "effect": "A list row. Its detail view is not designed. Ask before building anything."
+    },
+    {
+     "label": "−GH₵10.00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "not_designed",
+     "effect": "A list row. Its detail view is not designed. Ask before building anything."
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "25": {
+   "name": "Collect payment (sheet over Home)",
+   "component": "CollectPayment",
+   "controls": [
+    {
+     "label": "Close",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    },
+    {
+     "label": "Due now",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Pay all",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Pay part",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "26"
+    },
+    {
+     "label": "Cash",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "MoMo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "MOMO"
+    },
+    {
+     "label": "Received",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "28"
+    },
+    {
+     "label": "See Amoto’s details ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "43"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "26": {
+   "name": "Collect: pay part",
+   "component": "CollectPayPart",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "25"
+    },
+    {
+     "label": "1",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "2",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "3",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "4",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "5",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "6",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "7",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "8",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "9",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "0",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Delete",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Cash",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "MoMo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "MOMO"
+    },
+    {
+     "label": "Received",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "28"
+    },
+    {
+     "label": "Split payment",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "27"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "27": {
+   "name": "Split payment (collect)",
+   "component": "SplitPayment",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "26",
+     "note": "If opened from 19 (flow from19): returns to 19"
+    },
+    {
+     "label": "Remove Cash",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Cash",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection",
+     "effect": "Adds a payment part. Enables Done or Received once the parts add up."
+    },
+    {
+     "label": "MoMo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection",
+     "effect": "Adds a payment part. Enables Done or Received once the parts add up."
+    },
+    {
+     "label": "Received",
+     "role": null,
+     "disabled_initially": true,
+     "type": "navigate",
+     "to": "MOMO27",
+     "note": "If opened from 19 (flow from19): returns to 19"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "28": {
+   "name": "Payment received",
+   "component": "PaymentReceived",
+   "controls": [
+    {
+     "label": "Undo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    },
+    {
+     "label": "Send receipt",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "Open WhatsApp with the existing reminder template (reminders) or the new receipt template (receipts, after approval). The merchant reviews and sends. Nothing is sent automatically."
+    },
+    {
+     "label": "See Amoto’s details ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "29"
+    },
+    {
+     "label": "Done",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "29": {
+   "name": "Debtor detail (on-time state)",
+   "component": "DebtorDetail",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    },
+    {
+     "label": "Edit contact",
+     "role": null,
+     "disabled_initially": false,
+     "type": "reuse_existing",
+     "effect": "Open the existing edit-contact form with its existing validation. No new screen."
+    },
+    {
+     "label": "Collect",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "25"
+    },
+    {
+     "label": "WhatsApp",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "Open WhatsApp with the existing reminder template (reminders) or the new receipt template (receipts, after approval). The merchant reviews and sends. Nothing is sent automatically."
+    },
+    {
+     "label": "Call",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "tel: link to the person's valid phone number."
+    },
+    {
+     "label": "Correct balance",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "54"
+    },
+    {
+     "label": "+ Add to debt",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "ADDP",
+     "to_rule": "Start the add-debt-for-a-person flow (flow=add_debt_person) and go to 53."
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "30": {
+   "name": "Sale recorded (receipt)",
+   "component": "SaleRecorded",
+   "controls": [
+    {
+     "label": "Send receipt",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "Open WhatsApp with the existing reminder template (reminders) or the new receipt template (receipts, after approval). The merchant reviews and sends. Nothing is sent automatically."
+    },
+    {
+     "label": "Done",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    },
+    {
+     "label": "New sale",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "15"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "31": {
+   "name": "Saved as credit",
+   "component": "SavedAsCredit",
+   "controls": [
+    {
+     "label": "WhatsApp Amoto",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "Open WhatsApp with the existing reminder template (reminders) or the new receipt template (receipts, after approval). The merchant reviews and sends. Nothing is sent automatically."
+    },
+    {
+     "label": "See Amoto’s details ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "29"
+    },
+    {
+     "label": "Done",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "32": {
+   "name": "People who owe you (tab: Owed)",
+   "component": "PeopleWhoOweYou",
+   "controls": [
+    {
+     "label": "Add debt",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "ADD",
+     "to_rule": "Start the add-debt flow (flow=add_debt) and go to 17."
+    },
+    {
+     "label": "All",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Late",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Due soon",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "AmotoGH₵30.00Late",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "43"
+    },
+    {
+     "label": "Collect from Amoto",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "25"
+    },
+    {
+     "label": "WhatsApp Amoto",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "Open WhatsApp with the existing reminder template (reminders) or the new receipt template (receipts, after approval). The merchant reviews and sends. Nothing is sent automatically."
+    },
+    {
+     "label": "Call Amoto",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "tel: link to the person's valid phone number."
+    },
+    {
+     "label": "KofiGH₵25.00Due today",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "43"
+    },
+    {
+     "label": "Collect from Kofi",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "25"
+    },
+    {
+     "label": "WhatsApp Kofi",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "Open WhatsApp with the existing reminder template (reminders) or the new receipt template (receipts, after approval). The merchant reviews and sends. Nothing is sent automatically."
+    },
+    {
+     "label": "Call Kofi",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "tel: link to the person's valid phone number."
+    },
+    {
+     "label": "AkosuaGH₵18.00In 5 days",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "43"
+    },
+    {
+     "label": "Collect from Akosua",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "25"
+    },
+    {
+     "label": "WhatsApp Akosua",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "Open WhatsApp with the existing reminder template (reminders) or the new receipt template (receipts, after approval). The merchant reviews and sends. Nothing is sent automatically."
+    },
+    {
+     "label": "Call Akosua",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "tel: link to the person's valid phone number."
+    },
+    {
+     "label": "YawGH₵12.00In 12 days",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "43"
+    },
+    {
+     "label": "Collect from Yaw",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "25"
+    },
+    {
+     "label": "WhatsApp Yaw",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "Open WhatsApp with the existing reminder template (reminders) or the new receipt template (receipts, after approval). The merchant reviews and sends. Nothing is sent automatically."
+    },
+    {
+     "label": "Call Yaw",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "tel: link to the person's valid phone number."
+    },
+    {
+     "label": "EfuaGH₵8.00In 14 days",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "43"
+    },
+    {
+     "label": "Collect from Efua",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "25"
+    },
+    {
+     "label": "WhatsApp Efua",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "Open WhatsApp with the existing reminder template (reminders) or the new receipt template (receipts, after approval). The merchant reviews and sends. Nothing is sent automatically."
+    },
+    {
+     "label": "Call Efua",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "tel: link to the person's valid phone number."
+    },
+    {
+     "label": "Home",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    },
+    {
+     "label": "Sell",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "15"
+    },
+    {
+     "label": "Owed",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": true
+  },
+  "33": {
+   "name": "My money",
+   "component": "MyMoney",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    },
+    {
+     "label": "This week",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "This month",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Owed to youGH₵93.00See who ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "32"
+    },
+    {
+     "label": "You owe suppliersGH₵280.00See list ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "46"
+    },
+    {
+     "label": "Open Settings ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "47"
+    },
+    {
+     "label": "Add costs ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "40"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "34": {
+   "name": "New person",
+   "component": "NewPerson",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "17"
+    },
+    {
+     "label": "Next ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "18"
+    }
+   ],
+   "inputs": [
+    "np-amt",
+    "e.g. Kofi Mensah",
+    "024 000 0000",
+    "GHA-000000000-0"
+   ],
+   "bottom_bar": false
+  },
+  "35": {
+   "name": "What do you sell?",
+   "component": "WhatDoYouSell",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "21"
+    },
+    {
+     "label": "Category Provisions shop",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Food and drinks",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Fresh produce",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Hair and beauty",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Clothes, shoes and bags",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Phone and airtime",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "More categories ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "51"
+    },
+    {
+     "label": "Category Something else",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Continue ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "MULTI",
+     "to_rule": "Go to 52 if several categories are chosen (the prototype uses: More categories was opened). Otherwise go to 36."
+    },
+    {
+     "label": "Skip for now",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    }
+   ],
+   "inputs": [
+    "Find your business"
+   ],
+   "bottom_bar": false
+  },
+  "36": {
+   "name": "Your starter list",
+   "component": "YourStarterList",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Item Bread",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Sugar",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Salt",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Rice",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Cooking oil",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Tomato paste",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Sardine",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Instant noodles",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Milo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Milk (tin)",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Washing soap",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Bathing soap",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Matches",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Biscuits",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Tea",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Coffee",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Custard",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Oats",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Cornflakes",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Cerelac",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Show more (69)",
+     "role": null,
+     "disabled_initially": false,
+     "type": "expand",
+     "effect": "Expands or collapses a list on the same screen. No navigation."
+    },
+    {
+     "label": "Continue · 14 items",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "FROM",
+     "to_rule": "Setup finished or skipped. If the previous screen is 39 (My items), return to 39. Otherwise go to 22 (Home)."
+    },
+    {
+     "label": "Skip, I’ll add items later",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "FROM",
+     "to_rule": "Setup finished or skipped. If the previous screen is 39 (My items), return to 39. Otherwise go to 22 (Home)."
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "37": {
+   "name": "How much is {item}?",
+   "component": "ItemPrice",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "20"
+    },
+    {
+     "label": "1",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "2",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "3",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "4",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "5",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "6",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "7",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "8",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "9",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "0",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Delete",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Save price",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "20"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "38": {
+   "name": "How many {item}?",
+   "component": "ItemQuantity",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "20"
+    },
+    {
+     "label": "1",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "2",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "3",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "4",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "5",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "6",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "7",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "8",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "9",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "0",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Delete",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Add 12",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "20"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "39": {
+   "name": "My items",
+   "component": "MyItems",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "23"
+    },
+    {
+     "label": "New item",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "41"
+    },
+    {
+     "label": "Bread",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "40"
+    },
+    {
+     "label": "Water",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "40"
+    },
+    {
+     "label": "Sugar",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "40"
+    },
+    {
+     "label": "Rice",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "40"
+    },
+    {
+     "label": "Cooking oil",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "40"
+    },
+    {
+     "label": "Soap",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "40"
+    },
+    {
+     "label": "Add from starter list",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "36"
+    }
+   ],
+   "inputs": [
+    "Find item"
+   ],
+   "bottom_bar": false
+  },
+  "40": {
+   "name": "Edit item",
+   "component": "EditItem",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Delete item",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "42"
+    },
+    {
+     "label": "Save",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    }
+   ],
+   "inputs": [
+    "e.g. Bread",
+    "0.00",
+    "What you paid for one"
+   ],
+   "bottom_bar": false
+  },
+  "41": {
+   "name": "New item",
+   "component": "NewItem",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Save",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    }
+   ],
+   "inputs": [
+    "e.g. Bread",
+    "0.00"
+   ],
+   "bottom_bar": false
+  },
+  "42": {
+   "name": "Delete item?",
+   "component": "DeleteItem",
+   "controls": [
+    {
+     "label": "Keep Sugar",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Yes, delete",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "39"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "43": {
+   "name": "Debtor detail (late state)",
+   "component": "DebtorDetail",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    },
+    {
+     "label": "Edit contact",
+     "role": null,
+     "disabled_initially": false,
+     "type": "reuse_existing",
+     "effect": "Open the existing edit-contact form with its existing validation. No new screen."
+    },
+    {
+     "label": "Send reminder on WhatsApp",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "Open WhatsApp with the existing reminder template (reminders) or the new receipt template (receipts, after approval). The merchant reviews and sends. Nothing is sent automatically."
+    },
+    {
+     "label": "Collect",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "25"
+    },
+    {
+     "label": "Call",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "tel: link to the person's valid phone number."
+    },
+    {
+     "label": "Correct balance",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "54"
+    },
+    {
+     "label": "+ Add to debt",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "ADDP",
+     "to_rule": "Start the add-debt-for-a-person flow (flow=add_debt_person) and go to 53."
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "44": {
+   "name": "Spent money",
+   "component": "SpentMoney",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    },
+    {
+     "label": "Stock",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Transport",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Rent",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Utilities",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Other",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Yes",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "No",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "45"
+    },
+    {
+     "label": "Save",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    }
+   ],
+   "inputs": [
+    "Amount"
+   ],
+   "bottom_bar": false
+  },
+  "45": {
+   "name": "Stock on credit",
+   "component": "StockOnCredit",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "44"
+    },
+    {
+     "label": "Kofi Wholesale",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "+ New supplier",
+     "role": null,
+     "disabled_initially": false,
+     "type": "not_designed",
+     "effect": "Not designed in the prototype. Ask before building. Do not invent a screen."
+    },
+    {
+     "label": "Save",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    }
+   ],
+   "inputs": [
+    "pn",
+    "pb"
+   ],
+   "bottom_bar": false
+  },
+  "46": {
+   "name": "You owe suppliers",
+   "component": "YouOweSuppliers",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "33"
+    },
+    {
+     "label": "Kofi WholesaleGH₵200.00Due in 3 days",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Pay Kofi Wholesale",
+     "role": null,
+     "disabled_initially": false,
+     "type": "not_designed",
+     "effect": "Not designed in the prototype. Ask before building. Do not invent a screen."
+    },
+    {
+     "label": "Call Kofi Wholesale",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "tel: link to the person's valid phone number."
+    },
+    {
+     "label": "Madam AmaGH₵80.00Due in 10 days",
+     "role": null,
+     "disabled_initially": false,
+     "type": "not_designed",
+     "effect": "A list row. Its detail view is not designed. Ask before building anything."
+    },
+    {
+     "label": "Pay Madam Ama",
+     "role": null,
+     "disabled_initially": false,
+     "type": "not_designed",
+     "effect": "Not designed in the prototype. Ask before building. Do not invent a screen."
+    },
+    {
+     "label": "Call Madam Ama",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "tel: link to the person's valid phone number."
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "47": {
+   "name": "Settings: profit tools",
+   "component": "Settings",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "MoMo payments",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "63"
+    },
+    {
+     "label": "My plan",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "64"
+    },
+    {
+     "label": "Show estimated profit",
+     "role": "switch",
+     "disabled_initially": false,
+     "type": "toggle",
+     "effect": "Toggles the profit-tool flag (estimated profit or item costs). Affects screens 33 and 40."
+    },
+    {
+     "label": "Track cost price of items",
+     "role": "switch",
+     "disabled_initially": false,
+     "type": "toggle",
+     "effect": "Toggles the profit-tool flag (estimated profit or item costs). Affects screens 33 and 40."
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "51": {
+   "name": "More categories",
+   "component": "MoreCategories",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Category Restaurants and chop bars",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Meat and fish",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Bakery and pastries",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Drinks and bar",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Jewellery and accessories",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Beauty products and toiletries",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Mobile money agent",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Electrical and wiring",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Repairs and fixing",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Tailoring and sewing",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Laundry and cleaning",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Delivery and transport",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Vehicle parts and tyres",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Printing and photography",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Events and hire",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Chemical shop (over the counter)",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Building materials",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Plumbing materials",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Paint and finishing",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Tools and fasteners",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Water and ice",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Stationery and school",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Household and baby",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Furniture and mattresses",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Gas, charcoal and fuel",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Farm and livestock",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Done ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "52": {
+   "name": "Your starter list (several categories, grouped)",
+   "component": "YourStarterList",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Item Bread",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Sugar",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Salt",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Show all Provisions shop",
+     "role": null,
+     "disabled_initially": false,
+     "type": "expand",
+     "effect": "Expands or collapses a list on the same screen. No navigation."
+    },
+    {
+     "label": "Item Jollof rice",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Waakye",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Fried rice",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Show all Food and drinks",
+     "role": null,
+     "disabled_initially": false,
+     "type": "expand",
+     "effect": "Expands or collapses a list on the same screen. No navigation."
+    },
+    {
+     "label": "Continue · 27 items",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "FROM",
+     "to_rule": "Setup finished or skipped. If the previous screen is 39 (My items), return to 39. Otherwise go to 22 (Home)."
+    },
+    {
+     "label": "Skip, I’ll add items later",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "FROM",
+     "to_rule": "Setup finished or skipped. If the previous screen is 39 (My items), return to 39. Otherwise go to 22 (Home)."
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "53": {
+   "name": "How much do they owe?",
+   "component": "HowMuchDoTheyOwe",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "1",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "2",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "3",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "4",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "5",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "6",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "7",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "8",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "9",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "0",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Delete",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Taken on: Today",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Next ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "NEXT53",
+     "to_rule": "Apply the inheritance rule: if the person has no balance, or no due date and no plan, go to 18. Otherwise go to 31 and show the inherited terms. (The prototype uses flow=add_debt_person to decide; the brief's inheritance rule is the real rule.)"
+    }
+   ],
+   "inputs": [
+    "What for (optional)"
+   ],
+   "bottom_bar": false
+  },
+  "54": {
+   "name": "Correct balance (sheet over Debtor detail)",
+   "component": "CorrectBalance",
+   "controls": [
+    {
+     "label": "Close",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Reason Wrong amount entered",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection",
+     "effect": "Chooses the reason and enables Save correction."
+    },
+    {
+     "label": "Reason Customer dispute",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection",
+     "effect": "Chooses the reason and enables Save correction."
+    },
+    {
+     "label": "Reason Goods returned",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection",
+     "effect": "Chooses the reason and enables Save correction."
+    },
+    {
+     "label": "Reason Debt forgiven",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection",
+     "effect": "Chooses the reason and enables Save correction."
+    },
+    {
+     "label": "Reason Other",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection",
+     "effect": "Chooses the reason and enables Save correction."
+    },
+    {
+     "label": "Save correction",
+     "role": null,
+     "disabled_initially": true,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Cancel",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    }
+   ],
+   "inputs": [
+    "nb"
+   ],
+   "bottom_bar": false
+  },
+  "55": {
+   "name": "Review and pay",
+   "component": "ReviewAndPay",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Cash",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "MoMo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "MOMO"
+    },
+    {
+     "label": "Owe",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "17"
+    },
+    {
+     "label": "Split payment",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "16"
+    },
+    {
+     "label": "Done",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "30"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "56": {
+   "name": "MoMo payment (Paystack request)",
+   "component": "MoMoPayment",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Network MTN",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Chooses the network. No navigation. (Prototype: choosing Telecel makes Send request go to 58.)"
+    },
+    {
+     "label": "Network Telecel",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Chooses the network. No navigation. (Prototype: choosing Telecel makes Send request go to 58.)"
+    },
+    {
+     "label": "Network AirtelTigo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Chooses the network. No navigation. (Prototype: choosing Telecel makes Send request go to 58.)"
+    },
+    {
+     "label": "Send request",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "SEND"
+    },
+    {
+     "label": "Customer already paid me directly",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "MOMOOK"
+    }
+   ],
+   "inputs": [
+    "mp"
+   ],
+   "bottom_bar": false
+  },
+  "57": {
+   "name": "Waiting for customer",
+   "component": "MoMoWaiting",
+   "controls": [
+    {
+     "label": "Resend request",
+     "role": null,
+     "disabled_initially": true,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Cancel request",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "CANCELMOMO"
+    },
+    {
+     "label": "Demo: approved",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "MOMOOK",
+     "prototype_only": true,
+     "effect": "Prototype only. Simulates the Paystack result. Do not build. In the real app the screen advances when Paystack confirms or fails the charge."
+    },
+    {
+     "label": "Demo: declined",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "59",
+     "prototype_only": true,
+     "effect": "Prototype only. Simulates the Paystack result. Do not build. In the real app the screen advances when Paystack confirms or fails the charge."
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "58": {
+   "name": "Enter the code",
+   "component": "MoMoCode",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Submit code",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "57"
+    }
+   ],
+   "inputs": [
+    "000000"
+   ],
+   "bottom_bar": false
+  },
+  "59": {
+   "name": "Payment not completed",
+   "component": "MoMoNotCompleted",
+   "controls": [
+    {
+     "label": "Try again",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "56"
+    },
+    {
+     "label": "Pay another way",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "PAYOTHER"
+    },
+    {
+     "label": "Cancel sale",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "60": {
+   "name": "Receive MoMo payments (setup)",
+   "component": "MoMoSetup",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Payout MTN",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Payout Telecel",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Payout AirtelTigo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Save and verify",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "SAVEMOMO"
+    }
+   ],
+   "inputs": [
+    "bn",
+    "pn2"
+   ],
+   "bottom_bar": false
+  },
+  "61": {
+   "name": "MoMo: how will they pay?",
+   "component": "MoMoChoice",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK"
+    },
+    {
+     "label": "Customer sends to my number",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "DIRECT"
+    },
+    {
+     "label": "Phone request",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "PHONE"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "change_request": "2026-11-07 MoMo choice and plan payments"
+  },
+  "62": {
+   "name": "Customer sends to my number",
+   "component": "MoMoDirect",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK"
+    },
+    {
+     "label": "Copy number",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Money received",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "MOMOOK"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "change_request": "2026-11-07 MoMo choice and plan payments",
+   "advice_text": "Wait for the MoMo message. Check the amount and the name, and check your MoMo balance, not only the SMS. Then tap Money received."
+  },
+  "63": {
+   "name": "How customers pay me",
+   "component": "PaymentSettings",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK"
+    },
+    {
+     "label": "Phone request: set up ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "60"
+    },
+    {
+     "label": "Ask me each time",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Always: customer sends to my number",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Always: phone request",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Save",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "change_request": "2026-11-07 MoMo choice and plan payments"
+  },
+  "64": {
+   "name": "My plan",
+   "component": "MyPlan",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK"
+    },
+    {
+     "label": "Pay now",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "65"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "change_request": "2026-11-07 MoMo choice and plan payments"
+  },
+  "65": {
+   "name": "Pay for my plan",
+   "component": "PlanPayMethod",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK"
+    },
+    {
+     "label": "Cash",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "66"
+    },
+    {
+     "label": "Mobile money",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "67"
+    },
+    {
+     "label": "Phone request",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "68"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "change_request": "2026-11-07 MoMo choice and plan payments"
+  },
+  "66": {
+   "name": "Pay cash",
+   "component": "PlanPayCash",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK"
+    },
+    {
+     "label": "I gave the cash",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "70"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "change_request": "2026-11-07 MoMo choice and plan payments"
+  },
+  "67": {
+   "name": "Send to StoreKeeper",
+   "component": "PlanPayMoMo",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK"
+    },
+    {
+     "label": "I sent it",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "70"
+    }
+   ],
+   "inputs": [
+    "ref",
+    "code"
+   ],
+   "bottom_bar": false,
+   "change_request": "2026-11-07 MoMo choice and plan payments"
+  },
+  "68": {
+   "name": "Phone request",
+   "component": "PlanPayPhone",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK"
+    },
+    {
+     "label": "Network MTN",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Network Telecel",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Network AirtelTigo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Send request",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "69"
+    }
+   ],
+   "inputs": [
+    "mp"
+   ],
+   "bottom_bar": false,
+   "change_request": "2026-11-07 MoMo choice and plan payments"
+  },
+  "69": {
+   "name": "Plan paid",
+   "component": "PlanPaymentResult",
+   "controls": [
+    {
+     "label": "Done",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "64"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "change_request": "2026-11-07 MoMo choice and plan payments"
+  },
+  "70": {
+   "name": "Waiting to confirm",
+   "component": "PlanPaymentResult",
+   "controls": [
+    {
+     "label": "Done",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "64"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "change_request": "2026-11-07 MoMo choice and plan payments"
+  }
+ },
+ "integration": {
+  "provider": "Paystack (Ghana mobile money)",
+  "notes": "Paystack secret key stays on the server. See the Paystack section of agent-conformance-prompt.md."
+ },
+ "rules_global": {
+  "currency": "Show money as GH₵ followed directly by the amount, for example GH₵268.20. Use the app's existing money formatter everywhere. The letters GHS appear only as the currency parameter of API calls."
+ }
+}
