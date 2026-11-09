@@ -5,6 +5,7 @@ import { after, test } from "node:test";
 import { db } from "../src/db/db.js";
 import { recordCashSale } from "../src/db/sales.js";
 import { recordCreditSale, recordDebtCollection } from "../src/db/debts.js";
+import { recordManualDebt } from "../src/db/debtLedger.js";
 import * as momoMapping from "../src/pos/momoMapping.js";
 import { buildSaleReceiptMessage } from "../src/pos/saleReceipt.js";
 import { buildCollectionReceiptMessage } from "../src/pos/collectionReceipt.js";
@@ -94,34 +95,94 @@ test("C2: the MoMo label reads MoMo · you confirmed, and plain MoMo for older r
   assert.equal(momoMapping.getMomoDisplayLabel({ momoVerification: "nonsense" }), "MoMo");
 });
 
-test("C2: sale and collection receipts carry the MoMo label", () => {
-  const sale = { amountPesewas: 2000, total_amount: 2000, payment_method: "momo", cashReceivedPesewas: 0, momoReceivedPesewas: 2000, momoVerification: "merchant_confirmed", items_json: "[]", timestamp: Date.now() };
-  assert.match(buildSaleReceiptMessage(sale, "Shop"), /Payment: MoMo · you confirmed/);
-  const split = { ...sale, payment_method: "split", cashReceivedPesewas: 500, momoReceivedPesewas: 1500 };
-  assert.match(buildSaleReceiptMessage(split, "Shop"), /MoMo · you confirmed GH₵15\.00/);
-  const collection = {
-    customerName: "Kofi", createdAt: Date.now(), amountPesewas: 3000, remainingPesewas: 2000, momoVerification: "merchant_confirmed",
-    parts: [{ paymentMethod: "cash", amountPesewas: 1000 }, { paymentMethod: "momo", amountPesewas: 2000 }]
-  };
-  assert.match(buildCollectionReceiptMessage(collection, "Shop"), /MoMo · you confirmed GH₵20\.00/);
+// Owner decision: customer receipts always say plain "MoMo", in both receipt systems,
+// whatever the stored verification. "MoMo · you confirmed" is for merchant screens only.
+const RECEIPT_VERIFICATIONS = ["merchant_confirmed", "verified", undefined];
+function assertPlainMomo(text) {
+  assert.doesNotMatch(text, /you confirmed|verified/i);
+}
+
+test("C2 (owner): default receipts (VITE_ENABLE_POS_RECEIPTS off) say plain MoMo", () => {
+  for (const momoVerification of RECEIPT_VERIFICATIONS) {
+    const sale = { amountPesewas: 2000, total_amount: 2000, payment_method: "momo", cashReceivedPesewas: 0, momoReceivedPesewas: 2000, momoVerification, items_json: "[]", timestamp: Date.now() };
+    const single = buildSaleReceiptMessage(sale, "Shop");
+    assert.match(single, /Payment: MoMo\n/);
+    assertPlainMomo(single);
+    const split = buildSaleReceiptMessage({ ...sale, payment_method: "split", cashReceivedPesewas: 500, momoReceivedPesewas: 1500 }, "Shop");
+    assert.match(split, /· MoMo GH₵15\.00/);
+    assertPlainMomo(split);
+    const collection = buildCollectionReceiptMessage({
+      customerName: "Kofi", createdAt: Date.now(), amountPesewas: 3000, remainingPesewas: 2000, momoVerification,
+      parts: [{ paymentMethod: "cash", amountPesewas: 1000 }, { paymentMethod: "momo", amountPesewas: 2000 }]
+    }, "Shop");
+    assert.match(collection, /, MoMo GH₵20\.00\)/);
+    assertPlainMomo(collection);
+  }
 });
 
-test("C2: the receipt templates (VITE_ENABLE_POS_RECEIPTS on) carry the MoMo label too", () => {
-  const sale = { amountPesewas: 2000, total_amount: 2000, payment_method: "split", paymentType: "split", cashReceivedPesewas: 500, momoReceivedPesewas: 1500, momoVerification: "merchant_confirmed", items_json: "[]", timestamp: Date.now() };
-  assert.match(getSaleReceiptText(sale, "Shop", {}, true), /Paid: Cash GH₵5\.00, MoMo · you confirmed GH₵15\.00/);
-  const collection = {
-    customerName: "Kofi", createdAt: Date.now(), amountPesewas: 3000, remainingPesewas: 2000, momoVerification: "merchant_confirmed",
-    parts: [{ paymentMethod: "cash", amountPesewas: 1000 }, { paymentMethod: "momo", amountPesewas: 2000 }]
-  };
-  assert.match(getCollectionReceiptText(collection, "Shop", true), /\(Cash GH₵10\.00, MoMo · you confirmed GH₵20\.00\)/);
-  const credit = {
-    amountPesewas: 3000, initialPaymentPesewas: 1000, totalDebtPesewas: 2000, debtAfter: null,
-    initialPaymentParts: [{ paymentMethod: "momo", amountPesewas: 1000 }],
-    saleTransaction: { timestamp: Date.now(), momoVerification: "merchant_confirmed" }
-  };
-  assert.match(buildCreditSaleReceipt(credit, "Shop"), /Paid today: GH₵10\.00 \(MoMo · you confirmed GH₵10\.00\)/);
-  // Older records with no field keep the plain label.
-  assert.match(getSaleReceiptText({ ...sale, momoVerification: undefined }, "Shop", {}, true), /MoMo GH₵15\.00/);
+test("C2 (owner): receipt templates (VITE_ENABLE_POS_RECEIPTS on) say plain MoMo", () => {
+  for (const momoVerification of RECEIPT_VERIFICATIONS) {
+    const sale = { amountPesewas: 2000, total_amount: 2000, payment_method: "split", paymentType: "split", cashReceivedPesewas: 500, momoReceivedPesewas: 1500, momoVerification, items_json: "[]", timestamp: Date.now() };
+    const saleText = getSaleReceiptText(sale, "Shop", {}, true);
+    assert.match(saleText, /Paid: Cash GH₵5\.00, MoMo GH₵15\.00/);
+    assertPlainMomo(saleText);
+    const collectionText = getCollectionReceiptText({
+      customerName: "Kofi", createdAt: Date.now(), amountPesewas: 3000, remainingPesewas: 2000, momoVerification,
+      parts: [{ paymentMethod: "cash", amountPesewas: 1000 }, { paymentMethod: "momo", amountPesewas: 2000 }]
+    }, "Shop", true);
+    assert.match(collectionText, /\(Cash GH₵10\.00, MoMo GH₵20\.00\)/);
+    assertPlainMomo(collectionText);
+    const creditText = buildCreditSaleReceipt({
+      amountPesewas: 3000, initialPaymentPesewas: 1000, totalDebtPesewas: 2000, debtAfter: null,
+      initialPaymentParts: [{ paymentMethod: "momo", amountPesewas: 1000 }],
+      saleTransaction: { timestamp: Date.now(), momoVerification }
+    }, "Shop");
+    assert.match(creditText, /Paid today: GH₵10\.00 \(MoMo GH₵10\.00\)/);
+    assertPlainMomo(creditText);
+  }
+});
+
+test("C2 (owner): receipt builders do not read the merchant-only MoMo label", () => {
+  for (const file of ["saleReceipt.js", "collectionReceipt.js", "receiptTemplates.js"]) {
+    const source = readFileSync(new URL(`../src/pos/${file}`, import.meta.url), "utf8");
+    assert.doesNotMatch(source, /getMomoDisplayLabel|you confirmed/, file);
+  }
+});
+
+test("F1 (4b): Add debt with MoMo paid now stores merchant_confirmed on MoMo rows only", async () => {
+  const result = await recordManualDebt({
+    name: "Yaw Manual",
+    ghanaCardNumber: "GHA-123456789-0",
+    amountPesewas: 6000,
+    initialPaymentPesewas: 3000,
+    initialPaymentParts: [
+      { paymentMethod: "cash", amountPesewas: 1000 },
+      { paymentMethod: "momo", amountPesewas: 2000, verification: "merchant_confirmed" }
+    ],
+    paymentMethod: "cash"
+  });
+  const debtId = result.debt.id;
+  const payments = await db.payments.filter((row) => row.debtId === debtId).toArray();
+  const income = await db.transactions.filter((row) => row.debtId === debtId && row.type === "income").toArray();
+  assert.equal(payments.length, 2);
+  assert.equal(income.length, 2);
+  for (const row of [...payments, ...income]) {
+    const method = row.paymentMethod ?? row.payment_method;
+    assert.equal(row.momoVerification, method === "momo" ? "merchant_confirmed" : undefined, `${method} row`);
+  }
+});
+
+test("F1 (4b): Add debt never stores verified without a Paystack reference", async () => {
+  const result = await recordManualDebt({
+    name: "Efua Manual",
+    ghanaCardNumber: "GHA-123456789-0",
+    amountPesewas: 4000,
+    initialPaymentPesewas: 1000,
+    initialPaymentParts: [{ paymentMethod: "momo", amountPesewas: 1000, verification: "verified" }],
+    paymentMethod: "momo"
+  });
+  const income = await db.transactions.filter((row) => row.debtId === result.debt.id && row.type === "income").toArray();
+  assert.equal(income[0].momoVerification, "merchant_confirmed");
 });
 
 test("K13: screens 30 and 28 label the MoMo row with getMomoDisplayLabel", () => {

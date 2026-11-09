@@ -1,7 +1,6 @@
 import { FEATURE_FLAGS } from "../config/features.js";
 import { buildCollectionReceiptMessage } from "./collectionReceipt.js";
 import { buildSaleReceiptMessage, getSaleReceiptDetails } from "./saleReceipt.js";
-import { getMomoDisplayLabel } from "./momoMapping.js";
 
 // Receipts are built only from these fields. Customer phone and Ghana Card numbers are never read.
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -41,10 +40,10 @@ function requireName(name, message) {
   return trimmed;
 }
 
-function paymentParts(cashPesewas, momoPesewas, momoLabel = "MoMo") {
+function paymentParts(cashPesewas, momoPesewas) {
   return [
     ...(cashPesewas > 0 ? [`Cash ${amount(cashPesewas)}`] : []),
-    ...(momoPesewas > 0 ? [`${momoLabel} ${amount(momoPesewas)}`] : [])
+    ...(momoPesewas > 0 ? [`MoMo ${amount(momoPesewas)}`] : [])
   ];
 }
 
@@ -56,8 +55,7 @@ export function buildSaleReceipt({
   cashPesewas = 0,
   momoPesewas = 0,
   owedPesewas = 0,
-  dueDate = "",
-  momoLabel = "MoMo"
+  dueDate = ""
 }) {
   const shop = requireName(shopName, "A shop name is required for the receipt.");
   if (!Number.isSafeInteger(totalPesewas) || totalPesewas <= 0) {
@@ -71,7 +69,7 @@ export function buildSaleReceipt({
     throw new RangeError("Sale items do not match the recorded sale total.");
   }
 
-  const paid = paymentParts(cashPesewas, momoPesewas, momoLabel);
+  const paid = paymentParts(cashPesewas, momoPesewas);
   return [
     `Receipt from ${shop}`,
     formatDateTime(timestamp),
@@ -93,8 +91,7 @@ export function buildPaymentReceipt({
   momoPesewas = 0,
   remainingPesewas,
   installmentPesewas = 0,
-  nextDueDate = "",
-  momoLabel = "MoMo"
+  nextDueDate = ""
 }) {
   const shop = requireName(shopName, "A shop name is required for the receipt.");
   const customer = requireName(customerName, "A customer name is required for the receipt.");
@@ -106,7 +103,7 @@ export function buildPaymentReceipt({
     `Payment received by ${shop}`,
     formatDateTime(timestamp),
     `From: ${customer}`,
-    `Amount: ${amount(paidPesewas)} (${paymentParts(cashPesewas, momoPesewas, momoLabel).join(", ")})`,
+    `Amount: ${amount(paidPesewas)} (${paymentParts(cashPesewas, momoPesewas).join(", ")})`,
     `Still owed: ${amount(remainingPesewas)}`,
     ...(hasNextPayment
       ? [`Next payment: ${amount(Math.min(remainingPesewas, installmentPesewas))} on ${formatDueDate(nextDueDate)}`]
@@ -153,8 +150,7 @@ export function buildSaleReceiptFromTransaction(transaction, shopName, { items, 
       items: items ?? details.items,
       totalPesewas: details.amountPesewas,
       cashPesewas: details.cashReceivedPesewas,
-      momoPesewas: details.momoReceivedPesewas,
-      momoLabel: getMomoDisplayLabel(transaction)
+      momoPesewas: details.momoReceivedPesewas
     });
   }
   return buildSaleReceipt({
@@ -169,8 +165,7 @@ export function buildSaleReceiptFromTransaction(transaction, shopName, { items, 
     cashPesewas: transaction.cashReceivedPesewas ?? 0,
     momoPesewas: transaction.momoReceivedPesewas ?? 0,
     owedPesewas,
-    dueDate: dueDate || transaction.dueDate || "",
-    momoLabel: getMomoDisplayLabel(transaction)
+    dueDate: dueDate || transaction.dueDate || ""
   });
 }
 
@@ -204,7 +199,7 @@ export function buildCreditSaleReceipt(result, shopName) {
     formatDateTime(transaction.timestamp ?? transaction.createdAt),
     `This sale: ${amount(result.amountPesewas)}`,
     ...(paidPesewas > 0
-      ? [`Paid today: ${amount(paidPesewas)} (${paymentParts(cashPesewas, momoPesewas, getMomoDisplayLabel(transaction)).join(", ")})`]
+      ? [`Paid today: ${amount(paidPesewas)} (${paymentParts(cashPesewas, momoPesewas).join(", ")})`]
       : []),
     `Balance owed as of ${formatDateTime(transaction.timestamp ?? transaction.createdAt)}: ${amount(result.totalDebtPesewas)}`,
     ...(plan && result.totalDebtPesewas > 0
@@ -232,8 +227,7 @@ export function buildPaymentReceiptFromCollection(result, shopName) {
     momoPesewas,
     remainingPesewas: result.remainingPesewas,
     installmentPesewas: plan?.installmentAmount ?? 0,
-    nextDueDate: plan?.nextDueDate ?? "",
-    momoLabel: getMomoDisplayLabel(result)
+    nextDueDate: plan?.nextDueDate ?? ""
   });
 }
 

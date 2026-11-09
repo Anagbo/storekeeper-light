@@ -4,6 +4,7 @@ import { runTransactionWithTimeout } from "./runTransactionWithTimeout.js";
 import { createId } from "../lib/ids.js";
 import { isValidGhanaCardNumber, normalizeGhanaCardNumber } from "../lib/ghanaCardNumber.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
+import { getMomoVerification, MOMO_VERIFICATION } from "../pos/momoMapping.js";
 import {
   isValidDateString,
   isValidInstallmentPlanForBalance,
@@ -216,6 +217,10 @@ export async function recordManualDebt({
     initialPaymentPesewas,
     paymentMethod
   );
+  // Read from the raw parts: normalizing keeps only method and amount (F1, Batch 4b).
+  const momoVerification = getMomoVerification(
+    initialPaymentParts ?? [{ paymentMethod, amountPesewas: initialPaymentPesewas }]
+  ) || MOMO_VERIFICATION.merchantConfirmed;
 
   return runTransactionWithTimeout(db, [db.debts, db.customers, db.transactions, db.payments], async () => {
     const customer = await resolveCustomer({
@@ -320,6 +325,7 @@ export async function recordManualDebt({
           amountPesewas: methodTotal,
           total_amount: methodTotal,
           payment_method: method,
+          ...(method === "momo" && { momoVerification }),
           customer_name: customer.name,
           customer_phone: phone.trim() || customer.phone || "",
           items_json: "[]",
@@ -337,6 +343,7 @@ export async function recordManualDebt({
             debtId: debt.id,
             amountPesewas: part.amountPesewas,
             paymentMethod: method,
+            ...(method === "momo" && { momoVerification }),
             customer_name: customer.name,
             createdAt: now,
             updatedAt: now,
