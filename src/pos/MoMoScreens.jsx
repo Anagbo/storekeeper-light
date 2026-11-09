@@ -118,7 +118,7 @@ export function PaymentSettings({ onBack, onNavigate }) {
     <BackTitle title="How customers pay me" onBack={onBack} />
     <PosCard>
       <label className="flex min-h-12 items-center justify-between gap-3 font-extrabold"><span>Customer sends to my number</span><input aria-label="Customer sends to my number" type="checkbox" checked={enabled} onChange={(event) => { setEnabled(event.target.checked); setConfirming(false); }} className="h-6 w-6" /></label>
-      <p className="mt-1 text-base">{enabled ? `On · ${settings.number || "number not set"} · ${settings.network}` : "Off"}</p>
+      <p className="mt-1 text-base">{enabled ? `On · ${settings.number ? maskPhoneNumber(settings.number) : "number not set"} · ${settings.network}` : "Off"}</p>
       {enabled && <>
         <label className="mt-2 block font-bold">My MoMo number<input aria-label="My MoMo number" value={numberInput} onChange={(event) => { setNumberInput(event.target.value); setConfirming(false); }} type="tel" inputMode="tel" autoComplete="tel" placeholder="024 123 4567" className="mt-1 h-14 w-full rounded-xl border-[3px] border-slate-500 px-3 text-xl" /></label>
         <fieldset className="mt-2">
