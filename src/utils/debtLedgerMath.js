@@ -53,8 +53,13 @@ export function calculateLedgerEventBalance(transactions, payments) {
   const creditTotal = transactions.reduce((total, record) => (
     total + getCreditEventAmount(record)
   ), 0);
+  // Undo appends an income_reversal pointing at the payment's income transaction
+  // and keeps the payment row (append-only), so a reversed payment no longer counts (D15).
+  const reversedTransactionIds = new Set(transactions
+    .filter((record) => record.type === "income_reversal" && record.reversalOfTransactionId)
+    .map((record) => record.reversalOfTransactionId));
   const paymentTotal = payments.reduce((total, payment) => (
-    total + (payment.amountPesewas ?? 0)
+    reversedTransactionIds.has(payment.transactionId) ? total : total + (payment.amountPesewas ?? 0)
   ), 0);
   const adjustmentTotal = transactions
     .filter((record) => record.type === "debt_adjustment")
