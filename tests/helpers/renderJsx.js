@@ -6,9 +6,11 @@ import { fileURLToPath } from "node:url";
 const shimPath = fileURLToPath(new URL("./reactShim.js", import.meta.url));
 const cache = new Map();
 
-export async function loadJsx(repoPath) {
-  if (!cache.has(repoPath)) {
-    cache.set(repoPath, (async () => {
+// `env` sets import.meta.env for the compiled screen (for example a feature flag).
+export async function loadJsx(repoPath, env = {}) {
+  const cacheKey = `${repoPath}|${JSON.stringify(env)}`;
+  if (!cache.has(cacheKey)) {
+    cache.set(cacheKey, (async () => {
       const result = await build({
         entryPoints: [fileURLToPath(new URL(`../../${repoPath}`, import.meta.url))],
         bundle: true,
@@ -16,7 +18,7 @@ export async function loadJsx(repoPath) {
         format: "esm",
         platform: "node",
         jsx: "automatic",
-        define: { "import.meta.env": "{}" },
+        define: { "import.meta.env": JSON.stringify(env) },
         logLevel: "silent",
         plugins: [{
           name: "react-shim",
@@ -29,7 +31,7 @@ export async function loadJsx(repoPath) {
       return import(`data:text/javascript;base64,${Buffer.from(code).toString("base64")}`);
     })());
   }
-  return cache.get(repoPath);
+  return cache.get(cacheKey);
 }
 
 export { flushEffects, render, setLiveQuery } from "./reactShim.js";

@@ -105,6 +105,8 @@ export function PaymentSettings({ onBack, onNavigate }) {
   const [saved, setSaved] = useState(false);
   const savingRef = useRef(false);
   useEffect(() => { getMerchantMomoSettings().then((value) => { setSettings(value); setEnabled(Boolean(value.number)); setNumberInput(value.number); }).catch((loadError) => console.error("Could not load payment settings.", loadError)); }, []);
+  // The contract never shows a zero fee: the fee text needs Phone request on and a real fee above zero.
+  const showPhoneFee = PHONE_REQUEST_ENABLED && MOMO_CONFIG.phoneRequestFeePesewas > 0;
   const normalizedNumber = enabled ? normalizeReceivingNumber(numberInput) : "";
   const numberChanged = enabled && normalizedNumber !== null && normalizedNumber !== settings.number;
   async function save() {
@@ -140,7 +142,7 @@ export function PaymentSettings({ onBack, onNavigate }) {
         <label className="mt-2 block font-bold">My MoMo number<input aria-label="My MoMo number" value={numberInput} onChange={(event) => { setNumberInput(event.target.value); setConfirming(false); }} type="tel" inputMode="tel" autoComplete="tel" placeholder="024 123 4567" className="mt-1 h-14 w-full rounded-xl border-[3px] border-slate-500 px-3 text-xl" /></label>
         <fieldset className="mt-2">
           <legend className="mb-2 text-lg font-extrabold">Network</legend>
-          <div className="grid grid-cols-3 gap-2">{RECEIVING_NETWORKS.map((item) => <button key={item} type="button" aria-pressed={settings.network === item} onClick={() => { setSettings((current) => ({ ...current, network: item })); setConfirming(false); }} className={`min-h-14 rounded-xl border-[3px] px-2 font-bold ${settings.network === item ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{item}</button>)}</div>
+          <div className="flex flex-wrap gap-2">{RECEIVING_NETWORKS.map((item) => <button key={item} type="button" aria-pressed={settings.network === item} onClick={() => { setSettings((current) => ({ ...current, network: item })); setConfirming(false); }} className={`min-h-14 min-w-[6.25rem] flex-1 rounded-xl border-[3px] px-2 font-bold ${settings.network === item ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{item}</button>)}</div>
         </fieldset>
       </>}
     </PosCard>
@@ -152,7 +154,7 @@ export function PaymentSettings({ onBack, onNavigate }) {
       </div>
     </PosCard>}
     {error && <p role="alert" className="text-base font-bold text-rose-900">{error}</p>}
-    <PosCard><h2 className="text-lg font-extrabold">Phone request</h2><p className="text-base">Confirmed by itself. Fee {formatGhs(MOMO_CONFIG.phoneRequestFeePesewas)} per payment.</p><PosSecondaryButton type="button" disabled={!PHONE_REQUEST_ENABLED} onClick={() => onNavigate("MoMoSetup")} className="mt-2">{PHONE_REQUEST_ENABLED ? "Phone request: set up ›" : "Not available yet"}</PosSecondaryButton></PosCard>
+    <PosCard><h2 className="text-lg font-extrabold">Phone request</h2><p className="text-base">Confirmed by itself.{showPhoneFee ? ` Fee ${formatGhs(MOMO_CONFIG.phoneRequestFeePesewas)} per payment.` : ""}</p><PosSecondaryButton type="button" disabled={!PHONE_REQUEST_ENABLED} onClick={() => onNavigate("MoMoSetup")} className="mt-2">{PHONE_REQUEST_ENABLED ? "Phone request: set up ›" : "Not available yet"}</PosSecondaryButton></PosCard>
     <h2 className="text-lg font-extrabold">When I tap MoMo</h2>
     {[["ask", "Ask me each time"], ["direct", "Always: customer sends to my number"], ["phone", "Always: phone request"]].map(([value, label]) => <button key={value} type="button" aria-pressed={settings.defaultMethod === value} disabled={value === "phone" && !PHONE_REQUEST_ENABLED} onClick={() => setSettings((current) => ({ ...current, defaultMethod: value }))} className={`min-h-[72px] rounded-[18px] border-[3px] p-3 text-left text-lg font-extrabold disabled:cursor-not-allowed disabled:opacity-60 ${settings.defaultMethod === value ? "border-emerald-900 bg-green-200" : "border-slate-900 bg-white"}`}><UserRound size={24} className="mr-3 inline text-emerald-900" aria-hidden="true" />{label}</button>)}
     {saved && <p role="status">Saved.</p>}
