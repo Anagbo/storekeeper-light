@@ -6,13 +6,16 @@ import { findStarterItem, STARTER_CATEGORIES } from "./starterItems.js";
 
 export { getStarterItemsForCategories, STARTER_CATEGORIES, STARTER_ITEMS } from "./starterItems.js";
 
-export function normalizeProductInput({ name, price = "" }) {
+// The price comes either as text (the item forms) or as whole pesewas (the 37 number pad,
+// which never builds a decimal). Either way it is checked as whole pesewas.
+export function normalizeProductInput({ name, price = "", pricePesewas: givenPesewas }) {
   const cleanName = typeof name === "string" ? name.trim() : "";
-  const priceText = String(price).trim();
-  const pricePesewas = priceText ? toPesewas(priceText) : 0;
+  const hasPesewas = givenPesewas !== undefined;
+  const priceText = hasPesewas ? "" : String(price).trim();
+  const pricePesewas = hasPesewas ? givenPesewas : priceText ? toPesewas(priceText) : 0;
   if (!cleanName) throw new TypeError("Enter an item name.");
   if (cleanName.length > 80) throw new TypeError("Item names must be 80 characters or fewer.");
-  if (!Number.isSafeInteger(pricePesewas) || (priceText && pricePesewas <= 0)) {
+  if (!Number.isSafeInteger(pricePesewas) || ((priceText || hasPesewas) && pricePesewas <= 0)) {
     throw new TypeError(`Enter a valid item price greater than ${formatGhs(0)}.`);
   }
   return {

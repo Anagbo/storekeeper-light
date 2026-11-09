@@ -6,8 +6,10 @@ import { getMoreCategoryGroups, getPopularCategories, isSomethingElseOnly, searc
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
+import { padCount, padMoney, pressPad, startPad } from "./amountPad.js";
 import { posText as t } from "./i18n.js";
-import { PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
+import NumberPad from "./NumberPad.jsx";
+import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 
 export function HowDoYouWantToSell({ onNavigate, onCompleteSetup }) {
   const [sellMode, setSellMode] = useState(null);
@@ -204,14 +206,14 @@ export function MoreCategories({ selected, onSelectedChange, onBack, onDone }) {
 
 export function HowMuchIsItem({ params, onBack, onReturnTo }) {
   const product = params.product;
-  const [price, setPrice] = useState("");
+  // The price is typed on the number pad as whole pesewas (4 5 0 = GH₵4.50), never as a decimal.
+  const [pad, setPad] = useState(() => startPad(0));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const pricePesewas = pad.value;
 
-  async function savePrice(event) {
-    event.preventDefault();
+  async function savePrice() {
     if (!product || saving) return;
-    const pricePesewas = toPesewas(price);
     if (!Number.isSafeInteger(pricePesewas) || pricePesewas <= 0) {
       setError(t("sellItems.invalidPrice", { zero: formatGhs(0) }));
       return;
@@ -219,7 +221,7 @@ export function HowMuchIsItem({ params, onBack, onReturnTo }) {
     setSaving(true);
     setError("");
     try {
-      const updatedProduct = await updateProduct(product.id, { name: product.name, price });
+      const updatedProduct = await updateProduct(product.id, { name: product.name, pricePesewas });
       void requestBackgroundSync();
       // Save price returns to 20 (contract 37) with the item in the sale, as a tap on a
       // priced tile does: one more of it.
@@ -242,14 +244,13 @@ export function HowMuchIsItem({ params, onBack, onReturnTo }) {
         <PosSecondaryButton type="button" onClick={onBack}>{t("items.back")}</PosSecondaryButton>
         <h1 className="text-2xl font-extrabold">{t("setup.priceTitle", { name: product?.name ?? "" })}</h1>
       </div>
-      <form onSubmit={(event) => void savePrice(event)} className="flex flex-1 flex-col gap-3">
-        <label className="block">
-          <span className="mb-1 block font-extrabold">{t("items.price")}</span>
-          <input type="text" inputMode="decimal" value={price} onChange={(event) => { setPrice(event.target.value); setError(""); }} placeholder="0.00" className="h-16 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-right text-2xl font-extrabold" />
-        </label>
-        {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
-        <PosPrimaryButton type="submit" disabled={saving || !product}>{saving ? t("items.saving") : t("sellItems.savePrice")}</PosPrimaryButton>
-      </form>
+      <PosCard className="rounded-[20px] px-4 py-2.5 text-right">
+        <p className="text-[17px] font-bold text-slate-800">{t("setup.priceFor")}</p>
+        <output aria-live="polite" className="block text-5xl font-extrabold">{formatGhs(pricePesewas)}</output>
+      </PosCard>
+      <NumberPad disabled={saving} onKey={(key) => { setPad((current) => pressPad(current, key, padMoney)); setError(""); }} />
+      {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
+      <PosPrimaryButton type="button" disabled={saving || !product} onClick={() => void savePrice()} className="mt-auto">{saving ? t("items.saving") : t("sellItems.savePrice")}</PosPrimaryButton>
     </PosPage>
   );
 }
@@ -259,10 +260,12 @@ export function HowManyItem({ params, onBack, onReplace }) {
   const unitPricePesewas = params.unitPricePesewas ??
     (product ? toPesewas(product.default_price) : null);
   const isEditingExisting = params.mode === "edit" || params.setQuantity === true;
-  const [quantity, setQuantity] = useState(() => (
+  // The count is typed on the number pad; the first digit replaces the starting number.
+  const [pad, setPad] = useState(() => startPad(
     Number.isSafeInteger(params.quantity) && params.quantity > 0 ? params.quantity : 1
   ));
   const [error, setError] = useState("");
+  const quantity = pad.value;
 
   function addToSale() {
     if (!product || !Number.isSafeInteger(product.id) ||
@@ -298,11 +301,11 @@ export function HowManyItem({ params, onBack, onReplace }) {
         <h1 className="text-2xl font-extrabold">{t("setup.quantityTitle", { name: product?.name ?? "" })}</h1>
       </div>
       {product && <p className="text-lg font-bold">{t("sellItems.each", { amount: formatGhs(unitPricePesewas) })}</p>}
-      <div className="flex items-center justify-center gap-5">
-        <PosSecondaryButton type="button" aria-label={t("setup.quantityLess")} disabled={quantity <= 1} onClick={() => setQuantity((current) => Math.max(1, current - 1))}>−</PosSecondaryButton>
-        <output aria-live="polite" className="min-w-16 text-center text-4xl font-extrabold">{quantity}</output>
-        <PosSecondaryButton type="button" aria-label={t("setup.quantityMore")} onClick={() => setQuantity((current) => current + 1)}>+</PosSecondaryButton>
-      </div>
+      <PosCard className="rounded-[20px] px-4 py-2.5 text-right">
+        <p className="text-[17px] font-bold text-slate-800">{t("setup.quantityFor", { name: product?.name ?? "" })}</p>
+        <output aria-live="polite" className="block text-5xl font-extrabold">{quantity}</output>
+      </PosCard>
+      <NumberPad onKey={(key) => { setPad((current) => pressPad(current, key, padCount)); setError(""); }} />
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
       <PosPrimaryButton type="button" disabled={!product} onClick={addToSale} className="mt-auto">{t("setup.addQuantity", { quantity })}</PosPrimaryButton>
     </PosPage>

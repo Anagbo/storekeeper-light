@@ -38,11 +38,12 @@ test("37: Save price returns to 20 with the item in the sale, not to 38", async 
     onNavigate: (...args) => calls.push(["navigate", ...args]),
     onReturnTo: (...args) => calls.push(["returnTo", ...args])
   } });
-  const input = [...walk(view.tree)].find((node) => node.type === "input");
-  input.props.onChange({ target: { value: "4.50" } });
-  view.rerender();
-  const form = [...walk(view.tree)].find((node) => node.type === "form");
-  form.props.onSubmit({ preventDefault() {} });
+  // Batch 15: the price is typed on the number pad (4 5 0 = 450 pesewas), not into a text field.
+  for (const digit of ["4", "5", "0"]) {
+    [...walk(view.tree)].find((node) => node.type === "button" && textOf(node) === digit).props.onClick();
+    view.rerender();
+  }
+  findButton(view.tree, "Save price").props.onClick();
   for (let index = 0; index < 20 && !calls.length; index += 1) await settle();
   assert.equal(calls.length, 1, "one navigation");
   const [kind, route, params] = calls[0];
