@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Banknote, Check, Smartphone } from "lucide-react";
 import { formatGhs } from "../lib/money.js";
 import { getPreference } from "../db/preferences.js";
-import { appendPlanPayment, createPlanCashCode, getPlanPaymentConfiguration, listPlanPayments, PLAN_CONFIG } from "./planPayments.js";
-import { PHONE_REQUEST_ENABLED } from "./momoConfig.js";
+import { appendPlanPayment, createPlanCashCode, describePlanPayment, getPlanLastUsedMethod, getPlanPaymentConfiguration, listPlanPayments, PLAN_CONFIG } from "./planPayments.js";
+import { MOMO_CONFIG, PHONE_REQUEST_ENABLED } from "./momoConfig.js";
 import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag } from "./PosComponents.jsx";
 
 const NETWORKS = ["MTN", "Telecel", "AirtelTigo"];
@@ -32,12 +32,20 @@ export function MyPlan({ expiry = "", onBack, onNavigate }) {
   return <PosPage className="flex flex-col gap-3"><BackTitle title="My plan" onBack={onBack} /><PosCard><h2 className="text-xl font-extrabold">Shop plan · {formatGhs(PLAN_CONFIG.amountPesewas)} a month</h2><PosStatusTag tone={status.tone}>{status.label}</PosStatusTag><p className="mt-2 text-sm">Your sales and records stay safe if a payment is late.</p></PosCard><PosPrimaryButton type="button" onClick={() => onNavigate("PlanPayMethod")}>Pay now</PosPrimaryButton><h2 className="text-lg font-extrabold">Payments</h2><PosCard>{payments.length === 0 ? <p>No payments recorded yet.</p> : payments.map((payment) => <div key={payment.id} className="flex justify-between gap-3 border-b border-slate-200 py-2 last:border-0"><span>{new Date(payment.createdAt).toLocaleDateString("en-GB")} · {payment.method}</span><span className="font-bold">{formatGhs(payment.amountPesewas)} · {payment.status}</span></div>)}</PosCard></PosPage>;
 }
 
-function MethodTile({ icon: Icon, title, detail, disabled = false, onClick }) {
-  return <button type="button" disabled={disabled} onClick={onClick} className="flex min-h-[92px] items-center gap-3 rounded-[20px] border-[3px] border-slate-900 bg-white p-3 text-left disabled:cursor-not-allowed disabled:opacity-60"><Icon size={30} className="shrink-0 text-emerald-900" aria-hidden="true" /><span><b className="block text-xl">{title}</b><span className="text-base">{detail}</span></span></button>;
+function MethodTile({ icon: Icon, title, detail, disabled = false, onClick, children }) {
+  return <button type="button" disabled={disabled} onClick={onClick} className="flex min-h-[92px] items-center gap-3 rounded-[20px] border-[3px] border-slate-900 bg-white p-3 text-left disabled:cursor-not-allowed disabled:opacity-60"><Icon size={30} className="shrink-0 text-emerald-900" aria-hidden="true" /><span className="min-w-0 flex-1"><b className="block text-xl">{title}</b><span className="text-base">{detail}</span>{children && <span className="mt-1 flex flex-wrap gap-1">{children}</span>}</span></button>;
 }
 
+// 65: helper and tag text from the wiring file (K15). Last used shows only on the
+// method stored by the last plan payment; the fee comes from configuration.
 export function PlanPayMethod({ onBack, onNavigate }) {
-  return <PosPage className="flex flex-col gap-3"><BackTitle title="Pay for my plan" onBack={onBack} /><p className="text-[22px] font-extrabold">{formatGhs(PLAN_CONFIG.amountPesewas)} for 1 month</p><h2 className="text-lg font-bold">How do you want to pay?</h2><MethodTile icon={Banknote} title="Cash" detail="Give cash to a StoreKeeper agent." onClick={() => onNavigate("PlanPayCash")} /><MethodTile icon={Smartphone} title="Mobile money" detail="Send to our number. Enter the message code." onClick={() => onNavigate("PlanPayMoMo")} /><MethodTile icon={Smartphone} title="Phone request" detail={PHONE_REQUEST_ENABLED ? "Approve on your phone. Confirmed by itself." : "Not available yet"} disabled={!PHONE_REQUEST_ENABLED} onClick={() => onNavigate("PlanPayPhone")} /></PosPage>;
+  const [lastUsed, setLastUsed] = useState("");
+  useEffect(() => { getPlanLastUsedMethod().then(setLastUsed).catch((error) => console.error("Could not load the last plan payment method.", error)); }, []);
+  return <PosPage className="flex flex-col gap-3"><BackTitle title="Pay for my plan" onBack={onBack} /><p className="text-[22px] font-extrabold">{formatGhs(PLAN_CONFIG.amountPesewas)} for 1 month</p><h2 className="text-lg font-bold">How do you want to pay?</h2>
+    <MethodTile icon={Banknote} title="Cash" detail="Give cash to a StoreKeeper agent." onClick={() => onNavigate("PlanPayCash")}>{lastUsed === "cash" && <PosStatusTag compact>Last used</PosStatusTag>}<PosStatusTag compact>Free</PosStatusTag></MethodTile>
+    <MethodTile icon={Smartphone} title="Mobile money" detail="Send to our number. Enter the message code." onClick={() => onNavigate("PlanPayMoMo")}>{lastUsed === "momo_direct" && <PosStatusTag compact>Last used</PosStatusTag>}<PosStatusTag compact>Free</PosStatusTag></MethodTile>
+    <MethodTile icon={Smartphone} title="Phone request" detail={PHONE_REQUEST_ENABLED ? "Approve on your phone. Confirmed by itself." : "Not available yet"} disabled={!PHONE_REQUEST_ENABLED} onClick={() => onNavigate("PlanPayPhone")}>{PHONE_REQUEST_ENABLED && lastUsed === "momo_paystack" && <PosStatusTag compact>Last used</PosStatusTag>}<PosStatusTag compact>{`Fee ${formatGhs(MOMO_CONFIG.phoneRequestFeePesewas)}`}</PosStatusTag></MethodTile>
+  </PosPage>;
 }
 
 // One save at a time for plan payment buttons (66, 67, 68). The guard is released
@@ -89,5 +97,5 @@ export function PlanPayPhone({ onBack, onNavigate }) {
 
 export function PlanPaymentResult({ params = {}, onNavigate }) {
   const waiting = params.state === "waiting";
-  return <PosPage className="flex flex-col gap-3"><h1 className="text-2xl font-extrabold">{waiting ? "Waiting to confirm" : "Plan paid"}</h1><PosCard>{waiting ? <><h2 className="text-xl font-extrabold">We have your payment details</h2><p>Waiting for confirmation. Your plan starts when we confirm. You can keep selling.</p></> : <><h2 className="text-2xl font-extrabold text-emerald-900">✓ {formatGhs(params.payment?.amountPesewas ?? PLAN_CONFIG.amountPesewas)} received</h2><p>Plan payment confirmed.</p></>}</PosCard><PosPrimaryButton type="button" onClick={() => onNavigate("MyPlan")}> <Check size={24} aria-hidden="true" />Done</PosPrimaryButton></PosPage>;
+  return <PosPage className="flex flex-col gap-3"><h1 className="text-2xl font-extrabold">{waiting ? "Waiting to confirm" : "Plan paid"}</h1><PosCard>{waiting ? <><h2 className="text-xl font-extrabold">We have your payment details</h2><p>Waiting for confirmation. Your plan starts when we confirm. You can keep selling.</p></> : <><h2 className="text-2xl font-extrabold text-emerald-900">✓ {formatGhs(params.payment?.amountPesewas ?? PLAN_CONFIG.amountPesewas)} received</h2>{describePlanPayment(params.payment) && <p>{describePlanPayment(params.payment)}</p>}</>}</PosCard><PosPrimaryButton type="button" onClick={() => onNavigate("MyPlan")}> <Check size={24} aria-hidden="true" />Done</PosPrimaryButton></PosPage>;
 }

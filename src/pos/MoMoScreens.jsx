@@ -238,8 +238,11 @@ export function MoMoCode({ params = {}, onBack, onNavigate }) {
   const [code, setCode] = useState("");
   return <PosPage className="flex flex-col gap-3">
     <BackTitle title="Enter the code" onBack={onBack} />
+    {/* 58 is reached only from a customer sale (56), so the customer wording applies (K15). */}
+    <p className="text-lg font-semibold">The customer got a code by SMS. Ask them for it.</p>
     <label className="font-bold">Code<input value={code} onChange={(event) => setCode(event.target.value)} inputMode="numeric" autoComplete="one-time-code" className="mt-1 h-14 w-full rounded-xl border-2 border-slate-500 px-3 text-xl" /></label>
     <PosPrimaryButton type="button" disabled={!code.trim()} onClick={() => onNavigate("MoMoWaiting", { ...params, code })}>Submit code</PosPrimaryButton>
+    <p className="text-base text-slate-700">Code not arriving? Go back and send the request again.</p>
   </PosPage>;
 }
 

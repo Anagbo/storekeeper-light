@@ -1,6 +1,7 @@
 import { db } from "../db/db.js";
 import { getPreference } from "../db/preferences.js";
 import { createId } from "../lib/ids.js";
+import { addSubscriptionMonths } from "../lib/subscriptionDates.js";
 
 const CLIENT_ENV = import.meta.env ?? {};
 
@@ -42,7 +43,33 @@ export async function appendPlanPayment({ method, amountPesewas = PLAN_CONFIG.am
     createdAt: Date.now()
   };
   await db.planPayments.add(payment);
+  // 65 tags the method used last (K15).
+  await db.settings.put({ key: "planLastUsedMethod", value: method });
   return payment;
+}
+
+const PLAN_METHOD_LABELS = Object.freeze({ cash: "Cash", momo_direct: "Mobile money", momo_paystack: "Phone request" });
+
+export async function getPlanLastUsedMethod() {
+  const value = (await db.settings.get("planLastUsedMethod"))?.value;
+  return Object.hasOwn(PLAN_METHOD_LABELS, value) ? value : "";
+}
+
+// The 69 line, built from the stored plan payment (K15): "Plan runs to {end} · {method}
+// · {verification}". Only a confirmed payment has a plan period. Only a Paystack phone
+// request is verified; cash and direct MoMo are confirmed by a StoreKeeper agent, so they
+// carry no MoMo verification label. The end date is the payment time plus the plan length.
+export function describePlanPayment(payment) {
+  if (!payment || payment.status !== "confirmed" || !Object.hasOwn(PLAN_METHOD_LABELS, payment.method)) return "";
+  const paidAt = Number(payment.createdAt);
+  if (!Number.isFinite(paidAt)) return "";
+  const end = addSubscriptionMonths(paidAt, PLAN_CONFIG.months)
+    .toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  return [
+    `Plan runs to ${end}`,
+    PLAN_METHOD_LABELS[payment.method],
+    payment.method === "momo_paystack" ? "MoMo · verified" : ""
+  ].filter(Boolean).join(" · ");
 }
 
 export async function getPlanPaymentConfiguration() {
