@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../db/db.js";
 import { FEATURE_FLAGS, FEATURE_SUBSCRIPTION_LOCKOUT } from "../config/features.js";
-import { addSubscriptionMonths } from "../lib/subscriptionDates.js";
+import { applyVerifiedSubscriptionPayment } from "../db/subscriptionPayments.js";
 import { getEffectiveTrialNow, getTrialExpiry, normalizeTrialDays } from "../lib/subscriptionTrial.js";
 
 export function useSubscription() {
@@ -86,28 +86,11 @@ export function useSubscription() {
         throw new Error("The payment verification response had invalid billing dates.");
       }
 
-      await db.transaction("rw", db.settings, async () => {
-        const current = await db.settings.get("subscriptionExpiry");
-        const currentTime = Date.parse(current?.value ?? "");
-        const renewalStart = Number.isFinite(currentTime) && currentTime > paidAt.getTime()
-          ? currentTime
-          : paidAt.getTime();
-        const renewalExpiry = addSubscriptionMonths(renewalStart, result.durationMonths);
-        if (!Number.isFinite(currentTime) || renewalExpiry.getTime() > currentTime) {
-          await db.settings.put({ key: "subscriptionExpiry", value: renewalExpiry.toISOString() });
-        }
-        await db.settings.put({ key: "isSubscribed", value: true });
-        await db.settings.put({ key: "lastSubscriptionReference", value: reference });
-        const pending = await db.settings.get("pendingSubscriptionPayment");
-        if (pending?.value) {
-          try {
-            if (JSON.parse(pending.value).reference === reference) {
-              await db.settings.delete("pendingSubscriptionPayment");
-            }
-          } catch {
-            await db.settings.delete("pendingSubscriptionPayment");
-          }
-        }
+      // Client cache only; the server must enforce used references and entitlement.
+      const applied = await applyVerifiedSubscriptionPayment({
+        reference,
+        paidAt,
+        durationMonths: result.durationMonths
       });
       if (cleanCallback) {
         const callbackUrl = new URL(window.location.href);
@@ -117,14 +100,12 @@ export function useSubscription() {
         callbackUrl.searchParams.delete("plan");
         window.history.replaceState({}, "", `${callbackUrl.pathname}${callbackUrl.search}${callbackUrl.hash}`);
       }
+      const activeUntil = new Date(applied.expiresAt).toLocaleDateString("en-GH");
       setSubscriptionNotice({
         type: "success",
-        text: `Payment verified. This subscription is active until ${addSubscriptionMonths(
-          Number.isFinite(Date.parse(subscriptionExpiry)) && Date.parse(subscriptionExpiry) > paidAt.getTime()
-            ? Date.parse(subscriptionExpiry)
-            : paidAt.getTime(),
-          result.durationMonths
-        ).toLocaleDateString("en-GH")}.`
+        text: applied.applied
+          ? `Payment verified. This subscription is active until ${activeUntil}.`
+          : `This payment was already added. This subscription is active until ${activeUntil}.`
       });
       processedPaymentReference.current = reference;
     } catch (verificationError) {
