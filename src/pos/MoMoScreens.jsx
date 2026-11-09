@@ -122,7 +122,13 @@ export function MoMoSetup({ params = {}, onBack, onNavigate, shopName = "My shop
     <p className="text-base font-extrabold text-emerald-900">Account name will appear after verification.</p>
     <p className="text-base text-slate-800">Payouts come on Paystack&apos;s schedule, not the moment a customer pays.</p>
     <div className="flex-1" />
-    <PosPrimaryButton type="button" onClick={async () => { await setPreference("momoReceivingNumber", number); await setPreference("momoReceivingNetwork", network); onNavigate("MoMoPayment", { ...params, returnToMomo: true, paystackSetUp: true }); }}><Check size={28} aria-hidden="true" />Save and verify</PosPrimaryButton>
+    <PosPrimaryButton type="button" onClick={async () => {
+      // The payout account is separate from the number customers send to directly (62).
+      await setPreference("paystackPayoutNumber", number);
+      await setPreference("paystackPayoutNetwork", network);
+      if (params.returnToMomo) onNavigate("MoMoPayment", { ...params, paystackSetUp: true });
+      else onBack();
+    }}><Check size={28} aria-hidden="true" />Save and verify</PosPrimaryButton>
   </PosPage>;
 }
 
