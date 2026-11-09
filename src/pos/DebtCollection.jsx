@@ -284,6 +284,8 @@ export function CollectSplitPayment({ params, onBack, onNavigate, onRecordCollec
   const debt = useCollectionDebt(params?.debtId, params?.customerName);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // E8: a ref, not the state, so a second tap in the same frame sees the first one.
+  const busyRef = useRef(false);
   const totalPesewas = toPesewas(params?.amount ?? "");
 
   if (debt === undefined) return <PosPage><p role="status">{t("collect.loading")}</p></PosPage>;
@@ -292,7 +294,8 @@ export function CollectSplitPayment({ params, onBack, onNavigate, onRecordCollec
   }
 
   async function receive(parts) {
-    if (busy) return;
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     setError("");
     try {
@@ -300,6 +303,7 @@ export function CollectSplitPayment({ params, onBack, onNavigate, onRecordCollec
     } catch (recordError) {
       console.error("Could not record the split debt collection.", recordError);
       setError(t("collect.saveFailed"));
+      busyRef.current = false;
       setBusy(false);
     }
   }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Banknote, Check, Plus, Search, Smartphone, UserRoundPlus } from "lucide-react";
 import { db } from "../db/db.js";
@@ -238,6 +238,8 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onReturnToSplit, onSaveCr
   const [dueChoice, setDueChoice] = useState(params.creditDueChoice ?? "week");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // E8: a ref, not the state, so a second tap in the same frame sees the first one.
+  const savingRef = useRef(false);
   const customerName = params.customer?.name ?? "";
   const choices = [
     { value: "today", label: t("credit.today") },
@@ -247,6 +249,8 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onReturnToSplit, onSaveCr
   const totalAfterSalePesewas = (params.customer?.totalDebtPesewas ?? 0) + getCreditAmountOwedPesewas(params);
 
   async function save() {
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setError("");
     try {
@@ -266,6 +270,7 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onReturnToSplit, onSaveCr
       console.error("Could not save this credit sale.", saveError);
       setError(t("credit.saveFailed"));
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
@@ -308,6 +313,8 @@ function ALittleAtATime({ params, onBack, onNavigate, onReturnToSplit, onSaveCre
   const [todayPaymentSubmitAttempted, setTodayPaymentSubmitAttempted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // E8: a ref, not the state, so a second tap in the same frame sees the first one.
+  const savingRef = useRef(false);
   const installmentPesewas = toPesewas(installmentAmount);
   const amountPesewas = params.amountPesewas ?? 0;
   const currentDebtPesewas = params.customer?.totalDebtPesewas ?? 0;
@@ -345,6 +352,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onReturnToSplit, onSaveCre
   }
 
   async function savePlan() {
+    if (savingRef.current) return;
     if (startToday && !validTodayPayment) {
       setTodayPaymentSubmitAttempted(true);
       return;
@@ -353,6 +361,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onReturnToSplit, onSaveCre
       setError(t("credit.paymentSplitRequired"));
       return;
     }
+    savingRef.current = true;
     setSaving(true);
     setError("");
     try {
@@ -406,6 +415,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onReturnToSplit, onSaveCre
         ? t("credit.invalidDueDate")
         : t("credit.invalidInstallment"));
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }

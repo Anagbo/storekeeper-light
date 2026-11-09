@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { posText as t } from "./i18n.js";
 import { getInitialPaymentParts, getPaidPaymentPesewas } from "./paymentAmount.js";
 import SplitPayment from "./SplitPayment.jsx";
@@ -8,9 +8,12 @@ export default function SaleSplitPayment({ params = {}, onBack, onNavigate, onSa
   const totalPesewas = Number.isSafeInteger(params.amountPesewas) ? params.amountPesewas : 0;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // E8: a ref, not the state, so a second tap in the same frame sees the first one.
+  const savingRef = useRef(false);
 
   async function saveSale(parts) {
-    if (saving) return;
+    if (savingRef.current) return;
+    savingRef.current = true;
     const amountOf = (method) => parts.filter((part) => part.paymentMethod === method).reduce((sum, part) => sum + part.amountPesewas, 0);
     setSaving(true);
     setError("");
@@ -28,6 +31,7 @@ export default function SaleSplitPayment({ params = {}, onBack, onNavigate, onSa
       console.error("Could not save the split-payment sale.", saveError);
       setError(saveError?.name === "QuotaExceededError" ? t("sell.storageFull") : t("split.saveFailed"));
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
