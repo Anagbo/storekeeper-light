@@ -4,7 +4,7 @@ import { runTransactionWithTimeout } from "./runTransactionWithTimeout.js";
 import { createId } from "../lib/ids.js";
 import { isValidGhanaCardNumber, normalizeGhanaCardNumber } from "../lib/ghanaCardNumber.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
-import { getMomoVerification, MOMO_VERIFICATION } from "../pos/momoMapping.js";
+import { getMomoDetails, getMomoVerification, MOMO_VERIFICATION } from "../pos/momoMapping.js";
 import {
   isValidDateString,
   isValidInstallmentPlanForBalance,
@@ -325,7 +325,7 @@ export async function recordManualDebt({
           amountPesewas: methodTotal,
           total_amount: methodTotal,
           payment_method: method,
-          ...(method === "momo" && { momoVerification }),
+          ...(method === "momo" && getMomoDetails(momoVerification)),
           customer_name: customer.name,
           customer_phone: phone.trim() || customer.phone || "",
           items_json: "[]",
@@ -343,7 +343,7 @@ export async function recordManualDebt({
             debtId: debt.id,
             amountPesewas: part.amountPesewas,
             paymentMethod: method,
-            ...(method === "momo" && { momoVerification }),
+            ...(method === "momo" && getMomoDetails(momoVerification)),
             customer_name: customer.name,
             createdAt: now,
             updatedAt: now,

@@ -6,7 +6,7 @@ import { createId } from "../lib/ids.js";
 import { isValidGhanaCardNumber } from "../lib/ghanaCardNumber.js";
 import { formatGhs } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
-import { getMomoVerification, MOMO_VERIFICATION } from "../pos/momoMapping.js";
+import { getMomoDetails, getMomoVerification, MOMO_VERIFICATION } from "../pos/momoMapping.js";
 import {
   assertInstallmentAmountWithinBalance,
   getCreditBalanceAfterSale,
@@ -468,7 +468,7 @@ export async function recordCreditSale({
           debtId: debt.id,
           amountPesewas: part.amountPesewas,
           paymentMethod: part.paymentMethod,
-          ...(part.paymentMethod === "momo" && { momoVerification }),
+          ...(part.paymentMethod === "momo" && getMomoDetails(momoVerification)),
           customer_name: cleanName,
           createdAt: now,
           updatedAt: now,
@@ -497,7 +497,7 @@ export async function recordCreditSale({
         amountPesewas: methodTotalPesewas,
         total_amount: methodTotalPesewas,
         payment_method: method,
-        ...(method === "momo" && { momoVerification }),
+        ...(method === "momo" && getMomoDetails(momoVerification)),
         customer_name: cleanName,
         customer_phone: cleanPhone,
         items_json: "[]",
@@ -515,7 +515,7 @@ export async function recordCreditSale({
           debtId: part.debtId,
           amountPesewas: part.amountPesewas,
           paymentMethod: method,
-          ...(method === "momo" && { momoVerification }),
+          ...(method === "momo" && getMomoDetails(momoVerification)),
           customer_name: cleanName,
           collectionId: excessPaymentCollectionId,
           collectionType: "debt_collection",
@@ -541,7 +541,7 @@ export async function recordCreditSale({
       payment_method: salePaymentMethod,
       cashReceivedPesewas: salePaymentByMethod.cash,
       momoReceivedPesewas: salePaymentByMethod.momo,
-      ...(salePaymentByMethod.momo > 0 && { momoVerification }),
+      ...(salePaymentByMethod.momo > 0 && getMomoDetails(momoVerification)),
       ...(salePaymentPesewas > 0 && { installmentPaymentPesewas: salePaymentPesewas }),
       paymentType: "credit",
       customer_name: cleanName,
@@ -656,7 +656,7 @@ export async function recordDebtCollection({ debtId, parts, now = Date.now() }) 
         debtId,
         amountPesewas: part.amountPesewas,
         paymentMethod: part.paymentMethod,
-        ...(part.paymentMethod === "momo" && { momoVerification }),
+        ...(part.paymentMethod === "momo" && getMomoDetails(momoVerification)),
         customer_name: customerName,
         collectionId,
         collectionType: "debt_collection",
@@ -677,7 +677,7 @@ export async function recordDebtCollection({ debtId, parts, now = Date.now() }) 
         amountPesewas: part.amountPesewas,
         total_amount: part.amountPesewas,
         payment_method: part.paymentMethod,
-        ...(part.paymentMethod === "momo" && { momoVerification }),
+        ...(part.paymentMethod === "momo" && getMomoDetails(momoVerification)),
         customer_name: customerName,
         customer_phone: phone,
         items_json: "[]",
@@ -695,7 +695,7 @@ export async function recordDebtCollection({ debtId, parts, now = Date.now() }) 
       debtId,
       amountPesewas: totalPesewas,
       parts: normalizedParts,
-      ...(momoVerification && { momoVerification }),
+      ...(momoVerification && getMomoDetails(momoVerification)),
       remainingPesewas,
       customerName,
       customerId: updatedCustomer?.id ?? customerId,

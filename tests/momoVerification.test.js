@@ -204,3 +204,60 @@ test("K8 and owner wording: 56 says MoMo · you confirmed; 62 asks to check the 
   const direct = momoSource.slice(momoSource.indexOf("export function MoMoDirect"), momoSource.indexOf("export function PaymentSettings"));
   assert.match(direct, /Check your MoMo balance, not only the SMS\./);
 });
+// momoMethod is stored next to momoVerification: "direct" now, "paystack" reserved for verified parts.
+function assertMomoFields(rows, label) {
+  assert.ok(rows.length > 0, `${label}: no rows`);
+  for (const row of rows) {
+    const method = row.paymentMethod ?? row.payment_method;
+    const hasMomo = method === "momo" || method === "split" || (row.momoReceivedPesewas ?? 0) > 0;
+    if (hasMomo) {
+      assert.equal(row.momoMethod, row.momoVerification === "verified" ? "paystack" : "direct", `${label} ${method}`);
+    } else {
+      assert.equal("momoMethod" in row, false, `${label} ${method} must have no momoMethod`);
+    }
+  }
+}
+
+test("momoMethod: getMomoDetails gives direct for merchant_confirmed and paystack only for verified", () => {
+  assert.equal(typeof momoMapping.getMomoDetails, "function");
+  assert.deepEqual(momoMapping.getMomoDetails("merchant_confirmed"), { momoMethod: "direct", momoVerification: "merchant_confirmed" });
+  assert.deepEqual(momoMapping.getMomoDetails("verified"), { momoMethod: "paystack", momoVerification: "verified" });
+});
+
+test("momoMethod: sales store direct; a verified part with a reference stores paystack (reserved)", async () => {
+  const direct = await recordCashSale({ amountPesewas: 800, cashReceivedPesewas: 0, momoReceivedPesewas: 800 });
+  const cash = await recordCashSale({ amountPesewas: 800 });
+  const reserved = await recordCashSale({
+    amountPesewas: 800, cashReceivedPesewas: 0, momoReceivedPesewas: 800,
+    parts: [{ paymentMethod: "momo", amountPesewas: 800, verification: "verified", reference: "PSK_ref_1" }]
+  });
+  assertMomoFields([await db.transactions.get(direct.id), await db.transactions.get(cash.id)], "sale");
+  assert.equal((await db.transactions.get(reserved.id)).momoMethod, "paystack");
+});
+
+test("momoMethod: credit sale, collection and Add debt store direct on MoMo rows only", async () => {
+  const credit = await recordCreditSale({
+    amountPesewas: 3000, name: "Ama Method", initialPaymentPesewas: 1000,
+    initialPaymentParts: [{ paymentMethod: "momo", amountPesewas: 1000 }], paymentMethod: "momo"
+  });
+  assertMomoFields([await db.transactions.get(credit.transactionId), ...await db.payments.filter((row) => row.transactionId === credit.transactionId).toArray()], "credit sale");
+
+  const collection = await recordDebtCollection({
+    debtId: credit.debtId,
+    parts: [{ paymentMethod: "cash", amountPesewas: 500 }, { paymentMethod: "momo", amountPesewas: 500 }]
+  });
+  assert.equal(collection.momoMethod, "direct");
+  assertMomoFields([
+    ...await db.payments.filter((row) => row.collectionId === collection.collectionId).toArray(),
+    ...await db.transactions.filter((row) => row.collectionId === collection.collectionId).toArray()
+  ], "collection");
+
+  const manual = await recordManualDebt({
+    name: "Kojo Method", ghanaCardNumber: "GHA-123456789-0", amountPesewas: 4000, initialPaymentPesewas: 1500,
+    initialPaymentParts: [{ paymentMethod: "cash", amountPesewas: 500 }, { paymentMethod: "momo", amountPesewas: 1000 }], paymentMethod: "cash"
+  });
+  assertMomoFields([
+    ...await db.payments.filter((row) => row.debtId === manual.debt.id).toArray(),
+    ...await db.transactions.filter((row) => row.debtId === manual.debt.id && row.type === "income").toArray()
+  ], "Add debt");
+});

@@ -1,6 +1,6 @@
 import { createId } from "../lib/ids.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
-import { getMomoVerification, MOMO_VERIFICATION } from "../pos/momoMapping.js";
+import { getMomoDetails, getMomoVerification, MOMO_VERIFICATION } from "../pos/momoMapping.js";
 import { runTransactionWithTimeout } from "./runTransactionWithTimeout.js";
 import { db } from "./db.js";
 
@@ -39,7 +39,7 @@ export async function recordCashSale({
     paymentType: paymentMethod,
     cashReceivedPesewas,
     momoReceivedPesewas,
-    ...(momoVerification && { momoVerification }),
+    ...(momoVerification && getMomoDetails(momoVerification)),
     customer_name: "",
     customer_phone: "",
     items_json: JSON.stringify(items),

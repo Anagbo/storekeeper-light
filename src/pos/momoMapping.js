@@ -27,6 +27,16 @@ export function getMomoVerification(parts) {
   return allVerified ? MOMO_VERIFICATION.verified : MOMO_VERIFICATION.merchantConfirmed;
 }
 
+// Fields stored on every record holding MoMo money. momoMethod follows the
+// verification: "paystack" only for a verified part (reserved until the backend
+// exists), otherwise "direct" (customer sent to the merchant's number).
+export function getMomoDetails(momoVerification) {
+  return {
+    momoMethod: momoVerification === MOMO_VERIFICATION.verified ? MOMO_METHODS.paystack : MOMO_METHODS.direct,
+    momoVerification
+  };
+}
+
 // Label for the MoMo line on screens 30 and 28 and on receipts. Records saved before
 // verification was stored keep the plain label, never "verified".
 export function getMomoDisplayLabel(record) {
