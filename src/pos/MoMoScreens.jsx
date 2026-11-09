@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Check, Clock3, Copy, Send, Smartphone, UserRound } from "lucide-react";
 import { getPreference, setPreference } from "../db/preferences.js";
 import { formatGhs } from "../lib/money.js";
-import { MOMO_CONFIG, getMerchantMomoSettings } from "./momoConfig.js";
+import { MOMO_CONFIG, PHONE_REQUEST_ENABLED, getMerchantMomoSettings } from "./momoConfig.js";
 import { getMomoAmountPesewas } from "./paymentAmount.js";
 import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag } from "./PosComponents.jsx";
 
@@ -12,8 +12,8 @@ function BackTitle({ title, onBack }) {
   return <div className="flex items-center gap-3"><PosSecondaryButton type="button" onClick={onBack} className="min-h-[52px] px-4 text-lg">‹ Back</PosSecondaryButton><h1 className="text-2xl font-extrabold">{title}</h1></div>;
 }
 
-function ChoiceTile({ icon: Icon, title, detail, selected, onClick, children }) {
-  return <button type="button" aria-pressed={selected} onClick={onClick} className={`flex min-h-[92px] items-center gap-3 rounded-[20px] border-[3px] p-3 text-left ${selected ? "border-emerald-900 bg-green-200" : "border-slate-900 bg-white"}`}>
+function ChoiceTile({ icon: Icon, title, detail, disabled = false, selected, onClick, children }) {
+  return <button type="button" aria-pressed={selected} disabled={disabled} onClick={onClick} className={`flex min-h-[92px] items-center gap-3 rounded-[20px] border-[3px] p-3 text-left disabled:cursor-not-allowed disabled:opacity-60 ${selected ? "border-emerald-900 bg-green-200" : "border-slate-900 bg-white"}`}>
     <Icon size={30} className="shrink-0 text-emerald-900" aria-hidden="true" />
     <span className="min-w-0 flex-1"><b className="block text-xl">{title}</b><span className="text-base text-slate-800">{detail}</span>{children}</span>
   </button>;
@@ -31,8 +31,8 @@ export function MoMoChoice({ params = {}, onBack, onNavigate }) {
     <ChoiceTile icon={Send} title="Customer sends to my number" detail="Free. You check the MoMo message." selected={lastUsed === "direct"} onClick={() => onNavigate("MoMoDirect", { ...params, momoMethod: "direct" })}>
       {lastUsed === "direct" && <PosStatusTag compact>Last used</PosStatusTag>}
     </ChoiceTile>
-    <ChoiceTile icon={Smartphone} title="Phone request" detail={`Customer approves on their phone. Confirmed by itself. Fee ${formatGhs(MOMO_CONFIG.phoneRequestFeePesewas)}.`} selected={lastUsed === "phone"} onClick={() => onNavigate(params.paystackSetUp ? "MoMoPayment" : "MoMoSetup", { ...params, momoMethod: "paystack", returnToMomo: true })}>
-      {lastUsed === "phone" && <PosStatusTag compact>Last used</PosStatusTag>}
+    <ChoiceTile icon={Smartphone} title="Phone request" detail={PHONE_REQUEST_ENABLED ? `Customer approves on their phone. Confirmed by itself. Fee ${formatGhs(MOMO_CONFIG.phoneRequestFeePesewas)}.` : "Not available yet"} disabled={!PHONE_REQUEST_ENABLED} selected={PHONE_REQUEST_ENABLED && lastUsed === "phone"} onClick={() => onNavigate(params.paystackSetUp ? "MoMoPayment" : "MoMoSetup", { ...params, momoMethod: "paystack", returnToMomo: true })}>
+      {PHONE_REQUEST_ENABLED && lastUsed === "phone" && <PosStatusTag compact>Last used</PosStatusTag>}
     </ChoiceTile>
     <p className="text-sm font-medium text-slate-800">Change the usual choice in Settings.</p>
   </PosPage>;
@@ -79,9 +79,9 @@ export function PaymentSettings({ onBack, onNavigate }) {
       <label className="flex min-h-12 items-center justify-between gap-3 font-extrabold"><span>Customer sends to my number</span><input aria-label="Customer sends to my number" type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} className="h-6 w-6" /></label>
       <p className="mt-1 text-base">{enabled ? `On · ${settings.number || "number not set"} · ${settings.network}` : "Off"}</p>
     </PosCard>
-    <PosCard><h2 className="text-lg font-extrabold">Phone request</h2><p className="text-base">Confirmed by itself. Fee {formatGhs(MOMO_CONFIG.phoneRequestFeePesewas)} per payment.</p><PosSecondaryButton type="button" onClick={() => onNavigate("MoMoSetup")} className="mt-2">Phone request: set up ›</PosSecondaryButton></PosCard>
+    <PosCard><h2 className="text-lg font-extrabold">Phone request</h2><p className="text-base">Confirmed by itself. Fee {formatGhs(MOMO_CONFIG.phoneRequestFeePesewas)} per payment.</p><PosSecondaryButton type="button" disabled={!PHONE_REQUEST_ENABLED} onClick={() => onNavigate("MoMoSetup")} className="mt-2">{PHONE_REQUEST_ENABLED ? "Phone request: set up ›" : "Not available yet"}</PosSecondaryButton></PosCard>
     <h2 className="text-lg font-extrabold">When I tap MoMo</h2>
-    {[["ask", "Ask me each time"], ["direct", "Always: customer sends to my number"], ["phone", "Always: phone request"]].map(([value, label]) => <button key={value} type="button" aria-pressed={settings.defaultMethod === value} onClick={() => setSettings((current) => ({ ...current, defaultMethod: value }))} className={`min-h-[72px] rounded-[18px] border-[3px] p-3 text-left text-lg font-extrabold ${settings.defaultMethod === value ? "border-emerald-900 bg-green-200" : "border-slate-900 bg-white"}`}><UserRound size={24} className="mr-3 inline text-emerald-900" aria-hidden="true" />{label}</button>)}
+    {[["ask", "Ask me each time"], ["direct", "Always: customer sends to my number"], ["phone", "Always: phone request"]].map(([value, label]) => <button key={value} type="button" aria-pressed={settings.defaultMethod === value} disabled={value === "phone" && !PHONE_REQUEST_ENABLED} onClick={() => setSettings((current) => ({ ...current, defaultMethod: value }))} className={`min-h-[72px] rounded-[18px] border-[3px] p-3 text-left text-lg font-extrabold disabled:cursor-not-allowed disabled:opacity-60 ${settings.defaultMethod === value ? "border-emerald-900 bg-green-200" : "border-slate-900 bg-white"}`}><UserRound size={24} className="mr-3 inline text-emerald-900" aria-hidden="true" />{label}</button>)}
     {saved && <p role="status">Saved.</p>}
     <PosPrimaryButton type="button" onClick={() => void save()}><Check size={28} aria-hidden="true" />Save</PosPrimaryButton>
   </PosPage>;
@@ -125,7 +125,7 @@ export function MoMoPayment({ params = {}, onBack, onNavigate }) {
       <div className="grid grid-cols-3 gap-2">{NETWORKS.map((item) => <button key={item} type="button" aria-label={`Network ${item}`} aria-pressed={network === item} onClick={() => setNetwork(item)} className={`min-h-14 rounded-xl border-[3px] px-2 font-bold ${network === item ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{item}</button>)}</div>
     </fieldset>
     <label className="font-bold">Customer&apos;s MoMo number<input aria-label="Customer's MoMo number" value={phone} onChange={(event) => setPhone(event.target.value)} type="tel" inputMode="tel" className="mt-1 h-14 w-full rounded-xl border-[3px] border-slate-500 px-3 text-xl" /></label>
-    <PosPrimaryButton type="button" onClick={() => onNavigate(network === "Telecel" ? "MoMoCode" : "MoMoWaiting", { ...params, network, phone })}><Smartphone size={24} aria-hidden="true" />Send request</PosPrimaryButton>
+    <PosPrimaryButton type="button" disabled={!PHONE_REQUEST_ENABLED} onClick={() => onNavigate(network === "Telecel" ? "MoMoCode" : "MoMoWaiting", { ...params, network, phone })}><Smartphone size={24} aria-hidden="true" />Send request</PosPrimaryButton>
     <button type="button" onClick={() => onNavigate("MoMoDirect", params)} className="min-h-10 border-0 bg-transparent font-extrabold text-emerald-900 underline">Customer already paid me directly</button>
     <p className="-mt-2 text-center text-sm text-slate-700">That sale is marked Not verified.</p>
   </PosPage>;

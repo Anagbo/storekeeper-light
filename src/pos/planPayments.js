@@ -16,7 +16,8 @@ export async function listPlanPayments(planId = PLAN_CONFIG.id) {
   return db.planPayments.where("planId").equals(planId).sortBy("createdAt");
 }
 
-export async function appendPlanPayment({ method, amountPesewas = PLAN_CONFIG.amountPesewas, reference = "", status = "waiting" }) {
+// Plan payments are always saved as waiting. Only the server may confirm one (agent or admin).
+export async function appendPlanPayment({ method, amountPesewas = PLAN_CONFIG.amountPesewas, reference = "" }) {
   if (!["cash", "momo_direct", "momo_paystack"].includes(method)) throw new TypeError("Invalid plan payment method.");
   if (!Number.isSafeInteger(amountPesewas) || amountPesewas <= 0) throw new TypeError("Invalid plan payment amount.");
   const payment = {
@@ -25,28 +26,12 @@ export async function appendPlanPayment({ method, amountPesewas = PLAN_CONFIG.am
     method,
     amountPesewas,
     reference: reference.trim(),
-    status,
+    status: "waiting",
     confirmedBy: "",
     createdAt: Date.now()
   };
   await db.planPayments.add(payment);
   return payment;
-}
-
-export async function confirmPlanPayment(paymentId, confirmer = "configured-agent") {
-  const original = await db.planPayments.get(paymentId);
-  if (!original) throw new Error("Plan payment was not found.");
-  if (original.status !== "waiting") return original;
-  const confirmation = {
-    ...original,
-    id: createId(),
-    status: "confirmed",
-    confirmedBy: confirmer,
-    originalPaymentId: original.id,
-    createdAt: Date.now()
-  };
-  await db.planPayments.add(confirmation);
-  return confirmation;
 }
 
 export async function getPlanPaymentConfiguration() {
