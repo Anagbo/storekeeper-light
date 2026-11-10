@@ -243,3 +243,21 @@ test("64: with no payments the card says No payments yet.", async () => {
   assert.match(textOf(view.tree), /No payments yet\./);
   assert.doesNotMatch(textOf(view.tree), /No payments recorded yet/);
 });
+
+// "p-0" lost to PosCard's own "p-4" (same specificity, later in the stylesheet), which put 16px
+// above the first row. The card around the rows must really have no padding, and every row has the
+// same height (room for a two-line label), so the three rows look identical.
+test("63: the radio rows are equal in height and nothing pads above the first row", async () => {
+  for (const env of [{}, FLAG_ON]) {
+    const view = await screen63(env);
+    const card = nodes(view).find((node) => classes(node).includes("rounded-2xl") === false && [...walk(node)].some((child) => child.props?.role === "radiogroup") && String(node.props?.className ?? "").includes("p-0"));
+    assert.ok(card, "the card around the rows");
+    assert.ok(classes(card).includes("!p-0"), "padding is removed with !p-0 so PosCard's p-4 cannot win");
+    const rows = hostByRole(view, "radio");
+    assert.ok(rows.length >= 2);
+    for (const row of rows) {
+      assert.ok(classes(row).includes("min-h-20"), `${textOf(row).trim()}: same minimum height`);
+      assert.ok(classes(row).includes("py-3"), "same vertical padding");
+    }
+  }
+});

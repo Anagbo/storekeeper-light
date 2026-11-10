@@ -175,12 +175,12 @@ export function PaymentSettings({ onBack, onNavigate }) {
       </div>
     </PosCard>
     <h2 className="text-lg font-extrabold">When I tap MoMo</h2>
-    <PosCard className="p-0">
+    <PosCard className="!p-0">
       <div role="radiogroup" aria-label="When I tap MoMo" className="divide-y divide-slate-200">
         {tapOptions.map(([value, label]) => {
           const chosen = settings.defaultMethod === value;
           const blocked = value === "phone" && !phoneSetUp;
-          return <button key={value} type="button" role="radio" aria-checked={chosen} aria-disabled={blocked ? true : undefined} onClick={blocked ? undefined : () => setSettings((current) => ({ ...current, defaultMethod: value }))} className={`flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left text-lg font-extrabold first:rounded-t-2xl last:rounded-b-2xl ${blocked ? "cursor-not-allowed bg-slate-100 text-slate-500" : chosen ? "bg-green-100 text-slate-950" : "bg-white text-slate-950"}`}>
+          return <button key={value} type="button" role="radio" aria-checked={chosen} aria-disabled={blocked ? true : undefined} onClick={blocked ? undefined : () => setSettings((current) => ({ ...current, defaultMethod: value }))} className={`flex min-h-20 w-full items-center gap-3 px-4 py-3 text-left text-lg font-extrabold first:rounded-t-2xl last:rounded-b-2xl ${blocked ? "cursor-not-allowed bg-slate-100 text-slate-500" : chosen ? "bg-green-100 text-slate-950" : "bg-white text-slate-950"}`}>
             <span aria-hidden="true" className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 ${chosen ? "border-emerald-900 bg-emerald-900" : "border-slate-500 bg-white"}`}>{chosen && <span className="h-2 w-2 rounded-full bg-white" />}</span>
             <span className="min-w-0"><span className="block">{label}</span>{blocked && <span className="block text-sm font-semibold">Set up phone request first</span>}</span>
           </button>;
