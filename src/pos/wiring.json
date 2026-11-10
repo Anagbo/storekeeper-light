@@ -3597,7 +3597,7 @@
     "Existing backup and restore logic is not changed, only the screen around it.",
     "Exact text and order, top to bottom: (1) intro line under the title: \"Keep a copy of your sales, debts and items. It works without internet.\" (2) Card \"Save a backup\" with a green download icon before the heading, text \"Saves one file on this phone with all your records.\", green button \"Download backup\", and \"Last backup: dd/mm/yyyy\" only if stored. (3) Card \"Restore from a backup\" with a green upload icon before the heading, text \"Adds the records from a backup file to this phone. Matching records are updated. Nothing here is deleted.\", button \"Choose backup file\".",
     "Look: heading 19px bold, card text 16px grey (#475569), both buttons 56px tall with bold (800) 18px text. Download backup is solid green (#03543F, white text). Choose backup file is white with a dark (#0F172A) 2px outline and dark text, not green. Cards have a 2px light grey (#CBD5E1) border, 18px corners, 16px padding, 14px gap between cards.",
-    "After a restore the message also says how many records were added or updated and how many already on the phone were kept, for example \"Restore finished. 12 records added or updated. 340 records already on this phone were kept.\" (restores the earlier audit fix D4, which was lost when the old Backup pop-up was removed)."
+    "After a restore the message says only what the app knows exactly: \"Restore finished. {total} record(s) in the file. {kept} saved sale(s), payment(s) and debt(s) were already on this phone and were kept.\" Use the singular for 1 (\"1 record\", \"1 saved sale, payment or debt was\"). Do not say \"added or updated\" unless the restore returns an exact count of them."
    ]
   },
   "ManualDebtSaved": {
