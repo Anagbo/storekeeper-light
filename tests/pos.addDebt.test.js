@@ -22,7 +22,7 @@ after(async () => {
 });
 
 // The old AddDebt screen was removed in Batch 13 (it was unreachable); 32's Add debt opens 17.
-// saveAddedDebt below is still used by the legacy DebtLedger screen.
+// saveAddedDebt below is the legacy add-debt helper (utils/addDebt.js), kept with its money tests.
 test("Owed list Add debt opens 17 (the add-debt flow), and Done on the saved screen returns to 32", () => {
   const owedSource = readFileSync(new URL("../src/pos/OwedScreens.jsx", import.meta.url), "utf8");
   const appSource = readFileSync(new URL("../src/pos/PosApp.jsx", import.meta.url), "utf8");
