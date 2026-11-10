@@ -705,13 +705,6 @@
      "to": "39"
     },
     {
-     "label": "Language",
-     "role": null,
-     "disabled_initially": false,
-     "type": "not_designed",
-     "effect": "Not designed in the prototype. Ask before building. Do not invent a screen."
-    },
-    {
      "label": "Settings",
      "role": null,
      "disabled_initially": false,
@@ -3603,7 +3596,8 @@
     "After a restore: \"Restore finished.\" A bad or wrong file shows \"This file cannot be used. Choose a StoreKeeper backup file.\" and changes nothing. Never show raw error text.",
     "Existing backup and restore logic is not changed, only the screen around it.",
     "Exact text and order, top to bottom: (1) intro line under the title: \"Keep a copy of your sales, debts and items. It works without internet.\" (2) Card \"Save a backup\" with a green download icon before the heading, text \"Saves one file on this phone with all your records.\", green button \"Download backup\", and \"Last backup: dd/mm/yyyy\" only if stored. (3) Card \"Restore from a backup\" with a green upload icon before the heading, text \"Adds the records from a backup file to this phone. Matching records are updated. Nothing here is deleted.\", button \"Choose backup file\".",
-    "Look: heading 19px bold, card text 16px grey (#475569), both buttons 56px tall with bold (800) 18px text. Download backup is solid green (#03543F, white text). Choose backup file is white with a dark (#0F172A) 2px outline and dark text, not green. Cards have a 2px light grey (#CBD5E1) border, 18px corners, 16px padding, 14px gap between cards."
+    "Look: heading 19px bold, card text 16px grey (#475569), both buttons 56px tall with bold (800) 18px text. Download backup is solid green (#03543F, white text). Choose backup file is white with a dark (#0F172A) 2px outline and dark text, not green. Cards have a 2px light grey (#CBD5E1) border, 18px corners, 16px padding, 14px gap between cards.",
+    "After a restore the message also says how many records were added or updated and how many already on the phone were kept, for example \"Restore finished. 12 records added or updated. 340 records already on this phone were kept.\" (restores the earlier audit fix D4, which was lost when the old Backup pop-up was removed)."
    ]
   },
   "ManualDebtSaved": {
@@ -3636,7 +3630,7 @@
     ],
     "behaviour": "Change amount closes the dialog and returns to the screen with everything kept. Yes, save continues the normal save. The dialog opens before the save starts (before the save attempt key is used), works offline, is announced to screen readers, and the focus starts on Change amount (the safe choice)."
    },
-   "later": "Extend the same check to collections (including collecting by MoMo outside the split screen), spent money and manual debts after the owner decides. The legacy QuickSaleModal (old Dashboard) has no check.",
+   "later": "Extend the same check to collections (including collecting by MoMo outside the split screen), spent money and manual debts after the owner decides.",
    "momo": {
     "rule": "A MoMo amount above the limit asks before it goes to 61, so the customer is never asked to pay a wrong large amount. It does not ask again on 62.",
     "where": [
@@ -3669,7 +3663,6 @@
   "16/18/25": "Back, Split payment"
  },
  "built_design_pending": [
-  "23 Language screen",
   "45 + New supplier",
   "46 Pay (records locally only, no payment provider)"
  ]
