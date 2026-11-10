@@ -100,6 +100,6 @@ test("privacy: no custom analytics events are sent (page views only)", () => {
 
 test("privacy: screen 63 shows the saved number masked; only 62 shows it in full, for the customer to send to", () => {
   const settings = momoSource.slice(momoSource.indexOf("export function PaymentSettings"), momoSource.indexOf("export function MoMoSetup"));
-  assert.match(settings, /On · \$\{settings\.number \? maskPhoneNumber\(settings\.number\) : "number not set"\}/);
+  assert.match(settings, /Customers will send to \$\{maskPhoneNumber\(normalizedNumber \?\? settings\.number\)\} · \$\{settings\.network\}/);
   assert.doesNotMatch(settings, /\$\{settings\.number \|\|/);
 });

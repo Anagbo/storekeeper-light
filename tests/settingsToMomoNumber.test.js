@@ -63,7 +63,7 @@ test("47 MoMo payments opens 63; saving a number goes back to 47; 62 Money recei
   const screen = render({ type: PaymentSettings, props: { onBack: navigateBack, onNavigate: navigate } });
   flushEffects(screen);
   await settled(screen);
-  byLabel(screen.tree, "Customer sends to my number").props.onChange({ target: { checked: true } });
+  byLabel(screen.tree, "Customer sends to my number").props.onClick();
   screen.rerender();
   byLabel(screen.tree, "My MoMo number").props.onChange({ target: { value: "024 123 4567" } });
   screen.rerender();
@@ -97,7 +97,7 @@ test("a number that is not a Ghana mobile number is not saved", async () => {
   const screen = render({ type: PaymentSettings, props: { onBack: () => { backs += 1; }, onNavigate() {} } });
   flushEffects(screen);
   await settled(screen);
-  byLabel(screen.tree, "Customer sends to my number").props.onChange({ target: { checked: true } });
+  byLabel(screen.tree, "Customer sends to my number").props.onClick();
   screen.rerender();
   byLabel(screen.tree, "My MoMo number").props.onChange({ target: { value: "12345" } });
   screen.rerender();

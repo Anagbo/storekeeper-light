@@ -15,6 +15,8 @@ function BackTitle({ title, onBack }) {
   return <div className="flex items-center gap-3"><PosBackButton onClick={onBack} /><h1 className="text-2xl font-extrabold">{title}</h1></div>;
 }
 
+const PLAN_STATUS_TONES = Object.freeze({ confirmed: "green", waiting: "amber", failed: "red", reversed: "red" });
+
 function daysLeft(expiry) {
   const time = Date.parse(expiry);
   return Number.isFinite(time) ? Math.max(0, Math.ceil((time - Date.now()) / 86400000)) : 0;
@@ -41,19 +43,34 @@ export function MyPlan({
 }) {
   const [payments, setPayments] = useState([]);
   useEffect(() => { listPlanPayments().then((rows) => setPayments(groupPlanPayments(rows))).catch((error) => console.error("Could not load plan payments.", error)); }, []);
-  const status = planStatus(expiry);
-  return <PosPage className="flex flex-col gap-3"><BackTitle title="My plan" onBack={onBack} /><PosCard><h2 className="text-xl font-extrabold">Shop plan · {formatGhs(PLAN_CONFIG.amountPesewas)} a month</h2><PosStatusTag tone={status.tone}>{status.label}</PosStatusTag><p className="mt-2 text-sm">Your sales and records stay safe if a payment is late.</p></PosCard><PosPrimaryButton type="button" onClick={() => onNavigate("PlanPayMethod")}>Pay now</PosPrimaryButton>{subscriptionEnabled && <SubscriptionCard hasActiveSubscription={hasActiveSubscription} expiry={subscriptionExpiry || expiry} trialActive={trialActive} trialExpiry={trialExpiry} onOpenSubscription={onOpenSubscription} />}<h2 className="text-lg font-extrabold">Payments</h2><PosCard>{payments.length === 0 ? <p>No payments recorded yet.</p> : payments.map((payment) => <div key={payment.id} className="flex justify-between gap-3 border-b border-slate-200 py-2 last:border-0"><span>{formatDate(payment.createdAt)} · {planMethodLabel(payment.method)}</span><span className="font-bold">{[formatGhs(payment.amountPesewas), planStatusLabel(payment.status)].filter(Boolean).join(" · ")}</span></div>)}</PosCard></PosPage>;
-}
-
-// What the "View subscription" button in Settings opened (the Paystack plans), now reached from here.
-function SubscriptionCard({ hasActiveSubscription, expiry, trialActive, trialExpiry, onOpenSubscription }) {
-  return <PosCard>
-    <h2 className="text-lg font-extrabold">{t("settings.subscriptionTitle")}</h2>
-    <p className="mt-1">{hasActiveSubscription ? t("settings.subscriptionActive") : t("settings.subscriptionInactive", { amount: formatGhs(PLAN_PRICES_PESEWAS.monthly) })}</p>
-    {hasActiveSubscription && formatDate(expiry) && <p className="mt-1 text-sm font-semibold text-emerald-900">{t("settings.subscriptionExpires", { date: formatDate(expiry) })}</p>}
-    {trialActive && formatDate(trialExpiry) && <p className="mt-1 text-sm font-semibold text-sky-900">{t("settings.subscriptionTrial", { date: formatDate(trialExpiry) })}</p>}
-    <PosSecondaryButton type="button" onClick={onOpenSubscription} className="mt-3 min-h-12 w-full">{hasActiveSubscription ? t("settings.manageSubscription") : t("settings.subscribe")}</PosSecondaryButton>
-  </PosCard>;
+  const planExpiry = expiry || subscriptionExpiry;
+  const status = planStatus(planExpiry);
+  const days = daysLeft(planExpiry);
+  const expiryText = formatDate(planExpiry);
+  const statusLine = status.tone === "green" && expiryText ? `Active until ${expiryText} · ${days} ${days === 1 ? "day" : "days"} left` : "";
+  const tagText = status.tone === "green" ? "Active" : status.label;
+  return <PosPage className="flex flex-col gap-3">
+    <BackTitle title="My plan" onBack={onBack} />
+    <PosCard className="flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-3"><h2 className="text-xl font-extrabold">Shop plan</h2><PosStatusTag tone={status.tone}>{tagText}</PosStatusTag></div>
+      <p className="flex items-baseline gap-2"><span className="text-4xl font-extrabold">{formatGhs(PLAN_CONFIG.amountPesewas)}</span><span className="text-base font-semibold">a month</span></p>
+      {statusLine && <p className="text-base font-bold text-emerald-900">{statusLine}</p>}
+      {trialActive && formatDate(trialExpiry) && <p className="text-sm font-semibold text-sky-900">{t("settings.subscriptionTrial", { date: formatDate(trialExpiry) })}</p>}
+      <p className="text-sm">Your sales and records stay safe if a payment is late.</p>
+      <PosPrimaryButton type="button" onClick={() => onNavigate("PlanPayMethod")} className="mt-1 h-14 min-h-0">Pay now</PosPrimaryButton>
+      {subscriptionEnabled && !hasActiveSubscription && <p className="text-sm">{t("settings.subscriptionInactive", { amount: formatGhs(PLAN_PRICES_PESEWAS.monthly) })}</p>}
+      {subscriptionEnabled && <PosSecondaryButton type="button" onClick={onOpenSubscription} className="min-h-12 w-full">{hasActiveSubscription ? t("settings.manageSubscription") : t("settings.subscribe")}</PosSecondaryButton>}
+    </PosCard>
+    <h2 className="text-lg font-extrabold">Payments</h2>
+    <PosCard className="p-0">
+      {payments.length === 0
+        ? <p className="p-4">No payments yet.</p>
+        : <div className="divide-y divide-slate-200">{payments.map((payment) => <div key={payment.id} data-row="payment" className="flex items-center justify-between gap-3 px-4 py-3">
+            <div className="min-w-0"><p className="font-extrabold">{planMethodLabel(payment.method)}</p><p className="text-sm text-slate-700">{formatDate(payment.createdAt)}</p></div>
+            <div className="flex shrink-0 flex-col items-end gap-1"><span className="whitespace-nowrap font-extrabold">{formatGhs(payment.amountPesewas)}</span>{planStatusLabel(payment.status) && <PosStatusTag compact tone={PLAN_STATUS_TONES[payment.status] ?? "neutral"}>{planStatusLabel(payment.status)}</PosStatusTag>}</div>
+          </div>)}</div>}
+    </PosCard>
+  </PosPage>;
 }
 
 function MethodTile({ icon: Icon, title, detail, disabled = false, onClick, children }) {

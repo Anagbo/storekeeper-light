@@ -59,7 +59,7 @@ test("status labels: My plan rows use the label, and 70 takes its title from the
   assert.match(screen, /waiting \? planStatusLabel\("waiting"\) : "Plan paid"/);
 });
 
-test("status labels: a row with no status shows no dangling separator", () => {
+test("status labels: a row with no status shows no empty tag", () => {
   const screen = read("src/pos/PlanScreens.jsx");
-  assert.match(screen, /\[formatGhs\(payment\.amountPesewas\), planStatusLabel\(payment\.status\)\]\.filter\(Boolean\)\.join\(" · "\)/);
+  assert.match(screen, /planStatusLabel\(payment\.status\) && <PosStatusTag/);
 });
