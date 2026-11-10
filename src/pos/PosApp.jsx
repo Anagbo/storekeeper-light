@@ -54,6 +54,15 @@ const CollectSplitPayment = lazy(() => import("./DebtCollection.jsx").then((modu
 const DebtorDetail = lazy(() => import("./DebtCollection.jsx").then((module) => ({ default: module.DebtorDetail })));
 const PaymentReceived = lazy(() => import("./DebtCollection.jsx").then((module) => ({ default: module.PaymentReceived })));
 
+// What was really saved, or "" when no name was ever saved (Settings then shows My shop as a placeholder).
+function getRawSavedShopName() {
+  try {
+    return localStorage.getItem("storekeeper-shop-name") || "";
+  } catch {
+    return "";
+  }
+}
+
 function getSavedShopName() {
   try {
     return localStorage.getItem("storekeeper-shop-name") || t("app.defaultShopName");
@@ -77,6 +86,7 @@ function getStatusLabel(sync) {
 export default function PosApp() {
   const [routeState, setRouteState] = useState(() => createRouteState());
   const [shopName, setShopName] = useState(getSavedShopName);
+  const [savedShopName, setSavedShopName] = useState(getRawSavedShopName);
   const [setupCategories, setSetupCategories] = useState([]);
   const [setupReady, setSetupReady] = useState(false);
   const [quickEntryOpen, setQuickEntryOpen] = useState(false);
@@ -373,7 +383,8 @@ export default function PosApp() {
   ) : route === POS_ROUTES.SettingsProfitTools ? (
     <SettingsProfitTools
       shopName={shopName}
-      onShopNameChange={setShopName}
+      savedShopName={savedShopName}
+      onShopNameChange={(name) => { setShopName(name); setSavedShopName(name); }}
       onBack={navigateBack}
       onOpenBackup={() => navigate(POS_ROUTES.BackupRestore)}
       onOpenMomoSettings={() => navigate(POS_ROUTES.PaymentSettings)}
