@@ -25,7 +25,8 @@ test("60: no 'Account name will appear after verification' text while nothing ve
 });
 
 test("47: no profit text while the profit switches are deferred", async () => {
-  assert.match(wiring.screens["47"].rules[0], /No "Profit estimates" text/);
+  // The wiring for 47 now has four layout rules first; the deferred item-cost switch has its own rule.
+  assert.ok(wiring.screens["47"].rules.some((rule) => /No "Track cost price of items" switch/.test(rule)));
   assert.doesNotMatch(read("src/pos/i18n.js"), /Profit estimates|settings\.profitUnavailable|settings\.profitTitle/);
   assert.doesNotMatch(read("src/pos/SettingsScreens.jsx"), /settings\.profit/);
 });

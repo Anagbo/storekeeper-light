@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
-import { Check, DatabaseBackup, Globe2, Volume2 } from "lucide-react";
+import { Check, Globe2 } from "lucide-react";
 import { getPreference, setPreference } from "../db/preferences.js";
-import { PLAN_PRICES_PESEWAS } from "../config/plans.js";
 import { formatDate } from "../lib/formatDate.js";
-import { formatGhs } from "../lib/money.js";
 import { isAudioFeedbackEnabled, setAudioFeedbackEnabled } from "../utils/audioFeedback.js";
 import { posText as t } from "./i18n.js";
+import { getMerchantMomoSettings } from "./momoConfig.js";
 import { SHOW_PROFIT_PREFERENCE } from "./myMoneyReport.js";
 import { PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 
@@ -72,6 +71,47 @@ export function LanguageSettings({ onBack }) {
   );
 }
 
+function SettingsGroup({ id, title, children }) {
+  return (
+    <section aria-labelledby={id}>
+      <h2 id={id} className="mb-1.5 px-1 text-xs font-extrabold uppercase tracking-wider text-slate-700">{title}</h2>
+      <div className="divide-y divide-slate-200 overflow-hidden rounded-[18px] border-2 border-slate-300 bg-white">{children}</div>
+    </section>
+  );
+}
+
+// A switch (role "switch") with its label and one helper line. The input is the real control; the
+// track and thumb are drawn beside it.
+function SwitchRow({ id, label, helper, checked, onChange }) {
+  return (
+    <label htmlFor={id} className="flex min-h-16 cursor-pointer items-center justify-between gap-3 px-4 py-3">
+      <span className="min-w-0">
+        <span id={`${id}-label`} className="block text-lg font-extrabold">{label}</span>
+        <span id={`${id}-help`} className="block text-sm text-slate-700">{helper}</span>
+      </span>
+      <span className="relative inline-flex h-8 w-14 shrink-0 items-center">
+        <input id={id} type="checkbox" role="switch" aria-checked={checked} aria-labelledby={`${id}-label`} aria-describedby={`${id}-help`} checked={checked} onChange={onChange} className="peer sr-only" />
+        <span aria-hidden="true" className="h-8 w-14 rounded-full bg-slate-400 transition-colors peer-checked:bg-emerald-900 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-emerald-800" />
+        <span aria-hidden="true" className={`absolute left-1 top-1 h-6 w-6 rounded-full bg-white transition-transform ${checked ? "translate-x-6" : ""}`} />
+      </span>
+    </label>
+  );
+}
+
+// A row that opens another screen: the title, an optional line under it, and a chevron.
+function LinkRow({ id, title, detail, tag, onClick }) {
+  return (
+    <button type="button" onClick={onClick} aria-labelledby={`${id}-title`} aria-describedby={detail ? `${id}-detail` : undefined} className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-emerald-800">
+      <span className="min-w-0 flex-1">
+        <span id={`${id}-title`} className="block text-lg font-extrabold">{title}</span>
+        {detail && <span id={`${id}-detail`} className="block text-sm text-slate-700">{detail}</span>}
+      </span>
+      {tag}
+      <span aria-hidden="true" className="text-2xl font-extrabold text-slate-700">›</span>
+    </button>
+  );
+}
+
 export function SettingsProfitTools({
   shopName,
   onShopNameChange,
@@ -79,7 +119,6 @@ export function SettingsProfitTools({
   onOpenBackup,
   onOpenMomoSettings,
   onOpenPlan,
-  onOpenSubscription,
   subscriptionEnabled = false,
   hasActiveSubscription = false,
   subscriptionExpiry = "",
@@ -90,6 +129,7 @@ export function SettingsProfitTools({
   const [audioEnabled, setAudioEnabled] = useState(isAudioFeedbackEnabled);
   // One switch hides the Estimated profit card on My money (33). It is on by default.
   const [showProfit, setShowProfit] = useState(true);
+  const [momoSetUp, setMomoSetUp] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
 
@@ -99,6 +139,9 @@ export function SettingsProfitTools({
     getPreference(SHOW_PROFIT_PREFERENCE, true)
       .then((value) => { if (active) setShowProfit(value !== false); })
       .catch((loadError) => console.error("Could not load the profit setting.", loadError));
+    getMerchantMomoSettings()
+      .then((settings) => { if (active) setMomoSetUp(Boolean(settings.number)); })
+      .catch((loadError) => console.error("Could not load the MoMo settings.", loadError));
     return () => { active = false; };
   }, []);
 
@@ -132,59 +175,57 @@ export function SettingsProfitTools({
     }
   }
 
+  const nameChanged = draft.trim() !== "" && draft.trim() !== shopName;
+  const planUntil = formatDate(subscriptionExpiry);
+  const planDetail = hasActiveSubscription
+    ? (planUntil ? t("settings.planActiveUntil", { date: planUntil }) : t("settings.planActiveTag"))
+    : trialActive && formatDate(trialExpiry)
+      ? t("settings.planTrialUntil", { date: formatDate(trialExpiry) })
+      : t("settings.planNotActive");
+
   return (
     <PosPage className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
-        <PosSecondaryButton type="button" onClick={onBack}>{t("items.back")}</PosSecondaryButton>
+        <PosSecondaryButton type="button" onClick={onBack} className="min-h-12 px-4 text-lg">{t("items.back")}</PosSecondaryButton>
         <h1 className="text-2xl font-extrabold">{t("settings.title")}</h1>
       </div>
-      <form onSubmit={saveShopName} className="rounded-2xl border-2 border-slate-500 p-4">
-        <label className="block">
-          <span className="mb-1 block font-extrabold">{t("settings.shopName")}</span>
-          <input maxLength={60} value={draft} onChange={(event) => { setDraft(event.target.value); setSaved(false); }} className="h-12 w-full rounded-xl border-2 border-slate-500 px-3 text-lg" />
-        </label>
-        <PosSecondaryButton type="submit" className="mt-2">{t("settings.saveShopName")}</PosSecondaryButton>
-      </form>
-      <label className="flex min-h-16 items-center justify-between gap-3 rounded-2xl border-2 border-slate-500 p-4">
-        <span className="flex items-center gap-2 font-extrabold"><Volume2 size={20} aria-hidden="true" />{t("settings.soundFeedback")}</span>
-        <input type="checkbox" checked={audioEnabled} onChange={(event) => setAudioEnabled(setAudioFeedbackEnabled(event.target.checked))} className="h-6 w-6 accent-emerald-800" />
-      </label>
-      <label className="flex min-h-16 items-center justify-between gap-3 rounded-2xl border-2 border-slate-500 p-4">
-        <span className="font-extrabold">{t("settings.showEstimatedProfit")}</span>
-        <input type="checkbox" role="switch" aria-checked={showProfit} checked={showProfit} onChange={(event) => void changeShowProfit(event.target.checked)} className="h-6 w-6 accent-emerald-800" />
-      </label>
-      {/* 63 must be reachable without the subscription flag: it holds the number customers send to. */}
-      <PosSecondaryButton type="button" onClick={onOpenMomoSettings}>MoMo payments</PosSecondaryButton>
-      {subscriptionEnabled && (
-        <section className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-4">
-          <h2 className="font-extrabold">{t("settings.subscriptionTitle")}</h2>
-          <p className="mt-1 text-slate-800">
-            {hasActiveSubscription
-              ? t("settings.subscriptionActive")
-              : t("settings.subscriptionInactive", { amount: formatGhs(PLAN_PRICES_PESEWAS.monthly) })}
-          </p>
-          {hasActiveSubscription && subscriptionExpiry && (
-            <p className="mt-1 text-sm font-semibold text-emerald-900">
-              {t("settings.subscriptionExpires", { date: formatDate(subscriptionExpiry) })}
-            </p>
-          )}
-          <PosSecondaryButton type="button" onClick={onOpenPlan}>My plan</PosSecondaryButton>
-          {trialActive && trialExpiry && (
-            <p className="mt-1 text-sm font-semibold text-sky-900">
-              {t("settings.subscriptionTrial", { date: formatDate(trialExpiry) })}
-            </p>
-          )}
-          <PosSecondaryButton type="button" onClick={onOpenSubscription} className="mt-3">
-            {hasActiveSubscription ? t("settings.manageSubscription") : t("settings.subscribe")}
-          </PosSecondaryButton>
-        </section>
-      )}
-      <PosSecondaryButton type="button" onClick={onOpenBackup}>
-        <DatabaseBackup size={20} aria-hidden="true" />{t("settings.backup")}
-      </PosSecondaryButton>
-      {saved && <p role="status" className="text-emerald-900">{t("settings.saved")}</p>}
+
+      <SettingsGroup id="settings-shop" title={t("settings.groupShop")}>
+        <form onSubmit={saveShopName} className="flex items-end gap-2 px-4 py-3">
+          <label className="block min-w-0 flex-1">
+            <span className="mb-1 block text-base font-extrabold">{t("settings.shopName")}</span>
+            <input maxLength={60} value={draft} onChange={(event) => { setDraft(event.target.value); setSaved(false); }} className="h-12 w-full rounded-xl border-2 border-slate-500 px-3 text-lg" />
+          </label>
+          <PosSecondaryButton type="submit" disabled={!nameChanged} className="min-h-12 shrink-0 border-emerald-900 text-emerald-900">{t("settings.save")}</PosSecondaryButton>
+        </form>
+      </SettingsGroup>
+      {saved && <p role="status" className="px-1 text-base font-bold text-emerald-900">{t("settings.saved")}</p>}
+
+      <SettingsGroup id="settings-preferences" title={t("settings.groupPreferences")}>
+        <SwitchRow id="settings-sound" label={t("settings.soundFeedback")} helper={t("settings.soundHelper")} checked={audioEnabled} onChange={(event) => setAudioEnabled(setAudioFeedbackEnabled(event.target.checked))} />
+        <SwitchRow id="settings-profit" label={t("settings.showEstimatedProfit")} helper={t("settings.showProfitHelper")} checked={showProfit} onChange={(event) => void changeShowProfit(event.target.checked)} />
+      </SettingsGroup>
+
+      <SettingsGroup id="settings-payments" title={t("settings.groupPayments")}>
+        {/* 63 must be reachable without the subscription flag: it holds the number customers send to. */}
+        <LinkRow id="settings-momo" title={t("settings.momoPayments")} detail={momoSetUp ? t("settings.momoSetUp") : t("settings.momoNotSetUp")} onClick={onOpenMomoSettings} />
+        {subscriptionEnabled && (
+          <LinkRow
+            id="settings-plan"
+            title={t("settings.myPlan")}
+            detail={planDetail}
+            tag={hasActiveSubscription ? <span className="shrink-0 rounded-lg border-2 border-emerald-900 bg-emerald-100 px-2 text-sm font-extrabold text-emerald-950">{t("settings.planActiveTag")}</span> : null}
+            onClick={onOpenPlan}
+          />
+        )}
+      </SettingsGroup>
+
+      <SettingsGroup id="settings-records" title={t("settings.groupRecords")}>
+        <LinkRow id="settings-backup" title={t("settings.backup")} onClick={onOpenBackup} />
+      </SettingsGroup>
+
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
-      <PosPrimaryButton type="button" onClick={onBack} className="mt-auto">{t("credit.done")}</PosPrimaryButton>
+      <PosPrimaryButton type="button" onClick={onBack} className="mt-1">{t("credit.done")}</PosPrimaryButton>
     </PosPage>
   );
 }

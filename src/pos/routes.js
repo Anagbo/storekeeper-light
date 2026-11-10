@@ -46,6 +46,7 @@ export const POS_ROUTES = Object.freeze({
   ,MoMoWaiting: "MoMoWaiting"
   ,MoMoCode: "MoMoCode"
   ,MoMoNotCompleted: "MoMoNotCompleted"
+  ,BackupRestore: "BackupRestore"
   ,MyPlan: "MyPlan"
   ,PlanPayMethod: "PlanPayMethod"
   ,PlanPayCash: "PlanPayCash"
@@ -177,6 +178,8 @@ export const POS_LINKS = Object.freeze([
   { from: "SettingsProfitTools", action: "back", to: "Menu", via: "history" },
   { from: "SettingsProfitTools", action: "momoPayments", to: "PaymentSettings" },
   { from: "SettingsProfitTools", action: "myPlan", to: "MyPlan" },
+  { from: "SettingsProfitTools", action: "backup", to: "BackupRestore" },
+  { from: "BackupRestore", action: "back", to: "SettingsProfitTools", via: "history" },
   { from: "LanguageSettings", action: "back", to: "Menu" },
   { from: "PaymentSettings", action: "setup", to: "MoMoSetup" },
   { from: "PaymentSettings", action: "back", to: "SettingsProfitTools" },

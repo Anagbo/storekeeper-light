@@ -1,5 +1,4 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import BackupModal from "../components/BackupModal.jsx";
 import QuickSaleModal from "../components/QuickSaleModal.jsx";
 import SubscriptionModal from "../components/SubscriptionModal.jsx";
 import { recordCashSale } from "../db/sales.js";
@@ -42,6 +41,7 @@ import SaleSplitPayment from "./SaleSplitPayment.jsx";
 import ReviewAndPay from "./ReviewAndPay.jsx";
 import InstallmentSplitPayment from "./InstallmentSplitPayment.jsx";
 import { HowDoYouWantToSell, HowManyItem, HowMuchIsItem, MoreCategories, WhatDoYouSell } from "./SetupScreens.jsx";
+import BackupRestore from "./BackupRestore.jsx";
 import { LanguageSettings, SettingsProfitTools } from "./SettingsScreens.jsx";
 import PeopleWhoOweYou from "./OwedScreens.jsx";
 import { ManualDebtAmount, ManualDebtSaved } from "./ManualDebtScreens.jsx";
@@ -81,7 +81,6 @@ export default function PosApp() {
   const [setupReady, setSetupReady] = useState(false);
   const [quickEntryOpen, setQuickEntryOpen] = useState(false);
   const [entryType, setEntryType] = useState("expense");
-  const [backupOpen, setBackupOpen] = useState(false);
   const [subscriptionOpen, setSubscriptionOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const sync = useSync();
@@ -376,10 +375,9 @@ export default function PosApp() {
       shopName={shopName}
       onShopNameChange={setShopName}
       onBack={navigateBack}
-      onOpenBackup={() => setBackupOpen(true)}
+      onOpenBackup={() => navigate(POS_ROUTES.BackupRestore)}
       onOpenMomoSettings={() => navigate(POS_ROUTES.PaymentSettings)}
       onOpenPlan={() => navigate(POS_ROUTES.MyPlan)}
-      onOpenSubscription={() => setSubscriptionOpen(true)}
       subscriptionEnabled={FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE}
       hasActiveSubscription={hasActiveSubscription}
       subscriptionExpiry={subscriptionExpiry}
@@ -422,8 +420,20 @@ export default function PosApp() {
     <MoMoCode params={routeState.params} onBack={navigateBack} onNavigate={navigate} />
   ) : route === POS_ROUTES.MoMoNotCompleted ? (
     <MoMoNotCompleted params={routeState.params} onPayAnotherWay={returnToOrigin} onBack={navigateBack} onNavigate={navigate} />
+  ) : route === POS_ROUTES.BackupRestore ? (
+    <BackupRestore onBack={navigateBack} />
   ) : route === POS_ROUTES.MyPlan ? (
-    <MyPlan expiry={subscriptionExpiry} onBack={navigateBack} onNavigate={navigate} />
+    <MyPlan
+      expiry={subscriptionExpiry}
+      onBack={navigateBack}
+      onNavigate={navigate}
+      onOpenSubscription={() => setSubscriptionOpen(true)}
+      subscriptionEnabled={FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE}
+      hasActiveSubscription={hasActiveSubscription}
+      subscriptionExpiry={subscriptionExpiry}
+      trialActive={trialActive}
+      trialExpiry={trialExpiry}
+    />
   ) : route === POS_ROUTES.PlanPayMethod ? (
     <PlanPayMethod onBack={navigateBack} onNavigate={navigate} />
   ) : route === POS_ROUTES.PlanPayCash ? (
@@ -564,7 +574,7 @@ export default function PosApp() {
       shopName={shopName}
     />
   ) : (
-    <PlannedScreen route={route} params={routeState.params} onBack={navigateBack} onOpenBackup={() => setBackupOpen(true)} />
+    <PlannedScreen route={route} params={routeState.params} onBack={navigateBack} onOpenBackup={() => navigate(POS_ROUTES.BackupRestore)} />
   );
 
   return (
@@ -596,11 +606,6 @@ export default function PosApp() {
           onSaved={() => setNotice(t("sell.savedNotice"))}
         />
       )}
-      <BackupModal
-        isOpen={backupOpen}
-        onClose={() => setBackupOpen(false)}
-        showSubscription={false}
-      />
       <SubscriptionModal
         isOpen={subscriptionOpen || subscriptionRequired}
         lockout={subscriptionRequired}

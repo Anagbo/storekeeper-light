@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Banknote, Check, Smartphone } from "lucide-react";
 import { formatDate } from "../lib/formatDate.js";
 import { formatGhs } from "../lib/money.js";
+import { PLAN_PRICES_PESEWAS } from "../config/plans.js";
+import { posText as t } from "./i18n.js";
 import { getPreference } from "../db/preferences.js";
 import { appendPlanPayment, createPlanCashCode, describePlanPayment, getPlanLastUsedMethod, getPlanPaymentConfiguration, groupPlanPayments, listPlanPayments, PLAN_CONFIG, planMethodLabel, planStatusLabel } from "./planPayments.js";
 import { MOMO_CONFIG, PHONE_REQUEST_ENABLED } from "./momoConfig.js";
@@ -26,11 +28,32 @@ function planStatus(expiry) {
   return { label: `Active · ${days} days left`, tone: "green" };
 }
 
-export function MyPlan({ expiry = "", onBack, onNavigate }) {
+export function MyPlan({
+  expiry = "",
+  onBack,
+  onNavigate,
+  onOpenSubscription,
+  subscriptionEnabled = false,
+  hasActiveSubscription = false,
+  subscriptionExpiry = "",
+  trialActive = false,
+  trialExpiry = ""
+}) {
   const [payments, setPayments] = useState([]);
   useEffect(() => { listPlanPayments().then((rows) => setPayments(groupPlanPayments(rows))).catch((error) => console.error("Could not load plan payments.", error)); }, []);
   const status = planStatus(expiry);
-  return <PosPage className="flex flex-col gap-3"><BackTitle title="My plan" onBack={onBack} /><PosCard><h2 className="text-xl font-extrabold">Shop plan · {formatGhs(PLAN_CONFIG.amountPesewas)} a month</h2><PosStatusTag tone={status.tone}>{status.label}</PosStatusTag><p className="mt-2 text-sm">Your sales and records stay safe if a payment is late.</p></PosCard><PosPrimaryButton type="button" onClick={() => onNavigate("PlanPayMethod")}>Pay now</PosPrimaryButton><h2 className="text-lg font-extrabold">Payments</h2><PosCard>{payments.length === 0 ? <p>No payments recorded yet.</p> : payments.map((payment) => <div key={payment.id} className="flex justify-between gap-3 border-b border-slate-200 py-2 last:border-0"><span>{formatDate(payment.createdAt)} · {planMethodLabel(payment.method)}</span><span className="font-bold">{[formatGhs(payment.amountPesewas), planStatusLabel(payment.status)].filter(Boolean).join(" · ")}</span></div>)}</PosCard></PosPage>;
+  return <PosPage className="flex flex-col gap-3"><BackTitle title="My plan" onBack={onBack} /><PosCard><h2 className="text-xl font-extrabold">Shop plan · {formatGhs(PLAN_CONFIG.amountPesewas)} a month</h2><PosStatusTag tone={status.tone}>{status.label}</PosStatusTag><p className="mt-2 text-sm">Your sales and records stay safe if a payment is late.</p></PosCard><PosPrimaryButton type="button" onClick={() => onNavigate("PlanPayMethod")}>Pay now</PosPrimaryButton>{subscriptionEnabled && <SubscriptionCard hasActiveSubscription={hasActiveSubscription} expiry={subscriptionExpiry || expiry} trialActive={trialActive} trialExpiry={trialExpiry} onOpenSubscription={onOpenSubscription} />}<h2 className="text-lg font-extrabold">Payments</h2><PosCard>{payments.length === 0 ? <p>No payments recorded yet.</p> : payments.map((payment) => <div key={payment.id} className="flex justify-between gap-3 border-b border-slate-200 py-2 last:border-0"><span>{formatDate(payment.createdAt)} · {planMethodLabel(payment.method)}</span><span className="font-bold">{[formatGhs(payment.amountPesewas), planStatusLabel(payment.status)].filter(Boolean).join(" · ")}</span></div>)}</PosCard></PosPage>;
+}
+
+// What the "View subscription" button in Settings opened (the Paystack plans), now reached from here.
+function SubscriptionCard({ hasActiveSubscription, expiry, trialActive, trialExpiry, onOpenSubscription }) {
+  return <PosCard>
+    <h2 className="text-lg font-extrabold">{t("settings.subscriptionTitle")}</h2>
+    <p className="mt-1">{hasActiveSubscription ? t("settings.subscriptionActive") : t("settings.subscriptionInactive", { amount: formatGhs(PLAN_PRICES_PESEWAS.monthly) })}</p>
+    {hasActiveSubscription && formatDate(expiry) && <p className="mt-1 text-sm font-semibold text-emerald-900">{t("settings.subscriptionExpires", { date: formatDate(expiry) })}</p>}
+    {trialActive && formatDate(trialExpiry) && <p className="mt-1 text-sm font-semibold text-sky-900">{t("settings.subscriptionTrial", { date: formatDate(trialExpiry) })}</p>}
+    <PosSecondaryButton type="button" onClick={onOpenSubscription} className="mt-3 min-h-12 w-full">{hasActiveSubscription ? t("settings.manageSubscription") : t("settings.subscribe")}</PosSecondaryButton>
+  </PosCard>;
 }
 
 function MethodTile({ icon: Icon, title, detail, disabled = false, onClick, children }) {

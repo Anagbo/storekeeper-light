@@ -16,6 +16,7 @@ import {
   summarizeMyMoney
 } from "../src/pos/myMoneyReport.js";
 import { findButton, loadJsx, render, setLiveQuery, textOf, walk } from "./helpers/renderJsx.js";
+import { waitFor } from "./helpers/waitFor.js";
 
 // Brief 3.11 and wiring screen 33: a calmer My money with Money left, Money in / Money spent with
 // breakdowns, an Estimated profit card (Sales − stock − other costs), two white debt tiles.
@@ -306,18 +307,16 @@ test("3.11: amounts come from the formatter, not typed in the screen", () => {
 test("3.11: Settings has one switch that hides the profit card; it is on by default and is saved", async () => {
   const { SettingsProfitTools } = await loadJsx("src/pos/SettingsScreens.jsx");
   const view = render({ type: SettingsProfitTools, props: { shopName: "My shop", onShopNameChange() {}, onBack() {}, onOpenBackup() {}, onOpenMomoSettings() {}, onOpenPlan() {}, onOpenSubscription() {} } });
-  const switches = [...walk(view.tree)].filter((node) => node.type === "input" && node.props.role === "switch");
-  assert.equal(switches.length, 1, "one switch");
+  const switches = [...walk(view.tree)].filter((node) => node.type === "input" && node.props.role === "switch" && node.props.id === "settings-profit");
+  assert.equal(switches.length, 1, "one switch for the profit card (the other switch is Sound)");
   assert.equal(switches[0].props.checked, true, "shown by default");
   assert.match(textOf(view.tree), /Show estimated profit/);
   assert.doesNotMatch(textOf(view.tree), /Profit estimates/);
   assert.equal(await getPreference(SHOW_PROFIT_PREFERENCE, true), true);
-  await switches[0].props.onChange({ target: { checked: false } });
-  await tick();
-  assert.equal(await getPreference(SHOW_PROFIT_PREFERENCE, true), false);
-  await switches[0].props.onChange({ target: { checked: true } });
-  await tick();
-  assert.equal(await getPreference(SHOW_PROFIT_PREFERENCE, true), true);
+  switches[0].props.onChange({ target: { checked: false } });
+  await waitFor(async () => (await getPreference(SHOW_PROFIT_PREFERENCE, true)) === false, "the switch to be saved as off");
+  switches[0].props.onChange({ target: { checked: true } });
+  await waitFor(async () => (await getPreference(SHOW_PROFIT_PREFERENCE, true)) === true, "the switch to be saved as on");
 });
 
 test("3.11: the report reads the switch (hidden when saved as off)", () => {
