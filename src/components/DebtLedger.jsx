@@ -55,7 +55,7 @@ export function ConfirmPaymentModal({ debt, initialAmountPesewas = debt.amountPe
     if (saving || submitLock.current) return;
     submitLock.current = true;
     try {
-      const amountPesewas = toPesewas(paymentType === "full" ? debt.amountPesewas / 100 : amount);
+      const amountPesewas = paymentType === "full" ? debt.amountPesewas : toPesewas(amount);
       if (!Number.isSafeInteger(amountPesewas) || amountPesewas <= 0 || amountPesewas > debt.amountPesewas) {
         playErrorChime();
         setError(`Enter a payment greater than ${formatGhs(0)} and no more than ${formatGhs(debt.amountPesewas)}.`);

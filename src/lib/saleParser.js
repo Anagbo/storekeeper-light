@@ -1,3 +1,5 @@
+import { shiftTextToCedis } from "./parsePesewas.js";
+
 const CURRENCY = String.raw`(?:GHS|GH₵|₵|Ghana\s+cedis?|cedis?|pesewas?)`;
 const DIGITS = String.raw`(?:\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:[.,]\d{1,2})?)`;
 const NUMBER_WORDS = [
@@ -64,7 +66,7 @@ function amountFromCurrencyMatch(match) {
   const amount = match.match(new RegExp(AMOUNT, "i"))?.[0] ?? "";
   const value = normalizeAmount(amount);
   if (!value || !/\bpesewas?\b/i.test(match)) return value;
-  return String(Number(value) / 100);
+  return shiftTextToCedis(value);
 }
 
 function extractAmount(text) {

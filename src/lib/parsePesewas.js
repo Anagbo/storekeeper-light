@@ -17,6 +17,24 @@ export function parseAmountToPesewas(value) {
   return Number.isSafeInteger(pesewas) ? pesewas : null;
 }
 
+// Digits only (a number pad's text) -> a whole number, up to maxDigits digits. Anything else is 0.
+export function digitsToWholeNumber(text, maxDigits = 9) {
+  return typeof text === "string" && /^\d+$/.test(text) && text.length <= maxDigits ? Number(text) : 0;
+}
+
+// Moves the decimal point of a number written as text two places to the left ("250" -> "2.50",
+// "2.5" -> "0.025"): pesewas written as text -> cedis written as text, with no division.
+export function shiftTextToCedis(text) {
+  const match = /^(\d*)(?:\.(\d*))?$/.exec(String(text).trim());
+  if (!match || (!match[1] && !match[2])) return "";
+  const whole = match[1].replace(/^0+/, "");
+  const digits = whole + (match[2] ?? "");
+  const pointAt = whole.length - 2;
+  const padded = pointAt < 0 ? "0".repeat(-pointAt) + digits : digits;
+  const at = Math.max(pointAt, 0);
+  return `${padded.slice(0, at) || "0"}.${padded.slice(at)}`;
+}
+
 // Whole pesewas -> the text the editor shows ("10.05"), also without floating point.
 export function formatPesewasText(pesewas) {
   if (!Number.isSafeInteger(pesewas) || pesewas < 0) return "";

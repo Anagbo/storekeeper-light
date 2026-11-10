@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Banknote, CalendarDays, Check, Delete, Smartphone } from "lucide-react";
 import { formatDate } from "../lib/formatDate.js";
+import { digitsToWholeNumber } from "../lib/parsePesewas.js";
 import { formatGhs } from "../lib/money.js";
 import { generateWhatsAppLink } from "../utils/whatsapp.js";
 import { isValidInstallmentPlanForBalance, localDateString } from "../utils/installments.js";
@@ -25,7 +26,7 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, o
   const today = localDateString();
   const [takenOn, setTakenOn] = useState(params.takenOn ?? today);
   const [pickingDate, setPickingDate] = useState(false);
-  const amountPesewas = amountDigits ? Number(amountDigits) : 0;
+  const amountPesewas = digitsToWholeNumber(amountDigits);
   const amountValid = Number.isSafeInteger(amountPesewas) && amountPesewas > 0;
   const debt = params.customer?.debt;
   const hasPlanRecord = Boolean(debt?.isInstallmentPlan && debt.installmentAmount > 0);
