@@ -5,6 +5,7 @@ import { isLargeAmount } from "./largeAmount.js";
 
 // Brief 3.12. One hook per screen that saves a sale:
 //   if (largeAmount.guard(totalPesewas, () => void save(true))) return;
+// A MoMo amount that is about to go to 61 asks with { momo: true } ("This MoMo payment is ...").
 // guard() returns false when the amount is not above the limit (the save goes on as usual) and
 // true when it opened the dialog (the caller stops). It runs before the save starts, so the save
 // attempt key and the double-tap guards are not touched. Change amount closes the dialog and the
@@ -14,10 +15,10 @@ export function useLargeAmountConfirm() {
   // A ref as well as the state, so a second tap in the same frame sees the first one.
   const pendingRef = useRef(null);
 
-  function guard(totalPesewas, proceed) {
+  function guard(totalPesewas, proceed, { momo = false } = {}) {
     if (!isLargeAmount(totalPesewas)) return false;
     if (pendingRef.current) return true;
-    pendingRef.current = { totalPesewas, proceed };
+    pendingRef.current = { totalPesewas, proceed, momo };
     setPending(pendingRef.current);
     return true;
   }
@@ -38,11 +39,11 @@ export function useLargeAmountConfirm() {
   return {
     guard,
     open: pending !== null,
-    dialog: pending ? <LargeAmountDialog amountPesewas={pending.totalPesewas} onChange={change} onConfirm={confirm} /> : null
+    dialog: pending ? <LargeAmountDialog amountPesewas={pending.totalPesewas} momo={pending.momo} onChange={change} onConfirm={confirm} /> : null
   };
 }
 
-function LargeAmountDialog({ amountPesewas, onChange, onConfirm }) {
+function LargeAmountDialog({ amountPesewas, momo = false, onChange, onConfirm }) {
   const changeRef = useRef(null);
   const confirmRef = useRef(null);
 
@@ -80,7 +81,7 @@ function LargeAmountDialog({ amountPesewas, onChange, onConfirm }) {
         className="safe-bottom flex w-full max-w-md flex-col gap-3 rounded-[24px] border-[3px] border-slate-900 bg-white p-5 shadow-2xl"
       >
         <h2 id="large-amount-title" className="text-2xl font-extrabold">{t("largeAmount.title")}</h2>
-        <p id="large-amount-body" className="text-lg font-semibold text-slate-900">{t("largeAmount.body", { amount: formatGhs(amountPesewas) })}</p>
+        <p id="large-amount-body" className="text-lg font-semibold text-slate-900">{t(momo ? "largeAmount.momoBody" : "largeAmount.body", { amount: formatGhs(amountPesewas) })}</p>
         <button
           ref={changeRef}
           type="button"

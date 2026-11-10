@@ -95,7 +95,11 @@ export default function ReviewAndPay({ params = {}, onBack, onNavigate, onUpdate
             aria-pressed={paymentMethod === value}
             onClick={() => {
               if (value === "owe") continueToCredit();
-              else if (value === "momo") onNavigate("MoMoChoice", { ...params, amountPesewas: totalPesewas, saleItems });
+              else if (value === "momo") {
+                // Brief 3.12: a large MoMo amount asks before 61 (before the customer is asked to pay).
+                const toMomo = () => onNavigate("MoMoChoice", { ...params, amountPesewas: totalPesewas, saleItems });
+                if (!largeAmount.guard(totalPesewas, toMomo, { momo: true })) toMomo();
+              }
               else { setPaymentMethod(value); onUpdateParams?.({ paymentChoice: value }); }
             }}
             className={`flex min-h-[76px] flex-col items-center justify-center gap-1 rounded-[18px] border-[3px] px-2 text-[17px] font-extrabold ${

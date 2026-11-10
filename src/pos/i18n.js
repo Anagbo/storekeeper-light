@@ -224,6 +224,7 @@ const ENGLISH = Object.freeze({
   "sell.enterAmountFirst": "Enter a sale amount before recording credit.",
   "largeAmount.title": "Large amount",
   "largeAmount.body": "This sale is {amount}. Is the amount right?",
+  "largeAmount.momoBody": "This MoMo payment is {amount}. Is the amount right?",
   "largeAmount.change": "Change amount",
   "largeAmount.save": "Yes, save",
   "sell.saveFailed":"The sale could not be saved. No changes were committed. Try again.",

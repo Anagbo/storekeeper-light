@@ -484,7 +484,9 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
 
   function choosePaymentMethod(method) {
     if (method === "momo") {
-      onNavigate("MoMoChoice", getMomoPickParams(params, { todayPaymentPesewas, maxCreditPesewas }));
+      const toMomo = () => onNavigate("MoMoChoice", getMomoPickParams(params, { todayPaymentPesewas, maxCreditPesewas }));
+      // Brief 3.12: a large MoMo amount asks before 61 (before the customer is asked to pay).
+      if (!largeAmount.guard(todayPaymentPesewas, toMomo, { momo: true })) toMomo();
       return;
     }
     if (method !== "split") {

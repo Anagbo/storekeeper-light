@@ -147,8 +147,10 @@ export default function Sell({ params = {}, onNavigate, recordSale = recordCashS
                     if (canSave && !busy) onNavigate("WhoOwesYou", { amountPesewas, saleItems });
                     else setError(t("sell.enterAmountFirst"));
                   } else if (value === "momo") {
-                    if (canSave && !busy) onNavigate("MoMoChoice", { amountPesewas, saleItems });
-                    else setError(t("sell.enterAmountFirst"));
+                    // Brief 3.12: a large MoMo amount asks before 61 (before the customer is asked to pay).
+                    if (canSave && !busy) {
+                      if (!largeAmount.guard(amountPesewas, () => onNavigate("MoMoChoice", { amountPesewas, saleItems }), { momo: true })) onNavigate("MoMoChoice", { amountPesewas, saleItems });
+                    } else setError(t("sell.enterAmountFirst"));
                   } else setPaymentMethod(value);
                 }}
                 disabled={value === "credit" && (!canSave || busy)}

@@ -4,6 +4,7 @@ import { formatGhs } from "../lib/money.js";
 import { formatPesewasText, parseAmountToPesewas } from "../lib/parsePesewas.js";
 import { posText as t } from "./i18n.js";
 import { PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
+import { useLargeAmountConfirm } from "./LargeAmountConfirm.jsx";
 import { addRemainingToPart, isLockedMomoRow, planMomoRowEdit, setPartAmount } from "./splitTender.js";
 
 const METHOD_ICONS = { cash: Banknote, momo: Smartphone, owe: UserRound };
@@ -35,6 +36,7 @@ export default function SplitPayment({
   const [parts, setParts] = useState(initialParts);
   const [draft, setDraft] = useState(null);
   const [draftError, setDraftError] = useState("");
+  const largeAmount = useLargeAmountConfirm();
   // Every change of the parts is also reported, so the screen's owner can keep the draft in the
   // route params and it survives a trip to Settings (brief 3.8 rule 13).
   function commitParts(next) {
@@ -63,13 +65,16 @@ export default function SplitPayment({
     setDraftError("");
   }
 
-  function confirmDraft() {
+  // `confirmed` is true when Yes, save on the large-amount dialog continues this same Save.
+  function confirmDraft(confirmed = false) {
     if (draft.mode === "add") {
       // MoMo tile: the amount goes to 61 and 62; the row is added when 62 confirms it.
       if (!Number.isSafeInteger(draftPesewas) || draftPesewas <= 0 || draftPesewas > leftPesewas) {
         setDraftError(t("split.amountTooHigh"));
         return;
       }
+      // Brief 3.12: a large MoMo amount asks before it goes to 61; Change amount leaves this editor as it is.
+      if (!confirmed && largeAmount.guard(draftPesewas, () => confirmDraft(true), { momo: true })) return;
       setDraft(null);
       setDraftError("");
       onMoMo(parts, draftPesewas);
@@ -81,9 +86,10 @@ export default function SplitPayment({
         setDraftError(t("split.amountTooHigh"));
         return;
       }
+      // Above the confirmed amount only the extra goes to 61 (and is asked about when it is large).
+      if (!confirmed && plan.kind === "confirm" && largeAmount.guard(plan.extraPesewas, () => confirmDraft(true), { momo: true })) return;
       setDraft(null);
       setDraftError("");
-      // Above the confirmed amount only the extra is confirmed again on 62.
       if (plan.kind === "confirm") onMoMo(parts, plan.extraPesewas, { momoRowAmountPesewas: plan.rowAmountPesewas });
       else commitParts(plan.parts);
       return;
@@ -184,7 +190,7 @@ export default function SplitPayment({
           {draftError && <p role="alert" className="font-semibold text-rose-900">{draftError}</p>}
           <div className="grid grid-cols-2 gap-2">
             <PosSecondaryButton type="button" onClick={() => { setDraft(null); setDraftError(""); }}>{t("credit.cancel")}</PosSecondaryButton>
-            <PosPrimaryButton type="button" onClick={confirmDraft}>{t("split.save")}</PosPrimaryButton>
+            <PosPrimaryButton type="button" onClick={() => confirmDraft()}>{t("split.save")}</PosPrimaryButton>
           </div>
         </section>
       )}
@@ -194,6 +200,7 @@ export default function SplitPayment({
       <PosPrimaryButton type="button" aria-disabled={busy || leftPesewas !== 0 || parts.length === 0 || !partsValid ? "true" : undefined} disabled={busy || leftPesewas !== 0 || parts.length === 0 || !partsValid} onClick={() => onDone(parts)} className="h-[68px] min-h-0 rounded-[20px] text-2xl">
         {busy ? t("sell.saving") : <><Check size={28} aria-hidden="true" />{doneLabel}</>}
       </PosPrimaryButton>
+      {largeAmount.dialog}
     </PosPage>
   );
 }
