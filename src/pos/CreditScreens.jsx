@@ -6,7 +6,8 @@ import { isValidGhanaCardNumber, normalizeGhanaCardNumber } from "../lib/ghanaCa
 import { formatDate } from "../lib/formatDate.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { formatGhanaCard } from "../utils/formatters.js";
-import { addDueCycles, getCreditBalanceAfterSale, getNextCycleDate, isValidDateString, localDateString, PAYMENT_FREQUENCIES, prepareInstallmentPlan } from "../utils/installments.js";
+import { PLAN_ERROR } from "../lib/planErrors.js";
+import { addDueCycles, dayAfter, getCreditBalanceAfterSale, getNextCycleDate, isValidDateString, localDateString, PAYMENT_FREQUENCIES, prepareInstallmentPlan } from "../utils/installments.js";
 import { generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { getCreditAmountOwedPesewas } from "./creditAmount.js";
 import CustomerContactEditor from "./CustomerContactEditor.jsx";
@@ -173,8 +174,32 @@ function NewPerson({ params, onBack, onNavigate }) {
   const [phone, setPhone] = useState("");
   const [ghanaCardNumber, setGhanaCardNumber] = useState("");
   const [error, setError] = useState("");
+  // Someone who already owes under the name typed here: the debt is added to theirs (the writers
+  // find it by name), so say so, and carry what they owe so 19 sizes the plan on the whole balance.
+  const [existingDebtor, setExistingDebtor] = useState(null);
   const amountPesewas = toPesewas(amount);
   const phoneInvalid = Boolean(phone.trim() && !normalizeWhatsAppPhone(phone));
+
+  useEffect(() => {
+    const typedName = name.trim().toLowerCase();
+    if (!typedName) {
+      setExistingDebtor(null);
+      return undefined;
+    }
+    let active = true;
+    db.debts.where("status").equals("unpaid").toArray().then((debts) => {
+      if (!active) return;
+      const matching = debts.filter((debt) => (debt.customerName ?? debt.customer_name ?? "").trim().toLowerCase() === typedName);
+      const totalDebtPesewas = matching.reduce((sum, debt) => sum + (debt.amountPesewas ?? debt.total_owed ?? 0), 0);
+      setExistingDebtor(totalDebtPesewas > 0
+        ? { name: (matching[0].customerName ?? matching[0].customer_name).trim(), totalDebtPesewas }
+        : null);
+    }).catch((lookupError) => {
+      console.error("Could not check whether this person already owes.", lookupError);
+      if (active) setExistingDebtor(null);
+    });
+    return () => { active = false; };
+  }, [name]);
 
   function continueWithNewCustomer(event) {
     event.preventDefault();
@@ -198,7 +223,8 @@ function NewPerson({ params, onBack, onNavigate }) {
         name: cleanName,
         nameLower: cleanName.toLowerCase(),
         phone: phone.trim(),
-        ghanaCardNumber: normalizeGhanaCardNumber(ghanaCardNumber)
+        ghanaCardNumber: normalizeGhanaCardNumber(ghanaCardNumber),
+        ...(existingDebtor && { totalDebtPesewas: existingDebtor.totalDebtPesewas })
       },
       isNewCustomer: true
     });
@@ -220,6 +246,11 @@ function NewPerson({ params, onBack, onNavigate }) {
           <span className="mb-1 block font-extrabold">{t("credit.name")}</span>
           <input autoComplete="name" placeholder={t("credit.namePlaceholder")} value={name} onChange={(event) => setName(event.target.value)} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />
           <span className="text-sm text-slate-700">{t("credit.nameHint")}</span>
+          {existingDebtor && (
+            <span role="status" className="mt-1 block rounded-xl border-2 border-amber-700 bg-amber-100 p-2 text-sm font-semibold text-amber-950">
+              {t("credit.existingDebtor", { name: existingDebtor.name, amount: formatGhs(existingDebtor.totalDebtPesewas) })}
+            </span>
+          )}
         </label>
         <label className="block">
           <span className="mb-1 block font-extrabold">{t("credit.phone")}</span>
@@ -302,6 +333,19 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onReturnToSplit, onSaveCr
   );
 }
 
+// What the merchant sees when saving the plan fails: the known causes name what to fix; anything
+// else keeps the general message.
+function describePlanSaveError(saveError, maxCreditPesewas) {
+  if (saveError?.message === "Choose a valid next installment due date.") return t("credit.invalidDueDate");
+  if (saveError?.code === PLAN_ERROR.eachTimeTooHigh) return t("credit.eachTimeTooHigh");
+  if (saveError?.code === PLAN_ERROR.paymentTooHigh) {
+    const maximumPesewas = Number.isSafeInteger(saveError.maximumPesewas) ? saveError.maximumPesewas : maxCreditPesewas;
+    return t("credit.paymentTodayTooHigh", { amount: formatGhs(maximumPesewas) });
+  }
+  if (saveError?.code === PLAN_ERROR.debtChanged) return t("credit.debtChanged");
+  return t("credit.invalidInstallment");
+}
+
 function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnToSplit, onSaveCredit }) {
   const today = localDateString();
   const [installmentAmount, setInstallmentAmount] = useState(params.installmentAmount ?? "");
@@ -342,8 +386,10 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
     todayPaymentPesewas <= maxCreditPesewas;
   // Save plan stays disabled until the plan is valid (K5): an amount each time, a next
   // payment date from today on, and, when paying today on this screen, a valid amount.
+  // The first payment date must be after today (brief 3.9 rule 2); the fixed date on 18 may be today.
+  const dateValid = isValidDateString(nextDueDate) && nextDueDate > today;
   const planReady = Number.isSafeInteger(installmentPesewas) && installmentPesewas > 0 &&
-    isValidDateString(nextDueDate) && nextDueDate >= today &&
+    dateValid &&
     (!startToday || paymentAlreadyMadeToday || validTodayPayment);
 
   // Back from a MoMo pick (61/62): returnRoute is stripped on return (E4), so use the method.
@@ -377,7 +423,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
     setSaving(true);
     setError("");
     try {
-      if (!isValidDateString(nextDueDate) || nextDueDate < today) {
+      if (!dateValid) {
         throw new Error("Choose a valid next installment due date.");
       }
       const prepared = prepareInstallmentPlan({
@@ -424,9 +470,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
       await saveAttempt.run(content, (attemptId) => onSaveCredit({ ...content, attemptId }));
     } catch (saveError) {
       console.error("Could not save this installment plan.", saveError);
-      setError(isSaveOutcomeUnknown(saveError) ? "" : saveError?.message === "Choose a valid next installment due date."
-        ? t("credit.invalidDueDate")
-        : t("credit.invalidInstallment"));
+      setError(isSaveOutcomeUnknown(saveError) ? "" : describePlanSaveError(saveError, maxCreditPesewas));
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -589,7 +633,8 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
       )}
       <label className="block">
         <span className="mb-1 block text-lg font-extrabold">{t("credit.nextPaymentDate")}</span>
-        <input type="date" min={today} value={nextDueDate} onChange={(event) => { setNextDueDate(event.target.value); onUpdateParams?.({ nextDueDate: event.target.value }); }} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg font-bold" />
+        <input type="date" min={dayAfter(today)} value={nextDueDate} aria-invalid={!dateValid} onChange={(event) => { setNextDueDate(event.target.value); onUpdateParams?.({ nextDueDate: event.target.value }); }} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg font-bold" />
+        {!dateValid && <span role="alert" className="mt-1 block text-sm font-semibold text-rose-900">{t("credit.invalidDueDate")}</span>}
       </label>
       {startToday && !paymentAlreadyMadeToday && (
         <fieldset>

@@ -111,7 +111,9 @@ test("K5/E2: on 19 the payment section is hidden whenever flow=split, and the pa
 test("K5: Save plan on 19 is disabled until the plan is valid", () => {
   const aLittle = slice(creditSource, "function ALittleAtATime", "function buildCreditReceiptLink");
   assert.match(aLittle, /const planReady = /);
-  assert.match(aLittle, /isValidDateString\(nextDueDate\) && nextDueDate >= today/);
+  // The first payment date must be after today (cleanup: today is refused on 19, not on 18).
+  assert.match(aLittle, /const dateValid = isValidDateString\(nextDueDate\) && nextDueDate > today;/);
+  assert.match(aLittle, /dateValid &&/);
   assert.match(aLittle, /disabled=\{saving \|\| !planReady\}/);
 });
 

@@ -3,6 +3,7 @@ import { upsertCustomer } from "./customers.js";
 import { runTransactionWithTimeout } from "./runTransactionWithTimeout.js";
 import { runIdempotentSave } from "./saveAttempts.js";
 import { createId } from "../lib/ids.js";
+import { PLAN_ERROR, planError } from "../lib/planErrors.js";
 import { isValidGhanaCardNumber, normalizeGhanaCardNumber } from "../lib/ghanaCardNumber.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { getMomoConfirmedPesewas, getMomoDetails, getMomoVerification, MOMO_VERIFICATION } from "../pos/momoMapping.js";
@@ -179,7 +180,11 @@ export async function recalculateCustomerDebtBalance({
 function assertManualDebtPlan(plan, balancePesewas) {
   if (plan === null || plan === undefined) return;
   if (!isValidInstallmentPlanForBalance(plan, balancePesewas)) {
-    throw new TypeError("The manual debt installment plan is invalid.");
+    const eachTimeTooHigh = plan.isInstallmentPlan && Number.isSafeInteger(plan.installmentAmount) &&
+      plan.installmentAmount > balancePesewas;
+    throw eachTimeTooHigh
+      ? planError(PLAN_ERROR.eachTimeTooHigh, "The manual debt installment plan is invalid.")
+      : new TypeError("The manual debt installment plan is invalid.");
   }
 }
 
@@ -259,7 +264,7 @@ export async function recordManualDebt({
     const existingDebt = debtId
       ? matchingDebts.find((debt) => debt.id === debtId)
       : matchingDebts[0];
-    if (debtId && !existingDebt) throw new Error("The selected unpaid debt could not be found.");
+    if (debtId && !existingDebt) throw planError(PLAN_ERROR.debtChanged, "The selected unpaid debt could not be found.");
 
     const previousBalancePesewas = existingDebt ? getDebtBalance(existingDebt) : 0;
     assertPesewasAmount(previousBalancePesewas, "The current debt balance");
@@ -275,7 +280,7 @@ export async function recordManualDebt({
       throw new RangeError("The combined debt exceeds the supported amount.");
     }
     if (initialPaymentPesewas > owedBeforePesewas + amountPesewas) {
-      throw new TypeError("Initial payment cannot exceed the customer's total debt after this addition.");
+      throw planError(PLAN_ERROR.paymentTooHigh, "Initial payment cannot exceed the customer's total debt after this addition.", { maximumPesewas: owedBeforePesewas + amountPesewas });
     }
     // The part of the payment that pays the amount added is recorded as before; the rest pays
     // older debt and is recorded as a real debt collection.

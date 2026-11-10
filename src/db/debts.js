@@ -4,6 +4,7 @@ import { recalculateCustomerDebtBalance } from "./debtLedger.js";
 import { runTransactionWithTimeout } from "./runTransactionWithTimeout.js";
 import { runIdempotentSave } from "./saveAttempts.js";
 import { createId } from "../lib/ids.js";
+import { PLAN_ERROR, planError } from "../lib/planErrors.js";
 import { isValidGhanaCardNumber } from "../lib/ghanaCardNumber.js";
 import { formatGhs } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
@@ -346,7 +347,7 @@ export async function recordCreditSale({
     const existingDebtBeforeSale = existingDebtsBeforeSale[0] ?? null;
     const maximumCreditPesewas = getCreditBalanceAfterSale(previousDebtPesewas, amountPesewas);
     if (initialPaymentPesewas > maximumCreditPesewas) {
-      throw new TypeError("Initial payment cannot exceed the customer's total credit balance.");
+      throw planError(PLAN_ERROR.paymentTooHigh, "Initial payment cannot exceed the customer's total credit balance.", { maximumPesewas: maximumCreditPesewas });
     }
     const normalizedPaymentParts = normalizeInitialPaymentParts(
       initialPaymentParts,
@@ -370,7 +371,7 @@ export async function recordCreditSale({
       if (installmentPlan.installmentsRemaining !== Math.ceil(
         remainingCreditPesewas / installmentPlan.installmentAmount
       )) {
-        throw new TypeError("The installment schedule does not match the remaining credit balance.");
+        throw planError(PLAN_ERROR.debtChanged, "The installment schedule does not match the remaining credit balance.");
       }
     }
     const customer = await upsertCustomer({
@@ -489,7 +490,7 @@ export async function recordCreditSale({
       }
     }
     if (remainingPaymentPesewas > 0 || remainingSalePaymentPesewas > 0) {
-      throw new Error("The customer's debt changed before the installment payment could be recorded.");
+      throw planError(PLAN_ERROR.debtChanged, "The customer's debt changed before the installment payment could be recorded.");
     }
 
     const excessPaymentCollectionId = excessPaymentParts.length > 0 ? createId() : "";

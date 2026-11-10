@@ -1,5 +1,6 @@
 import { normalizeWhatsAppPhone } from "./whatsapp.js";
 import { formatGhs } from "../lib/formatGhs.js";
+import { PLAN_ERROR, planError } from "../lib/planErrors.js";
 
 export function localDateString(date = new Date()) {
   const year = date.getFullYear();
@@ -44,7 +45,7 @@ export function assertInstallmentAmountWithinBalance(installmentAmountPesewas, m
     throw new TypeError("Installment and credit amounts must be positive whole-pesewa amounts.");
   }
   if (installmentAmountPesewas > maximumCreditPesewas) {
-    throw new TypeError("Installment amount cannot exceed the customer's total credit balance.");
+    throw planError(PLAN_ERROR.eachTimeTooHigh, "Installment amount cannot exceed the customer's total credit balance.");
   }
 }
 
@@ -59,6 +60,14 @@ export function isValidInstallmentPlanForBalance(plan, balancePesewas) {
     isPaymentFrequency(plan.frequency) &&
     isValidDateString(plan.nextDueDate)
   );
+}
+
+// The calendar day after a YYYY-MM-DD date.
+export function dayAfter(dateString) {
+  if (!isValidDateString(dateString)) throw new TypeError("A valid date is required.");
+  const date = new Date(`${dateString}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
 }
 
 export function getNextCycleDate(today, frequency) {
@@ -76,7 +85,7 @@ export function createInstallmentPlan({ amountPesewas, installmentAmountPesewas,
     throw new TypeError("Installment amount must be a positive integer number of pesewas.");
   }
   if (installmentAmountPesewas > amountPesewas) {
-    throw new TypeError("Installment amount cannot exceed the debt amount.");
+    throw planError(PLAN_ERROR.eachTimeTooHigh, "Installment amount cannot exceed the debt amount.");
   }
   if (!isPaymentFrequency(frequency)) {
     throw new TypeError("Installment frequency must be weekly, bi-weekly, or monthly.");
@@ -241,6 +250,11 @@ export function reconcileInstallmentPlanChange(
   replacementPlan,
   additionalPaymentPesewas = 0
 ) {
+  if (replacementPlan?.isInstallmentPlan && Number.isSafeInteger(replacementPlan.installmentAmount) &&
+    Number.isSafeInteger(nextBalancePesewas) && nextBalancePesewas > 0 &&
+    replacementPlan.installmentAmount > nextBalancePesewas) {
+    throw planError(PLAN_ERROR.eachTimeTooHigh, "The replacement installment plan is invalid.");
+  }
   if (!Number.isSafeInteger(nextBalancePesewas) || nextBalancePesewas <= 0 ||
     !replacementPlan?.isInstallmentPlan ||
     !Number.isSafeInteger(replacementPlan.installmentAmount) ||
