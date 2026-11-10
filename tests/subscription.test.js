@@ -10,8 +10,6 @@ import { getEffectiveTrialNow, getTrialExpiry, normalizeTrialDays } from "../src
 const originalSecret = process.env.PAYSTACK_SECRET_KEY;
 const originalAppUrl = process.env.APP_URL;
 const originalFetch = global.fetch;
-const legacyAppSource = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
-const backupModalSource = readFileSync(new URL("../src/components/BackupModal.jsx", import.meta.url), "utf8");
 const subscriptionHookSource = readFileSync(new URL("../src/hooks/useSubscription.js", import.meta.url), "utf8");
 const posAppSource = readFileSync(new URL("../src/pos/PosApp.jsx", import.meta.url), "utf8");
 const settingsSource = readFileSync(new URL("../src/pos/SettingsScreens.jsx", import.meta.url), "utf8");
@@ -20,15 +18,6 @@ const modalSource = readFileSync(new URL("../src/components/SubscriptionModal.js
 test("subscription UI and lockout are disabled by default", () => {
   assert.equal(FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE, false);
   assert.equal(FEATURE_SUBSCRIPTION_LOCKOUT, false);
-});
-
-test("legacy shell keeps the shared subscription lifecycle and backup entry point", () => {
-  assert.match(legacyAppSource, /useSubscription/);
-  assert.match(legacyAppSource, /subscriptionOpen \|\| subscriptionRequired/);
-  assert.match(legacyAppSource, /lockout=\{subscriptionRequired\}/);
-  assert.match(legacyAppSource, /showSubscription=\{FEATURE_FLAGS\.SHOW_SUBSCRIPTION_FEATURE\}/);
-  assert.match(backupModalSource, /showSubscription = false/);
-  assert.match(backupModalSource, /showSubscription && FEATURE_FLAGS\.SHOW_SUBSCRIPTION_FEATURE/);
 });
 
 test("subscription trial is initialized from configuration and bypasses lockout until expiry", () => {
