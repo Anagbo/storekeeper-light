@@ -343,6 +343,7 @@ function describePlanSaveError(saveError, maxCreditPesewas) {
     return t("credit.paymentTodayTooHigh", { amount: formatGhs(maximumPesewas) });
   }
   if (saveError?.code === PLAN_ERROR.debtChanged) return t("credit.debtChanged");
+  if (saveError?.code === PLAN_ERROR.paymentPartsMismatch) return t("credit.paymentPartsMismatch");
   return t("credit.invalidInstallment");
 }
 
@@ -369,10 +370,11 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
   const installmentPesewas = toPesewas(installmentAmount);
   const amountPesewas = params.amountPesewas ?? 0;
   const currentDebtPesewas = params.customer?.totalDebtPesewas ?? 0;
-  const alreadyPaidPesewas = Math.max(
-    Number.isSafeInteger(params.initialPaymentPesewas) ? params.initialPaymentPesewas : 0,
-    paidTodayPesewas
-  );
+  // Paid before 19 (the cash and MoMo parts on 16): already taken off the balance. A payment taken
+  // on this screen, including the parts that come back from 27, is today's payment on 19: the
+  // balance stays whole and the plan writer takes the payment off once.
+  const paidBefore19Pesewas = Number.isSafeInteger(params.initialPaymentPesewas) ? params.initialPaymentPesewas : 0;
+  const alreadyPaidPesewas = paymentAlreadyMadeToday ? Math.max(paidBefore19Pesewas, paidTodayPesewas) : paidBefore19Pesewas;
   const creditBalanceBeforeTodayPayment = getCreditBalanceAfterSale(currentDebtPesewas, amountPesewas);
   const maxCreditPesewas = Math.max(0, creditBalanceBeforeTodayPayment - alreadyPaidPesewas);
   const maxStartTodayInstallmentPesewas = creditBalanceBeforeTodayPayment;
@@ -585,7 +587,13 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
             setTodayPaymentSubmitAttempted(false);
             const nextDate = getNextCycleDate(today, frequency);
             setNextDueDate(nextDate);
-            onUpdateParams?.({ startToday: false, nextDueDate: nextDate });
+            const draftUpdates = { startToday: false, nextDueDate: nextDate };
+            // Amount paid today counts as 0 on Next cycle: a payment recorded on 27 is discarded.
+            if (!paymentAlreadyMadeToday && (params.firstPaymentParts !== undefined || params.splitParts !== undefined)) {
+              setPaymentMethod("cash");
+              Object.assign(draftUpdates, { firstPaymentParts: undefined, splitParts: undefined, splitTotalPesewas: undefined, paymentMethod: "cash" });
+            }
+            onUpdateParams?.(draftUpdates);
           }} className={`min-h-14 rounded-2xl border-[3px] font-extrabold ${!startToday ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{t("credit.nextCycle", { frequency: t(`credit.frequency.${frequency}`) })}</button>
         </div>
       </fieldset>

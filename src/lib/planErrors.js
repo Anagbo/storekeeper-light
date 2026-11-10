@@ -7,7 +7,9 @@ export const PLAN_ERROR = Object.freeze({
   // The payment today is more than the customer can owe after this sale or debt (maximumPesewas).
   paymentTooHigh: "payment_too_high",
   // The customer's debt is not what the screen was told (changed, or not found).
-  debtChanged: "debt_changed"
+  debtChanged: "debt_changed",
+  // The cash and MoMo parts of the payment today do not add up to the payment amount.
+  paymentPartsMismatch: "payment_parts_mismatch"
 });
 
 export function planError(code, message, details = {}) {

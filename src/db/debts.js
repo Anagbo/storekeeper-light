@@ -59,7 +59,7 @@ function normalizeInitialPaymentParts(parts, totalPesewas, defaultMethod) {
   }
   const normalizedTotalPesewas = amounts.cash + amounts.momo;
   if (!Number.isSafeInteger(normalizedTotalPesewas) || normalizedTotalPesewas !== totalPesewas) {
-    throw new TypeError("Initial payment parts must add up to the initial payment amount.");
+    throw planError(PLAN_ERROR.paymentPartsMismatch, "Initial payment parts must add up to the initial payment amount.");
   }
   return ["cash", "momo"]
     .filter((method) => amounts[method] > 0)
