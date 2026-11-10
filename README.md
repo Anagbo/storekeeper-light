@@ -35,21 +35,6 @@ The app retries on connection restoration, when the page becomes visible, and pe
 
 Before enabling production sync or subscription lockout, follow the rollout and release gates in `docs/PROGRESS.md`. In particular, run `npm.cmd run test:reliability`, `npm.cmd run build`, and `git diff --check`; rehearse backup restore on a separate profile; verify Paystack recovery and offline reconciliation; and complete representative Ghana SIM/network and Android device checks. Keep subscription lockout disabled until subscription state is server-authoritative and recovery monitoring is available.
 
-## WhatsApp Business reminders
-
-The debt ledger retains **Open WhatsApp** for a user-reviewed, prefilled message. It can also send an approved WhatsApp Business template through the Vercel function at `api/whatsapp/reminder.js`; this requires internet access, a Supabase email-link sign-in, and an authorized account. A successful API response means Meta accepted the request, not that the recipient received or read it. Obtain customer opt-in before sending reminders.
-
-Copy `.env.example` as a reference and configure the variables in Vercel (never use `VITE_` for server secrets):
-
-- `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are public Supabase project settings used by the app for email-link sign-in.
-- `SUPABASE_URL` and `SUPABASE_ANON_KEY` are server-side settings used by the function to validate the access token.
-- `WHATSAPP_ALLOWED_USER_IDS` is a comma-separated allowlist of Supabase user UUIDs permitted to send. This is required; ordinary signed-in users are denied unless explicitly listed.
-- `WHATSAPP_ACCESS_TOKEN` and `WHATSAPP_PHONE_NUMBER_ID` are the Meta WhatsApp Cloud API credentials. Keep the token only in Vercel server-side environment variables.
-- `WHATSAPP_GRAPH_API_VERSION` must be set to a currently supported Meta Graph API version (format `vNN.N`).
-- `WHATSAPP_DEBT_TEMPLATE` defaults to `debt_reminder`; `WHATSAPP_TEMPLATE_LANGUAGE` defaults to `en`.
-
-Create and get approval for a WhatsApp template whose body has exactly three text parameters, in this order: customer name, outstanding balance, shop name (for example, `Hello {{1}}, your balance with {{3}} is {{2}}.`). Set the template name and language to match the approved template in Meta. Configure Supabase email authentication and add the deployed app URL to its allowed redirect URLs. Have the shop owner sign in once, copy that user's UUID from Supabase Auth, and add it to `WHATSAPP_ALLOWED_USER_IDS`. Deploy the app to Vercel with the `api/` function and required environment settings. Vite's development server does not run Vercel functions, so use the existing **Open WhatsApp** fallback during local development.
-
 ## Paystack Mobile Money subscription
 
 Subscription UI and payment-return verification are disabled by default. Set `VITE_ENABLE_SUBSCRIPTION=true` before building to show the Settings option and enable verification. If the variable is unset or set to `false`, no subscription UI or lockout is shown, and the PWA remains fully usable for free.

@@ -84,13 +84,6 @@ test("F4: the formatter lives in one dependency-free file that money.js re-expor
   assert.doesNotMatch(read("src/lib/money.js"), /new Intl\.NumberFormat/, "the formatter is defined once");
 });
 
-test("F4: the server reminder takes its amount text from the same formatter file, not the client database", () => {
-  const server = read("api/whatsapp/reminder.js");
-  assert.match(server, /from "\.\.\/\.\.\/src\/lib\/formatGhs\.js"/);
-  assert.match(server, /const amount = formatGhs\(amountPesewas\);/);
-  assert.doesNotMatch(server, /lib\/money\.js/);
-});
-
 test("Q5: no amount is hard-coded with GH₵ in a component, template or message", () => {
   const allowed = new Set(["src/lib/formatGhs.js", "src/lib/money.js"]);
   const isComment = (line) => /^\s*(\/\/|\*|\/\*|\{\/\*)/.test(line);

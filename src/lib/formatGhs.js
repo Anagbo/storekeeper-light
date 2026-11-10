@@ -1,5 +1,5 @@
 // The one money formatter: integer pesewas in, "GH₵268.20" out. It imports nothing, so the
-// server (api/whatsapp/reminder.js) can use it without pulling in the client database.
+// server (api/) can use it without pulling in the client database.
 // src/lib/money.js re-exports these; the letters GHS appear here only as the currency code.
 const ghanaCedis = new Intl.NumberFormat("en-GH", {
   style: "currency",
