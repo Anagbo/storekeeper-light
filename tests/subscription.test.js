@@ -61,13 +61,12 @@ test("payment recovery persists pending references and retries after reconnect",
   assert.match(modalSource, /db\.settings\.put/);
 });
 
-test("new POS subscription journey connects Settings to the shared plan checkout", () => {
-  assert.match(posAppSource, /onOpenSubscription=\{\(\) => setSubscriptionOpen\(true\)\}/);
-  assert.match(posAppSource, /isOpen=\{subscriptionOpen \|\| subscriptionRequired\}/);
-  // Brief 3.13: Settings has one My plan row; the View subscription button moved to My plan (64).
+test("the POS no longer mounts the Paystack plans pop-up; plan payments go through Pay now on 64", () => {
+  assert.doesNotMatch(posAppSource, /SubscriptionModal|subscriptionOpen|onOpenSubscription/);
+  assert.doesNotMatch(readFileSync(new URL("../src/pos/PlanScreens.jsx", import.meta.url), "utf8"), /onOpenSubscription|View subscription|Subscribe/);
+  // Brief 3.13: Settings has one My plan row.
   assert.match(settingsSource, /subscriptionEnabled &&/);
-  assert.match(posAppSource, /<MyPlan[^>]*onOpenSubscription=\{\(\) => setSubscriptionOpen\(true\)\}/);
-  assert.match(readFileSync(new URL("../src/pos/PlanScreens.jsx", import.meta.url), "utf8"), /onClick=\{onOpenSubscription\}/);
+  assert.match(posAppSource, /useSubscription\(\)/);
   // The plans (and their prices, in pesewas) live in one table: src/config/plans.js.
   const plansSource = readFileSync(new URL("../src/config/plans.js", import.meta.url), "utf8");
   assert.match(plansSource, /id: "monthly"/);

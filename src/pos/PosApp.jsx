@@ -1,6 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import QuickSaleModal from "../components/QuickSaleModal.jsx";
-import SubscriptionModal from "../components/SubscriptionModal.jsx";
 import { recordCashSale } from "../db/sales.js";
 import { setPreference, shouldShowPosSetup } from "../db/preferences.js";
 import { useSync } from "../hooks/useSync.js";
@@ -91,18 +90,13 @@ export default function PosApp() {
   const [setupReady, setSetupReady] = useState(false);
   const [quickEntryOpen, setQuickEntryOpen] = useState(false);
   const [entryType, setEntryType] = useState("expense");
-  const [subscriptionOpen, setSubscriptionOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const sync = useSync();
   const {
     subscriptionExpiry,
     hasActiveSubscription,
     trialActive,
-    trialExpiry,
-    subscriptionRequired,
-    subscriptionNotice,
-    paymentPending,
-    retryPendingPayment
+    trialExpiry
   } = useSubscription();
 
   useEffect(() => {
@@ -438,9 +432,6 @@ export default function PosApp() {
       expiry={subscriptionExpiry}
       onBack={navigateBack}
       onNavigate={navigate}
-      onOpenSubscription={() => setSubscriptionOpen(true)}
-      subscriptionEnabled={FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE}
-      hasActiveSubscription={hasActiveSubscription}
       subscriptionExpiry={subscriptionExpiry}
       trialActive={trialActive}
       trialExpiry={trialExpiry}
@@ -617,18 +608,6 @@ export default function PosApp() {
           onSaved={() => setNotice(t("sell.savedNotice"))}
         />
       )}
-      <SubscriptionModal
-        isOpen={subscriptionOpen || subscriptionRequired}
-        lockout={subscriptionRequired}
-        isActive={hasActiveSubscription}
-        trialActive={trialActive}
-        trialExpiresAt={trialExpiry}
-        paymentPending={paymentPending}
-        onRetryPayment={retryPendingPayment}
-        onClose={() => setSubscriptionOpen(false)}
-        expiresAt={subscriptionExpiry}
-        notice={subscriptionNotice}
-      />
     </div>
   );
 }

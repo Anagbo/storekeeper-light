@@ -2,12 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Banknote, Check, Smartphone } from "lucide-react";
 import { formatDate } from "../lib/formatDate.js";
 import { formatGhs } from "../lib/money.js";
-import { PLAN_PRICES_PESEWAS } from "../config/plans.js";
-import { posText as t } from "./i18n.js";
 import { getPreference } from "../db/preferences.js";
 import { appendPlanPayment, createPlanCashCode, describePlanPayment, getPlanLastUsedMethod, getPlanPaymentConfiguration, groupPlanPayments, listPlanPayments, PLAN_CONFIG, planMethodLabel, planStatusLabel } from "./planPayments.js";
 import { MOMO_CONFIG, PHONE_REQUEST_ENABLED } from "./momoConfig.js";
-import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, PosBackButton } from "./PosComponents.jsx";
+import { PosCard, PosPage, PosPrimaryButton, PosStatusTag, PosBackButton } from "./PosComponents.jsx";
 
 const NETWORKS = ["MTN", "Telecel", "AirtelTigo"];
 
@@ -22,44 +20,52 @@ function daysLeft(expiry) {
   return Number.isFinite(time) ? Math.max(0, Math.ceil((time - Date.now()) / 86400000)) : 0;
 }
 
-function planStatus(expiry) {
+function startOfToday() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+}
+
+// 64: one status for the plan card. The paid plan wins over the trial; a missing or past
+// expiry is calm (amber), never a red alarm.
+function planStatus(expiry, trialActive, trialExpiry) {
   const time = Date.parse(expiry);
-  if (!Number.isFinite(time)) return { label: "Late", tone: "red" };
-  const days = daysLeft(expiry);
-  if (days === 0) return { label: "Due today", tone: "amber" };
-  return { label: `Active · ${days} days left`, tone: "green" };
+  const today = startOfToday();
+  if (Number.isFinite(time) && time >= today + 86400000) {
+    const days = daysLeft(expiry);
+    return { kind: "active", label: "Active", tone: "green", line: `Active until ${formatDate(expiry)} · ${days} ${days === 1 ? "day" : "days"} left` };
+  }
+  if (Number.isFinite(time) && time >= today) return { kind: "due", label: "Due today", tone: "amber", line: "Due today" };
+  if (trialActive && Number.isFinite(Date.parse(trialExpiry))) {
+    const days = Math.max(1, daysLeft(trialExpiry));
+    return { kind: "trial", label: "Trial", tone: "neutral", line: `Trial · ${days} ${days === 1 ? "day" : "days"} left` };
+  }
+  return {
+    kind: "ended",
+    label: "Late",
+    tone: "amber",
+    line: Number.isFinite(time) ? `Your plan ended on ${formatDate(expiry)}. Your sales and records are safe.` : "Your plan is not active. Your sales and records are safe."
+  };
 }
 
 export function MyPlan({
   expiry = "",
   onBack,
   onNavigate,
-  onOpenSubscription,
-  subscriptionEnabled = false,
-  hasActiveSubscription = false,
   subscriptionExpiry = "",
   trialActive = false,
   trialExpiry = ""
 }) {
   const [payments, setPayments] = useState([]);
   useEffect(() => { listPlanPayments().then((rows) => setPayments(groupPlanPayments(rows))).catch((error) => console.error("Could not load plan payments.", error)); }, []);
-  const planExpiry = expiry || subscriptionExpiry;
-  const status = planStatus(planExpiry);
-  const days = daysLeft(planExpiry);
-  const expiryText = formatDate(planExpiry);
-  const statusLine = status.tone === "green" && expiryText ? `Active until ${expiryText} · ${days} ${days === 1 ? "day" : "days"} left` : "";
-  const tagText = status.tone === "green" ? "Active" : status.label;
+  const status = planStatus(expiry || subscriptionExpiry, trialActive, trialExpiry);
   return <PosPage className="flex flex-col gap-3">
     <BackTitle title="My plan" onBack={onBack} />
     <PosCard className="flex flex-col gap-2">
-      <div className="flex items-center justify-between gap-3"><h2 className="text-xl font-extrabold">Shop plan</h2><PosStatusTag tone={status.tone}>{tagText}</PosStatusTag></div>
+      <div className="flex items-center justify-between gap-3"><h2 className="text-xl font-extrabold">Shop plan</h2><PosStatusTag tone={status.tone}>{status.label}</PosStatusTag></div>
       <p className="flex items-baseline gap-2"><span className="text-4xl font-extrabold">{formatGhs(PLAN_CONFIG.amountPesewas)}</span><span className="text-base font-semibold">a month</span></p>
-      {statusLine && <p className="text-base font-bold text-emerald-900">{statusLine}</p>}
-      {trialActive && formatDate(trialExpiry) && <p className="text-sm font-semibold text-sky-900">{t("settings.subscriptionTrial", { date: formatDate(trialExpiry) })}</p>}
-      <p className="text-sm">Your sales and records stay safe if a payment is late.</p>
+      <p className={`text-base font-bold ${status.kind === "active" ? "text-emerald-900" : "text-slate-800"}`}>{status.line}</p>
+      {status.kind !== "ended" && <p className="text-sm">Your sales and records stay safe if a payment is late.</p>}
       <PosPrimaryButton type="button" onClick={() => onNavigate("PlanPayMethod")} className="mt-1 h-14 min-h-0">Pay now</PosPrimaryButton>
-      {subscriptionEnabled && !hasActiveSubscription && <p className="text-sm">{t("settings.subscriptionInactive", { amount: formatGhs(PLAN_PRICES_PESEWAS.monthly) })}</p>}
-      {subscriptionEnabled && <PosSecondaryButton type="button" onClick={onOpenSubscription} className="min-h-12 w-full">{hasActiveSubscription ? t("settings.manageSubscription") : t("settings.subscribe")}</PosSecondaryButton>}
     </PosCard>
     <h2 className="text-lg font-extrabold">Payments</h2>
     <PosCard className="p-0">

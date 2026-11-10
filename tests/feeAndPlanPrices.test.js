@@ -87,9 +87,9 @@ test("F2: the subscription modal shows prices in pesewas through the formatter",
   assert.match(modal, /Pay \$\{formatGhs\(selectedPlan\.amountPesewas\)\} \//);
 });
 
-test("F2: the Settings subscription text takes the price from the table, not fixed text", () => {
-  assert.equal(posText("settings.subscriptionInactive", { amount: "GH₵15.00" }), "Pay GH₵15.00 per month with Mobile Money through Paystack.");
-  assert.match(read("src/pos/PlanScreens.jsx"), /t\("settings\.subscriptionInactive", \{ amount: formatGhs\(PLAN_PRICES_PESEWAS\.monthly\) \}\)/);
+test("F2: the 64 plan price comes from the plan table, not fixed text", () => {
+  assert.match(read("src/pos/PlanScreens.jsx"), /formatGhs\(PLAN_CONFIG\.amountPesewas\)/);
+  assert.match(read("src/pos/planPayments.js"), /amountPesewas: PLAN_PRICES_PESEWAS\.monthly/);
 });
 
 test(".env.example documents the client prices in pesewas and no longer the cedi variables", () => {

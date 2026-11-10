@@ -168,7 +168,7 @@ async function screen64(props = {}, seed = []) {
   await db.planPayments.clear();
   if (seed.length) await db.planPayments.bulkAdd(seed);
   const { MyPlan } = await loadJsx("src/pos/PlanScreens.jsx", {});
-  const view = render({ type: MyPlan, props: { onBack() {}, onNavigate() {}, onOpenSubscription() {}, ...props } });
+  const view = render({ type: MyPlan, props: { onBack() {}, onNavigate() {}, ...props } });
   flushEffects(view);
   if (seed.length) await waitFor(() => { view.rerender(); return textOf(view.tree).includes("Confirmed") || textOf(view.tree).includes("Waiting"); }, "payments to load");
   else await new Promise((resolve) => setTimeout(resolve, 30));
@@ -198,23 +198,40 @@ test("64: one plan card shows Shop plan, the status tag, a large price with a mo
   assert.equal(cards.length, 2, "the plan card and the Payments card, nothing else");
 });
 
-test("64: Pay now is the solid green 56px button; View subscription shows only when the subscription flag is on", async () => {
-  const off = await screen64({ expiry: iso(12), subscriptionEnabled: false });
-  const pay = nodes(off).find((node) => typeof node.type === "function" && /Button$/.test(node.type.name) && textOf(node).trim() === "Pay now");
-  assert.ok(pay);
-  assert.equal(pay.type.name, "PosPrimaryButton");
-  assert.doesNotMatch(textOf(off.tree), /View subscription/);
-  const on = await screen64({ expiry: iso(12), subscriptionEnabled: true, hasActiveSubscription: true });
-  const view = nodes(on).find((node) => typeof node.type === "function" && /Button$/.test(node.type.name) && textOf(node).trim() === "View subscription");
-  assert.ok(view, "View subscription button");
-  assert.equal(view.type.name, "PosSecondaryButton", "outlined");
+test("64: Pay now is the solid green 56px button and the only button; no View subscription or Subscribe, even with the subscription flag props", async () => {
+  for (const extra of [{}, { subscriptionEnabled: true, hasActiveSubscription: true }]) {
+    const view = await screen64({ expiry: iso(12), ...extra });
+    const buttons = nodes(view).filter((node) => typeof node.type === "function" && /Button$/.test(node.type.name) && node.type.name !== "PosBackButton");
+    assert.equal(buttons.length, 1, "one button");
+    assert.equal(buttons[0].type.name, "PosPrimaryButton");
+    assert.equal(textOf(buttons[0]).trim(), "Pay now");
+    assert.doesNotMatch(textOf(view.tree), /View subscription|Subscribe/);
+  }
 });
 
-test("64: a late or due plan uses its own status tag", async () => {
-  const late = await screen64({ expiry: "" });
-  assert.match(textOf(late.tree), /Late/);
-  const due = await screen64({ expiry: iso(0) });
-  assert.match(textOf(due.tree), /Due today|Active/);
+test("64: status line by state (active, trial, due today, ended, no plan); Pay now in every state; never red", async () => {
+  const ended = iso(-9);
+  const cases = [
+    [{ expiry: iso(12) }, /Active until .* · 12 days left/, "green"],
+    [{ expiry: "", trialActive: true, trialExpiry: iso(5) }, /Trial · 5 days left/, "neutral"],
+    [{ expiry: iso(0) }, /Due today/, "amber"],
+    [{ expiry: ended }, new RegExp(`Your plan ended on ${dmy(ended)}\\. Your sales and records are safe\\.`), "amber"],
+    [{ expiry: "" }, /Your plan is not active\. Your sales and records are safe\./, "amber"]
+  ];
+  for (const [props, line, tone] of cases) {
+    const view = await screen64(props);
+    assert.match(textOf(view.tree), line);
+    assert.ok(nodes(view).some((node) => typeof node.type === "function" && node.type.name === "PosStatusTag" && node.props.tone === tone), `tag tone ${tone}`);
+    assert.ok(nodes(view).some((node) => typeof node.type === "function" && node.type.name === "PosPrimaryButton" && textOf(node).trim() === "Pay now"), "Pay now");
+    assert.ok(!nodes(view).some((node) => typeof node.type === "function" && node.type.name === "PosStatusTag" && node.props.tone === "red"), "no red tag on a plan state");
+    assert.doesNotMatch(textOf(view.tree), /could not be verified|verif/i);
+  }
+});
+
+test("64: a paid plan wins over the trial", async () => {
+  const view = await screen64({ expiry: iso(12), trialActive: true, trialExpiry: iso(3) });
+  assert.match(textOf(view.tree), /Active until/);
+  assert.doesNotMatch(textOf(view.tree), /Trial ·/);
 });
 
 test("64: each Payments row shows the method, the date, the amount and a status tag", async () => {

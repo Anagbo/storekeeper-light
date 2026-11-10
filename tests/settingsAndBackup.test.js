@@ -327,21 +327,15 @@ test("71: a file that cannot be read shows the safe message", async () => {
 
 // ---- the content of View subscription stays reachable from 64 --------------------------------
 
-test("64: My plan keeps the subscription content and View subscription (it opened the Paystack plans)", async () => {
+test("64: My plan has no View subscription or Subscribe button and no pop-up; Pay now is the way to pay", async () => {
   const { MyPlan } = await loadJsx("src/pos/PlanScreens.jsx");
-  let opened = 0;
-  const base = { expiry: "", onBack() {}, onNavigate() {}, onOpenSubscription: () => { opened += 1; } };
-  const on = render({ type: MyPlan, props: { ...base, subscriptionEnabled: true, hasActiveSubscription: true, subscriptionExpiry: "2026-12-05T00:00:00.000Z" } });
+  const base = { expiry: "", onBack() {}, onNavigate() {} };
+  const on = render({ type: MyPlan, props: { ...base, subscriptionExpiry: "2026-12-05T00:00:00.000Z", subscriptionEnabled: true, hasActiveSubscription: true } });
   assert.match(textOf(on.tree), /Active until 05\/12\/2026/);
-  findButton(on.tree, "View subscription").props.onClick();
-  assert.equal(opened, 1);
-  const inactive = render({ type: MyPlan, props: { ...base, subscriptionEnabled: true, hasActiveSubscription: false } });
-  assert.match(textOf(inactive.tree), /Pay GH₵.* per month with Mobile Money through Paystack\./);
-  assert.ok(findButton(inactive.tree, "Subscribe with Mobile Money"));
-  const trial = render({ type: MyPlan, props: { ...base, subscriptionEnabled: true, trialActive: true, trialExpiry: "2026-11-30T00:00:00.000Z" } });
-  assert.match(textOf(trial.tree), /Free trial access until 30\/11\/2026\./);
-  const off = render({ type: MyPlan, props: { ...base, subscriptionEnabled: false } });
-  assert.doesNotMatch(textOf(off.tree), /subscription/i);
-  assert.match(textOf(off.tree), /Pay now/);
-  assert.match(read("src/pos/PosApp.jsx"), /<MyPlan[^>]*onOpenSubscription=\{\(\) => setSubscriptionOpen\(true\)\}/);
+  assert.doesNotMatch(textOf(on.tree), /View subscription|Subscribe|Paystack/);
+  assert.ok(findButton(on.tree, "Pay now"));
+  const trial = render({ type: MyPlan, props: { ...base, trialActive: true, trialExpiry: new Date(Date.now() + 5 * 86400000).toISOString() } });
+  assert.match(textOf(trial.tree), /Trial · 5 days left/);
+  assert.doesNotMatch(textOf(trial.tree), /Subscribe/);
+  assert.doesNotMatch(read("src/pos/PosApp.jsx"), /SubscriptionModal|onOpenSubscription/);
 });
