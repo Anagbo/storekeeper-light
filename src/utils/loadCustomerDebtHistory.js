@@ -1,5 +1,6 @@
 import { db } from "../db/db.js";
 import { isValidDateString, localDateString } from "./installments.js";
+import { matchSaleTimePayments } from "./debtLedgerMath.js";
 import {
   getDebtAdjustmentReasonLabel,
   getHistoryCreditAmount,
@@ -62,11 +63,14 @@ export async function loadCustomerHistory(customerId, customerName) {
       .map((transaction) => transaction.reversalOfTransactionId)
       .filter(Boolean)
   );
+  // Money paid at a credit sale is part of the sale, not a debt payment (shared rule).
+  const saleTimePayments = matchSaleTimePayments([...transactions.values()], [...payments.values()]);
   const paymentTransactionIds = new Set();
   for (const payment of payments.values()) {
     if (payment.transactionId) paymentTransactionIds.add(payment.transactionId);
     const paymentTransaction = payment.transactionId ? transactions.get(payment.transactionId) : null;
     if (payment.transactionId && reversedTransactionIds.has(payment.transactionId)) continue;
+    if (saleTimePayments.paymentIds.has(payment.id)) continue;
     const paymentMethod = payment.paymentMethod === "momo" || paymentTransaction?.payment_method === "momo" ? "MoMo" : "Cash";
     events.push({
       id: `payment-${payment.id}`,
@@ -83,7 +87,7 @@ export async function loadCustomerHistory(customerId, customerName) {
     if (transaction.type === "income_reversal" || reversedTransactionIds.has(transaction.id)) continue;
     const timestamp = getTransactionTimestamp(transaction);
     if (transaction.type === "manual_debt") {
-      const creditAmount = getHistoryCreditAmount(transaction);
+      const creditAmount = getHistoryCreditAmount(transaction, saleTimePayments);
       if (creditAmount > 0) {
         // A debt entered with an earlier Taken on date (53) sits at that date, shown with no
         // time because only the day is known.
@@ -121,7 +125,7 @@ export async function loadCustomerHistory(customerId, customerName) {
       continue;
     }
     if (transaction.type === "installment_sale" || transaction.type === "installment_addon") {
-      const creditAmount = getHistoryCreditAmount(transaction);
+      const creditAmount = getHistoryCreditAmount(transaction, saleTimePayments);
       if (creditAmount > 0) {
         events.push({
           id: `credit-${transaction.id}`,
@@ -154,7 +158,7 @@ export async function loadCustomerHistory(customerId, customerName) {
     }
 
     if (["sale", "credit_sale"].includes(transaction.type) && transaction.paymentType === "credit") {
-      const creditAmount = getHistoryCreditAmount(transaction);
+      const creditAmount = getHistoryCreditAmount(transaction, saleTimePayments);
       if (creditAmount > 0) {
         events.push({
           id: `credit-${transaction.id}`,

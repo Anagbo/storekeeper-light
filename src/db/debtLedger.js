@@ -16,7 +16,8 @@ import {
 import {
   calculateLedgerEventBalance,
   getCustomerLedgerRecords,
-  getCreditEventAmount
+  getCreditEventAmount,
+  matchSaleTimePayments
 } from "../utils/debtLedgerMath.js";
 
 function normalizeInitialPaymentParts(parts, totalPesewas, defaultMethod) {
@@ -96,7 +97,8 @@ async function assertDebtBalanceMatchesEvents({
     transactions,
     payments
   });
-  const creditEvents = ledgerRecords.transactions.filter((record) => getCreditEventAmount(record) > 0);
+  const saleTimePayments = matchSaleTimePayments(ledgerRecords.transactions, ledgerRecords.payments);
+  const creditEvents = ledgerRecords.transactions.filter((record) => getCreditEventAmount(record, saleTimePayments) > 0);
 
   // Legacy debts may have no source credit event. They remain valid until
   // migrated, but there is no event-based baseline to reconcile yet.

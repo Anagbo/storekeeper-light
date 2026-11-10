@@ -1,3 +1,5 @@
+import { getCreditEventAmount, isGrossCreditSale } from "./debtLedgerMath.js";
+
 function timestampValue(timestamp) {
   const value = timestamp instanceof Date
     ? timestamp.getTime()
@@ -41,7 +43,10 @@ export function getDebtAdjustmentReasonLabel(reasonCode) {
   }[reasonCode] ?? "Correction";
 }
 
-export function getHistoryCreditAmount(transaction) {
+// saleTimePayments comes from matchSaleTimePayments (debtLedgerMath.js): a credit sale then
+// counts only its Owe part, the same rule the ledger check uses.
+export function getHistoryCreditAmount(transaction, saleTimePayments = null) {
+  if (isGrossCreditSale(transaction)) return getCreditEventAmount(transaction, saleTimePayments);
   const amount = transaction.creditSaleGrossPesewas ??
     transaction.creditExtendedPesewas ??
     (transaction.type === "installment_sale" || transaction.type === "installment_addon"

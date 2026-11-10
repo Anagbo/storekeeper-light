@@ -4,7 +4,8 @@ import { getSupplierBalances } from "./suppliers.js";
 import {
   calculateLedgerEventBalance,
   getCustomerLedgerRecords,
-  getCreditEventAmount
+  getCreditEventAmount,
+  matchSaleTimePayments
 } from "./debtLedgerMath.js";
 
 function isPesewaAmount(value) {
@@ -72,8 +73,9 @@ function checkDebtLedger(issues, debt, debts, transactions, payments, checkedCus
     transactions,
     payments
   });
+  const saleTimePayments = matchSaleTimePayments(ledgerRecords.transactions, ledgerRecords.payments);
   const linkedCredits = ledgerRecords.transactions.filter((record) => (
-    getCreditEventAmount(record) > 0 ||
+    getCreditEventAmount(record, saleTimePayments) > 0 ||
     ["sale", "credit_sale", "installment_sale", "installment_addon"].includes(record.type)
   ));
   const linkedAdjustments = ledgerRecords.transactions.filter((record) => record.type === "debt_adjustment");
