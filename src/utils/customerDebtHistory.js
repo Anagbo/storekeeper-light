@@ -1,3 +1,4 @@
+import { formatDate } from "../lib/formatDate.js";
 import { getCreditEventAmount, isGrossCreditSale } from "./debtLedgerMath.js";
 
 function timestampValue(timestamp) {
@@ -12,11 +13,7 @@ export function formatHistoryTimestamp(timestamp) {
   if (!value) return { date: "Unknown date", time: "Unknown time" };
 
   return {
-    date: new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "2-digit",
-      year: "numeric"
-    }).format(value),
+    date: formatDate(value),
     time: new Intl.DateTimeFormat("en-US", {
       hour: "2-digit",
       minute: "2-digit",

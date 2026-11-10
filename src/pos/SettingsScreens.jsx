@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Check, DatabaseBackup, Globe2, Volume2 } from "lucide-react";
 import { getPreference, setPreference } from "../db/preferences.js";
 import { PLAN_PRICES_PESEWAS } from "../config/plans.js";
+import { formatDate } from "../lib/formatDate.js";
 import { formatGhs } from "../lib/money.js";
 import { isAudioFeedbackEnabled, setAudioFeedbackEnabled } from "../utils/audioFeedback.js";
 import { posText as t } from "./i18n.js";
@@ -138,13 +139,13 @@ export function SettingsProfitTools({
           </p>
           {hasActiveSubscription && subscriptionExpiry && (
             <p className="mt-1 text-sm font-semibold text-emerald-900">
-              {t("settings.subscriptionExpires", { date: new Date(subscriptionExpiry).toLocaleDateString("en-GB") })}
+              {t("settings.subscriptionExpires", { date: formatDate(subscriptionExpiry) })}
             </p>
           )}
           <PosSecondaryButton type="button" onClick={onOpenPlan}>My plan</PosSecondaryButton>
           {trialActive && trialExpiry && (
             <p className="mt-1 text-sm font-semibold text-sky-900">
-              {t("settings.subscriptionTrial", { date: new Date(trialExpiry).toLocaleDateString("en-GB") })}
+              {t("settings.subscriptionTrial", { date: formatDate(trialExpiry) })}
             </p>
           )}
           <PosSecondaryButton type="button" onClick={onOpenSubscription} className="mt-3">

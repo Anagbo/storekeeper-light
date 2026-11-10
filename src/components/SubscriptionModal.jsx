@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { db } from "../db/db.js";
 import { SUBSCRIPTION_PLANS as PLANS } from "../config/plans.js";
+import { formatDate } from "../lib/formatDate.js";
 import { formatGhs } from "../lib/money.js";
 
 const DEFAULT_EMAIL = "customer@storekeeper.app";
@@ -151,7 +152,7 @@ export default function SubscriptionModal({
             </span>
             {expiresAt && (
               <p className="mt-3 text-sm text-emerald-900">
-                Active until {new Date(expiresAt).toLocaleDateString("en-GB")}
+                Active until {formatDate(expiresAt)}
               </p>
             )}
           </div>
@@ -162,7 +163,7 @@ export default function SubscriptionModal({
             </span>
             {trialExpiresAt && (
               <p className="mt-3 text-sm text-sky-900">
-                Trial access until {new Date(trialExpiresAt).toLocaleDateString("en-GH")}
+                Trial access until {formatDate(trialExpiresAt)}
               </p>
             )}
           </div>

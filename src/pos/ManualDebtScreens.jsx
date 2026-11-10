@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Banknote, CalendarDays, Check, Delete, Smartphone } from "lucide-react";
+import { formatDate } from "../lib/formatDate.js";
 import { formatGhs } from "../lib/money.js";
 import { generateWhatsAppLink } from "../utils/whatsapp.js";
 import { isValidInstallmentPlanForBalance, localDateString } from "../utils/installments.js";
@@ -51,9 +52,9 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, o
     ? Math.ceil((existingBalancePesewas + (amountValid ? amountPesewas : 0)) / debt.installmentAmount)
     : 0;
   const existingNextDate = hasPlan
-    ? new Date(`${debt.nextDueDate}T00:00:00`).toLocaleDateString("en-GB")
+    ? formatDate(debt.nextDueDate)
     : debt?.dueDate
-      ? new Date(`${debt.dueDate}T00:00:00`).toLocaleDateString("en-GB")
+      ? formatDate(debt.dueDate)
       : "";
   const inheritedPlan = hasPlan ? {
     isInstallmentPlan: true,
@@ -132,7 +133,7 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, o
         <input value={note} onChange={(event) => { setNote(event.target.value); onUpdateParams?.({ note: event.target.value }); }} placeholder="What for? (optional)" className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />
       </label>
       <button type="button" aria-expanded={pickingDate} onClick={() => setPickingDate((open) => !open)} className="flex h-14 w-full items-center justify-between rounded-2xl border-[3px] border-slate-500 bg-white px-3 text-lg font-bold">
-        <span>{t("manualDebt.takenOn", { date: takenOn === today ? t("manualDebt.today") : new Date(`${takenOn}T00:00:00`).toLocaleDateString("en-GB") })}</span>
+        <span>{t("manualDebt.takenOn", { date: takenOn === today ? t("manualDebt.today") : formatDate(takenOn) })}</span>
         <CalendarDays size={24} aria-hidden="true" />
       </button>
       {pickingDate && (

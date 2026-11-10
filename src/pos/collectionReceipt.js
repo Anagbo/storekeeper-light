@@ -1,4 +1,5 @@
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
+import { formatDate } from "../lib/formatDate.js";
 import { formatGhs } from "../lib/formatGhs.js";
 
 // Receipt amounts are checked, then shown through the one formatter ("GH₵268.20").
@@ -13,9 +14,9 @@ function formatReceiptDate(dateString) {
   if (typeof dateString !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
     throw new TypeError("The installment due date is invalid.");
   }
-  const date = new Date(`${dateString}T00:00:00`);
-  if (!Number.isFinite(date.getTime())) throw new TypeError("The installment due date is invalid.");
-  return date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  const text = formatDate(dateString);
+  if (!text) throw new TypeError("The installment due date is invalid.");
+  return text;
 }
 
 export function buildCollectionReceiptMessage(result, shopName) {
@@ -40,7 +41,7 @@ export function buildCollectionReceiptMessage(result, shopName) {
     throw new TypeError("The receipt payment parts do not match the recorded collection total.");
   }
 
-  const date = createdAt.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  const date = formatDate(createdAt);
   const time = createdAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   const lines = [
     `Payment received by ${normalizedShopName}`,

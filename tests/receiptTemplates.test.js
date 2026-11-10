@@ -62,7 +62,7 @@ test("sample 1: cash-only sale has no Owed line and no contact details", () => {
   const receipt = buildSaleReceiptFromTransaction(cashSale, "Ama's Shop");
   assert.equal(receipt, [
     "Receipt from Ama's Shop",
-    "2 Nov 2026, 9:30 AM",
+    "02/11/2026, 9:30 AM",
     "Bread × 2: GH₵10.00",
     "Water × 1: GH₵3.00",
     "Total: GH₵13.00",
@@ -77,10 +77,10 @@ test("sample 2: split credit sale shows paid parts and what is owed, without ite
   const receipt = buildSaleReceiptFromTransaction(splitCreditSale, "Ama's Shop", { dueDate: "2026-11-15" });
   assert.equal(receipt, [
     "Receipt from Ama's Shop",
-    "2 Nov 2026, 9:30 AM",
+    "02/11/2026, 9:30 AM",
     "Total: GH₵80.00",
     "Paid: Cash GH₵20.00, MoMo GH₵30.00",
-    "Owed: GH₵30.00, pay by 15 Nov 2026",
+    "Owed: GH₵30.00, pay by 15/11/2026",
     "Thank you!"
   ].join("\n"));
   assert.doesNotMatch(receipt, PRIVATE_DETAILS);
@@ -91,11 +91,11 @@ test("sample 3: installment collection shows the split, balance and next payment
   const receipt = buildPaymentReceiptFromCollection(collection, "Ama's Shop");
   assert.equal(receipt, [
     "Payment received by Ama's Shop",
-    "3 Nov 2026, 2:05 PM",
+    "03/11/2026, 2:05 PM",
     "From: Ama Owusu",
     "Amount: GH₵12.50 (Cash GH₵5.00, MoMo GH₵7.50)",
     "Still owed: GH₵8.75",
-    "Next payment: GH₵3.00 on 10 Nov 2026",
+    "Next payment: GH₵3.00 on 10/11/2026",
     "Thank you!"
   ].join("\n"));
   assert.doesNotMatch(receipt, PRIVATE_DETAILS);
@@ -112,10 +112,10 @@ test("current customer balance receipt includes its as-of time and plan", () => 
   });
   assert.equal(receipt, [
     "Receipt from Ama's Shop",
-    "6 Nov 2026, 12:56 PM",
+    "06/11/2026, 12:56 PM",
     "For: Ama Owusu",
-    "Balance owed as of 6 Nov 2026, 12:56 PM: GH₵30.00",
-    "Next payment: GH₵20.00 on 13 Nov 2026",
+    "Balance owed as of 06/11/2026, 12:56 PM: GH₵30.00",
+    "Next payment: GH₵20.00 on 13/11/2026",
     "Thank you!"
   ].join("\n"));
 });
@@ -144,11 +144,11 @@ test("credit sale receipt uses the full initial payment split when an older bala
 
   assert.equal(receipt, [
     "Receipt from My shop",
-    "2 Nov 2026, 9:30 AM",
+    "02/11/2026, 9:30 AM",
     "This sale: GH₵25.00",
     "Paid today: GH₵100.00 (Cash GH₵40.00, MoMo GH₵60.00)",
-    "Balance owed as of 2 Nov 2026, 9:30 AM: GH₵145.00",
-    "Next payment: GH₵50.00 on 1 Dec 2026",
+    "Balance owed as of 02/11/2026, 9:30 AM: GH₵145.00",
+    "Next payment: GH₵50.00 on 01/12/2026",
     "Thank you!"
   ].join("\n"));
   assert.doesNotMatch(receipt, PRIVATE_DETAILS);
@@ -184,5 +184,5 @@ test("one flag chooses between the new templates and the existing receipts", () 
   assert.match(getSaleReceiptText(cashSale, "Ama's Shop"), /^Sale recorded by Ama's Shop\n/);
   assert.match(getSaleReceiptText(cashSale, "Ama's Shop", {}, true), /^Receipt from Ama's Shop\n/);
   assert.match(getCollectionReceiptText(collection, "Ama's Shop"), /^Payment received by Ama's Shop\n/);
-  assert.match(getCollectionReceiptText(collection, "Ama's Shop", true), /\n3 Nov 2026, 2:05 PM\n/);
+  assert.match(getCollectionReceiptText(collection, "Ama's Shop", true), /\n03\/11\/2026, 2:05 PM\n/);
 });

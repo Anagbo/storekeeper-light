@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Banknote, Check, Smartphone, UserRound, X } from "lucide-react";
-import { formatGhs, toPesewas } from "../lib/money.js";
+import { formatGhs } from "../lib/money.js";
+import { formatPesewasText, parseAmountToPesewas } from "../lib/parsePesewas.js";
 import { posText as t } from "./i18n.js";
 import { PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { addRemainingToPart, isLockedMomoRow, planMomoRowEdit, setPartAmount } from "./splitTender.js";
@@ -12,7 +13,7 @@ function sumParts(parts) {
 }
 
 function formatDraft(amountPesewas) {
-  return (amountPesewas / 100).toFixed(2);
+  return formatPesewasText(amountPesewas);
 }
 
 export default function SplitPayment({
@@ -44,7 +45,8 @@ export default function SplitPayment({
   const partsTotalPesewas = sumParts(parts);
   const partsValid = parts.every((part) => Number.isSafeInteger(part?.amountPesewas) && part.amountPesewas >= 0) &&
     partsTotalPesewas <= totalPesewas;
-  const draftPesewas = draft ? toPesewas(draft.value) : 0;
+  // Integer math on the typed text (cleanup batch, 1a), not floating-point toPesewas.
+  const draftPesewas = draft ? parseAmountToPesewas(draft.value) : 0;
 
   const hasLockedMomoRow = parts.some(isLockedMomoRow);
 

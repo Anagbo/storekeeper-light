@@ -55,9 +55,9 @@ test("K15: the 69 line is built from the stored plan payment, never fixed text",
   const { describePlanPayment } = planPayments;
   assert.equal(typeof describePlanPayment, "function");
   const createdAt = new Date(2026, 10, 19, 10).getTime();
-  assert.equal(describePlanPayment({ method: "momo_paystack", status: "confirmed", createdAt }), "Plan runs to 19 Dec · Phone request · MoMo · verified");
-  assert.equal(describePlanPayment({ method: "cash", status: "confirmed", createdAt }), "Plan runs to 19 Dec · Cash");
-  assert.equal(describePlanPayment({ method: "momo_direct", status: "confirmed", createdAt }), "Plan runs to 19 Dec · Mobile money");
+  assert.equal(describePlanPayment({ method: "momo_paystack", status: "confirmed", createdAt }), "Plan runs to 19/12/2026 · Phone request · MoMo · verified");
+  assert.equal(describePlanPayment({ method: "cash", status: "confirmed", createdAt }), "Plan runs to 19/12/2026 · Cash");
+  assert.equal(describePlanPayment({ method: "momo_direct", status: "confirmed", createdAt }), "Plan runs to 19/12/2026 · Mobile money");
   assert.equal(describePlanPayment({ method: "momo_paystack", status: "waiting", createdAt }), "", "a waiting payment has no plan period yet");
   assert.equal(describePlanPayment(undefined), "");
 });
@@ -66,5 +66,5 @@ test("K15: screen 69 shows describePlanPayment and no fixed confirmation text", 
   const result = between(planSource, "PlanPaymentResult");
   assert.match(result, /describePlanPayment\(params\.payment\)/);
   assert.doesNotMatch(result, /Plan payment confirmed\./);
-  assert.doesNotMatch(result, /Plan runs to 19 Dec|MoMo · verified/);
+  assert.doesNotMatch(result, /Plan runs to 19\/12\/2026|MoMo · verified/);
 });

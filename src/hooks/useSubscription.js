@@ -12,6 +12,7 @@ import {
   readVerifyResponse,
   VERIFY_UNAVAILABLE_MESSAGE
 } from "../db/subscriptionPayments.js";
+import { formatDate } from "../lib/formatDate.js";
 import { getEffectiveTrialNow, getTrialExpiry, isSubscriptionActive, normalizeTrialDays } from "../lib/subscriptionTrial.js";
 
 export function useSubscription() {
@@ -114,7 +115,7 @@ export function useSubscription() {
         durationMonths: result.durationMonths
       });
       if (cleanCallback) removeCallbackParams();
-      const activeUntil = new Date(applied.expiresAt).toLocaleDateString("en-GH");
+      const activeUntil = formatDate(applied.expiresAt);
       setSubscriptionNotice({
         type: "success",
         text: applied.applied

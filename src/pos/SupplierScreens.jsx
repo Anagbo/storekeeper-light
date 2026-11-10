@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { ArrowLeft, Phone, Wallet } from "lucide-react";
 import { db } from "../db/db.js";
+import { formatDate } from "../lib/formatDate.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { localDateString } from "../utils/installments.js";
 import { getSupplierBalances, SUPPLIER_CATEGORIES } from "../utils/suppliers.js";
@@ -245,7 +246,7 @@ export function YouOweSuppliers({ onBack, onPay }) {
                 <PosStatusTag tone={supplier.dueStatus === "late" ? "red" : supplier.dueStatus === "today" ? "amber" : "neutral"}>
                   {supplier.dueStatus === "late" ? t("supplier.late", { days: Math.ceil((Date.parse(`${today}T00:00:00.000Z`) - Date.parse(`${supplier.nextDueDate}T00:00:00.000Z`)) / 86400000) }) :
                     supplier.dueStatus === "today" ? t("supplier.dueToday") :
-                      supplier.nextDueDate ? t("supplier.dueDate", { date: new Date(`${supplier.nextDueDate}T00:00:00`).toLocaleDateString("en-GB") }) : t("supplier.noDueDate")}
+                      supplier.nextDueDate ? t("supplier.dueDate", { date: formatDate(supplier.nextDueDate) }) : t("supplier.noDueDate")}
                 </PosStatusTag>
               </div>
               <div className="flex gap-2">

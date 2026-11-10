@@ -8,6 +8,7 @@ import { updateCustomerPhone } from "../db/debtLedger.js";
 import FinancialSummaryModal from "./FinancialSummaryModal.jsx";
 import SyncStatusBadge from "./SyncStatusBadge.jsx";
 import InstallPromptBanner from "./InstallPromptBanner.jsx";
+import { formatDate } from "../lib/formatDate.js";
 import { formatGhs, formatGhsAmount } from "../lib/money.js";
 import { getLargestUnpaidBalances } from "../utils/debtBalances.js";
 import { getFinancialSummary, getOutstandingDebtPesewas } from "../utils/financials.js";
@@ -562,7 +563,7 @@ export default function Dashboard({ onQuickEntry, onViewDebts, refreshKey, shopN
                         ) : (
                           <p className="truncate text-xs text-slate-500">
                             {isAdjustment
-                              ? `${getDebtAdjustmentReasonLabel(transaction.reasonCode)} · ${new Date(transaction.createdAt).toLocaleDateString("en-GB")} ${formattedTime}`
+                              ? `${getDebtAdjustmentReasonLabel(transaction.reasonCode)} · ${formatDate(transaction.createdAt)} ${formattedTime}`
                               : `${transaction.note || "No note"} · ${new Date(transaction.createdAt).toLocaleTimeString("en-GH", { hour: "2-digit", minute: "2-digit" })}`}
                           </p>
                         )}

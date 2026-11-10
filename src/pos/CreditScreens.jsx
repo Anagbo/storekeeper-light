@@ -3,6 +3,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { Banknote, Check, Plus, Search, Smartphone, UserRoundPlus } from "lucide-react";
 import { db } from "../db/db.js";
 import { isValidGhanaCardNumber, normalizeGhanaCardNumber } from "../lib/ghanaCardNumber.js";
+import { formatDate } from "../lib/formatDate.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { formatGhanaCard } from "../utils/formatters.js";
 import { addDueCycles, getCreditBalanceAfterSale, getNextCycleDate, isValidDateString, localDateString, PAYMENT_FREQUENCIES, prepareInstallmentPlan } from "../utils/installments.js";
@@ -386,8 +387,8 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
         ? { ...prepared.plan, nextDueDate }
         : prepared.plan;
       const payBackLabel = startToday
-        ? t("credit.firstPaymentTodayNext", { date: nextDueDate })
-        : t("credit.firstPaymentOn", { date: nextDueDate });
+        ? t("credit.firstPaymentTodayNext", { date: formatDate(nextDueDate) })
+        : t("credit.firstPaymentOn", { date: formatDate(nextDueDate) });
       const initialPaymentParts = paymentAlreadyMadeToday
         ? carriedPaymentParts
         : startToday && paymentMethod === "split"

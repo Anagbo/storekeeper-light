@@ -5,6 +5,7 @@ import { db } from "../db/db.js";
 import { COLLECTION_UNDO_WINDOW_MS, undoDebtCollection } from "../db/debts.js";
 import { correctDebtBalance, recordDebtReminder } from "../db/debtLedger.js";
 import { formatLastReminder } from "./reminderLabel.js";
+import { formatDate } from "../lib/formatDate.js";
 import { formatGhs, formatGhsAmount, toPesewas } from "../lib/money.js";
 import { formatGhanaCard } from "../utils/formatters.js";
 import { formatHistoryTimestamp } from "../utils/customerDebtHistory.js";
@@ -73,7 +74,7 @@ function formatHistoryRowTimestamp(timestamp) {
     date.getMonth() === today.getMonth() &&
     date.getDate() === today.getDate();
   const time = date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-  return isToday ? `Today ${time}` : `${date.toLocaleDateString("en-GB")} ${time}`;
+  return isToday ? `Today ${time}` : `${formatDate(date)} ${time}`;
 }
 
 function useCollectionDebt(debtId, customerName) {
@@ -661,7 +662,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
   const installmentProgress = progressInstallmentCount > 0
     ? (completedInstallments / progressInstallmentCount) * 100
     : 0;
-  const nextDueDate = dueDate ? new Date(`${dueDate}T00:00:00`).toLocaleDateString("en-GB") : t("collect.notSet");
+  const nextDueDate = dueDate ? formatDate(dueDate) : t("collect.notSet");
   const installmentFrequency = ["weekly", "bi-weekly", "monthly"].includes(data?.debt?.frequency)
     ? t(`collect.installmentFrequency.${data.debt.frequency}`)
     : t("collect.notSet");
@@ -895,7 +896,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                       <span className="block text-sm text-slate-800">
                         {event.type === "adjustment"
                           ? `${event.reasonLabel} · ${formatHistoryRowTimestamp(event.timestamp)}`
-                          : event.dateOnly ? new Date(event.timestamp).toLocaleDateString("en-GB") : formatHistoryRowTimestamp(event.timestamp)}
+                          : event.dateOnly ? formatDate(event.timestamp) : formatHistoryRowTimestamp(event.timestamp)}
                         {event.type === "manual_debt" && event.note && <> · {event.note}</>}
                         {["credit", "addon"].includes(event.type) && (
                           <> · {getDebtorItemDescription(event)

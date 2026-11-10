@@ -1,10 +1,10 @@
 import { FEATURE_FLAGS } from "../config/features.js";
 import { buildCollectionReceiptMessage } from "./collectionReceipt.js";
 import { buildSaleReceiptMessage, getSaleReceiptDetails } from "./saleReceipt.js";
+import { formatDate } from "../lib/formatDate.js";
 import { formatGhs } from "../lib/formatGhs.js";
 
 // Receipts are built only from these fields. Customer phone and Ghana Card numbers are never read.
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function amount(pesewas) {
   if (!Number.isSafeInteger(pesewas) || pesewas < 0) {
@@ -21,7 +21,7 @@ function formatDateTime(timestamp) {
   const hours = when.getHours();
   const minutes = String(when.getMinutes()).padStart(2, "0");
   const time = `${hours % 12 || 12}:${minutes} ${hours < 12 ? "AM" : "PM"}`;
-  return `${when.getDate()} ${MONTHS[when.getMonth()]} ${when.getFullYear()}, ${time}`;
+  return `${formatDate(when)}, ${time}`;
 }
 
 function formatDueDate(dateString) {
@@ -32,7 +32,7 @@ function formatDueDate(dateString) {
   if (date.getFullYear() !== Number(year) || date.getMonth() !== Number(month) - 1 || date.getDate() !== Number(day)) {
     throw new TypeError("The due date is invalid.");
   }
-  return `${Number(day)} ${MONTHS[Number(month) - 1]} ${year}`;
+  return formatDate(dateString);
 }
 
 function requireName(name, message) {

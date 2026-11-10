@@ -3,6 +3,7 @@ import { Download, Upload, X } from "lucide-react";
 import { describeRestoreResult, exportDatabaseToJson, importDatabaseFromJson } from "../utils/backup.js";
 import { isAudioFeedbackEnabled, setAudioFeedbackEnabled } from "../utils/audioFeedback.js";
 import { FEATURE_FLAGS } from "../config/features.js";
+import { formatDate } from "../lib/formatDate.js";
 
 export default function BackupModal({
   isOpen,
@@ -108,7 +109,7 @@ export default function BackupModal({
             <h3 className="text-sm font-bold text-slate-900">Subscription</h3>
             <p className="mt-1 text-xs text-slate-600">
               {subscriptionExpiry
-                ? `This device has a subscription expiry saved for ${new Date(subscriptionExpiry).toLocaleDateString("en-GH")}.`
+                ? `This device has a subscription expiry saved for ${formatDate(subscriptionExpiry)}.`
                 : "No subscription payment is recorded on this device."}
             </p>
             {subscriptionNotice && (

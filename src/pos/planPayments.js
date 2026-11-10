@@ -1,5 +1,6 @@
 import { db } from "../db/db.js";
 import { getPreference } from "../db/preferences.js";
+import { formatDate } from "../lib/formatDate.js";
 import { createId } from "../lib/ids.js";
 import { addSubscriptionMonths } from "../lib/subscriptionDates.js";
 import { PLAN_PRICES_PESEWAS } from "../config/plans.js";
@@ -110,8 +111,7 @@ export function describePlanPayment(payment) {
   if (!payment || payment.status !== "confirmed" || !Object.hasOwn(PLAN_METHOD_LABELS, payment.method)) return "";
   const paidAt = Number(payment.createdAt);
   if (!Number.isFinite(paidAt)) return "";
-  const end = addSubscriptionMonths(paidAt, PLAN_CONFIG.months)
-    .toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  const end = formatDate(addSubscriptionMonths(paidAt, PLAN_CONFIG.months));
   return [
     `Plan runs to ${end}`,
     PLAN_METHOD_LABELS[payment.method],

@@ -7,11 +7,11 @@ import {
   sortHistoryEvents
 } from "../src/utils/customerDebtHistory.js";
 
-test("formats activity timestamps with abbreviated local date and lowercase 12-hour time", () => {
+test("formats activity timestamps with a day/month/year date and lowercase 12-hour time", () => {
   const timestamp = new Date(2026, 9, 24, 14, 45).toISOString();
   const formatted = formatHistoryTimestamp(timestamp);
 
-  assert.equal(formatted.date, "Oct 24, 2026");
+  assert.equal(formatted.date, "24/10/2026");
   assert.equal(formatted.time, "02:45 pm");
   assert.deepEqual(formatHistoryTimestamp(Date.parse(timestamp)), formatted);
 });

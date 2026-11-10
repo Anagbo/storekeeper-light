@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Check, Plus } from "lucide-react";
+import { formatDate } from "../lib/formatDate.js";
 import { formatGhs } from "../lib/money.js";
 import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
@@ -23,9 +24,9 @@ export default function SaleRecorded({ transaction, shopName, onDone, onNewSale 
   const momoLabel = transaction?.momoVerification ? getMomoDisplayLabel(transaction) : t("saleRecorded.method.momo");
   const when = new Date(details.timestamp);
   const time = when.toLocaleTimeString("en-GH", { hour: "2-digit", minute: "2-digit" });
-  const dateLabel = when.toDateString() === new Date().toDateString()
+  const dateLabel = formatDate(when) === formatDate(new Date())
     ? t("saleRecorded.today")
-    : when.toLocaleDateString("en-GH", { day: "numeric", month: "short", year: "numeric" });
+    : formatDate(when);
 
   const receiptText = getSaleReceiptText(transaction, shopName);
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(receiptText)}`;
