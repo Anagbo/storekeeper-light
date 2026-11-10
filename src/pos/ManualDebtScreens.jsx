@@ -144,7 +144,11 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, o
           max={today}
           onChange={(event) => {
             const value = event.target.value;
-            if (value && value <= today) setTakenOn(value);
+            if (value && value <= today) {
+              setTakenOn(value);
+              // Kept in the route params with the amount and the note.
+              onUpdateParams?.({ takenOn: value });
+            }
           }}
           className="h-14 w-full rounded-2xl border-[3px] border-slate-500 bg-white px-3 text-lg"
         />

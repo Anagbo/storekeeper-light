@@ -353,9 +353,14 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
     }
   }, [params.paymentMethod, params.momoMethod]);
 
+  // Everything typed or chosen on 19 is also kept in the route params (the same pattern as the
+  // amount paid today and the split parts), so Menu > Settings > Back > Close menu and Back from
+  // the next screen restore it. The state above already reads these keys back on mount.
   function selectFrequency(nextFrequency) {
+    const nextDate = getNextCycleDate(today, nextFrequency);
     setFrequency(nextFrequency);
-    setNextDueDate(getNextCycleDate(today, nextFrequency));
+    setNextDueDate(nextDate);
+    onUpdateParams?.({ frequency: nextFrequency, nextDueDate: nextDate });
   }
 
   async function savePlan() {
@@ -479,9 +484,11 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
               const nextPesewas = toPesewas(nextValue);
               if (Number.isSafeInteger(nextPesewas) && nextPesewas > maxInstallmentPesewas) {
                 setInstallmentAmount(maxInstallmentAmount);
+                onUpdateParams?.({ installmentAmount: maxInstallmentAmount });
                 setError(t("credit.installmentCapped"));
               } else {
                 setInstallmentAmount(nextValue);
+                onUpdateParams?.({ installmentAmount: nextValue });
                 setError("");
               }
             }}
@@ -515,10 +522,15 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
               if (paymentAlreadyMadeToday || alreadyPaidPesewas > 0) return;
               setStartToday(true);
               setTodayPaymentSubmitAttempted(false);
-              setNextDueDate(getNextCycleDate(today, frequency));
+              const nextDate = getNextCycleDate(today, frequency);
+              setNextDueDate(nextDate);
+              const draftUpdates = { startToday: true, nextDueDate: nextDate };
               if (installmentPesewas > maxStartTodayInstallmentPesewas) {
-                setInstallmentAmount((Math.max(0, maxStartTodayInstallmentPesewas) / 100).toFixed(2));
+                const cappedAmount = (Math.max(0, maxStartTodayInstallmentPesewas) / 100).toFixed(2);
+                setInstallmentAmount(cappedAmount);
+                draftUpdates.installmentAmount = cappedAmount;
               }
+              onUpdateParams?.(draftUpdates);
             }}
             className={`min-h-14 rounded-2xl border-[3px] font-extrabold ${paymentAlreadyMadeToday || alreadyPaidPesewas > 0 ? "cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400 opacity-60" : startToday ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}
           >
@@ -527,7 +539,9 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
           <button type="button" aria-pressed={!startToday} onClick={() => {
             setStartToday(false);
             setTodayPaymentSubmitAttempted(false);
-            setNextDueDate(getNextCycleDate(today, frequency));
+            const nextDate = getNextCycleDate(today, frequency);
+            setNextDueDate(nextDate);
+            onUpdateParams?.({ startToday: false, nextDueDate: nextDate });
           }} className={`min-h-14 rounded-2xl border-[3px] font-extrabold ${!startToday ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{t("credit.nextCycle", { frequency: t(`credit.frequency.${frequency}`) })}</button>
         </div>
       </fieldset>
@@ -575,7 +589,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
       )}
       <label className="block">
         <span className="mb-1 block text-lg font-extrabold">{t("credit.nextPaymentDate")}</span>
-        <input type="date" min={today} value={nextDueDate} onChange={(event) => setNextDueDate(event.target.value)} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg font-bold" />
+        <input type="date" min={today} value={nextDueDate} onChange={(event) => { setNextDueDate(event.target.value); onUpdateParams?.({ nextDueDate: event.target.value }); }} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg font-bold" />
       </label>
       {startToday && !paymentAlreadyMadeToday && (
         <fieldset>
