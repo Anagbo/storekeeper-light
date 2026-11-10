@@ -173,7 +173,7 @@ export default function Sell({ params = {}, onNavigate, recordSale = recordCashS
               className="flex h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-[14px] border-2 border-emerald-900 bg-white px-1 text-xs font-extrabold text-emerald-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 sm:h-20 sm:gap-1 sm:rounded-2xl sm:text-sm lg:h-24 lg:rounded-[18px] lg:border-[3px] lg:px-2 lg:text-[17px]"
             >
               <SplitIcons withOwe size={11} />
-              <span className="w-full min-w-0 truncate text-center sm:hidden">Split</span>
+              <span className="w-full min-w-0 truncate text-center text-xs sm:hidden">Split</span>
               <span className="hidden w-full min-w-0 truncate text-center sm:inline">{t("sell.split")}</span>
             </button>
           </div>

@@ -146,8 +146,8 @@ function WhoOwesYou({ params, onBack, onNavigate }) {
       <PosSecondaryButton type="button" onClick={() => onNavigate("NewPerson", { ...params })} className={params.manualDebt ? "border-dashed text-emerald-900" : undefined}>
         <UserRoundPlus size={22} aria-hidden="true" /> {t("credit.newPerson")}
       </PosSecondaryButton>
-      <div className="mt-auto grid grid-cols-2 gap-2">
-        <PosBackButton onClick={onBack} />
+      <div className="mt-auto grid grid-cols-[auto_minmax(0,1fr)] gap-2">
+        <PosBackButton onClick={onBack} className="h-14!" />
         <PosPrimaryButton type="button" disabled={!selectedCustomer || loading} onClick={continueToPaymentDate}>
           {t("credit.next")}
         </PosPrimaryButton>
@@ -322,9 +322,9 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onReturnToSplit, onSaveCr
       </button>
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
       <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => void save(true)} />
-      <div className="mt-auto grid grid-cols-2 gap-2">
-        <PosBackButton onClick={onBack} />
-        <PosPrimaryButton type="button" disabled={saving} onClick={() => void save()}>{saving ? t("credit.saving") : t("credit.saveAmount", { name: customerName, amount: formatGhs(totalAfterSalePesewas) })}</PosPrimaryButton>
+      <div className="mt-auto grid grid-cols-[auto_minmax(0,1fr)] gap-2">
+        <PosBackButton onClick={onBack} className="h-14!" />
+        <PosPrimaryButton type="button" disabled={saving} onClick={() => void save()} className="h-14 px-2 text-base leading-tight">{saving ? t("credit.saving") : t("credit.saveAmount", { name: shortSaveName(customerName), amount: formatGhs(totalAfterSalePesewas) })}</PosPrimaryButton>
       </div>
       {largeAmount.dialog}
     </PosPage>
@@ -333,6 +333,12 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onReturnToSplit, onSaveCr
 
 // What the merchant sees when saving the plan fails: the known causes name what to fix; anything
 // else keeps the general message.
+// A long customer name would wrap the Save button; keep the name short on the button only.
+export function shortSaveName(name = "") {
+  const clean = String(name).trim();
+  return clean.length > 10 ? clean.slice(0, 9).trimEnd() + "…" : clean;
+}
+
 function describePlanSaveError(saveError, maxCreditPesewas) {
   if (saveError?.message === "Choose a valid next installment due date.") return t("credit.invalidDueDate");
   if (saveError?.code === PLAN_ERROR.eachTimeTooHigh) return t("credit.eachTimeTooHigh");
@@ -599,7 +605,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
               Object.assign(draftUpdates, { firstPaymentParts: undefined, splitParts: undefined, splitTotalPesewas: undefined, paymentMethod: "cash" });
             }
             onUpdateParams?.(draftUpdates);
-          }} className={`min-h-14 rounded-2xl border-[3px] font-extrabold ${!startToday ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{t("credit.nextCycle", { frequency: t(`credit.frequency.${frequency}`) })}</button>
+          }} className={`min-h-14 min-w-0 rounded-2xl border-[3px] px-1 text-[15px] leading-tight font-extrabold ${!startToday ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{t("credit.nextCycle", { frequency: t(`credit.frequency.${frequency}`) })}</button>
         </div>
       </fieldset>
       {startToday && !paymentAlreadyMadeToday && (
@@ -718,9 +724,9 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
       )}
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
       <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => void savePlan(true)} />
-      <div className="mt-auto grid grid-cols-2 gap-2">
-        <PosBackButton onClick={onBack} />
-        <PosPrimaryButton type="button" disabled={saving || !planReady} onClick={() => void savePlan()}>{saving ? t("credit.saving") : t("credit.savePlan")}</PosPrimaryButton>
+      <div className="mt-auto grid grid-cols-[auto_minmax(0,1fr)] gap-2">
+        <PosBackButton onClick={onBack} className="h-14!" />
+        <PosPrimaryButton type="button" disabled={saving || !planReady} className="h-14" onClick={() => void savePlan()}>{saving ? t("credit.saving") : t("credit.savePlan")}</PosPrimaryButton>
       </div>
       {largeAmount.dialog}
     </PosPage>
