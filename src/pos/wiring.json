@@ -3340,7 +3340,12 @@
     "Saving a changed receiving number first shows a masked confirmation, for example: Customers will send to 024•••4567 · MTN. Correct?",
     "Every change is stored as a local audit record: old number, new number, time.",
     "The Paystack payout number is separate and is never written to the receiving number.",
-    "Change request 2026-11-09: number and network inputs added to complete 'Customer sends to my number (on or off, number, network)'."
+    "Change request 2026-11-09: number and network inputs added to complete 'Customer sends to my number (on or off, number, network)'.",
+    "Redesign (layout only, no behaviour change). Title \"MoMo payments\" (same words as the Settings row).",
+    "Card 1 \"Customer sends to my number\": the title with a switch (role switch, not a tick box). When on: field \"My MoMo number\", then \"Network\" as three equal buttons in one row (MTN, Telecel, AirtelTigo; the selected one is green), then one green line \"Customers will send to 059•••8442 · MTN\". When off, the number and network fields are hidden.",
+    "Card 2 \"Phone request\": one row, \"Confirmed by itself. Fee GH₵0.25 per payment.\" with \"Set up ›\" on the right (opens 60) when the phone-request flag is on. When the flag is off the row shows a grey \"Coming soon\" tag instead and is not tappable. No disabled button.",
+    "Section \"When I tap MoMo\": one card with radio rows (role radio, a circle on the left, the chosen one filled green with a light green row background): \"Ask me each time\", \"Always: customer sends to my number\". \"Always: phone request\" is shown only when the phone-request flag is on. If phone request is not set up yet it is shown greyed, not selectable, with the line \"Set up phone request first\". When the flag is off it is not shown at all. No person icons.",
+    "Save is pinned at the bottom (always visible), 60px, green, with a check icon."
    ]
   },
   "64": {
@@ -3366,7 +3371,10 @@
    "bottom_bar": false,
    "change_request": "2026-11-07 MoMo choice and plan payments",
    "rules": [
-    "Built: 64 has a Subscription card (status text and the View subscription / Subscribe button, which opens the Paystack plans pop-up with plans, prices, trial status and pending-payment verification). It shows only when the subscription flag is on."
+    "Built: 64 has a Subscription card (status text and the View subscription / Subscribe button, which opens the Paystack plans pop-up with plans, prices, trial status and pending-payment verification). It shows only when the subscription flag is on.",
+    "Redesign (layout only, no behaviour change). One plan card replaces the two cards: \"Shop plan\" with a green Active tag (or the right status tag), the price large (\"GH₵15.00\" with \"a month\" small), \"Active until dd/mm/yyyy · n days left\", the reassurance line, then \"Pay now\" (solid green, 56px) and \"View subscription\" (outlined, only when the subscription flag is on). The duplicate \"Your monthly subscription is active\" text is removed.",
+    "Section \"Payments\": one card with rows separated by thin lines. Each row: left, the method (\"Phone request\", \"Mobile money\", \"Cash\") with the date under it; right, the amount in bold with a \"Confirmed\" tag under it (other statuses use their own tag). No long text that wraps to a second line beside the amount. If there are no payments: \"No payments yet.\"",
+    "Dates dd/mm/yyyy, amounts through the shared formatter."
    ]
   },
   "65": {
@@ -3596,7 +3604,9 @@
     "Last backup line (\"Last backup: dd/mm/yyyy\") is shown only if the app already stores the last backup date. If it does not, leave the line out; do not add storage for it in this change.",
     "Restore asks first: \"Restore from this file?\" with the number of records found if known, and the words \"Records already on this phone are kept. Matching ones are updated.\" Buttons: Restore / Cancel. Cancel changes nothing.",
     "After a restore: \"Restore finished.\" A bad or wrong file shows \"This file cannot be used. Choose a StoreKeeper backup file.\" and changes nothing. Never show raw error text.",
-    "Existing backup and restore logic is not changed, only the screen around it."
+    "Existing backup and restore logic is not changed, only the screen around it.",
+    "Exact text and order, top to bottom: (1) intro line under the title: \"Keep a copy of your sales, debts and items. It works without internet.\" (2) Card \"Save a backup\" with a green download icon before the heading, text \"Saves one file on this phone with all your records.\", green button \"Download backup\", and \"Last backup: dd/mm/yyyy\" only if stored. (3) Card \"Restore from a backup\" with a green upload icon before the heading, text \"Adds the records from a backup file to this phone. Matching records are updated. Nothing here is deleted.\", button \"Choose backup file\".",
+    "Look: heading 19px bold, card text 16px grey (#475569), both buttons 56px tall with bold (800) 18px text. Download backup is solid green (#03543F, white text). Choose backup file is white with a dark (#0F172A) 2px outline and dark text, not green. Cards have a 2px light grey (#CBD5E1) border, 18px corners, 16px padding, 14px gap between cards."
    ]
   },
   "ManualDebtSaved": {
@@ -3640,6 +3650,9 @@
     "wording": "This MoMo payment is GH₵{amount}. Is the amount right?",
     "split": "A split asks once for the MoMo part at the editor, and once at Done for the sale total only when the total is above the limit. Exactly the limit never asks."
    }
+  },
+  "back_button": {
+   "rule": "Every POS screen with a Back button uses the one shared PosBackButton: label \"‹ Back\", bold (800) 18px, 52px tall, 2px #0F172A border, accessible name \"Back\". Where Back sits in a bottom row beside a main button, both have the same height (56px). Button text is bold as in the prototype. Text must never wrap to a third line on a 360px-wide phone; shorten the label or reduce the side padding instead of letting the button grow."
   }
  },
  "built_extras_kept": {
