@@ -301,7 +301,7 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onReturnToSplit, onSaveCr
   );
 }
 
-function ALittleAtATime({ params, onBack, onNavigate, onReturnToSplit, onSaveCredit }) {
+function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnToSplit, onSaveCredit }) {
   const today = localDateString();
   const [installmentAmount, setInstallmentAmount] = useState(params.installmentAmount ?? "");
   const [frequency, setFrequency] = useState(params.frequency ?? "weekly");
@@ -434,6 +434,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onReturnToSplit, onSaveCre
     }
     if (method !== "split") {
       setPaymentMethod(method);
+      onUpdateParams?.({ paymentMethod: method });
       setError("");
       return;
     }
@@ -548,6 +549,8 @@ function ALittleAtATime({ params, onBack, onNavigate, onReturnToSplit, onSaveCre
               disabled={splitParts.length > 0}
               onChange={(event) => {
                 setTodayPaymentAmount(event.target.value);
+                // Kept in the route params, so Menu > Settings > Back > Close menu restores it.
+                onUpdateParams?.({ todayPaymentAmount: event.target.value });
                 setTodayPaymentSubmitAttempted(true);
                 setError("");
               }}
@@ -789,11 +792,11 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
   );
 }
 
-export default function CreditScreens({ route, params, onBack, onNavigate, onReturnToSplit, onSaveCredit, onSaveCustomerContact, onHome, shopName }) {
+export default function CreditScreens({ route, params, onBack, onNavigate, onUpdateParams, onReturnToSplit, onSaveCredit, onSaveCustomerContact, onHome, shopName }) {
   if (route === "WhoOwesYou") return <WhoOwesYou params={params} onBack={onBack} onNavigate={onNavigate} />;
   if (route === "NewPerson") return <NewPerson params={params} onBack={onBack} onNavigate={onNavigate} />;
   if (route === "WhenWillTheyPay") return <WhenWillTheyPay params={params} onBack={onBack} onNavigate={onNavigate} onReturnToSplit={onReturnToSplit} onSaveCredit={onSaveCredit} />;
-  if (route === "ALittleAtATime") return <ALittleAtATime params={params} onBack={onBack} onNavigate={onNavigate} onReturnToSplit={onReturnToSplit} onSaveCredit={onSaveCredit} />;
+  if (route === "ALittleAtATime") return <ALittleAtATime params={params} onBack={onBack} onNavigate={onNavigate} onUpdateParams={onUpdateParams} onReturnToSplit={onReturnToSplit} onSaveCredit={onSaveCredit} />;
   if (route === "CreditSaved") return <CreditSaved params={params} onHome={onHome} onNavigate={onNavigate} onSaveCustomerContact={onSaveCustomerContact} shopName={shopName} />;
   return null;
 }

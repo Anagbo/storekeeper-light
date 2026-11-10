@@ -14,9 +14,12 @@ const paymentChoices = [
   { value: "owe", label: "sell.owe", icon: UserRound }
 ];
 
-export default function ReviewAndPay({ params = {}, onBack, onNavigate, onSaveSale }) {
+export default function ReviewAndPay({ params = {}, onBack, onNavigate, onUpdateParams, onSaveSale }) {
   const saleItems = normalizeSaleItems(params.saleItems ?? []);
   const totalPesewas = totalSaleItemsPesewas(saleItems);
+  // Only Cash is chosen in place (MoMo and Owe leave the screen) and it is also the starting choice, so a
+  // return always shows the right one. The choice is still written to the route params like the other
+  // drafts; nothing is read back for MoMo, so a stray value can never pre-select an unconfirmed MoMo save.
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -89,7 +92,7 @@ export default function ReviewAndPay({ params = {}, onBack, onNavigate, onSaveSa
             onClick={() => {
               if (value === "owe") continueToCredit();
               else if (value === "momo") onNavigate("MoMoChoice", { ...params, amountPesewas: totalPesewas, saleItems });
-              else setPaymentMethod(value);
+              else { setPaymentMethod(value); onUpdateParams?.({ paymentChoice: value }); }
             }}
             className={`flex min-h-[76px] flex-col items-center justify-center gap-1 rounded-[18px] border-[3px] px-2 text-[17px] font-extrabold ${
               paymentMethod === value ? "border-emerald-900 bg-green-200 text-slate-950" : "border-slate-500 bg-white text-slate-900"

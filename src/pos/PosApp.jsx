@@ -451,6 +451,7 @@ export default function PosApp() {
       params={routeState.params}
       onBack={navigateBack}
       onNavigate={navigate}
+      onUpdateParams={updateCurrentParams}
       onSaveSale={saveSplitSale}
     />
   ) : route === POS_ROUTES.SaleRecorded ? (
@@ -511,6 +512,7 @@ export default function PosApp() {
       params={routeState.params}
       onBack={navigateBack}
       onNavigate={navigate}
+      onUpdateParams={updateCurrentParams}
       onSaveManualDebt={saveCreditSale}
     />
   ) : route === POS_ROUTES.ManualDebtSaved ? (
@@ -554,6 +556,7 @@ export default function PosApp() {
       params={routeState.params}
       onBack={navigateBack}
       onNavigate={navigate}
+      onUpdateParams={updateCurrentParams}
       onReturnToSplit={(details) => returnTo(POS_ROUTES.SplitPayment, details, isSaleSplitHub)}
       onSaveCredit={saveCreditSale}
       onSaveCustomerContact={saveCustomerContact}

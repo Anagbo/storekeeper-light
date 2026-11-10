@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Banknote, CalendarDays, Check, Delete, Smartphone } from "lucide-react";
 import { formatGhs } from "../lib/money.js";
 import { generateWhatsAppLink } from "../utils/whatsapp.js";
@@ -10,9 +10,13 @@ import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
 
-export function ManualDebtAmount({ params, onBack, onNavigate, onSaveManualDebt }) {
-  const [amountDigits, setAmountDigits] = useState("");
-  const [note, setNote] = useState("");
+export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, onSaveManualDebt }) {
+  // The typed amount and note are kept in the route params (as the split parts on 16 are), so
+  // Menu > Settings > Back > Close menu, or Back from the next screen, restores them.
+  const initialDigits = typeof params.amountDigits === "string" ? params.amountDigits : "";
+  const [amountDigits, setAmountDigits] = useState(initialDigits);
+  const digitsRef = useRef(initialDigits);
+  const [note, setNote] = useState(typeof params.note === "string" ? params.note : "");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const saveAttempt = useSaveAttempt();
@@ -92,12 +96,15 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onSaveManualDebt 
   }
 
   function pressAmount(key) {
-    if (key === "delete") {
-      setAmountDigits((current) => current.slice(0, -1));
-      return;
-    }
-    if (amountDigits.length >= 9) return;
-    setAmountDigits((current) => `${current}${key}`.replace(/^0+(?=\d)/, ""));
+    // The ref holds the latest digits, so two taps in one frame both count.
+    const current = digitsRef.current;
+    const next = key === "delete"
+      ? current.slice(0, -1)
+      : current.length >= 9 ? current : `${current}${key}`.replace(/^0+(?=\d)/, "");
+    if (next === current) return;
+    digitsRef.current = next;
+    setAmountDigits(next);
+    onUpdateParams?.({ amountDigits: next });
   }
 
   return (
@@ -122,7 +129,7 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onSaveManualDebt 
       </div>
       <label className="block">
         <span className="sr-only">What for (optional)</span>
-        <input value={note} onChange={(event) => setNote(event.target.value)} placeholder="What for? (optional)" className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />
+        <input value={note} onChange={(event) => { setNote(event.target.value); onUpdateParams?.({ note: event.target.value }); }} placeholder="What for? (optional)" className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />
       </label>
       <button type="button" aria-expanded={pickingDate} onClick={() => setPickingDate((open) => !open)} className="flex h-14 w-full items-center justify-between rounded-2xl border-[3px] border-slate-500 bg-white px-3 text-lg font-bold">
         <span>{t("manualDebt.takenOn", { date: takenOn === today ? t("manualDebt.today") : new Date(`${takenOn}T00:00:00`).toLocaleDateString("en-GB") })}</span>
