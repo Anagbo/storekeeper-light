@@ -79,14 +79,6 @@ test("F2: the plan screens read the same price table, not a second one", async (
   assert.doesNotMatch(planPayments, /VITE_SUBSCRIPTION_MONTHLY_AMOUNT/);
 });
 
-test("F2: the subscription modal shows prices in pesewas through the formatter", () => {
-  const modal = read("src/components/SubscriptionModal.jsx");
-  assert.match(modal, /from "\.\.\/config\/plans\.js"/);
-  assert.doesNotMatch(modal, /_AMOUNT_GHS|import\.meta\.env/);
-  assert.match(modal, /\{formatGhs\(plan\.amountPesewas\)\}/);
-  assert.match(modal, /Pay \$\{formatGhs\(selectedPlan\.amountPesewas\)\} \//);
-});
-
 test("F2: the 64 plan price comes from the plan table, not fixed text", () => {
   assert.match(read("src/pos/PlanScreens.jsx"), /formatGhs\(PLAN_CONFIG\.amountPesewas\)/);
   assert.match(read("src/pos/planPayments.js"), /amountPesewas: PLAN_PRICES_PESEWAS\.monthly/);

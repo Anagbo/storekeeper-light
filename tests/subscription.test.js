@@ -13,7 +13,6 @@ const originalFetch = global.fetch;
 const subscriptionHookSource = readFileSync(new URL("../src/hooks/useSubscription.js", import.meta.url), "utf8");
 const posAppSource = readFileSync(new URL("../src/pos/PosApp.jsx", import.meta.url), "utf8");
 const settingsSource = readFileSync(new URL("../src/pos/SettingsScreens.jsx", import.meta.url), "utf8");
-const modalSource = readFileSync(new URL("../src/components/SubscriptionModal.jsx", import.meta.url), "utf8");
 
 test("subscription UI and lockout are disabled by default", () => {
   assert.equal(FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE, false);
@@ -46,8 +45,7 @@ test("payment recovery persists pending references and retries after reconnect",
   assert.match(subscriptionHookSource, /pendingSubscriptionPayment/);
   assert.match(subscriptionHookSource, /retryPendingPayment/);
   assert.match(subscriptionHookSource, /addEventListener\("online"/);
-  assert.match(modalSource, /Verify pending payment/);
-  assert.match(modalSource, /db\.settings\.put/);
+  assert.match(subscriptionHookSource, /key: "pendingSubscriptionPayment"/);
 });
 
 test("the POS no longer mounts the Paystack plans pop-up; plan payments go through Pay now on 64", () => {
@@ -61,8 +59,6 @@ test("the POS no longer mounts the Paystack plans pop-up; plan payments go throu
   assert.match(plansSource, /id: "monthly"/);
   assert.match(plansSource, /id: "six_months"/);
   assert.match(plansSource, /id: "yearly"/);
-  assert.match(modalSource, /SUBSCRIPTION_PLANS as PLANS/);
-  assert.match(modalSource, /planId: selectedPlanId/);
 });
 
 function makeResponse() {

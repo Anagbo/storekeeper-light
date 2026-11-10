@@ -112,10 +112,6 @@ test("D4 follow-up: restore returns how many saved rows were kept, and the messa
   assert.equal(backupModule.describeRestoreResult({ ...result, skippedLedgerRows: 0 }), "Backup restored and merged (5 records).");
 });
 
-test("D4 follow-up: the restore screen shows that message", () => {
-  const modal = readFileSync(new URL("../src/components/BackupModal.jsx", import.meta.url), "utf8");
-  assert.match(modal, /setMessage\(describeRestoreResult\(result\)\)/);
-});
 test("6b: restore never changes a stored debt balance, even with a newer updatedAt", async () => {
   await db.customers.add({ id: "customer-1", name: "Ama", nameLower: "ama", totalDebtPesewas: 5000 });
   await db.debts.add(debt);
