@@ -1461,7 +1461,15 @@
     }
    ],
    "inputs": [],
-   "bottom_bar": false
+   "bottom_bar": false,
+   "rules": [
+    "Layout, top to bottom: (1) one strong green block \"Money left this week\" with one calm line \"GH₵X more than last week\" or \"GH₵X less than last week\" (never a green card with a red or alarming drop) and \"Money in minus money spent\"; (2) Money in and Money spent side by side, each with its breakdown (Cash and MoMo; Stock and Other); show no breakdown line instead of an error when none exists; (3) the profit card; (4) Owed to you and You owe suppliers as two white tiles with a coloured left edge and a clear \"See who ›\" / \"See list ›\" link.",
+    "The big heading says \"Money left\", not \"Cash left\", because Money in includes MoMo.",
+    "Only one strong colour block on the screen. The other cards are white with a thin border.",
+    "Profit card (Estimate, version A): Estimated profit = Sales − stock bought − other costs for the selected week or month, from the Spent money categories. Shown with an \"Estimate\" tag, the line \"Sales 300.00 − stock 150.00 − other costs 30.00\", and \"Average of last 4 weeks\" only when there are at least 4 weeks of data. A credit sale counts when it is sold. Shown by default; Settings has one switch to hide it. No nudge card pointing to Settings.",
+    "Item-level profit (version B, \"Based on 8 of 10 items\" and Add costs ›) stays deferred until items have cost prices.",
+    "The comparison with last week uses integer pesewas through the shared formatter. A value that cannot be real (for example more than a million cedis) must be checked as a possible unit bug."
+   ]
   },
   "34": {
    "name": "New person",
@@ -3541,7 +3549,21 @@
   "currency": "Show money as GH₵ followed directly by the amount, for example GH₵268.20. Use the app's existing money formatter everywhere. The letters GHS appear only as the currency parameter of API calls.",
   "bottom_bar_note": "The bottom bar shows only on 15, 22, 25 and 32, as in the prototype. It is hidden on every other screen so a tap on Home or Owed cannot lose a draft mid-flow. On wide screens the side menu may show instead.",
   "date_format": "All dates are shown as dd/mm/yyyy (for example 14/11/2026) through one shared formatter. The prototype month-name dates (2 Oct, 19 Dec) are examples only. Browser date inputs show the device format.",
-  "amount_entry": "Typed amounts are parsed to integer pesewas by integer math from the typed text, never through floating point. Exponent and hex text (1e2, 0x10) are refused. More than two decimals: a third digit of 5 or more rounds the pesewa up."
+  "amount_entry": "Typed amounts are parsed to integer pesewas by integer math from the typed text, never through floating point. Exponent and hex text (1e2, 0x10) are refused. More than two decimals: a third digit of 5 or more rounds the pesewa up.",
+  "large_amount_confirm": {
+   "rule": "A sale above the large-amount limit asks for confirmation before it is saved. The limit is configurable, default GH₵1,000.00 (100000 pesewas, VITE_LARGE_AMOUNT_CONFIRM_PESEWAS). Exactly the limit does not ask; one pesewa above does. An invalid or missing setting uses the default.",
+   "applies_to": "The sale total on 15 Done, 55 Review and pay, and 16 Done (split), including credit sales and plans saved from 19.",
+   "dialog": {
+    "title": "Large amount",
+    "body": "This sale is GH₵{amount}. Is the amount right?",
+    "buttons": [
+     "Change amount",
+     "Yes, save"
+    ],
+    "behaviour": "Change amount closes the dialog and returns to the screen with everything kept. Yes, save continues the normal save. The dialog opens before the save starts (before the save attempt key is used), works offline, is announced to screen readers, and the focus starts on Change amount (the safe choice)."
+   },
+   "later": "Extend the same check to collections, spent money and manual debts after the owner decides."
+  }
  },
  "built_extras_kept": {
   "24": "row tags Collected Debt, Balance correction, Added to debt",
