@@ -9,6 +9,7 @@ import { posText } from "../src/pos/i18n.js";
 import { backRoute, popToRoute, pushRoute, replaceRoute, returnFromMomoPickState } from "../src/pos/routes.js";
 import { addDueCycles, localDateString } from "../src/utils/installments.js";
 import { flushEffects, findButton, loadJsx, render, textOf, walk } from "./helpers/renderJsx.js";
+import { waitFor } from "./helpers/waitFor.js";
 
 // 19 -> 27 (Split payment) -> back to 19. The payment taken on 27 is today's payment on 19: it is
 // not "already paid before 19", so Owed and Maximum stay the full balance, Today stays selected,
@@ -24,7 +25,7 @@ beforeEach(async () => {
 });
 
 const TODAY = localDateString();
-const settle = async () => { for (let index = 0; index < 25; index += 1) await new Promise((resolve) => setTimeout(resolve, 3)); };
+// Each wait below is for the thing the test needs (a screen, a saved record, a message), not for a fixed time.
 const { default: CreditScreens } = await loadJsx("src/pos/CreditScreens.jsx");
 const { default: InstallmentSplitPayment } = await loadJsx("src/pos/InstallmentSplitPayment.jsx");
 const { MoMoChoice, MoMoDirect } = await loadJsx("src/pos/MoMoScreens.jsx");
@@ -56,7 +57,6 @@ function app() {
     rerender() { mounted.el.props = propsFor(); mounted.view.rerender(); },
     start(route, params) { state = { current: route, params, history: [{ current: "Sell", params: {} }] }; remount(); },
     flush() { flushEffects(mounted.view); },
-    async settled() { await settle(); api.rerender(); }
   };
   function propsFor() {
     const common = { params: state.params, onBack: api.back, onNavigate: api.navigate, onUpdateParams: api.update };
@@ -109,10 +109,11 @@ async function openNineteen({ existing, sale = 8000, each = "40" }) {
   const a = app();
   a.start("NewPerson", { amountPesewas: sale, saleItems: [] });
   input(a.tree, (props) => props.autoComplete === "name").props.onChange({ target: { value: existing ? "Ama" : "Kofi New" } });
-  a.rerender(); a.flush(); await a.settled();
+  a.rerender(); a.flush();
+  if (existing) await waitFor(() => { a.rerender(); return [...walk(a.tree)].some((node) => node.props?.role === "status" && /already owes/.test(textOf(node))); }, "the existing debtor line");
   const status = [...walk(a.tree)].filter((node) => node.props?.role === "status").map(textOf);
   [...walk(a.tree)].find((node) => node.type === "form").props.onSubmit({ preventDefault() {} });
-  await settle();
+  await waitFor(() => a.state.current === "WhenWillTheyPay", "18 to open");
   assert.equal(a.state.current, "WhenWillTheyPay");
   findButton(a.tree, "A little at a time").props.onClick();
   assert.equal(a.state.current, "ALittleAtATime");
@@ -124,7 +125,7 @@ async function openNineteen({ existing, sale = 8000, each = "40" }) {
 const choose = (a, label) => { button(a.tree, (_props, text) => text === label).props.onClick(); a.rerender(); };
 const chooseNextCycle = (a) => { button(a.tree, (_props, text) => /^Next cycle/.test(text)).props.onClick(); a.rerender(); };
 const typeToday = (a, value) => { input(a.tree, (props) => props["aria-label"] === "Amount paid today").props.onChange({ target: { value } }); a.rerender(); };
-const openSplit = async (a) => { button(a.tree, (props) => props["aria-label"] === "Split payment").props.onClick(); await settle(); assert.equal(a.state.current, "SplitPayment"); };
+const openSplit = async (a) => { button(a.tree, (props) => props["aria-label"] === "Split payment").props.onClick(); await waitFor(() => a.state.current === "SplitPayment", "27 to open"); assert.equal(a.state.current, "SplitPayment"); };
 const cashMoMo = (cash, momo) => [
   { paymentMethod: "cash", amountPesewas: cash },
   { paymentMethod: "momo", amountPesewas: momo, momoMethod: "direct", verification: "merchant_confirmed", confirmedPesewas: momo }
@@ -135,7 +136,7 @@ async function receive(a, parts) {
   const split = () => [...walk(a.tree)].find((node) => typeof node.type === "function" && node.type.name === "SplitPayment");
   split().props.onPartsChange(parts);
   split().props.onDone(parts);
-  await settle();
+  await waitFor(() => a.state.current === "ALittleAtATime", "19 to open again");
   assert.equal(a.state.current, "ALittleAtATime");
   a.rerender();
 }
@@ -146,7 +147,7 @@ async function clickSave(a) {
   try {
     const save = findButton(a.tree, "Save plan");
     await save.props.onClick();
-    await settle();
+    await waitFor(() => a.saved !== null || a.saveError !== null, "the plan save to finish");
     a.rerender();
   } finally { console.error = original; }
 }
@@ -277,17 +278,22 @@ test("27 from 19 through the MoMo tile (editor, 61, 62) then Cash and Received: 
   const editor = input(a.tree, (props) => props.id === "split-draft-amount");
   assert.equal(editor.props.value, "200.00", "prefilled with Left to pay");
   editor.props.onChange({ target: { value: "80,00" } }); a.rerender();
-  button(a.tree, (_props, text) => text === "Save").props.onClick(); await settle();
+  button(a.tree, (_props, text) => text === "Save").props.onClick();
+  await waitFor(() => a.state.current === "MoMoChoice", "61 to open");
   assert.equal(a.state.current, "MoMoChoice", "Save goes to 61");
   assert.equal(a.state.params.pendingMomoAmountPesewas, 8000);
   assert.match(textOf(a.tree), /Customer pays GH₵80\.00/);
 
   // 61 -> 62 (Customer sends to my number), then Money received.
-  button(a.tree, (_props, text) => /Customer sends to my number/.test(text)).props.onClick(); await settle(); a.rerender();
+  button(a.tree, (_props, text) => /Customer sends to my number/.test(text)).props.onClick();
+  await waitFor(() => a.state.current === "MoMoDirect", "62 to open");
+  a.rerender();
   assert.equal(a.state.current, "MoMoDirect");
   assert.match(textOf(a.tree), /send GH₵80\.00 to/);
-  await a.settled();
-  await findButton(a.tree, "Money received").props.onClick(); await settle(); a.rerender();
+  await waitFor(() => { a.rerender(); return !findButton(a.tree, "Money received").props.disabled; }, "62 to load the receiving number");
+  await findButton(a.tree, "Money received").props.onClick();
+  await waitFor(() => a.state.current === "SplitPayment", "27 to open again");
+  a.rerender();
   assert.equal(a.state.current, "SplitPayment", "back on 27");
   assert.deepEqual(a.state.params.splitParts.map((part) => [part.paymentMethod, part.amountPesewas]), [["momo", 8000]]);
   assert.equal(a.state.params.pendingMomoAmountPesewas, undefined, "the pending MoMo values are removed");
@@ -296,7 +302,9 @@ test("27 from 19 through the MoMo tile (editor, 61, 62) then Cash and Received: 
   button(a.tree, (_props, text) => text === "Cash").props.onClick(); a.rerender();
   const received = findButton(a.tree, "Received");
   assert.equal(Boolean(received.props.disabled), false);
-  await received.props.onClick(); await settle(); a.rerender();
+  await received.props.onClick();
+  await waitFor(() => a.state.current === "ALittleAtATime", "19 to open again");
+  a.rerender();
   assert.equal(a.state.current, "ALittleAtATime");
 
   const back = screen19(a);
@@ -331,8 +339,7 @@ test("parts that do not add up to the payment throw a coded error with the same 
   console.error = () => {};
   try {
     await findButton(view.tree, "Save plan").props.onClick();
-    await settle();
-    view.rerender();
+    await waitFor(() => { view.rerender(); return alerts(view.tree).length > 0; }, "the message on 19");
   } finally { console.error = original; }
   assert.deepEqual(alerts(view.tree), [message]);
 });
