@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, test } from "node:test";
 import initiate from "../api/subscription/initiate.js";
 import verify from "../api/subscription/verify.js";
-import { FEATURE_FLAGS, FEATURE_SUBSCRIPTION_LOCKOUT } from "../src/config/features.js";
+import { FEATURE_FLAGS } from "../src/config/features.js";
 import { addSubscriptionMonths } from "../src/lib/subscriptionDates.js";
 import { getEffectiveTrialNow, getTrialExpiry, normalizeTrialDays } from "../src/lib/subscriptionTrial.js";
 
@@ -14,16 +14,15 @@ const subscriptionHookSource = readFileSync(new URL("../src/hooks/useSubscriptio
 const posAppSource = readFileSync(new URL("../src/pos/PosApp.jsx", import.meta.url), "utf8");
 const settingsSource = readFileSync(new URL("../src/pos/SettingsScreens.jsx", import.meta.url), "utf8");
 
-test("subscription UI and lockout are disabled by default", () => {
+test("subscription UI is disabled by default and there is no lockout", () => {
   assert.equal(FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE, false);
-  assert.equal(FEATURE_SUBSCRIPTION_LOCKOUT, false);
+  assert.doesNotMatch(subscriptionHookSource, /FEATURE_SUBSCRIPTION_LOCKOUT|subscriptionRequired/);
 });
 
-test("subscription trial is initialized from configuration and bypasses lockout until expiry", () => {
+test("subscription trial is initialized from configuration", () => {
   assert.match(subscriptionHookSource, /VITE_SUBSCRIPTION_TRIAL_DAYS/);
   assert.match(subscriptionHookSource, /subscriptionTrialStartedAt/);
-  assert.match(subscriptionHookSource, /trialInitialized/);
-  assert.match(subscriptionHookSource, /!trialActive/);
+  assert.match(subscriptionHookSource, /const trialActive = /);
 });
 
 test("trial policy normalizes configuration and resists device clock rollback", () => {

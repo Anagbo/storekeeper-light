@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../db/db.js";
-import { FEATURE_FLAGS, FEATURE_SUBSCRIPTION_LOCKOUT } from "../config/features.js";
+import { FEATURE_FLAGS } from "../config/features.js";
 import {
   applyVerifiedSubscriptionPayment,
   clearPendingSubscriptionPayment,
@@ -18,7 +18,8 @@ import { formatDate } from "../lib/formatDate.js";
 import { getEffectiveTrialNow, getTrialExpiry, isSubscriptionActive, normalizeTrialDays } from "../lib/subscriptionTrial.js";
 
 export function useSubscription() {
-  const [subscriptionNotice, setSubscriptionNotice] = useState(null);
+  // verifyPayment still records its result message here; no POS screen shows it yet.
+  const [, setSubscriptionNotice] = useState(null);
   const trialDays = normalizeTrialDays(import.meta.env?.VITE_SUBSCRIPTION_TRIAL_DAYS || 0);
   const settings = useLiveQuery(
     () => FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE ? db.settings.toArray() : Promise.resolve([]),
@@ -38,7 +39,6 @@ export function useSubscription() {
   const trialExpiryTimestamp = Date.parse(trialExpiry);
   const effectiveTrialNow = getEffectiveTrialNow(Date.now(), trialLastObservedAt);
   const trialActive = Number.isFinite(trialExpiryTimestamp) && trialExpiryTimestamp > effectiveTrialNow;
-  const trialInitialized = trialDays <= 0 || Boolean(trialStartedAt);
   // D12: checked against the last observed time too, so a clock set back does not extend it.
   const hasActiveSubscription = isSubscriptionActive(subscriptionExpiry, Date.now(), trialLastObservedAt);
   const settingsReady = Array.isArray(settings);
@@ -48,11 +48,6 @@ export function useSubscription() {
   const pendingPayment = useMemo(() => parsePendingSubscriptionPayment(pendingRaw), [pendingRaw]);
   // A record left over from an old or finished payment is cleared quietly below and never verified.
   const stalePending = settingsReady && isStalePendingPayment(pendingPayment, { planActive: hasActiveSubscription });
-  const subscriptionRequired = settingsReady && FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE
-    && FEATURE_SUBSCRIPTION_LOCKOUT
-    && !hasActiveSubscription
-    && trialInitialized
-    && !trialActive;
 
   useEffect(() => {
     if (!FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE) return undefined;
@@ -187,11 +182,6 @@ export function useSubscription() {
     subscriptionExpiry,
     trialActive,
     trialExpiry,
-    hasActiveSubscription,
-    subscriptionRequired,
-    subscriptionNotice,
-    paymentPending: Boolean(pendingPayment && !stalePending),
-    retryPendingPayment,
-    setSubscriptionNotice
+    hasActiveSubscription
   };
 }

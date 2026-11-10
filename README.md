@@ -59,6 +59,6 @@ VITE_SUBSCRIPTION_YEARLY_AMOUNT_PESEWAS=15000
 
 `VITE_SUBSCRIPTION_TRIAL_DAYS` controls the free trial from the first app launch. Set it to `30` for one month or `0` to disable the trial. The trial start date is stored in the device's IndexedDB, so clearing site data resets the local trial.
 
-`FEATURE_SUBSCRIPTION_LOCKOUT` in `src/config/features.js` remains `false`; users are not blocked automatically, even when the subscription UI is enabled. The recorded expiry is stored in IndexedDB and can be altered or removed by a device owner. Do not enable payment lockout until a server-verifiable offline license and a rollout policy for existing users are in place.
+There is no subscription lockout: users are never blocked, even when the subscription UI is enabled. The recorded expiry is stored in IndexedDB and can be altered or removed by a device owner. Do not enable payment lockout until a server-verifiable offline license and a rollout policy for existing users are in place.
 
 Local `npm run dev` also routes `/api/subscription/initiate` and `/api/subscription/verify` to the same server handlers used by Vercel. Set `PAYSTACK_SECRET_KEY` in the ignored `.env.local`; `APP_URL` defaults to `http://localhost:5173` for local callbacks. These values are read by Vite's Node-side config and are not exposed as client environment variables.

@@ -5,5 +5,3 @@ export const FEATURE_FLAGS = {
   // Paystack phone request (sales and plan). Off until a backend creates and confirms charges.
   ENABLE_MOMO_PHONE_REQUEST: import.meta.env?.VITE_ENABLE_MOMO_PHONE_REQUEST === "true"
 };
-
-export const FEATURE_SUBSCRIPTION_LOCKOUT = false;

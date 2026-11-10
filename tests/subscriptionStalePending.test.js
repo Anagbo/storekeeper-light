@@ -83,5 +83,5 @@ test("hook: clears quietly on startup (no notice) and skips verifying a stale re
   assert.match(hookSource, /isStalePendingPayment\(/);
   const verifyEffect = hookSource.slice(hookSource.indexOf("const callbackReference"), hookSource.indexOf("addEventListener(\"online\""));
   assert.match(verifyEffect, /stalePending|isStale/, "the automatic verify skips a stale record");
-  assert.match(hookSource, /paymentPending: Boolean\(pendingPayment && !stalePending\)/);
+  assert.match(hookSource, /if \(pendingPayment && !stalePending\) void verifyPayment\(/, "a retry skips a stale record");
 });
