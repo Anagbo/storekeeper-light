@@ -3532,7 +3532,9 @@
  },
  "rules_global": {
   "currency": "Show money as GH₵ followed directly by the amount, for example GH₵268.20. Use the app's existing money formatter everywhere. The letters GHS appear only as the currency parameter of API calls.",
-  "bottom_bar_note": "The bottom bar shows only on 15, 22, 25 and 32, as in the prototype. It is hidden on every other screen so a tap on Home or Owed cannot lose a draft mid-flow. On wide screens the side menu may show instead."
+  "bottom_bar_note": "The bottom bar shows only on 15, 22, 25 and 32, as in the prototype. It is hidden on every other screen so a tap on Home or Owed cannot lose a draft mid-flow. On wide screens the side menu may show instead.",
+  "date_format": "All dates are shown as dd/mm/yyyy (for example 14/11/2026) through one shared formatter. The prototype month-name dates (2 Oct, 19 Dec) are examples only. Browser date inputs show the device format.",
+  "amount_entry": "Typed amounts are parsed to integer pesewas by integer math from the typed text, never through floating point. Exponent and hex text (1e2, 0x10) are refused. More than two decimals: a third digit of 5 or more rounds the pesewa up."
  },
  "built_extras_kept": {
   "24": "row tags Collected Debt, Balance correction, Added to debt",
