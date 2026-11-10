@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Clock3, Copy, Send, Smartphone, UserRound } from "lucide-react";
-import { getPreference, setPreference } from "../db/preferences.js";
+import { setPreference } from "../db/preferences.js";
 import { formatGhs } from "../lib/money.js";
 import { secondsUntil } from "../lib/countdown.js";
 import { MOMO_CONFIG, PHONE_REQUEST_ENABLED, RECEIVING_NETWORKS, getMerchantMomoSettings, maskPhoneNumber, normalizeReceivingNumber, recordMomoLastUsed, saveReceivingNumber } from "./momoConfig.js";
@@ -25,13 +25,13 @@ function ChoiceTile({ icon: Icon, title, detail, disabled = false, highlighted =
 }
 
 export function MoMoChoice({ params = {}, onBack, onNavigate, onReplace }) {
-  const [settings, setSettings] = useState({ defaultMethod: "ask", lastUsed: "" });
+  const [settings, setSettings] = useState({ defaultMethod: "ask", lastUsed: "", phoneRequestAvailable: false });
   useEffect(() => { getMerchantMomoSettings().then(setSettings).catch((error) => console.error("Could not load MoMo settings.", error)); }, []);
-  // "When I tap MoMo" on 63 can skip this screen (K12). Always: phone request already
-  // falls back to Ask while Phone request is off (getMerchantMomoSettings).
+  // "When I tap MoMo" on 63 can skip this screen (K12). Always: phone request falls back to Ask
+  // (this screen) unless Phone request is available: flag on and a payout saved (getMerchantMomoSettings).
   useEffect(() => {
     if (settings.defaultMethod === "direct") onReplace("MoMoDirect", { ...params, momoMethod: "direct" });
-    else if (settings.defaultMethod === "phone") onReplace(params.paystackSetUp ? "MoMoPayment" : "MoMoSetup", { ...params, momoMethod: "paystack", returnToMomo: true });
+    else if (settings.defaultMethod === "phone") onReplace("MoMoPayment", { ...params, momoMethod: "paystack", returnToMomo: true });
   }, [settings.defaultMethod]);
   // Only a method that was actually used before is tagged Last used (A5).
   const lastUsed = settings.lastUsed;
@@ -43,7 +43,7 @@ export function MoMoChoice({ params = {}, onBack, onNavigate, onReplace }) {
     <ChoiceTile icon={Send} title="Customer sends to my number" detail="Free. You check the MoMo message." highlighted={lastUsed === "direct"} onClick={() => { void recordMomoLastUsed("direct"); onNavigate("MoMoDirect", { ...params, momoMethod: "direct" }); }}>
       {lastUsed === "direct" && <PosStatusTag compact>Last used</PosStatusTag>}
     </ChoiceTile>
-    <ChoiceTile icon={Smartphone} title="Phone request" detail={PHONE_REQUEST_ENABLED ? `Customer approves on their phone. Confirmed by itself.${MOMO_CONFIG.phoneRequestFeePesewas > 0 ? ` Fee ${formatGhs(MOMO_CONFIG.phoneRequestFeePesewas)}.` : ""}` : "Not available yet"} disabled={!PHONE_REQUEST_ENABLED} highlighted={lastUsed === "phone"} onClick={() => { void recordMomoLastUsed("phone"); onNavigate(params.paystackSetUp ? "MoMoPayment" : "MoMoSetup", { ...params, momoMethod: "paystack", returnToMomo: true }); }}>
+    <ChoiceTile icon={Smartphone} title="Phone request" detail={PHONE_REQUEST_ENABLED ? `Customer approves on their phone. Confirmed by itself.${MOMO_CONFIG.phoneRequestFeePesewas > 0 ? ` Fee ${formatGhs(MOMO_CONFIG.phoneRequestFeePesewas)}.` : ""}` : "Not available yet"} disabled={!PHONE_REQUEST_ENABLED} highlighted={lastUsed === "phone"} onClick={() => { void recordMomoLastUsed("phone"); onNavigate(settings.phoneRequestAvailable ? "MoMoPayment" : "MoMoSetup", { ...params, momoMethod: "paystack", returnToMomo: true }); }}>
       {lastUsed === "phone" && <PosStatusTag compact>Last used</PosStatusTag>}
     </ChoiceTile>
     <p className="text-sm font-medium text-slate-800">Change the usual choice in Settings.</p>
@@ -103,9 +103,7 @@ export function PaymentSettings({ onBack, onNavigate }) {
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
-  const [phoneSetUp, setPhoneSetUp] = useState(false);
   const savingRef = useRef(false);
-  useEffect(() => { getPreference("paystackPayoutNumber", "").then((value) => setPhoneSetUp(typeof value === "string" && value.trim() !== "")).catch(() => {}); }, []);
   useEffect(() => { getMerchantMomoSettings().then((value) => { setSettings(value); setEnabled(Boolean(value.number)); setNumberInput(value.number); }).catch((loadError) => console.error("Could not load payment settings.", loadError)); }, []);
   // The contract never shows a zero fee: the fee text needs Phone request on and a real fee above zero.
   const showPhoneFee = PHONE_REQUEST_ENABLED && MOMO_CONFIG.phoneRequestFeePesewas > 0;
@@ -179,7 +177,7 @@ export function PaymentSettings({ onBack, onNavigate }) {
       <div role="radiogroup" aria-label="When I tap MoMo" className="divide-y divide-slate-200">
         {tapOptions.map(([value, label]) => {
           const chosen = settings.defaultMethod === value;
-          const blocked = value === "phone" && !phoneSetUp;
+          const blocked = value === "phone" && !settings.phoneRequestAvailable;
           return <button key={value} type="button" role="radio" aria-checked={chosen} aria-disabled={blocked ? true : undefined} onClick={blocked ? undefined : () => setSettings((current) => ({ ...current, defaultMethod: value }))} className={`flex min-h-20 w-full items-center gap-3 px-4 py-3 text-left text-lg font-extrabold first:rounded-t-2xl last:rounded-b-2xl ${blocked ? "cursor-not-allowed bg-slate-100 text-slate-500" : chosen ? "bg-green-100 text-slate-950" : "bg-white text-slate-950"}`}>
             <span aria-hidden="true" className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 ${chosen ? "border-emerald-900 bg-emerald-900" : "border-slate-500 bg-white"}`}>{chosen && <span className="h-2 w-2 rounded-full bg-white" />}</span>
             <span className="min-w-0"><span className="block">{label}</span>{blocked && <span className="block text-sm font-semibold">Set up phone request first</span>}</span>

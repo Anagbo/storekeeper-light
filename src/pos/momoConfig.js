@@ -44,21 +44,34 @@ function isAvailableMomoMethod(method) {
   return method === "direct" || (method === "phone" && PHONE_REQUEST_ENABLED);
 }
 
+// Phone request can be used right now: the flag is on AND a Paystack payout number is saved.
+// The one place that decides this; 61, 63 and every sale screen use it.
+export function phoneRequestAvailable({ flagOn = PHONE_REQUEST_ENABLED, payoutNumber } = {}) {
+  return Boolean(flagOn) && typeof payoutNumber === "string" && payoutNumber.trim() !== "";
+}
+
+export async function isPhoneRequestAvailable() {
+  return phoneRequestAvailable({ payoutNumber: await getPreference("paystackPayoutNumber", "") });
+}
+
 export async function getMerchantMomoSettings() {
-  const [number, network, defaultMethod, lastUsed] = await Promise.all([
+  const [number, network, defaultMethod, lastUsed, payoutNumber] = await Promise.all([
     getPreference("momoReceivingNumber", ""),
     getPreference("momoReceivingNetwork", MOMO_CONFIG.defaultNetwork),
     getPreference("momoDefault", "ask"),
-    getPreference("momoLastUsed", "")
+    getPreference("momoLastUsed", ""),
+    getPreference("paystackPayoutNumber", "")
   ]);
+  const phoneAvailable = phoneRequestAvailable({ payoutNumber });
   return {
     number: typeof number === "string" ? number : "",
     network: typeof network === "string" ? network : MOMO_CONFIG.defaultNetwork,
-    defaultMethod: ["ask", "direct", "phone"].includes(defaultMethod) && (defaultMethod !== "phone" || PHONE_REQUEST_ENABLED)
+    defaultMethod: ["ask", "direct", "phone"].includes(defaultMethod) && (defaultMethod !== "phone" || phoneAvailable)
       ? defaultMethod
       : "ask",
     // "Last used" on 61 is shown only for a method actually used before (A5).
-    lastUsed: isAvailableMomoMethod(lastUsed) ? lastUsed : ""
+    lastUsed: isAvailableMomoMethod(lastUsed) ? lastUsed : "",
+    phoneRequestAvailable: phoneAvailable
   };
 }
 
