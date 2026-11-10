@@ -764,7 +764,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
           <section className="flex items-center gap-3 rounded-[20px] border-2 border-slate-500 bg-white px-3 py-3">
             <span className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full bg-emerald-900 text-2xl font-extrabold text-white">{data.name.slice(0, 1).toUpperCase()}</span>
             <span className="min-w-0 flex-1">
-              <strong className="line-clamp-2 block break-words text-[22px] leading-tight">{data.name}</strong>
+              <strong className="line-clamp-2 break-words text-[22px] leading-tight">{data.name}</strong>
               {data.ghanaCardNumber && <span className="text-base text-slate-800">{t("collect.customerId", { number: formatGhanaCard(data.ghanaCardNumber) })}</span>}
             </span>
             <button type="button" onClick={() => setContactEditorOpen(true)} className="shrink-0 rounded-xl border-2 border-emerald-900 px-2 py-2 text-sm font-extrabold text-emerald-900">

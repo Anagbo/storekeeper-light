@@ -50,4 +50,6 @@ test("29 Debtor detail: the name in the header card is limited to two lines, not
   assert.match(line, /line-clamp-2/);
   assert.match(line, /break-words/);
   assert.doesNotMatch(line, /truncate/);
+  // "block" would replace the clamp's display value and let the name run to five lines.
+  assert.ok(!line.includes(' block '), 'no block class');
 });
