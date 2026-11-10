@@ -138,6 +138,9 @@ test("15: the pad builds an exact amount; 1250 on the pad is saved as 125000 pes
   const done = buttons(view.tree, "Done").at(-1);
   assert.equal(done.props.disabled, false);
   await done.props.onClick();
+  // GH₵1,250.00 is above the GH₵1,000.00 large-amount limit (brief 3.12): Yes, save continues the save.
+  view.rerender();
+  await buttons(view.tree, "Yes, save").at(-1).props.onClick();
   await settle();
   assert.equal(sales.at(-1)?.amountPesewas ?? sales.at(-1)?.total_amount, 125000);
 });

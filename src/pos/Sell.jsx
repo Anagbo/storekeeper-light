@@ -7,6 +7,7 @@ import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { PosCard, SplitIcons, PosPage, PosPrimaryButton } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
+import { useLargeAmountConfirm } from "./LargeAmountConfirm.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 
@@ -25,6 +26,7 @@ export default function Sell({ params = {}, onNavigate, recordSale = recordCashS
   const [error, setError] = useState("");
   const submitLock = useRef(false);
   const saveAttempt = useSaveAttempt();
+  const largeAmount = useLargeAmountConfirm();
   const saleItems = normalizeSaleItems(params.saleItems ?? []);
   const amountPesewas = toPesewas(amount);
   const itemTotalPesewas = totalSaleItemsPesewas(saleItems);
@@ -51,8 +53,10 @@ export default function Sell({ params = {}, onNavigate, recordSale = recordCashS
     });
   }
 
-  async function saveSale() {
+  async function saveSale(confirmed = false) {
     if (submitLock.current || !canSave) return;
+    // Brief 3.12: a large sale asks first, before the save starts and before the attempt key is used.
+    if (!confirmed && largeAmount.guard(amountPesewas, () => void saveSale(true))) return;
     submitLock.current = true;
     setBusy(true);
     setError("");
@@ -85,6 +89,7 @@ export default function Sell({ params = {}, onNavigate, recordSale = recordCashS
   useEffect(() => {
     function handleKeyboard(event) {
       if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (largeAmount.open) return;
       const target = event.target;
       if (target instanceof HTMLElement && (target.isContentEditable || target.matches("input, textarea, select, button"))) return;
       if (/^\d$/.test(event.key)) {
@@ -104,7 +109,7 @@ export default function Sell({ params = {}, onNavigate, recordSale = recordCashS
 
     window.addEventListener("keydown", handleKeyboard);
     return () => window.removeEventListener("keydown", handleKeyboard);
-  }, [amount, canSave, busy, paymentMethod]);
+  }, [amount, canSave, busy, paymentMethod, largeAmount.open]);
 
   return (
     <PosPage style={{ minHeight: "calc(100dvh - 75px)", paddingTop: 14, paddingBottom: 96 }} className="flex flex-col gap-3 pb-32 lg:max-w-5xl lg:justify-center lg:pb-10">
@@ -171,12 +176,13 @@ export default function Sell({ params = {}, onNavigate, recordSale = recordCashS
             </button>
           </div>
           {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 text-base font-semibold text-rose-950">{error}</p>}
-          <SaveAttemptNotice saveAttempt={saveAttempt} busy={busy} onTryAgain={() => void saveSale()} />
+          <SaveAttemptNotice saveAttempt={saveAttempt} busy={busy} onTryAgain={() => void saveSale(true)} />
           <PosPrimaryButton type="button" onClick={() => void saveSale()} disabled={!canSave || busy} className="mb-4 h-[68px] min-h-0 rounded-[20px] border-0 text-[26px] lg:mb-0 lg:h-20 lg:text-3xl">
             <Check size={32} aria-hidden="true" /> {busy ? t("sell.saving") : t("sell.done")}
           </PosPrimaryButton>
         </div>
       </div>
+      {largeAmount.dialog}
     </PosPage>
   );
 }

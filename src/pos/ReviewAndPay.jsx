@@ -5,6 +5,7 @@ import { formatGhs } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
 import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, SplitIcons } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
+import { useLargeAmountConfirm } from "./LargeAmountConfirm.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 
@@ -24,6 +25,7 @@ export default function ReviewAndPay({ params = {}, onBack, onNavigate, onUpdate
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const saveAttempt = useSaveAttempt();
+  const largeAmount = useLargeAmountConfirm();
 
   function continueToCredit() {
     onNavigate("WhoOwesYou", {
@@ -33,8 +35,10 @@ export default function ReviewAndPay({ params = {}, onBack, onNavigate, onUpdate
     });
   }
 
-  async function saveSale() {
+  async function saveSale(confirmed = false) {
     if (busy) return;
+    // Brief 3.12: a large sale asks first, before the save starts and before the attempt key is used.
+    if (!confirmed && largeAmount.guard(totalPesewas, () => void saveSale(true))) return;
     setBusy(true);
     setError("");
     try {
@@ -115,6 +119,7 @@ export default function ReviewAndPay({ params = {}, onBack, onNavigate, onUpdate
       <PosPrimaryButton type="button" disabled={busy} onClick={() => void saveSale()} className="h-[68px] min-h-0 rounded-[20px] text-2xl">
         {busy ? t("sell.saving") : <><Check size={28} aria-hidden="true" />{t("sell.done")}</>}
       </PosPrimaryButton>
+      {largeAmount.dialog}
     </PosPage>
   );
 }

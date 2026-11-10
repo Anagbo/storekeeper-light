@@ -18,6 +18,7 @@ import { buildCollectionReceiptLink } from "./collectionReceipt.js";
 import { buildCreditSaleReceipt, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
 import { posText as t } from "./i18n.js";
 import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
+import { useLargeAmountConfirm } from "./LargeAmountConfirm.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { getCarriedPaymentParts, getMomoPickParams, getPaidPaymentPesewas } from "./paymentAmount.js";
@@ -267,6 +268,7 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onReturnToSplit, onSaveCr
   // E8: a ref, not the state, so a second tap in the same frame sees the first one.
   const savingRef = useRef(false);
   const saveAttempt = useSaveAttempt();
+  const largeAmount = useLargeAmountConfirm();
   const customerName = params.customer?.name ?? "";
   const choices = [
     { value: "today", label: t("credit.today") },
@@ -275,8 +277,12 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onReturnToSplit, onSaveCr
   ];
   const totalAfterSalePesewas = (params.customer?.totalDebtPesewas ?? 0) + getCreditAmountOwedPesewas(params);
 
-  async function save() {
+  async function save(confirmed = false) {
     if (savingRef.current) return;
+    // Brief 3.12: a large credit sale asks first. In a split (16 saves) and for a manual debt (a later
+    // extension) it does not ask here.
+    if (!confirmed && params.flow !== "split" && !params.manualDebt &&
+      largeAmount.guard(params.amountPesewas, () => void save(true))) return;
     savingRef.current = true;
     setSaving(true);
     setError("");
@@ -315,11 +321,12 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onReturnToSplit, onSaveCr
         <span className="text-sm font-semibold text-slate-700">{t("credit.installmentSubtitle")}</span>
       </button>
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
-      <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => void save()} />
+      <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => void save(true)} />
       <div className="mt-auto grid grid-cols-2 gap-2">
         <PosSecondaryButton type="button" onClick={onBack}>{t("credit.back")}</PosSecondaryButton>
         <PosPrimaryButton type="button" disabled={saving} onClick={() => void save()}>{saving ? t("credit.saving") : t("credit.saveAmount", { name: customerName, amount: formatGhs(totalAfterSalePesewas) })}</PosPrimaryButton>
       </div>
+      {largeAmount.dialog}
     </PosPage>
   );
 }
@@ -358,6 +365,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
   // E8: a ref, not the state, so a second tap in the same frame sees the first one.
   const savingRef = useRef(false);
   const saveAttempt = useSaveAttempt();
+  const largeAmount = useLargeAmountConfirm();
   const installmentPesewas = toPesewas(installmentAmount);
   const amountPesewas = params.amountPesewas ?? 0;
   const currentDebtPesewas = params.customer?.totalDebtPesewas ?? 0;
@@ -402,7 +410,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
     onUpdateParams?.({ frequency: nextFrequency, nextDueDate: nextDate });
   }
 
-  async function savePlan() {
+  async function savePlan(confirmed = false) {
     if (savingRef.current) return;
     if (startToday && !validTodayPayment) {
       setTodayPaymentSubmitAttempted(true);
@@ -412,6 +420,10 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
       setError(t("credit.paymentSplitRequired"));
       return;
     }
+    // Brief 3.12: a large plan asks first, once the entries are valid. In a split (16 saves) and for a
+    // manual debt (a later extension) it does not ask here.
+    if (!confirmed && params.flow !== "split" && !params.manualDebt &&
+      largeAmount.guard(amountPesewas, () => void savePlan(true))) return;
     savingRef.current = true;
     setSaving(true);
     setError("");
@@ -703,11 +715,12 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
         </div>
       )}
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
-      <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => void savePlan()} />
+      <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => void savePlan(true)} />
       <div className="mt-auto grid grid-cols-2 gap-2">
         <PosSecondaryButton type="button" onClick={onBack}>{t("credit.back")}</PosSecondaryButton>
         <PosPrimaryButton type="button" disabled={saving || !planReady} onClick={() => void savePlan()}>{saving ? t("credit.saving") : t("credit.savePlan")}</PosPrimaryButton>
       </div>
+      {largeAmount.dialog}
     </PosPage>
   );
 }
