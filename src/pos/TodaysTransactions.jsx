@@ -5,7 +5,7 @@ import { db } from "../db/db.js";
 import {
   formatGhs,
   getFinancialTransactions,
-  summarizeFinancialTransactions
+  summarizeFinancialTransactionsSafely
 } from "../lib/money.js";
 import { posText as t } from "./i18n.js";
 import { getMoneyPeriodRange } from "./money.js";
@@ -141,7 +141,7 @@ export default function TodaysTransactions({ onBack }) {
       return {
         status: "ready",
         transactions: createPosTransactionRows(transactions),
-        totals: summarizeFinancialTransactions(transactions)
+        totals: summarizeFinancialTransactionsSafely(transactions).totals
       };
     } catch (error) {
       console.error("Could not load today’s transactions.", error);

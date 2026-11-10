@@ -233,8 +233,7 @@ export function summarizeFinancialTransactions(transactions) {
   return totals;
 }
 
-export function summarizePosMoney(transactions) {
-  const totals = summarizeFinancialTransactions(transactions);
+function toPosMoney(totals) {
   return {
     moneyIn: totals.cashInflow,
     cashIn: totals.cashReceived,
@@ -243,6 +242,76 @@ export function summarizePosMoney(transactions) {
     cashLeft: totals.realCashProfit,
     sales: totals.totalSales
   };
+}
+
+export function summarizePosMoney(transactions) {
+  return toPosMoney(summarizeFinancialTransactions(transactions));
+}
+
+const SALE_TYPES = new Set(["sale", "cash_sale", "credit_sale", "installment_sale", "installment_addon"]);
+
+export function isSaleRecord(record) {
+  return SALE_TYPES.has(record?.type);
+}
+
+/**
+ * Reading old records. The strict summary above refuses a record whose parts do not add up (it guards
+ * saving a new sale and the consistency check). A screen that only reads must not fail because of one
+ * bad record that an older version of the app saved. This splits the records into the ones that can be
+ * counted and the ones that cannot. Nothing is changed or reclassified: a record left out is named
+ * (id, type and the message) and logged to the console with its id, so the screen can say so.
+ * Problems that are not about one record (a total out of range) are still thrown.
+ */
+export function splitCountableTransactions(transactions, { warn = true } = {}) {
+  try {
+    summarizeFinancialTransactions(transactions);
+    return { countable: transactions, skipped: [] };
+  } catch (error) {
+    const reversals = transactions.filter((record) => record.type === "income_reversal");
+    const countable = [];
+    const skipped = [];
+    for (const record of transactions) {
+      if (record.type === "income_reversal") {
+        countable.push(record);
+        continue;
+      }
+      try {
+        // With the reversals, so a bad record that was reversed is not flagged.
+        summarizeFinancialTransactions([record, ...reversals]);
+        countable.push(record);
+      } catch (recordError) {
+        skipped.push({
+          id: record.id,
+          type: record.type,
+          message: recordError.message,
+          amountPesewas: record.amountPesewas ?? record.total_amount,
+          cashReceivedPesewas: record.cashReceivedPesewas,
+          creditExtendedPesewas: record.creditExtendedPesewas
+        });
+      }
+    }
+    if (skipped.length === 0) throw error;
+    if (warn) {
+      for (const record of skipped) {
+        console.warn(`A record is not counted in the money totals: ${record.id} (${record.type}). ${record.message}`, {
+          amountPesewas: record.amountPesewas,
+          cashReceivedPesewas: record.cashReceivedPesewas,
+          creditExtendedPesewas: record.creditExtendedPesewas
+        });
+      }
+    }
+    return { countable, skipped };
+  }
+}
+
+export function summarizeFinancialTransactionsSafely(transactions, options) {
+  const { countable, skipped } = splitCountableTransactions(transactions, options);
+  return { totals: summarizeFinancialTransactions(countable), skipped };
+}
+
+export function summarizePosMoneySafely(transactions, options) {
+  const { totals, skipped } = summarizeFinancialTransactionsSafely(transactions, options);
+  return { totals: toPosMoney(totals), skipped };
 }
 
 export async function getFinancialTransactions(range, database = defaultDb) {
@@ -267,5 +336,5 @@ export async function getFinancialTransactions(range, database = defaultDb) {
  */
 export async function getFinancialSummary(range, database = defaultDb) {
   const transactions = await getFinancialTransactions(range, database);
-  return summarizeFinancialTransactions(transactions);
+  return summarizeFinancialTransactionsSafely(transactions).totals;
 }

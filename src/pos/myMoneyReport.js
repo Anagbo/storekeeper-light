@@ -1,5 +1,5 @@
 import { db as defaultDb } from "../db/db.js";
-import { getFinancialTransactions, summarizePosMoney } from "../lib/money.js";
+import { getFinancialTransactions, isSaleRecord, splitCountableTransactions, summarizePosMoney } from "../lib/money.js";
 import { getMoneyPeriodRange, getOutstandingDebtPesewas, getPreviousMoneyPeriodRange } from "./money.js";
 import { getSupplierBalances } from "../utils/suppliers.js";
 
@@ -34,6 +34,16 @@ function expenseAmountPesewas(transaction) {
  * two differ until the supplier is paid.
  */
 export function summarizeMyMoney(transactions) {
+  return summarizeMyMoneyChecked(transactions).summary;
+}
+
+/**
+ * The same figures, and the records that were left out because their amounts do not match (see
+ * splitCountableTransactions). A bad record never throws out of the screen: it is not counted, it is
+ * logged with its id, and the caller says so.
+ */
+export function summarizeMyMoneyChecked(allTransactions) {
+  const { countable: transactions, skipped } = splitCountableTransactions(allTransactions);
   const totals = summarizePosMoney(transactions);
   const isReversal = (transaction) => transaction.type === "income_reversal";
   const stockOut = summarizePosMoney(transactions.filter((transaction) => isReversal(transaction) ||
@@ -56,17 +66,20 @@ export function summarizeMyMoney(transactions) {
     throw new RangeError("A My money total exceeds the safe integer range.");
   }
   return {
-    moneyIn: totals.moneyIn,
-    cashIn: totals.cashIn,
-    momoIn: totals.momoIn,
-    moneySpent: totals.moneySpent,
-    spentStock: stockOut.moneySpent,
-    spentOther: otherOut.moneySpent,
-    moneyLeft: totals.cashLeft,
-    sales: totals.sales,
-    stockBought,
-    otherCosts,
-    profit
+    summary: {
+      moneyIn: totals.moneyIn,
+      cashIn: totals.cashIn,
+      momoIn: totals.momoIn,
+      moneySpent: totals.moneySpent,
+      spentStock: stockOut.moneySpent,
+      spentOther: otherOut.moneySpent,
+      moneyLeft: totals.cashLeft,
+      sales: totals.sales,
+      stockBought,
+      otherCosts,
+      profit
+    },
+    skipped
   };
 }
 
@@ -84,8 +97,14 @@ export function describeComparison({ currentPesewas, previousPesewas, hasPreviou
 }
 
 export function buildMyMoneyReport({ currentTransactions, previousTransactions, debts, allTransactions, suppliers, showProfit, averageProfitPesewas = null }) {
-  const summary = summarizeMyMoney(currentTransactions);
-  const previous = summarizeMyMoney(previousTransactions);
+  const { summary, skipped: skippedNow } = summarizeMyMoneyChecked(currentTransactions);
+  const { summary: previous, skipped: skippedBefore } = summarizeMyMoneyChecked(previousTransactions);
+  // What is left out of the figures shown, this period and the one it is compared with.
+  const skipped = [...skippedNow, ...skippedBefore];
+  const uncounted = {
+    sales: skipped.filter((record) => isSaleRecord(record)).length,
+    other: skipped.filter((record) => !isSaleRecord(record)).length
+  };
   const comparison = describeComparison({
     currentPesewas: summary.moneyLeft,
     previousPesewas: previous.moneyLeft,
@@ -100,6 +119,7 @@ export function buildMyMoneyReport({ currentTransactions, previousTransactions, 
   return {
     summary,
     comparison,
+    uncounted,
     showProfit: showProfit !== false,
     averageProfitPesewas,
     debtPesewas: getOutstandingDebtPesewas(debts),

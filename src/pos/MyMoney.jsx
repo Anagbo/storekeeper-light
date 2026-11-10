@@ -49,6 +49,13 @@ export default function MyMoney({ onNavigate }) {
             <p className="text-sm leading-snug sm:text-base">{t("money.moneyInMinusSpent")}</p>
           </section>
 
+          {(report.uncounted?.sales > 0 || report.uncounted?.other > 0) && (
+            <div className="flex flex-col gap-0.5 px-1 lg:col-span-2">
+              {report.uncounted.sales > 0 && <p className="text-sm text-slate-700 sm:text-base">{report.uncounted.sales === 1 ? t("money.uncountedSale") : t("money.uncountedSales", { n: report.uncounted.sales })}</p>}
+              {report.uncounted.other > 0 && <p className="text-sm text-slate-700 sm:text-base">{report.uncounted.other === 1 ? t("money.uncountedRecord") : t("money.uncountedRecords", { n: report.uncounted.other })}</p>}
+            </div>
+          )}
+
           <div className="grid min-w-0 grid-cols-2 gap-2 lg:col-span-2 lg:gap-5">
             <section className={`amount-fit-container flex flex-col gap-0.5 ${cardClass}`}>
               <p className="text-base font-extrabold sm:text-lg">{t("money.moneyIn")}</p>

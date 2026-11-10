@@ -6,7 +6,7 @@ import {
   formatGhs,
   getFinancialTransactions,
   getOutstandingDebtPesewas,
-  summarizePosMoney
+  summarizePosMoneySafely
 } from "../lib/money.js";
 import { generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { posText as t } from "./i18n.js";
@@ -34,7 +34,8 @@ export default function Home({ onNavigate, onLegacyEntry, notice = "" }) {
       db.debts.where("status").equals("unpaid").toArray()
     ]);
     return {
-      totals: summarizePosMoney(transactions),
+      // A record that cannot be counted is left out and logged; it must not stop Home loading.
+      totals: summarizePosMoneySafely(transactions).totals,
       debtPesewas: getOutstandingDebtPesewas(debts),
       urgentDebt: getMostUrgentCustomerDebt(debts)
     };
