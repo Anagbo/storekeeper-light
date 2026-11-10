@@ -74,12 +74,12 @@ SUBSCRIPTION_SIX_MONTHS_AMOUNT_PESEWAS=7500
 SUBSCRIPTION_YEARLY_AMOUNT_PESEWAS=15000
 ```
 
-Set the matching public display values in GHS before the Vite build:
+Set the matching public display values before the Vite build, also in whole pesewas and equal to the server values (`src/config/plans.js` reads them; a value that is not a whole number of pesewas falls back to the default):
 
 ```env
-VITE_SUBSCRIPTION_MONTHLY_AMOUNT_GHS=15
-VITE_SUBSCRIPTION_SIX_MONTHS_AMOUNT_GHS=75
-VITE_SUBSCRIPTION_YEARLY_AMOUNT_GHS=150
+VITE_SUBSCRIPTION_MONTHLY_AMOUNT_PESEWAS=1500
+VITE_SUBSCRIPTION_SIX_MONTHS_AMOUNT_PESEWAS=7500
+VITE_SUBSCRIPTION_YEARLY_AMOUNT_PESEWAS=15000
 ```
 
 `VITE_SUBSCRIPTION_TRIAL_DAYS` controls the free trial from the first app launch. Set it to `30` for one month or `0` to disable the trial. The trial start date is stored in the device's IndexedDB, so clearing site data resets the local trial.
