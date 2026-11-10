@@ -539,7 +539,8 @@ const ENGLISH = Object.freeze({
   "debt.dueNotSet": "Due date not set",
   "debt.dueToday": "Due today",
   "debt.lateDays": "Late {days} day{plural}",
-  "debt.inDays": "In {days} day{plural}"
+  "debt.inDays": "In {days} day{plural}",
+  "debt.dueLine": "Due {date} · {status}"
 });
 
 // True when the string exists. Screens use this to fall back to plain words instead of

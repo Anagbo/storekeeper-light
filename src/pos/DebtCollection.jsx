@@ -15,7 +15,7 @@ import { generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.
 import { buildCollectionReceiptLink } from "./collectionReceipt.js";
 import { buildCustomerBalanceReceipt, getCollectionReceiptText } from "./receiptTemplates.js";
 import { normalizeCollectionAmountInput } from "./collectionSplit.js";
-import { getDebtDueLabel } from "./money.js";
+import { getDebtDueLabel, getDebtDueLine } from "./money.js";
 import { getInstallmentsLeft } from "../utils/installments.js";
 import { posText as t } from "./i18n.js";
 import { PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, SplitIcons } from "./PosComponents.jsx";
@@ -649,6 +649,9 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
   const dueDate = data?.debt?.isInstallmentPlan ? data.debt.nextDueDate : data?.debt?.dueDate;
   const dueLabel = data?.debt && getDebtDueLabel(dueDate);
   const isLate = Boolean(dueLabel?.startsWith("Late "));
+  // 29 and 43: a fixed due date with no plan gets "Due dd/mm/yyyy · In N days" under the balance.
+  // An installment plan keeps its own line (the plan card), and a late plan its late line.
+  const dueLine = data?.debt && !data.debt.isInstallmentPlan && dueDate ? getDebtDueLine(dueDate) : "";
   // Payments left from the balance (DRIFT fix); the stored total is only used for "paid".
   const installmentsLeft = getInstallmentsLeft(data?.debt);
   const installmentCount = data?.debt?.isInstallmentPlan
@@ -771,7 +774,9 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
           <section className="amount-fit-container rounded-[20px] bg-rose-200 px-4 py-3">
             <p className="text-lg font-bold text-rose-950">{t("collect.balanceOwed", { name: data.name })}</p>
             <p className="amount-fit font-extrabold text-rose-950">{formatGhs(data.balancePesewas)}</p>
-            {dueLabel?.startsWith("Late ") && <p className="mt-1 font-bold text-rose-950">{dueLabel}</p>}
+            {dueLine
+              ? <p className="mt-1 font-bold text-rose-950">{dueLine}</p>
+              : dueLabel?.startsWith("Late ") && <p className="mt-1 font-bold text-rose-950">{dueLabel}</p>}
           </section>
           {isLate && phone && reminderLink && (
             <div className="flex flex-col gap-1">

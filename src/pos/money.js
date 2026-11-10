@@ -6,6 +6,7 @@ import {
   summarizeFinancialTransactions,
   summarizePosMoney
 } from "../lib/money.js";
+import { formatDate } from "../lib/formatDate.js";
 import { posText as t } from "./i18n.js";
 
 function timestampOf(record) {
@@ -108,6 +109,13 @@ export function getDebtDueLabel(dueDate, today = new Date()) {
   }
   if (days === 0) return t("debt.dueToday");
   return t("debt.inDays", { days, plural: days === 1 ? "" : "s" });
+}
+
+// 29 and 43: the line under the balance for a fixed due date with no plan, "Due 20/11/2026 · In 5 days"
+// (the status is the existing wording: In N days, Late N days, Due today). Nothing without a date.
+export function getDebtDueLine(dueDate, today = new Date()) {
+  if (!dueDate) return "";
+  return t("debt.dueLine", { date: formatDate(dueDate), status: getDebtDueLabel(dueDate, today) });
 }
 
 export function getTransactionTimestamp(transaction) {
