@@ -120,8 +120,19 @@ async function saveOn63(env, { saved, payout, tap, switchNetwork = false }) {
   let backed = false;
   const view = render({ type: PaymentSettings, props: { onBack() { backed = true; }, onNavigate() {} } });
   flushEffects(view);
-  await new Promise((resolve) => setTimeout(resolve, 80));
-  view.rerender();
+  // Loaded: the screen's own read of the settings is done (ours is queued after it and returns the
+  // same data), and the radio group shows the stored choice. An unavailable "phone" shows as Ask.
+  const { getMerchantMomoSettings } = await import("../src/pos/momoConfig.js");
+  await getMerchantMomoSettings();
+  const phoneUsable = env === FLAG_ON && Boolean(payout);
+  const shownLabel = { ask: "Ask me each time", direct: "Always: customer sends", phone: phoneUsable ? "Always: phone request" : "Ask me each time" }[saved];
+  await waitFor(() => {
+    view.rerender();
+    const radios = [...walk(view.tree)].filter((node) => node.props?.role === "radio");
+    const checked = radios.find((node) => node.props["aria-checked"] === true);
+    const phone = radios.find((node) => JSON.stringify(node.props.children ?? "").includes("Always: phone request"));
+    return Boolean(checked) && JSON.stringify(checked.props.children ?? "").includes(shownLabel) && (!phone || (typeof phone.props.onClick === "function") === phoneUsable);
+  }, "63 shows the stored 'When I tap MoMo' choice");
   if (tap) {
     const row = [...walk(view.tree)].find((node) => node.props?.role === "radio" && node.props.children && JSON.stringify(node.props.children).includes(tap));
     row.props.onClick();
