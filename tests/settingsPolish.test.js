@@ -63,7 +63,8 @@ test("47 Save: green (#03543F) with white bold text and tappable as soon as the 
   assert.match(save.props.className, /bg-\[#03543F\]/);
   assert.match(save.props.className, /text-white/);
   assert.doesNotMatch(save.props.className, /bg-slate-200|text-slate-500/);
-  assert.equal(save.props.style?.fontWeight, 800, "bold: the global button font rule would otherwise reset the class");
+  assert.match(save.props.className, /font-extrabold/, "bold (800) from the class, now that no global rule overrides it");
+  assert.equal(save.props.style, undefined);
 });
 
 test("47 Save: grey again after saving, green again on the next change", async () => {
@@ -152,9 +153,10 @@ test("47 rows: the shop and preference rows have no icons", async () => {
 test("47 Done: bold (800); the shared Back button and the shared components are not changed", async () => {
   const { view } = await mountSettings();
   const done = nodes(view.tree, (node) => node.type === "button" && textOf(node).trim() === "Done").at(-1);
-  assert.equal(done.props.style?.fontWeight, 800);
+  assert.match(done.props.className, /font-extrabold/, "bold (800) from the shared primary button class");
+  assert.equal(done.props.style, undefined);
   const back = nodes(view.tree, (node) => node.type === "button" && textOf(node).trim() === "Back")[0];
-  assert.equal(back.props.style, undefined, "Back comes from the shared PosSecondaryButton and is left as it is");
+  assert.equal(back.props.style, undefined, "Back comes from the shared PosSecondaryButton");
   const components = read("src/pos/PosComponents.jsx");
   assert.match(components, /export function PosSecondaryButton[\s\S]*?text-base font-bold text-slate-900/);
   assert.match(components, /export function PosPrimaryButton[\s\S]*?text-lg font-extrabold text-white/);

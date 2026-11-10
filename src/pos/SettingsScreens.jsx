@@ -207,13 +207,11 @@ export function SettingsProfitTools({
             <span className="mb-1 block text-base font-extrabold">{t("settings.shopName")}</span>
             <input maxLength={60} value={draft} placeholder={t("app.defaultShopName")} onChange={(event) => { setDraft(event.target.value); setSaved(false); }} className="h-12 w-full rounded-xl border-2 border-slate-500 px-3 text-lg placeholder:text-slate-500" />
           </label>
-          {/* Grey while there is nothing to save, green (#03543F) with white bold text once the name changes. The
-              weight is set on the element because the global button { font: inherit } rule resets font classes. */}
+          {/* Grey while there is nothing to save, green (#03543F) with white bold text once the name changes. */}
           <button
             type="submit"
             disabled={!nameChanged}
-            style={{ fontWeight: 800 }}
-            className={`flex min-h-12 shrink-0 items-center justify-center rounded-2xl border-2 px-4 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 ${nameChanged ? "border-[#03543F] bg-[#03543F] text-white" : "cursor-not-allowed border-slate-300 bg-slate-200 text-slate-500"}`}
+            className={`flex min-h-12 shrink-0 items-center justify-center rounded-2xl border-2 px-4 text-base font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 ${nameChanged ? "border-[#03543F] bg-[#03543F] text-white" : "cursor-not-allowed border-slate-300 bg-slate-200 text-slate-500"}`}
           >
             {t("settings.save")}
           </button>
@@ -246,7 +244,7 @@ export function SettingsProfitTools({
       </SettingsGroup>
 
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
-      <PosPrimaryButton type="button" onClick={onBack} style={{ fontWeight: 800 }} className="mt-1">{t("credit.done")}</PosPrimaryButton>
+      <PosPrimaryButton type="button" onClick={onBack} className="mt-1">{t("credit.done")}</PosPrimaryButton>
     </PosPage>
   );
 }

@@ -21,12 +21,6 @@ body {
   margin: 0;
 }
 
-button,
-input,
-textarea {
-  font: inherit;
-}
-
 button {
   touch-action: manipulation;
 }

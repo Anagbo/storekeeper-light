@@ -17,7 +17,7 @@ function CardIcon({ name, path }) {
   );
 }
 const textClass = "text-base text-[#475569]";
-const buttonBase = "flex h-14 w-full items-center justify-center rounded-2xl border-2 px-4 text-[18px]! font-extrabold! focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50";
+const buttonBase = "flex h-14 w-full items-center justify-center rounded-2xl border-2 px-4 text-[18px] font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50";
 
 function countRecords(data) {
   return Object.values(data).reduce((sum, records) => sum + (Array.isArray(records) ? records.length : 0), 0);
