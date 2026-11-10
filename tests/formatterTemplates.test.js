@@ -117,5 +117,4 @@ test("Q5: messages that name a zero amount take it from the formatter", () => {
 
 test("Q5: the screens that showed GH₵ plus a number now use the formatter", () => {
   assert.match(read("src/pos/ManualDebtScreens.jsx"), /\{formatGhs\(amountPesewas\)\}<\/strong>/);
-  assert.match(read("src/components/WhatsAppReminderModal.jsx"), /\{formatGhs\(debt\.amountPesewas\)\}/);
 });

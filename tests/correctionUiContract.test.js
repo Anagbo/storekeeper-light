@@ -3,11 +3,10 @@ import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 
 const correctionSurfaces = [
-  "src/pos/DebtCollection.jsx",
-  "src/components/DebtLedger.jsx"
+  "src/pos/DebtCollection.jsx"
 ];
 
-test("both correction surfaces expose the safe screen 54 contract", async () => {
+test("the correction surface (DebtCollection) exposes the safe screen 54 contract", async () => {
   const sources = await Promise.all(correctionSurfaces.map((path) => readFile(path, "utf8")));
 
   for (const source of sources) {

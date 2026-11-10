@@ -187,9 +187,9 @@ test("the largest balances summary shows payments left from the balance", async 
   assert.equal(summary.installmentsRemaining, 1);
 });
 
-test("collection screens and the ledger do not show the stored payments-left counter", async () => {
+test("collection screens do not show the stored payments-left counter", async () => {
   const { readFile } = await import("node:fs/promises");
-  for (const file of ["src/pos/DebtCollection.jsx", "src/components/DebtLedger.jsx"]) {
+  for (const file of ["src/pos/DebtCollection.jsx"]) {
     const source = await readFile(new URL(`../${file}`, import.meta.url), "utf8");
     assert.doesNotMatch(source, /\.installmentsRemaining\b/, `${file} reads the stored counter`);
     assert.match(source, /getInstallmentsLeft\(/, `${file} should use getInstallmentsLeft`);

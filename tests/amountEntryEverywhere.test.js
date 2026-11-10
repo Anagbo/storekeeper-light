@@ -197,7 +197,7 @@ test("setup: an item price refuses 1e2 and 0x10; stored cedis prices read exactl
   assert.equal(toPesewas(normalizeProductInput({ name: "Rice", price: "4.35" }).default_price), 435);
 });
 
-// ---- legacy screens ---------------------------------------------------------------------------------------------
+// ---- legacy add-debt helper ---------------------------------------------------------------------------------
 
 test("legacy add-debt: the amount and the amount each time refuse 1e2 and 0x10", () => {
   const base = { customerName: "Ama", ghanaCardNumber: "" };
@@ -206,16 +206,6 @@ test("legacy add-debt: the amount and the amount each time refuse 1e2 and 0x10",
     assert.throws(() => prepareAddDebt({ ...base, amount: "100", isInstallmentPlan: true, installmentAmount: typed }), undefined, typed);
   }
   assert.equal(prepareAddDebt({ ...base, amount: "12.50" }).amountPesewas, 1250);
-});
-
-test("legacy DebtLedger converts typed amounts only with toPesewas", () => {
-  for (const file of ["src/components/DebtLedger.jsx"]) {
-    const code = readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
-    assert.match(code, /toPesewas\(/, file);
-    assert.doesNotMatch(code, /parseFloat|parseInt|\* ?100\b/, file);
-  }
-  const ledger = readFileSync(new URL("../src/components/DebtLedger.jsx", import.meta.url), "utf8");
-  assert.doesNotMatch(ledger, /amountPesewas \/ 100 :/, "paying in full passes whole pesewas, not a divided number");
 });
 
 // ---- nothing in src converts a typed amount any other way ------------------------------------------------------------
