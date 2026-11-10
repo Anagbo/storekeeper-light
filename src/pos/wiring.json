@@ -673,7 +673,8 @@
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
-     "to": "22"
+     "to": "BACK",
+     "to_rule": "Return to the screen the menu was opened from, with its draft intact (not Home). The menu Home button still goes to 22."
     },
     {
      "label": "Home",
@@ -719,7 +720,10 @@
     }
    ],
    "inputs": [],
-   "bottom_bar": false
+   "bottom_bar": false,
+   "rules": [
+    "Opening Menu → Settings → Back returns to the menu, and Close menu then returns to the original screen. Menu must add only one entry to the history however many times it is shown."
+   ]
   },
   "24": {
    "name": "Today’s transactions",
@@ -2406,7 +2410,8 @@
    "inputs": [],
    "bottom_bar": false,
    "rules": [
-    "No \"Profit estimates\" text while the profit switches are deferred."
+    "No \"Profit estimates\" text while the profit switches are deferred.",
+    "Built extra: Done. It returns the same way as Back (to the screen before Settings), not to Home, so a draft is never dropped."
    ]
   },
   "51": {
