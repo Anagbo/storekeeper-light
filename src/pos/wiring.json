@@ -2389,13 +2389,6 @@
      "effect": "Saves the shop name. Disabled until the name is changed and not empty."
     },
     {
-     "label": "Sound and voice feedback",
-     "role": "switch",
-     "disabled_initially": false,
-     "type": "toggle",
-     "effect": "Turns confirmation sounds and spoken messages on or off."
-    },
-    {
      "label": "Show estimated profit",
      "role": "switch",
      "disabled_initially": false,
@@ -2440,8 +2433,8 @@
    ],
    "bottom_bar": false,
    "rules": [
-    "Layout: four groups, each one white card with a small heading above it: Shop (shop name field with Save beside it), Preferences (the two switches), Payments and plan (MoMo payments, My plan), Your records (Backup and restore). Rows inside a card are separated by a thin line, not separate boxes.",
-    "Use switches (role switch), not tick boxes, for Sound and voice feedback and Show estimated profit. Each has a one-line helper under it.",
+    "Layout: four groups, each one white card with a small heading above it: Shop (shop name field with Save beside it), Preferences (the Show estimated profit switch), Payments and plan (MoMo payments, My plan), Your records (Backup and restore). Rows inside a card are separated by a thin line, not separate boxes.",
+    "Use a switch (role switch), not a tick box, for Show estimated profit, with a one-line helper under it.",
     "My plan row shows the status in words (\"Active until dd/mm/yyyy\") and a small green \"Active\" tag when active. The old separate \"View subscription\" button and its Paystack plans pop-up are removed (decision 10 Nov 2026): paying for the plan goes only through Pay now on 64 (screen 65: Cash, Mobile money, later Phone request).",
     "MoMo payments row shows \"Not set up\" or \"Set up\" under the title.",
     "Shop name: Save is disabled until the name changes. After saving, the header shows Saved.",
@@ -2451,7 +2444,8 @@
     "Save button: grey and disabled while the name is unchanged or empty; the moment the name changes to something valid it turns green (#03543F, white bold text) and is tappable. After saving it goes back to grey.",
     "The Shop name field starts with the current saved name filled in. If no name was ever saved it shows the default \"My shop\" as grey placeholder text, never an empty-looking field next to a header that says \"My shop\".",
     "Every row in Payments and plan and Your records has a small green icon on the left (phone for MoMo payments, card for My plan, database for Backup and restore). Backup and restore has the second line \"Keep a copy of your records\".",
-    "Text style matches the prototype: Back and Done use bold (800) text, same as the other POS screens."
+    "Text style matches the prototype: Back and Done use bold (800) text, same as the other POS screens.",
+    "Decision 10 Nov 2026: no \"Sound and voice feedback\" switch while no POS screen plays a sound. A control that does nothing must not be shown. Sounds and spoken confirmations are a possible later feature; the audio helper code is kept."
    ]
   },
   "51": {
