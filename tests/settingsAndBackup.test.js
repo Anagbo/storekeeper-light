@@ -288,6 +288,18 @@ test("71: Restore restores, keeps what is on the phone, and says Restore finishe
   assert.equal((await db.transactions.get("sale-2")).amountPesewas, 2500);
 });
 
+test("71: after Restore the message says how many records were added or updated and how many were kept", async () => {
+  await db.transactions.add(sale);
+  const { view } = await mountBackup();
+  const incoming = { ...sale, id: "sale-2", amountPesewas: 2500, total_amount: 2500 };
+  await chooseFile(view, fileOf(validBackup({ transactions: [sale, incoming] })));
+  button(view.tree, "Restore").props.onClick();
+  const expected = "Restore finished. 1 records added or updated. 1 records already on this phone were kept.";
+  await waitFor(() => { view.rerender(); return textOf(view.tree).includes("Restore finished."); }, "Restore finished.");
+  assert.ok(textOf(view.tree).includes(expected), textOf(view.tree));
+  assert.doesNotMatch(textOf(view.tree), /\{a\}|\{k\}|undefined|NaN/);
+});
+
 test("71: a bad file shows the safe message and changes nothing (never raw error text)", async () => {
   await db.transactions.add(sale);
   const safe = "This file cannot be used. Choose a StoreKeeper backup file.";

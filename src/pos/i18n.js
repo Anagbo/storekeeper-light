@@ -224,7 +224,7 @@ const ENGLISH = Object.freeze({
   "backup.confirmBody": "Records already on this phone are kept. Matching ones are updated.",
   "backup.restore": "Restore",
   "backup.cancel": "Cancel",
-  "backup.finished": "Restore finished.",
+  "backup.finished": "Restore finished. {added} records added or updated. {kept} records already on this phone were kept.",
   "backup.badFile": "This file cannot be used. Choose a StoreKeeper backup file.",
   "backup.restoreFailed": "The restore could not finish. Nothing was changed. Try again.",
   "settings.saveFailed": "The shop name could not be saved. Check device storage and try again.",
