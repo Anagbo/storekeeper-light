@@ -11,6 +11,7 @@ import {
   isValidInstallmentPlanForBalance,
   localDateString,
   reconcileInstallmentBalanceCorrection,
+  reconcileInstallmentPayment,
   reconcileInstallmentPlanChange
 } from "../utils/installments.js";
 import {
@@ -213,9 +214,8 @@ export async function recordManualDebt({
   if (!Number.isSafeInteger(initialPaymentPesewas) || initialPaymentPesewas < 0) {
     throw new TypeError("Initial payment must be a non-negative whole-pesewa amount.");
   }
-  if (initialPaymentPesewas > amountPesewas) {
-    throw new TypeError("Initial payment cannot exceed the manual debt amount.");
-  }
+  // The payment today may be more than the amount added: 19's "Maximum today" is the whole balance
+  // (older debt + amount added). The limit is checked below, once the older balance is known.
   if (!["cash", "momo"].includes(paymentMethod)) {
     throw new TypeError("Choose cash or MoMo for the initial payment.");
   }
@@ -263,12 +263,46 @@ export async function recordManualDebt({
 
     const previousBalancePesewas = existingDebt ? getDebtBalance(existingDebt) : 0;
     assertPesewasAmount(previousBalancePesewas, "The current debt balance");
-    const netAddedDebtPesewas = amountPesewas - initialPaymentPesewas;
+    // The customer's other open entries (older data can have more than one). A payment larger than
+    // the amount added pays the entry added to first, then the others, oldest first (as recordCreditSale does).
+    const otherDebts = matchingDebts
+      .filter((candidate) => candidate !== existingDebt)
+      .sort((left, right) => (left.createdAt ?? 0) - (right.createdAt ?? 0));
+    const otherBalances = otherDebts.map((candidate) => getDebtBalance(candidate));
+    otherBalances.forEach((balance) => assertPesewasAmount(balance, "The current debt balance"));
+    const owedBeforePesewas = previousBalancePesewas + otherBalances.reduce((sum, balance) => sum + balance, 0);
+    if (!Number.isSafeInteger(owedBeforePesewas + amountPesewas)) {
+      throw new RangeError("The combined debt exceeds the supported amount.");
+    }
+    if (initialPaymentPesewas > owedBeforePesewas + amountPesewas) {
+      throw new TypeError("Initial payment cannot exceed the customer's total debt after this addition.");
+    }
+    // The part of the payment that pays the amount added is recorded as before; the rest pays
+    // older debt and is recorded as a real debt collection.
+    const addedPaymentPesewas = Math.min(initialPaymentPesewas, amountPesewas);
+    let extraLeftPesewas = initialPaymentPesewas - addedPaymentPesewas;
+    const extraToTargetPesewas = Math.min(extraLeftPesewas, previousBalancePesewas);
+    extraLeftPesewas -= extraToTargetPesewas;
+    const extraToOthers = [];
+    otherDebts.forEach((candidate, index) => {
+      const paidPesewas = Math.min(extraLeftPesewas, otherBalances[index]);
+      if (paidPesewas > 0) extraToOthers.push({ debt: candidate, balancePesewas: otherBalances[index], paidPesewas });
+      extraLeftPesewas -= paidPesewas;
+    });
+    const netAddedDebtPesewas = amountPesewas - addedPaymentPesewas - extraToTargetPesewas;
     const newBalancePesewas = previousBalancePesewas + netAddedDebtPesewas;
     if (!Number.isSafeInteger(newBalancePesewas)) {
       throw new RangeError("The combined debt exceeds the supported amount.");
     }
-    assertManualDebtPlan(installmentPlan, newBalancePesewas);
+    // A settled debt carries no plan: 19 sends a "no plan" object when everything is paid today.
+    const appliedPlan = newBalancePesewas === 0 && installmentPlan && !installmentPlan.isInstallmentPlan
+      ? null
+      : installmentPlan;
+    assertManualDebtPlan(appliedPlan, newBalancePesewas);
+    // Progress toward the new plan: as before, the payment today. When it is more than the amount
+    // added, only what pays older debt counts (recordCreditSale does the same), so the first
+    // payment date chosen on 19 is not pushed out by the payment made today.
+    const planProgressPesewas = initialPaymentPesewas > amountPesewas ? extraToTargetPesewas : initialPaymentPesewas;
 
     const debt = existingDebt
       ? {
@@ -282,18 +316,18 @@ export async function recordManualDebt({
           amountPesewas: newBalancePesewas,
           total_owed: newBalancePesewas,
           ...(newBalancePesewas === 0 ? { status: "paid", dueDate: "" } : {}),
-          ...(installmentPlan
+          ...(appliedPlan
             ? existingDebt.isInstallmentPlan
-              ? reconcileInstallmentPlanChange(existingDebt, newBalancePesewas, installmentPlan, initialPaymentPesewas)
+              ? reconcileInstallmentPlanChange(existingDebt, newBalancePesewas, appliedPlan, planProgressPesewas)
               : {
-                  ...installmentPlan,
-                  installmentsRemaining: Math.ceil(newBalancePesewas / installmentPlan.installmentAmount),
-                  totalInstallments: Math.ceil(newBalancePesewas / installmentPlan.installmentAmount) + (initialPaymentPesewas > 0 ? 1 : 0)
+                  ...appliedPlan,
+                  installmentsRemaining: Math.ceil(newBalancePesewas / appliedPlan.installmentAmount),
+                  totalInstallments: Math.ceil(newBalancePesewas / appliedPlan.installmentAmount) + (initialPaymentPesewas > 0 ? 1 : 0)
                 }
             : existingDebt.isInstallmentPlan
               ? reconcileInstallmentBalanceCorrection(existingDebt, newBalancePesewas)
               : {}),
-          ...(!installmentPlan && !existingDebt.isInstallmentPlan && dueDate ? { dueDate } : {}),
+          ...(!appliedPlan && !existingDebt.isInstallmentPlan && dueDate ? { dueDate } : {}),
           note: cleanNote || existingDebt.note || "",
           updatedAt: now,
           synced: false,
@@ -307,7 +341,7 @@ export async function recordManualDebt({
           phone: phone.trim() || customer.phone || "",
           customer_phone: phone.trim() || customer.phone || "",
           ghanaCardNumber: cleanGhanaCardNumber || customer.ghanaCardNumber || "",
-          ...(installmentPlan ?? {
+          ...(appliedPlan ?? {
             isInstallmentPlan: false,
             installmentAmount: 0,
             frequency: "",
@@ -316,7 +350,7 @@ export async function recordManualDebt({
             totalInstallments: 0,
             installmentPaymentCarryPesewas: 0
           }),
-          dueDate: installmentPlan ? "" : dueDate,
+          dueDate: appliedPlan ? "" : dueDate,
           amountPesewas: newBalancePesewas,
           total_owed: newBalancePesewas,
           note: cleanNote,
@@ -330,13 +364,25 @@ export async function recordManualDebt({
           syncStatus: "pending"
         };
 
-    const initialIncomeTransactionId = initialPaymentPesewas > 0 ? createId() : null;
+    // Split each method's payment into the part that pays the amount added and the rest (older debt).
+    let addedLeftPesewas = addedPaymentPesewas;
+    const addedParts = [];
+    const extraParts = [];
+    for (const part of normalizedPaymentParts) {
+      const toAdded = Math.min(part.amountPesewas, addedLeftPesewas);
+      addedLeftPesewas -= toAdded;
+      if (toAdded > 0) addedParts.push({ paymentMethod: part.paymentMethod, amountPesewas: toAdded });
+      if (part.amountPesewas - toAdded > 0) extraParts.push({ paymentMethod: part.paymentMethod, amountPesewas: part.amountPesewas - toAdded });
+    }
+    const addedMomoPesewas = addedParts.filter((part) => part.paymentMethod === "momo").reduce((sum, part) => sum + part.amountPesewas, 0);
+
+    const initialIncomeTransactionId = addedPaymentPesewas > 0 ? createId() : null;
     if (initialIncomeTransactionId) {
       for (const method of ["cash", "momo"]) {
-        const methodParts = normalizedPaymentParts.filter((part) => part.paymentMethod === method);
+        const methodParts = addedParts.filter((part) => part.paymentMethod === method);
         const methodTotal = methodParts.reduce((sum, part) => sum + part.amountPesewas, 0);
         if (methodTotal === 0) continue;
-        const incomeTxId = methodParts.length === 1 && normalizedPaymentParts.length === 1
+        const incomeTxId = methodParts.length === 1 && addedParts.length === 1
           ? initialIncomeTransactionId
           : createId();
         await db.transactions.add({
@@ -373,6 +419,89 @@ export async function recordManualDebt({
           });
         }
       }
+    }
+
+    // The rest of the payment pays older debt: a real debt collection, as recordCreditSale writes it
+    // (income transaction and payment row with a collectionId; counted as a debt payment in Money in).
+    if (extraParts.length > 0) {
+      const extraTargets = [
+        ...(extraToTargetPesewas > 0 ? [{ debtId: debt.id, paidPesewas: extraToTargetPesewas }] : []),
+        ...extraToOthers.map((other) => ({ debtId: other.debt.id, paidPesewas: other.paidPesewas }))
+      ];
+      const remainingExtraParts = extraParts.map((part) => ({ ...part }));
+      const extraAllocations = [];
+      for (const target of extraTargets) {
+        let targetLeft = target.paidPesewas;
+        for (const part of remainingExtraParts) {
+          if (targetLeft === 0) break;
+          const allocated = Math.min(part.amountPesewas, targetLeft);
+          if (allocated === 0) continue;
+          part.amountPesewas -= allocated;
+          targetLeft -= allocated;
+          extraAllocations.push({ debtId: target.debtId, paymentMethod: part.paymentMethod, amountPesewas: allocated });
+        }
+      }
+      const extraCollectionId = createId();
+      for (const method of ["cash", "momo"]) {
+        const methodAllocations = extraAllocations.filter((allocation) => allocation.paymentMethod === method);
+        const methodTotal = methodAllocations.reduce((sum, allocation) => sum + allocation.amountPesewas, 0);
+        if (methodTotal === 0) continue;
+        const extraTxId = createId();
+        await db.transactions.add({
+          id: extraTxId,
+          ...(customer?.id && { customerId: customer.id }),
+          debtId: methodAllocations[0].debtId,
+          collectionId: extraCollectionId,
+          collectionType: "debt_collection",
+          type: "income",
+          amountPesewas: methodTotal,
+          total_amount: methodTotal,
+          payment_method: method,
+          // The confirmed amount is on the record that holds the MoMo money for the amount added, otherwise here.
+          ...(method === "momo" && getMomoDetails(momoVerification, addedMomoPesewas > 0 ? undefined : momoConfirmedPesewas)),
+          customer_name: customer.name,
+          customer_phone: phone.trim() || customer.phone || "",
+          items_json: "[]",
+          note: `Debt payment from ${customer.name}`,
+          createdAt: now,
+          timestamp: now,
+          updatedAt: now,
+          synced: false,
+          syncStatus: "pending"
+        });
+        for (const allocation of methodAllocations) {
+          await db.payments.add({
+            id: createId(),
+            ...(customer?.id && { customerId: customer.id }),
+            debtId: allocation.debtId,
+            amountPesewas: allocation.amountPesewas,
+            paymentMethod: method,
+            ...(method === "momo" && getMomoDetails(momoVerification)),
+            customer_name: customer.name,
+            collectionId: extraCollectionId,
+            collectionType: "debt_collection",
+            createdAt: now,
+            updatedAt: now,
+            transactionId: extraTxId
+          });
+        }
+      }
+    }
+    // The customer's other open entries that the extra payment reached.
+    for (const { debt: otherDebt, balancePesewas, paidPesewas } of extraToOthers) {
+      const remainingPesewas = balancePesewas - paidPesewas;
+      const installmentUpdates = otherDebt.isInstallmentPlan
+        ? reconcileInstallmentPayment({ ...otherDebt, amountPesewas: balancePesewas }, paidPesewas, remainingPesewas)
+        : {};
+      await db.debts.update(otherDebt.id, {
+        amountPesewas: remainingPesewas,
+        total_owed: remainingPesewas,
+        ...(remainingPesewas === 0 ? { status: "paid", dueDate: "" } : {}),
+        ...installmentUpdates,
+        updatedAt: now,
+        synced: false,
+        syncStatus: "pending"
+      });
     }
 
     const event = {
