@@ -19,7 +19,9 @@ import {
   replaceRoute,
   returnFromMomoPickState,
   returnToMomoOrigin,
-  showsBottomBar
+  showsBottomBar,
+  closeMenuState,
+  openMenuState
 } from "./routes.js";
 import Home from "./Home.jsx";
 import Menu from "./Menu.jsx";
@@ -114,6 +116,10 @@ export default function PosApp() {
       setNotice("");
       return;
     }
+    if (route === POS_ROUTES.Menu) {
+      openMenu();
+      return;
+    }
     setRouteState((current) => pushRoute(current, route, params));
     setNotice("");
   }
@@ -180,12 +186,16 @@ export default function PosApp() {
     switchTab(POS_ROUTES.Home);
   }
 
+  // One history entry however often the menu is shown; opening it while it is open closes it.
   function openMenu() {
-    if (routeState.current === POS_ROUTES.Menu) {
-      switchTab(POS_ROUTES.Home);
-      return;
-    }
-    navigate(POS_ROUTES.Menu);
+    setRouteState((current) => openMenuState(current));
+    setNotice("");
+  }
+
+  // Close menu: back to the screen it was opened from, with its draft (not Home).
+  function closeMenu() {
+    setRouteState((current) => closeMenuState(current));
+    setNotice("");
   }
 
   function openLegacyEntry(type) {
@@ -342,7 +352,7 @@ export default function PosApp() {
       notice={notice}
     />
   ) : route === POS_ROUTES.Menu ? (
-    <Menu onNavigate={navigate} />
+    <Menu onNavigate={navigate} onClose={closeMenu} />
   ) : route === POS_ROUTES.HowDoYouWantToSell ? (
     <HowDoYouWantToSell onNavigate={navigate} onCompleteSetup={completePosSetup} />
   ) : route === POS_ROUTES.WhatDoYouSell ? (

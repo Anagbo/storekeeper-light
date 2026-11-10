@@ -11,12 +11,12 @@ const menuLinks = [
   { label: "menu.settings", detail: "", icon: Settings, route: "SettingsProfitTools" }
 ];
 
-export default function Menu({ onNavigate }) {
+export default function Menu({ onNavigate, onClose }) {
   return (
     <PosPage style={{ paddingTop: 14 }} className="flex flex-col gap-3 lg:gap-5">
       <div className="flex items-center justify-between gap-3 lg:col-span-2">
         <h1 className="text-[26px] font-extrabold">{t("app.menu")}</h1>
-        <button type="button" aria-label={t("nav.menuClose")} onClick={() => onNavigate("Home")} className="flex h-[52px] items-center gap-2 rounded-[14px] border-2 border-slate-900 bg-white px-4 text-lg font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800"><X size={20} aria-hidden="true" />{t("menu.close")}</button>
+        <button type="button" aria-label={t("nav.menuClose")} onClick={onClose} className="flex h-[52px] items-center gap-2 rounded-[14px] border-2 border-slate-900 bg-white px-4 text-lg font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800"><X size={20} aria-hidden="true" />{t("menu.close")}</button>
       </div>
       <div className="flex flex-col gap-2 lg:grid lg:grid-cols-2 lg:gap-4">
         {menuLinks.map(({ label, detail, icon: Icon, route }) => (

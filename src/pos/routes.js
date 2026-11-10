@@ -64,7 +64,8 @@ export const POS_LINKS = Object.freeze([
   { from: "Home", action: "transactions", to: "TodaysTransactions" },
   { from: "Home", action: "debtor", to: "DebtorDetail" },
   { from: "Home", action: "owed", to: "PeopleWhoOweYou" },
-  { from: "Menu", action: "close", to: "Home" },
+  // Close menu goes back to the screen the menu was opened from, draft intact (wiring 23: BACK).
+  { from: "Menu", action: "close", to: "Home", via: "history" },
   { from: "Menu", action: "home", to: "Home" },
   { from: "Menu", action: "transactions", to: "TodaysTransactions" },
   { from: "Menu", action: "myMoney", to: "MyMoney" },
@@ -232,6 +233,21 @@ export const BOTTOM_BAR_ROUTES = [POS_ROUTES.Home, POS_ROUTES.Sell, POS_ROUTES.C
 
 export function showsBottomBar(route) {
   return BOTTOM_BAR_ROUTES.includes(route);
+}
+
+// The menu adds one history entry however often it is shown (wiring 23). Showing it again while
+// it is already below the current screen (for example from Settings) returns to that entry and
+// drops what was opened since; showing it while it is open closes it.
+export function openMenuState(state) {
+  if (state.current === POS_ROUTES.Menu) return closeMenuState(state);
+  return popToRoute(state, POS_ROUTES.Menu) ?? pushRoute(state, POS_ROUTES.Menu, {});
+}
+
+// Close menu: back to the screen the menu was opened from, with its params as they were (not
+// Home, which would drop a draft). Nothing to go back to means Home.
+export function closeMenuState(state) {
+  if (state.current !== POS_ROUTES.Menu) return state;
+  return backRoute(state);
 }
 
 export function backRoute(state, fallback = POS_ROUTES.Home) {
