@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { ArrowLeft, ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { formatGhs, formatGhsAmount } from "../lib/money.js";
 import { posText as t } from "./i18n.js";
 import { loadMyMoneyReport } from "./myMoneyReport.js";
-import { PosCard, PosPage } from "./PosComponents.jsx";
+import { PosBackButton, PosCard, PosPage } from "./PosComponents.jsx";
 
 // Brief 3.11 / wiring screen 33. One strong green block (Money left); every other card is white
 // with a thin border.
@@ -26,7 +26,7 @@ export default function MyMoney({ onNavigate }) {
   return (
     <PosPage style={{ paddingTop: 10 }} className="flex flex-col gap-2.5 lg:min-h-0 lg:grid lg:grid-cols-2 lg:content-start lg:items-start lg:gap-5">
       <div className="flex items-center gap-3 lg:col-span-2">
-        <button type="button" onClick={() => onNavigate("Home")} aria-label={t("money.backHome")} className="flex h-11 items-center gap-2 rounded-[14px] border-2 border-slate-900 bg-white px-3 text-base font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 sm:h-[52px] sm:px-4 sm:text-lg"><ArrowLeft size={22} aria-hidden="true" />{t("money.back")}</button>
+        <PosBackButton onClick={() => onNavigate("Home")} aria-label={t("money.backHome")} />
         <h1 className="text-xl font-extrabold sm:text-2xl">{t("money.title")}</h1>
       </div>
 

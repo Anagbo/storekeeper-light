@@ -3,7 +3,7 @@ import { Banknote, Check, Smartphone, UserRound, X } from "lucide-react";
 import { formatGhs } from "../lib/money.js";
 import { formatPesewasText, parseAmountToPesewas } from "../lib/parsePesewas.js";
 import { posText as t } from "./i18n.js";
-import { PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
+import { PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
 import { useLargeAmountConfirm } from "./LargeAmountConfirm.jsx";
 import { addRemainingToPart, isLockedMomoRow, planMomoRowEdit, setPartAmount } from "./splitTender.js";
 
@@ -107,7 +107,7 @@ export default function SplitPayment({
   return (
     <PosPage className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
-        <PosSecondaryButton type="button" onClick={onBack} disabled={busy} aria-label={t("split.back")} className="min-h-[52px] px-4 text-lg">‹ {t("split.back")}</PosSecondaryButton>
+        <PosBackButton onClick={onBack} disabled={busy} />
         <h1 className="text-2xl font-extrabold">{t("split.title")}</h1>
       </div>
       <div className="flex items-center justify-between gap-3 text-lg font-bold">

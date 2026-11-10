@@ -72,6 +72,11 @@ export function PosSecondaryButton({ children, className = "", ...props }) {
   return <button {...props} className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl border-2 border-slate-600 bg-white px-4 text-base font-bold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}>{children}</button>;
 }
 
+// The one Back button (prototype): "‹ Back", bold 800, 18px, 52px tall, 2px #0F172A border.
+export function PosBackButton({ className = "", ...props }) {
+  return <button type="button" aria-label={t("items.back")} {...props} className={`flex h-[52px] shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-[14px] border-2 border-[#0F172A] bg-white px-4 text-[18px] font-extrabold text-[#0F172A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}>‹ {t("items.back")}</button>;
+}
+
 export function PosCard({ children, className = "" }) {
   return <section className={`rounded-2xl border-2 border-slate-600 bg-white p-4 ${className}`}>{children}</section>;
 }

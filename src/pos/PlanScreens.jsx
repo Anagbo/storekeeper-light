@@ -7,12 +7,12 @@ import { posText as t } from "./i18n.js";
 import { getPreference } from "../db/preferences.js";
 import { appendPlanPayment, createPlanCashCode, describePlanPayment, getPlanLastUsedMethod, getPlanPaymentConfiguration, groupPlanPayments, listPlanPayments, PLAN_CONFIG, planMethodLabel, planStatusLabel } from "./planPayments.js";
 import { MOMO_CONFIG, PHONE_REQUEST_ENABLED } from "./momoConfig.js";
-import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag } from "./PosComponents.jsx";
+import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, PosBackButton } from "./PosComponents.jsx";
 
 const NETWORKS = ["MTN", "Telecel", "AirtelTigo"];
 
 function BackTitle({ title, onBack }) {
-  return <div className="flex items-center gap-3"><PosSecondaryButton type="button" onClick={onBack} className="min-h-[52px] px-4 text-lg">‹ Back</PosSecondaryButton><h1 className="text-2xl font-extrabold">{title}</h1></div>;
+  return <div className="flex items-center gap-3"><PosBackButton onClick={onBack} /><h1 className="text-2xl font-extrabold">{title}</h1></div>;
 }
 
 function daysLeft(expiry) {

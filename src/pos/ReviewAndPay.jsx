@@ -3,7 +3,7 @@ import { Banknote, Check, Smartphone, UserRound } from "lucide-react";
 import { isSaveOutcomeUnknown, isSaveTimeout } from "../lib/saveAttempt.js";
 import { formatGhs } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
-import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, SplitIcons } from "./PosComponents.jsx";
+import { PosCard, PosPage, PosPrimaryButton, SplitIcons, PosBackButton } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
 import { useLargeAmountConfirm } from "./LargeAmountConfirm.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
@@ -66,7 +66,7 @@ export default function ReviewAndPay({ params = {}, onBack, onNavigate, onUpdate
   return (
     <PosPage className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
-        <PosSecondaryButton type="button" onClick={onBack} disabled={busy} className="min-h-[52px] px-4 text-lg">‹ {t("review.back")}</PosSecondaryButton>
+        <PosBackButton onClick={onBack} disabled={busy} />
         <h1 className="text-2xl font-extrabold">{t("review.title")}</h1>
       </div>
 

@@ -9,7 +9,7 @@ import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { padCount, padMoney, pressPad, startPad } from "./amountPad.js";
 import { posText as t } from "./i18n.js";
 import NumberPad from "./NumberPad.jsx";
-import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
+import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
 
 export function HowDoYouWantToSell({ onNavigate, onCompleteSetup }) {
   const [sellMode, setSellMode] = useState(null);
@@ -144,7 +144,7 @@ export function WhatDoYouSell({ selected, onSelectedChange, onBack, onNavigate, 
   return (
     <PosPage className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
-        <PosSecondaryButton type="button" onClick={onBack}>{t("items.back")}</PosSecondaryButton>
+        <PosBackButton onClick={onBack} />
         <h1 className="text-2xl font-extrabold">{t("setup.itemsTitle")}</h1>
       </div>
       <label className="flex min-h-14 items-center gap-2 rounded-2xl border-[3px] border-slate-500 px-3">
@@ -179,7 +179,7 @@ export function MoreCategories({ selected, onSelectedChange, onBack, onDone }) {
   return (
     <PosPage className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
-        <PosSecondaryButton type="button" onClick={onBack}>{t("items.back")}</PosSecondaryButton>
+        <PosBackButton onClick={onBack} />
         <h1 className="text-2xl font-extrabold">{t("setup.moreCategories")}</h1>
       </div>
       <p className="text-base text-slate-700">{t("setup.tapAll")}</p>
@@ -241,7 +241,7 @@ export function HowMuchIsItem({ params, onBack, onReturnTo }) {
   return (
     <PosPage className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
-        <PosSecondaryButton type="button" onClick={onBack}>{t("items.back")}</PosSecondaryButton>
+        <PosBackButton onClick={onBack} />
         <h1 className="text-2xl font-extrabold">{t("setup.priceTitle", { name: product?.name ?? "" })}</h1>
       </div>
       <PosCard className="rounded-[20px] px-4 py-2.5 text-right">
@@ -297,7 +297,7 @@ export function HowManyItem({ params, onBack, onReplace }) {
   return (
     <PosPage className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
-        <PosSecondaryButton type="button" onClick={onBack}>{t("items.back")}</PosSecondaryButton>
+        <PosBackButton onClick={onBack} />
         <h1 className="text-2xl font-extrabold">{t("setup.quantityTitle", { name: product?.name ?? "" })}</h1>
       </div>
       {product && <p className="text-lg font-bold">{t("sellItems.each", { amount: formatGhs(unitPricePesewas) })}</p>}

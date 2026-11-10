@@ -5,7 +5,7 @@ import { digitsToWholeNumber } from "../lib/parsePesewas.js";
 import { formatGhs } from "../lib/money.js";
 import { generateWhatsAppLink } from "../utils/whatsapp.js";
 import { isValidInstallmentPlanForBalance, localDateString } from "../utils/installments.js";
-import { PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
+import { PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
 import { getDebtDueLabel } from "./money.js";
 import { posText as t } from "./i18n.js";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
@@ -112,7 +112,7 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, o
   return (
     <PosPage className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
-        <PosSecondaryButton type="button" onClick={onBack} className="min-h-12 shrink-0 px-3">‹ Back</PosSecondaryButton>
+        <PosBackButton onClick={onBack} />
         <h1 className="min-w-0 text-2xl font-extrabold">How much do they owe?</h1>
       </div>
       <div className="flex min-h-12 items-center gap-3 rounded-2xl border-2 border-emerald-900 bg-green-100 px-3">

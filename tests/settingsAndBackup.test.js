@@ -156,7 +156,7 @@ test("47: Backup and restore is a row that opens 71; Back and Done both go back,
   const { view, calls } = await mountSettings();
   row(view.tree, "Backup and restore").props.onClick();
   assert.equal(calls.backup, 1);
-  nodes(view.tree, (node) => node.type === "button" && textOf(node).trim() === "Back")[0].props.onClick();
+  nodes(view.tree, (node) => node.type === "button" && textOf(node).trim() === "‹ Back")[0].props.onClick();
   const done = nodes(view.tree, (node) => node.type === "button" && textOf(node).trim() === "Done").at(-1);
   done.props.onClick();
   assert.equal(calls.back, 2);
@@ -169,7 +169,7 @@ test("47: Done is the last thing in the list (it scrolls with it) and the touch 
   const buttons = nodes(view.tree, (node) => node.type === "button");
   assert.equal(textOf(buttons.at(-1)).trim(), "Done");
   assert.doesNotMatch(buttons.at(-1).props.className, /mt-auto|fixed|sticky/);
-  for (const button of buttons) assert.match(button.props.className, /min-h-(12|14|16|\[(5\d|6\d|7\d)px\])|h-(12|14|16)\b/, `48px: ${textOf(button).slice(0, 30)}`);
+  for (const button of buttons) assert.match(button.props.className, /min-h-(12|14|16|\[(5\d|6\d|7\d)px\])|h-(12|14|16|\[(5\d|6\d)px\])/, `48px: ${textOf(button).slice(0, 30)}`);
   for (const input of switches(view.tree)) assert.match(input.props.className ?? "", /sr-only|h-6|h-7/);
 });
 
@@ -232,7 +232,7 @@ test("71: two cards, Save a backup (green Download backup) and Restore from a ba
   assert.match(download.props.className, /bg-\[#03543F\]/, "green");
   assert.match(choose.props.className, /bg-white/, "outlined");
   assert.match(choose.props.className, /border-2/);
-  nodes(view.tree, (node) => node.type === "button" && textOf(node).trim() === "Back")[0].props.onClick();
+  nodes(view.tree, (node) => node.type === "button" && textOf(node).trim() === "‹ Back")[0].props.onClick();
   assert.equal(calls.back, 1);
 });
 

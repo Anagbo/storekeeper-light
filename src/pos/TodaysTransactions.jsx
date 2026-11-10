@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { ArrowLeft } from "lucide-react";
 import { db } from "../db/db.js";
 import {
   formatGhs,
@@ -9,7 +8,7 @@ import {
 } from "../lib/money.js";
 import { posText as t } from "./i18n.js";
 import { getMoneyPeriodRange } from "./money.js";
-import { PosPage, PosStatusTag } from "./PosComponents.jsx";
+import { PosBackButton, PosPage, PosStatusTag } from "./PosComponents.jsx";
 import { createPosTransactionRows, filterPosTransactionRows } from "./transactionFeed.js";
 
 const FILTERS = ["all", "sold", "spent", "credit"];
@@ -153,9 +152,7 @@ export default function TodaysTransactions({ onBack }) {
   return (
     <PosPage className="flex flex-col gap-3 px-4 sm:px-6 lg:gap-5">
       <div className="flex items-center gap-2">
-        <button type="button" onClick={onBack} className="flex min-h-12 shrink-0 items-center gap-1 rounded-xl border-2 border-slate-900 px-3 text-base font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800">
-          <ArrowLeft size={20} aria-hidden="true" /> {t("transactions.back")}
-        </button>
+        <PosBackButton onClick={onBack} />
         <h1 className="min-w-0 text-xl font-extrabold sm:text-2xl">{t("transactions.title")}</h1>
       </div>
 

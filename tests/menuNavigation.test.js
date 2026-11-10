@@ -223,7 +223,7 @@ test("47 Done and 'Language' Done call the same handler as Back", async () => {
   ]) {
     let backs = 0;
     const view = render({ type, props: { ...props, onBack: () => { backs += 1; } } });
-    const exact = (label) => [...walk(view.tree)].find((node) => node.type === "button" && textOf(node).replace(/^‹s*/, "") === label);
+    const exact = (label) => [...walk(view.tree)].find((node) => node.type === "button" && textOf(node).replace(/^‹\s*/, "") === label);
     exact("Done").props.onClick();
     exact("Back").props.onClick();
     assert.equal(backs, 2, `${type.name}: Done and Back are the same`);

@@ -6,7 +6,7 @@ import { isAudioFeedbackEnabled, setAudioFeedbackEnabled } from "../utils/audioF
 import { posText as t } from "./i18n.js";
 import { getMerchantMomoSettings } from "./momoConfig.js";
 import { SHOW_PROFIT_PREFERENCE } from "./myMoneyReport.js";
-import { PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
+import { PosPage, PosPrimaryButton, PosBackButton } from "./PosComponents.jsx";
 
 const VOICE_LANGUAGES = [
   { value: "en-GB", label: "English (UK)" },
@@ -50,7 +50,7 @@ export function LanguageSettings({ onBack }) {
   return (
     <PosPage className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
-        <PosSecondaryButton type="button" onClick={onBack}>{t("items.back")}</PosSecondaryButton>
+        <PosBackButton onClick={onBack} />
         <h1 className="text-2xl font-extrabold">{t("language.title")}</h1>
       </div>
       <section className="rounded-2xl border-2 border-slate-500 p-4">
@@ -197,7 +197,7 @@ export function SettingsProfitTools({
   return (
     <PosPage className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
-        <PosSecondaryButton type="button" onClick={onBack} className="min-h-12 px-4 text-lg">{t("items.back")}</PosSecondaryButton>
+        <PosBackButton onClick={onBack} />
         <h1 className="text-2xl font-extrabold">{t("settings.title")}</h1>
       </div>
 

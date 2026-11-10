@@ -1,20 +1,18 @@
 import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { ArrowLeft, Check, Plus, Search, Trash2 } from "lucide-react";
+import { Check, Plus, Search, Trash2 } from "lucide-react";
 import { db } from "../db/db.js";
 import { createProduct, normalizeProductInput, removeProduct, updateProduct, addStarterProducts } from "../db/products.js";
 import { getAllStarterItems, groupCoreItemsByCategory, mergeStarterItems } from "../db/starterItems.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { posText as t } from "./i18n.js";
-import { PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
+import { PosBackButton, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 
 function ScreenHeader({ title, onBack }) {
   return (
     <div className="flex items-center gap-3">
-      <button type="button" onClick={onBack} className="min-h-12 shrink-0 rounded-xl border-2 border-slate-900 px-4 text-base font-extrabold">
-        <ArrowLeft size={20} className="mr-1 inline" aria-hidden="true" />{t("items.back")}
-      </button>
+      <PosBackButton onClick={onBack} />
       <h1 className="min-w-0 text-2xl font-extrabold">{title}</h1>
     </div>
   );

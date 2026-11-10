@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { exportDatabaseToJson, importDatabaseFromJson, validateBackupData } from "../utils/backup.js";
 import { posText as t } from "./i18n.js";
-import { PosPage, PosSecondaryButton } from "./PosComponents.jsx";
+import { PosPage, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
 
 // Screen 71 (brief 3.13): Backup and restore as a normal screen with Back. Layout only: the backup
 // and restore logic is the existing one in utils/backup.js. Restore asks first; a file that cannot
@@ -92,7 +92,7 @@ export default function BackupRestore({ onBack }) {
   return (
     <PosPage className="flex flex-col gap-[14px]">
       <div className="flex items-center gap-3">
-        <PosSecondaryButton type="button" onClick={onBack} disabled={busy} className="min-h-12 px-4 text-lg">{t("items.back")}</PosSecondaryButton>
+        <PosBackButton onClick={onBack} disabled={busy} />
         <h1 className="text-2xl font-extrabold">{t("backup.title")}</h1>
       </div>
       <p className={textClass}>{t("backup.intro")}</p>

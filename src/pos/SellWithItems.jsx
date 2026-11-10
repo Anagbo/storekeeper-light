@@ -4,7 +4,7 @@ import { Minus, Plus, Search, Trash2 } from "lucide-react";
 import { db } from "../db/db.js";
 import { formatGhs, formatGhsCompactAmount, toPesewas } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
-import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
+import { PosCard, PosPage, PosPrimaryButton, PosBackButton } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
 
 function useSellableProducts() {
@@ -200,7 +200,7 @@ export default function SellWithItems({ params = {}, onBack, onNavigate, onUpdat
 
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
       <div className="mt-auto mb-2 grid grid-cols-2 gap-2">
-        <PosSecondaryButton type="button" onClick={onBack}>{t("sellItems.back")}</PosSecondaryButton>
+        <PosBackButton onClick={onBack} />
         <PosPrimaryButton type="button" disabled={!cart.length || result === undefined} onClick={() => onNavigate("ReviewAndPay", { amountPesewas: total, saleItems: cart })}>
           {t("sellItems.next", { amount: formatGhs(total) })}
         </PosPrimaryButton>

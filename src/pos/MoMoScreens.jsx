@@ -5,7 +5,7 @@ import { formatGhs } from "../lib/money.js";
 import { secondsUntil } from "../lib/countdown.js";
 import { MOMO_CONFIG, PHONE_REQUEST_ENABLED, RECEIVING_NETWORKS, getMerchantMomoSettings, maskPhoneNumber, normalizeReceivingNumber, recordMomoLastUsed, saveReceivingNumber } from "./momoConfig.js";
 import { getMomoAmountPesewas } from "./paymentAmount.js";
-import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag } from "./PosComponents.jsx";
+import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, PosBackButton } from "./PosComponents.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
@@ -13,7 +13,7 @@ import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
 const NETWORKS = ["MTN", "Telecel", "AirtelTigo"];
 
 function BackTitle({ title, onBack }) {
-  return <div className="flex items-center gap-3"><PosSecondaryButton type="button" onClick={onBack} className="min-h-[52px] px-4 text-lg">‹ Back</PosSecondaryButton><h1 className="text-2xl font-extrabold">{title}</h1></div>;
+  return <div className="flex items-center gap-3"><PosBackButton onClick={onBack} /><h1 className="text-2xl font-extrabold">{title}</h1></div>;
 }
 
 // The tiles on 61 open the next screen; they are links, not toggles (E10: no aria-pressed).

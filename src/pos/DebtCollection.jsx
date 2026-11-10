@@ -18,7 +18,7 @@ import { normalizeCollectionAmountInput } from "./collectionSplit.js";
 import { getDebtDueLabel, getDebtDueLine } from "./money.js";
 import { getInstallmentsLeft } from "../utils/installments.js";
 import { posText as t } from "./i18n.js";
-import { PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, SplitIcons } from "./PosComponents.jsx";
+import { PosBackButton, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, SplitIcons } from "./PosComponents.jsx";
 import CustomerContactEditor from "./CustomerContactEditor.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
@@ -377,7 +377,7 @@ function CollectPayPartScreen({ params, onBack, onNavigate, onUpdateParams, onRe
       {debt === undefined ? <p role="status">{t("collect.loading")}</p> : !debt ? <CollectionError>{t("collect.notFound")}</CollectionError> : (
         <>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={onBack} className="min-h-[52px] shrink-0 rounded-[14px] border-2 border-slate-900 bg-white px-4 text-lg font-extrabold">‹ {t("collect.back")}</button>
+            <PosBackButton onClick={onBack} />
             <h1 className="text-2xl font-extrabold">{t("collect.collectFrom", { name: debt.customerName })}</h1>
           </div>
           <section className="rounded-[20px] border-2 border-slate-500 bg-white px-4 py-2 text-right">

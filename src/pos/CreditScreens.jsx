@@ -13,7 +13,7 @@ import { addDueCycles, dayAfter, getCreditBalanceAfterSale, getNextCycleDate, is
 import { generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { getCreditAmountOwedPesewas } from "./creditAmount.js";
 import CustomerContactEditor from "./CustomerContactEditor.jsx";
-import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
+import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
 import { buildCollectionReceiptLink } from "./collectionReceipt.js";
 import { buildCreditSaleReceipt, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
 import { posText as t } from "./i18n.js";
@@ -147,7 +147,7 @@ function WhoOwesYou({ params, onBack, onNavigate }) {
         <UserRoundPlus size={22} aria-hidden="true" /> {t("credit.newPerson")}
       </PosSecondaryButton>
       <div className="mt-auto grid grid-cols-2 gap-2">
-        <PosSecondaryButton type="button" onClick={onBack}>{t("credit.back")}</PosSecondaryButton>
+        <PosBackButton onClick={onBack} />
         <PosPrimaryButton type="button" disabled={!selectedCustomer || loading} onClick={continueToPaymentDate}>
           {t("credit.next")}
         </PosPrimaryButton>
@@ -225,7 +225,7 @@ function NewPerson({ params, onBack, onNavigate }) {
   return (
     <PosPage className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
-        <PosSecondaryButton type="button" onClick={onBack} className="min-h-12 px-3">{t("credit.back")}</PosSecondaryButton>
+        <PosBackButton onClick={onBack} />
         <h1 className="text-2xl font-extrabold">{t("credit.newPerson")}</h1>
       </div>
       <form onSubmit={continueWithNewCustomer} className="flex flex-1 flex-col gap-3">
@@ -323,7 +323,7 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onReturnToSplit, onSaveCr
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
       <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => void save(true)} />
       <div className="mt-auto grid grid-cols-2 gap-2">
-        <PosSecondaryButton type="button" onClick={onBack}>{t("credit.back")}</PosSecondaryButton>
+        <PosBackButton onClick={onBack} />
         <PosPrimaryButton type="button" disabled={saving} onClick={() => void save()}>{saving ? t("credit.saving") : t("credit.saveAmount", { name: customerName, amount: formatGhs(totalAfterSalePesewas) })}</PosPrimaryButton>
       </div>
       {largeAmount.dialog}
@@ -719,7 +719,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
       <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => void savePlan(true)} />
       <div className="mt-auto grid grid-cols-2 gap-2">
-        <PosSecondaryButton type="button" onClick={onBack}>{t("credit.back")}</PosSecondaryButton>
+        <PosBackButton onClick={onBack} />
         <PosPrimaryButton type="button" disabled={saving || !planReady} onClick={() => void savePlan()}>{saving ? t("credit.saving") : t("credit.savePlan")}</PosPrimaryButton>
       </div>
       {largeAmount.dialog}

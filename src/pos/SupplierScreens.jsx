@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { ArrowLeft, Phone, Wallet } from "lucide-react";
+import { Phone, Wallet } from "lucide-react";
 import { db } from "../db/db.js";
 import { formatDate } from "../lib/formatDate.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { localDateString } from "../utils/installments.js";
 import { getSupplierBalances, SUPPLIER_CATEGORIES } from "../utils/suppliers.js";
 import { posText as t } from "./i18n.js";
-import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag } from "./PosComponents.jsx";
+import { PosBackButton, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag } from "./PosComponents.jsx";
 
 const CATEGORY_LABELS = Object.freeze({
   stock: "expense.category.stock",
@@ -74,7 +74,7 @@ export function SpentMoney({ onBack, onNavigate, onSave }) {
   return (
     <PosPage className="flex max-w-2xl flex-col gap-3">
       <div className="flex items-center gap-3">
-        <button type="button" onClick={onBack} aria-label={t("expense.back")} className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border-2 border-slate-800"><ArrowLeft size={24} aria-hidden="true" /></button>
+        <PosBackButton onClick={onBack} />
         <h1 className="text-2xl font-extrabold">{t("expense.title")}</h1>
       </div>
       <AmountInput label={t("expense.amount")} value={amount} onChange={setAmount} />
@@ -159,7 +159,7 @@ export function StockOnCredit({ params, onBack, onSaveExpense }) {
   return (
     <PosPage className="flex max-w-2xl flex-col gap-3">
       <div className="flex items-center gap-3">
-        <button type="button" onClick={onBack} aria-label={t("expense.back")} className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border-2 border-slate-800"><ArrowLeft size={24} aria-hidden="true" /></button>
+        <PosBackButton onClick={onBack} />
         <h1 className="text-2xl font-extrabold">{t("expense.stockTitle")}</h1>
       </div>
       <PosCard className="space-y-2">
@@ -230,7 +230,7 @@ export function YouOweSuppliers({ onBack, onPay }) {
   return (
     <PosPage className="flex max-w-3xl flex-col gap-3">
       <div className="flex items-center gap-3">
-        <button type="button" onClick={onBack} aria-label={t("expense.back")} className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border-2 border-slate-800"><ArrowLeft size={24} aria-hidden="true" /></button>
+        <PosBackButton onClick={onBack} />
         <h1 className="text-2xl font-extrabold">{t("supplier.title")}</h1>
       </div>
       {!suppliers ? <p role="status">{t("supplier.loading")}</p> : suppliers.length === 0 ? (
