@@ -3,7 +3,9 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { Banknote, Phone, Plus, UserRound, UserRoundPen } from "lucide-react";
 import { db } from "../db/db.js";
 import { formatGhs } from "../lib/money.js";
-import { getDebtDueDate, groupUnpaidDebts, isDebtDueSoon, isDebtLate, loadUnpaidDebtPage, matchesOwedSearch } from "./owed.js";
+import { hasSearchText, squashSearchText } from "../lib/searchMatch.js";
+import { posText } from "./i18n.js";
+import { getDebtDueDate, groupUnpaidDebts, isDebtDueSoon, isDebtLate, loadAllUnpaidDebts, loadUnpaidDebtPage, matchesOwedSearch, OWED_PAGE_SIZE } from "./owed.js";
 import SearchField from "./SearchField.jsx";
 import { getDebtDueLabel } from "./money.js";
 import { PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag } from "./PosComponents.jsx";
@@ -55,14 +57,39 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
     if (firstPage.status !== "ready" || customerResult.status !== "ready") return undefined;
     return groupUnpaidDebts([...firstPage.debts, ...additionalDebts], customerResult.customers);
   }, [additionalDebts, customerResult, firstPage]);
-  // The filter and the search work together: the search narrows whatever the filter shows.
+  const matchesFilter = (customer) => filter === "all" ||
+    (filter === "late" ? isDebtLate(customer.debt) : isDebtDueSoon(customer.debt));
+  // With text in the search field every open debt is searched (the phone's own database, no
+  // network), not only the pages loaded so far. The filter and the search work together; the
+  // results are paged like the list. Clearing the field returns to the normal list.
+  const searching = hasSearchText(query);
+  const searchSource = useLiveQuery(async () => {
+    if (!searching) return null;
+    try {
+      return { status: "ready", debts: await loadAllUnpaidDebts() };
+    } catch (error) {
+      console.error("Could not search outstanding debts.", error);
+      return { status: "error", debts: [] };
+    }
+  }, [searching, reloadKey], null);
+  const searchKey = `${filter}|${squashSearchText(query)}`;
+  const [searchPaging, setSearchPaging] = useState({ key: "", extra: 0 });
+  const searchLimit = OWED_PAGE_SIZE + (searchPaging.key === searchKey ? searchPaging.extra : 0);
+  const searchMatches = useMemo(() => {
+    if (!searching || searchSource?.status !== "ready" || customerResult.status !== "ready") return [];
+    return groupUnpaidDebts(searchSource.debts, customerResult.customers)
+      .filter((customer) => matchesOwedSearch(customer, query) && matchesFilter(customer));
+  }, [searching, searchSource, customerResult, filter, query]);
+  const searchLoading = searching && (!searchSource || customerResult.status === "loading");
+  const searchFailed = searching && (searchSource?.status === "error" || customerResult.status === "error");
   const visibleCustomers = useMemo(() => {
+    if (searching) return searchMatches.slice(0, searchLimit);
     if (!data) return [];
-    return data.filter((customer) => matchesOwedSearch(customer, query) && (
-      filter === "all" ||
-      (filter === "late" ? isDebtLate(customer.debt) : isDebtDueSoon(customer.debt))
-    ));
-  }, [data, filter, query]);
+    return data.filter(matchesFilter);
+  }, [searching, searchMatches, searchLimit, data, filter]);
+  const totalPesewas = (searching ? searchMatches : visibleCustomers).reduce((total, customer) => total + customer.balancePesewas, 0);
+  const isLoading = searching ? searchLoading : firstPage.status === "loading" || customerResult.status === "loading";
+  const hasFailed = searching ? searchFailed : firstPage.status === "error" || customerResult.status === "error";
 
   async function loadMore() {
     if (loadingMore || !hasMore || !nextCursor) return;
@@ -81,7 +108,13 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
     }
   }
 
-  const showMoreControl = hasMore && (
+  const showMoreControl = searching ? searchMatches.length > searchLimit && (
+    <div className="mt-3 flex w-full flex-col gap-2">
+      <PosSecondaryButton type="button" onClick={() => setSearchPaging({ key: searchKey, extra: (searchPaging.key === searchKey ? searchPaging.extra : 0) + OWED_PAGE_SIZE })} className="w-full">
+        Show more
+      </PosSecondaryButton>
+    </div>
+  ) : hasMore && (
     <div className="mt-3 flex w-full flex-col gap-2">
       {loadError && <p role="alert" className="text-sm font-semibold text-rose-900">{loadError}</p>}
       <PosSecondaryButton type="button" onClick={loadMore} disabled={loadingMore} className="w-full">
@@ -131,7 +164,7 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
         ))}
       </div>
       <SearchField value={query} onChange={setQuery} />
-      {firstPage.status === "loading" || customerResult.status === "loading" ? (
+      {isLoading ? (
         <section role="status" aria-label="Loading outstanding balances" className="flex flex-col gap-4">
           <div className="grid grid-cols-3 gap-2">
             {[1, 2, 3].map((filterButton) => <div key={filterButton} className="h-14 animate-pulse rounded-2xl bg-slate-200" />)}
@@ -144,7 +177,7 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
             </div>
           </div>
         </section>
-      ) : firstPage.status === "error" || customerResult.status === "error" ? (
+      ) : hasFailed ? (
         <section role="alert" className="flex flex-col items-center gap-3 rounded-2xl border-2 border-rose-300 bg-rose-50 p-5 text-center">
           <p className="font-bold text-rose-950">Outstanding balances could not be loaded. Try again.</p>
           <PosSecondaryButton type="button" onClick={() => {
@@ -157,8 +190,12 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
       ) : visibleCustomers.length === 0 ? (
         <section className="rounded-2xl border-2 border-slate-300 p-6 text-center">
           <UserRound className="mx-auto text-slate-400" size={34} aria-hidden="true" />
-          <p className="mt-3 font-bold">No one owes you right now.</p>
-          <p className="mt-1 text-sm text-slate-700">{filter === "all" ? "Record a credit sale to see an outstanding balance here." : `No ${filter === "late" ? "late" : "due soon"} debts right now.`}</p>
+          {searching ? <p className="mt-3 font-bold">{posText("owed.noSearchMatches")}</p> : (
+            <>
+              <p className="mt-3 font-bold">No one owes you right now.</p>
+              <p className="mt-1 text-sm text-slate-700">{filter === "all" ? "Record a credit sale to see an outstanding balance here." : `No ${filter === "late" ? "late" : "due soon"} debts right now.`}</p>
+            </>
+          )}
           {showMoreControl}
         </section>
       ) : (
@@ -168,7 +205,7 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
             <h1 className="text-xl font-extrabold">People who owe you</h1>
           </div>
           <p className="mb-4 text-4xl font-extrabold text-rose-900">
-            {formatGhs(visibleCustomers.reduce((total, customer) => total + customer.balancePesewas, 0))}
+            {formatGhs(totalPesewas)}
           </p>
           <div className="flex flex-col gap-3" role="list">
           {visibleCustomers.map((customer) => {

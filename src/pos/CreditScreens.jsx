@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Banknote, Check, Plus, Smartphone, UserRoundPlus } from "lucide-react";
 import SearchField from "./SearchField.jsx";
+import { hasSearchText, matchesSearch } from "../lib/searchMatch.js";
 import { db } from "../db/db.js";
 import { isValidGhanaCardNumber, normalizeGhanaCardNumber } from "../lib/ghanaCardNumber.js";
 import { formatDate } from "../lib/formatDate.js";
@@ -109,11 +110,9 @@ function WhoOwesYou({ params, onBack, onNavigate }) {
   }, []);
 
   const filteredCustomers = useMemo(() => {
-    const cleanQuery = query.trim().toLowerCase();
-    const matches = cleanQuery
-      ? customers.filter((customer) =>
-        customer.name.toLowerCase().includes(cleanQuery) || (customer.phone ?? "").includes(cleanQuery)
-      )
+    // The same rule as 32: case and spaces ignored, name or phone.
+    const matches = hasSearchText(query)
+      ? customers.filter((customer) => matchesSearch(query, customer.name, customer.phone))
       : customers.filter((customer) => customer.totalDebtPesewas > 0).slice(0, 5);
     return matches;
   }, [customers, query]);
@@ -128,7 +127,7 @@ function WhoOwesYou({ params, onBack, onNavigate }) {
       <h1 className="text-2xl font-extrabold">{t("credit.whoOwes")}</h1>
       {!params.manualDebt && <CreditAmount amountPesewas={amountOwedPesewas} />}
       <SearchField value={query} onChange={setQuery} />
-      <h2 className="text-lg font-extrabold text-slate-800">{query ? t("credit.searchResults") : t("credit.topDebtors")}</h2>
+      <h2 className="text-lg font-extrabold text-slate-800">{hasSearchText(query) ? t("credit.searchResults") : t("credit.topDebtors")}</h2>
       {loading ? <p role="status">{t("credit.loading")}</p> : (
         <div className="flex flex-col gap-2">
           {filteredCustomers.map((customer) => (
@@ -139,7 +138,7 @@ function WhoOwesYou({ params, onBack, onNavigate }) {
               onSelect={() => setSelectedCustomer(customer)}
             />
           ))}
-          {!filteredCustomers.length && <p className="rounded-xl bg-slate-100 p-3">{query ? t("credit.noMatches") : t("credit.noDebtors")}</p>}
+          {!filteredCustomers.length && <p className="rounded-xl bg-slate-100 p-3">{hasSearchText(query) ? t("credit.noMatches") : t("credit.noDebtors")}</p>}
         </div>
       )}
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}

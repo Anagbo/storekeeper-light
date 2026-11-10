@@ -7,8 +7,8 @@ export default function SearchField({ value, onChange }) {
   return (
     <label className="flex min-h-14 items-center gap-2 rounded-2xl border-[3px] border-slate-500 px-3">
       <Search size={24} aria-hidden="true" />
-      <span className="sr-only">{t("credit.search")}</span>
       <input
+        aria-label={t("credit.searchLabel")}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={t("credit.search")}

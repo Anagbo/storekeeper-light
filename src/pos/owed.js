@@ -1,5 +1,6 @@
 import Dexie from "dexie";
 import { db } from "../db/db.js";
+import { matchesSearch } from "../lib/searchMatch.js";
 
 export const OWED_PAGE_SIZE = 25;
 
@@ -11,16 +12,17 @@ function getDebtBalance(debt) {
   return debt.amountPesewas ?? debt.total_owed ?? 0;
 }
 
-// Search on 32: case and spaces do not matter ("kofi b" finds "Kofi Boateng", "020 123" finds
-// 0201234567). Name or phone; an empty search matches everyone.
-function squashSearchText(value) {
-  return String(value ?? "").toLowerCase().replace(/\s+/g, "");
+// Search on 32 (the same rule as 17, src/lib/searchMatch.js): name or phone.
+export function matchesOwedSearch(customer, query) {
+  return matchesSearch(query, customer?.customerName, customer?.phone);
 }
 
-export function matchesOwedSearch(customer, query) {
-  const wanted = squashSearchText(query);
-  if (!wanted) return true;
-  return squashSearchText(customer?.customerName).includes(wanted) || squashSearchText(customer?.phone).includes(wanted);
+// Every open debt, largest balance first (the order of the normal list). Used while the search
+// field has text, so a person on a later page is found. Reads the phone's own database only.
+export async function loadAllUnpaidDebts(database = db) {
+  const debts = await database.debts.where("status").equals("unpaid").toArray();
+  return debts.sort((left, right) => getDebtBalance(right) - getDebtBalance(left) ||
+    String(right.id).localeCompare(String(left.id)));
 }
 
 export function getDebtDueDate(debt) {
