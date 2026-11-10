@@ -77,12 +77,13 @@ export default function BackupRestore({ onBack }) {
     reset();
     try {
       const result = await importDatabaseFromJson(pending.file);
-      // The restore returns the records in the file and how many saved rows were kept as they were.
+      // Only what the restore returns exactly: the records in the file and how many saved rows were kept.
       const kept = Number.isSafeInteger(result?.skippedLedgerRows) ? result.skippedLedgerRows : 0;
-      const inFile = Object.entries(result ?? {}).reduce((sum, [key, value]) => sum + (key !== "skippedLedgerRows" && Number.isSafeInteger(value) ? value : 0), 0);
-      const added = Math.max(0, inFile - kept);
+      const total = Object.entries(result ?? {}).reduce((sum, [key, value]) => sum + (key !== "skippedLedgerRows" && Number.isSafeInteger(value) ? value : 0), 0);
+      const parts = [t("backup.finished"), total === 1 ? t("backup.inFileOne") : t("backup.inFileMany", { total })];
+      if (kept > 0) parts.push(kept === 1 ? t("backup.keptOne") : t("backup.keptMany", { kept }));
       setPending(null);
-      setMessage(t("backup.finished", { added, kept }));
+      setMessage(parts.join(" "));
     } catch (restoreError) {
       console.error("Could not restore the local database.", restoreError);
       setPending(null);

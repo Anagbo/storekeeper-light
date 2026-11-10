@@ -288,16 +288,27 @@ test("71: Restore restores, keeps what is on the phone, and says Restore finishe
   assert.equal((await db.transactions.get("sale-2")).amountPesewas, 2500);
 });
 
-test("71: after Restore the message says how many records were added or updated and how many were kept", async () => {
-  await db.transactions.add(sale);
-  const { view } = await mountBackup();
-  const incoming = { ...sale, id: "sale-2", amountPesewas: 2500, total_amount: 2500 };
-  await chooseFile(view, fileOf(validBackup({ transactions: [sale, incoming] })));
-  button(view.tree, "Restore").props.onClick();
-  const expected = "Restore finished. 1 records added or updated. 1 records already on this phone were kept.";
-  await waitFor(() => { view.rerender(); return textOf(view.tree).includes("Restore finished."); }, "Restore finished.");
-  assert.ok(textOf(view.tree).includes(expected), textOf(view.tree));
-  assert.doesNotMatch(textOf(view.tree), /\{a\}|\{k\}|undefined|NaN/);
+test("71: after Restore the message gives the records in the file and how many saved rows were kept (singular and plural)", async () => {
+  const sales = (n) => Array.from({ length: n }, (_, i) => ({ ...sale, id: `sale-${i + 1}` }));
+  const cases = [
+    { inFile: 2, existing: 1, expected: "Restore finished. 2 records in the file. 1 saved sale, payment or debt was already on this phone and was kept." },
+    { inFile: 3, existing: 2, expected: "Restore finished. 3 records in the file. 2 saved sales, payments and debts were already on this phone and were kept." },
+    { inFile: 1, existing: 1, expected: "Restore finished. 1 record in the file. 1 saved sale, payment or debt was already on this phone and was kept." },
+    { inFile: 1, existing: 0, expected: "Restore finished. 1 record in the file." },
+    { inFile: 4, existing: 0, expected: "Restore finished. 4 records in the file." }
+  ];
+  for (const { inFile, existing, expected } of cases) {
+    await db.transactions.clear();
+    if (existing) await db.transactions.bulkAdd(sales(existing));
+    const { view } = await mountBackup();
+    await chooseFile(view, fileOf(validBackup({ transactions: sales(inFile) })));
+    button(view.tree, "Restore").props.onClick();
+    await waitFor(() => { view.rerender(); return textOf(view.tree).includes("Restore finished."); }, "Restore finished.");
+    const shown = textOf(view.tree);
+    assert.ok(shown.includes(expected), `expected "${expected}" in "${shown}"`);
+    assert.doesNotMatch(shown, /added or updated|\{\w+\}|undefined|NaN/);
+    if (!existing) assert.doesNotMatch(shown, /already on this phone/);
+  }
 });
 
 test("71: a bad file shows the safe message and changes nothing (never raw error text)", async () => {
