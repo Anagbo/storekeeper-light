@@ -115,7 +115,7 @@ export default function SplitPayment({
         return (
           <div key={part.paymentMethod} className="flex min-h-16 items-center gap-3 rounded-2xl border-2 border-slate-500 bg-white px-3">
             <Icon size={28} className="text-emerald-900" aria-hidden="true" />
-            <button type="button" disabled={busy || part.paymentMethod === "owe" || isLockedMomoRow(part)} onClick={() => startEdit(part)} className="flex-1 text-left text-xl font-extrabold disabled:opacity-50">
+            <button type="button" disabled={busy || part.paymentMethod === "owe" || isLockedMomoRow(part)} onClick={() => startEdit(part)} className={`flex-1 text-left text-xl font-extrabold${busy ? " opacity-50" : ""}`}>
               {name}
               {detail && <span className="block text-sm font-semibold text-slate-700">{detail}</span>}
             </button>
