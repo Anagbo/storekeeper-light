@@ -14,6 +14,7 @@ import { generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.
 import { getCreditAmountOwedPesewas } from "./creditAmount.js";
 import CustomerContactEditor from "./CustomerContactEditor.jsx";
 import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
+import { shortSaveName } from "./saveLabel.js";
 import { buildCollectionReceiptLink } from "./collectionReceipt.js";
 import { buildCreditSaleReceipt, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
 import { posText as t } from "./i18n.js";
@@ -333,12 +334,6 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onReturnToSplit, onSaveCr
 
 // What the merchant sees when saving the plan fails: the known causes name what to fix; anything
 // else keeps the general message.
-// A long customer name would wrap the Save button; keep the name short on the button only.
-export function shortSaveName(name = "") {
-  const clean = String(name).trim();
-  return clean.length > 10 ? clean.slice(0, 9).trimEnd() + "…" : clean;
-}
-
 function describePlanSaveError(saveError, maxCreditPesewas) {
   if (saveError?.message === "Choose a valid next installment due date.") return t("credit.invalidDueDate");
   if (saveError?.code === PLAN_ERROR.eachTimeTooHigh) return t("credit.eachTimeTooHigh");
