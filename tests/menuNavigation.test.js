@@ -72,7 +72,7 @@ test("the menu adds only one history entry however often it is shown", async () 
   app.navigate(POS_ROUTES.MyItems);
   app.openMenu();                                  // and on My items
   assert.equal(app.menuEntries(), 1);
-  app.navigate(POS_ROUTES.LanguageSettings);
+  app.navigate(POS_ROUTES.MyMoney);
   app.navigate(POS_ROUTES.Menu);                   // any navigate to Menu is the same
   assert.equal(app.menuEntries(), 1);
   assert.equal(app.state.history.length, 1, "only the original screen is below the menu");
@@ -215,11 +215,10 @@ test("Menu: Close menu calls onClose (not Home); the Home item still goes to Hom
   assert.deepEqual(navigations, [["Home"]]);
 });
 
-test("47 Done and 'Language' Done call the same handler as Back", async () => {
-  const { SettingsProfitTools, LanguageSettings } = await loadJsx("src/pos/SettingsScreens.jsx");
+test("47 Done calls the same handler as Back", async () => {
+  const { SettingsProfitTools } = await loadJsx("src/pos/SettingsScreens.jsx");
   for (const [type, props] of [
-    [SettingsProfitTools, { shopName: "My shop", onShopNameChange() {}, onOpenBackup() {}, onOpenMomoSettings() {}, onOpenPlan() {}, onOpenSubscription() {} }],
-    [LanguageSettings, {}]
+    [SettingsProfitTools, { shopName: "My shop", onShopNameChange() {}, onOpenBackup() {}, onOpenMomoSettings() {}, onOpenPlan() {}, onOpenSubscription() {} }]
   ]) {
     let backs = 0;
     const view = render({ type, props: { ...props, onBack: () => { backs += 1; } } });
@@ -233,14 +232,14 @@ test("47 Done and 'Language' Done call the same handler as Back", async () => {
 test("PosApp opens and closes the menu through the route functions and gives Menu onClose", () => {
   assert.match(appSource, /openMenuState/);
   assert.match(appSource, /closeMenuState/);
-  const open = appSource.slice(appSource.indexOf("function openMenu()"), appSource.indexOf("function openLegacyEntry"));
+  const open = appSource.slice(appSource.indexOf("function openMenu()"), appSource.indexOf("function closeMenu"));
   assert.doesNotMatch(open, /switchTab\(POS_ROUTES\.Home\)/, "the header Menu button never goes Home");
   assert.match(open, /openMenuState/);
   assert.match(appSource, /<Menu onNavigate=\{navigate\} onClose=\{closeMenu\} \/>/);
   const nav = appSource.slice(appSource.indexOf("function navigate("), appSource.indexOf("function switchTab"));
   assert.match(nav, /POS_ROUTES\.Menu/, "navigate to Menu goes through openMenuState too");
   assert.match(appSource, /<SettingsProfitTools[\s\S]*?onBack=\{navigateBack\}/);
-  assert.match(appSource, /<LanguageSettings onBack=\{navigateBack\} \/>/);
+  assert.doesNotMatch(appSource, /LanguageSettings/, "the Language screen is removed (voice entry was dropped)");
 });
 
 test("the Menu close link in POS_LINKS returns through history (the contract's BACK)", () => {

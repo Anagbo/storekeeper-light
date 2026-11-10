@@ -7,7 +7,6 @@ import { after, test } from "node:test";
 import { toPesewas } from "../src/lib/money.js";
 import { normalizeProductInput } from "../src/db/products.js";
 import { prepareAddDebt } from "../src/utils/addDebt.js";
-import { parseSpokenSale } from "../src/lib/saleParser.js";
 import { db } from "../src/db/db.js";
 import { findButton, loadJsx, render, setLiveQuery, textOf, walk } from "./helpers/renderJsx.js";
 
@@ -198,7 +197,7 @@ test("setup: an item price refuses 1e2 and 0x10; stored cedis prices read exactl
   assert.equal(toPesewas(normalizeProductInput({ name: "Rice", price: "4.35" }).default_price), 435);
 });
 
-// ---- legacy screens and the sale text parser ---------------------------------------------------------------------
+// ---- legacy screens ---------------------------------------------------------------------------------------------
 
 test("legacy add-debt: the amount and the amount each time refuse 1e2 and 0x10", () => {
   const base = { customerName: "Ama", ghanaCardNumber: "" };
@@ -209,20 +208,14 @@ test("legacy add-debt: the amount and the amount each time refuse 1e2 and 0x10",
   assert.equal(prepareAddDebt({ ...base, amount: "12.50" }).amountPesewas, 1250);
 });
 
-test("legacy DebtLedger and QuickSaleModal convert typed amounts only with toPesewas", () => {
-  for (const file of ["src/components/DebtLedger.jsx", "src/components/QuickSaleModal.jsx"]) {
+test("legacy DebtLedger converts typed amounts only with toPesewas", () => {
+  for (const file of ["src/components/DebtLedger.jsx"]) {
     const code = readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
     assert.match(code, /toPesewas\(/, file);
     assert.doesNotMatch(code, /parseFloat|parseInt|\* ?100\b/, file);
   }
   const ledger = readFileSync(new URL("../src/components/DebtLedger.jsx", import.meta.url), "utf8");
   assert.doesNotMatch(ledger, /amountPesewas \/ 100 :/, "paying in full passes whole pesewas, not a divided number");
-});
-
-test("the sale text parser moves the decimal point by text, not by dividing", () => {
-  assert.equal(parseSpokenSale("sold bread for 250 pesewas").price, "2.50");
-  assert.equal(parseSpokenSale("sold bread for 5 pesewas").price, "0.05");
-  assert.equal(parseSpokenSale("sold bread for GH₵12.50").price, "12.50");
 });
 
 // ---- nothing in src converts a typed amount any other way ------------------------------------------------------------
@@ -247,8 +240,7 @@ const NUMBER_ALLOWED = [
   ["pos/momoConfig.js", "Number(text)", "fee from the build environment, checked as digits first"],
   ["pos/planPayments.js", "Number(payment.createdAt)", "a timestamp"],
   ["pos/receiptTemplates.js", "Number(year)", "digits of an ISO date"],
-  ["pos/reminderLabel.js", "Number(lastReminderAt)", "a timestamp"],
-  ["components/QuickSaleModal.jsx", "Number(quantity)", "a quantity, not money"]
+  ["pos/reminderLabel.js", "Number(lastReminderAt)", "a timestamp"]
 ];
 // Every "* 100" in src that is not the parser: percentages.
 const TIMES_100_ALLOWED = [

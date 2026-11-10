@@ -1,5 +1,4 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import QuickSaleModal from "../components/QuickSaleModal.jsx";
 import { recordCashSale } from "../db/sales.js";
 import { setPreference, shouldShowPosSetup } from "../db/preferences.js";
 import { useSync } from "../hooks/useSync.js";
@@ -41,7 +40,7 @@ import ReviewAndPay from "./ReviewAndPay.jsx";
 import InstallmentSplitPayment from "./InstallmentSplitPayment.jsx";
 import { HowDoYouWantToSell, HowManyItem, HowMuchIsItem, MoreCategories, WhatDoYouSell } from "./SetupScreens.jsx";
 import BackupRestore from "./BackupRestore.jsx";
-import { LanguageSettings, SettingsProfitTools } from "./SettingsScreens.jsx";
+import { SettingsProfitTools } from "./SettingsScreens.jsx";
 import PeopleWhoOweYou from "./OwedScreens.jsx";
 import { ManualDebtAmount, ManualDebtSaved } from "./ManualDebtScreens.jsx";
 import { MoMoChoice, MoMoCode, MoMoDirect, MoMoNotCompleted, MoMoPayment, MoMoSetup, MoMoWaiting, PaymentSettings } from "./MoMoScreens.jsx";
@@ -88,8 +87,6 @@ export default function PosApp() {
   const [savedShopName, setSavedShopName] = useState(getRawSavedShopName);
   const [setupCategories, setSetupCategories] = useState([]);
   const [setupReady, setSetupReady] = useState(false);
-  const [quickEntryOpen, setQuickEntryOpen] = useState(false);
-  const [entryType, setEntryType] = useState("expense");
   const [notice, setNotice] = useState("");
   const sync = useSync();
   const {
@@ -199,11 +196,6 @@ export default function PosApp() {
   function closeMenu() {
     setRouteState((current) => closeMenuState(current));
     setNotice("");
-  }
-
-  function openLegacyEntry(type) {
-    setEntryType(type);
-    setQuickEntryOpen(true);
   }
 
   // D11: attemptId comes from the screen (useSaveAttempt) and is passed to every writer.
@@ -351,7 +343,6 @@ export default function PosApp() {
   const content = route === POS_ROUTES.Home ? (
     <Home
       onNavigate={navigate}
-      onLegacyEntry={openLegacyEntry}
       notice={notice}
     />
   ) : route === POS_ROUTES.Menu ? (
@@ -372,8 +363,6 @@ export default function PosApp() {
     <CollectSplitPayment params={routeState.params} onBack={navigateBack} onNavigate={navigate} onUpdateParams={updateCurrentParams} onRecordCollection={saveDebtCollection} />
   ) : route === POS_ROUTES.SplitPayment ? (
     <SaleSplitPayment params={routeState.params} onBack={navigateBack} onNavigate={navigate} onUpdateParams={updateCurrentParams} onSaveSale={saveSplitSale} />
-  ) : route === POS_ROUTES.LanguageSettings ? (
-    <LanguageSettings onBack={navigateBack} />
   ) : route === POS_ROUTES.SettingsProfitTools ? (
     <SettingsProfitTools
       shopName={shopName}
@@ -479,7 +468,7 @@ export default function PosApp() {
     <TodaysTransactions onBack={() => switchTab(POS_ROUTES.Home)} />
   ) : isCollectSheet ? (
     <>
-      <Home onNavigate={navigate} onLegacyEntry={openLegacyEntry} notice={notice} />
+      <Home onNavigate={navigate} notice={notice} />
       <CollectPayment
         params={routeState.params}
         onClose={() => switchTab(POS_ROUTES.Home)}
@@ -600,14 +589,6 @@ export default function PosApp() {
         </div>
       </div>
       {showsBottomBar(route) && <PosBottomNav current={route} onNavigate={switchTab} />}
-
-      {quickEntryOpen && (
-        <QuickSaleModal
-          type={entryType}
-          onClose={() => setQuickEntryOpen(false)}
-          onSaved={() => setNotice(t("sell.savedNotice"))}
-        />
-      )}
     </div>
   );
 }

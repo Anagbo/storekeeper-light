@@ -1,75 +1,11 @@
 import { useEffect, useState } from "react";
-import { Check, CreditCard, Database, Globe2, Smartphone } from "lucide-react";
+import { CreditCard, Database, Smartphone } from "lucide-react";
 import { getPreference, setPreference } from "../db/preferences.js";
 import { formatDate } from "../lib/formatDate.js";
-import { isAudioFeedbackEnabled, setAudioFeedbackEnabled } from "../utils/audioFeedback.js";
 import { posText as t } from "./i18n.js";
 import { getMerchantMomoSettings } from "./momoConfig.js";
 import { SHOW_PROFIT_PREFERENCE } from "./myMoneyReport.js";
 import { PosPage, PosPrimaryButton, PosBackButton } from "./PosComponents.jsx";
-
-const VOICE_LANGUAGES = [
-  { value: "en-GB", label: "English (UK)" },
-  { value: "en-GH", label: "English (Ghana)" },
-  { value: "en-US", label: "English (US)" }
-];
-
-export function LanguageSettings({ onBack }) {
-  const [voiceLanguage, setVoiceLanguage] = useState("en-GB");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    getPreference("voiceInputLanguage", "en-GB")
-      .then((value) => {
-        if (active && VOICE_LANGUAGES.some((language) => language.value === value)) setVoiceLanguage(value);
-      })
-      .catch((loadError) => {
-        console.error("Could not load language preferences.", loadError);
-        if (active) setError(t("language.loadFailed"));
-      })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, []);
-
-  async function saveLanguage(value) {
-    setVoiceLanguage(value);
-    setError("");
-    setSaved(false);
-    try {
-      await setPreference("voiceInputLanguage", value);
-      setSaved(true);
-    } catch (saveError) {
-      console.error("Could not save the voice input language.", saveError);
-      setError(t("language.saveFailed"));
-    }
-  }
-
-  return (
-    <PosPage className="flex flex-col gap-3">
-      <div className="flex items-center gap-3">
-        <PosBackButton onClick={onBack} />
-        <h1 className="text-2xl font-extrabold">{t("language.title")}</h1>
-      </div>
-      <section className="rounded-2xl border-2 border-slate-500 p-4">
-        <h2 className="font-extrabold">{t("language.appLanguage")}</h2>
-        <p className="mt-1 text-slate-700">{t("language.englishOnly")}</p>
-        <p className="mt-2 font-bold">{t("language.english")}</p>
-      </section>
-      <label className="block rounded-2xl border-2 border-slate-500 p-4">
-        <span className="mb-1 flex items-center gap-2 font-extrabold"><Globe2 size={20} aria-hidden="true" />{t("language.voiceLanguage")}</span>
-        <select disabled={loading} value={voiceLanguage} onChange={(event) => void saveLanguage(event.target.value)} className="min-h-12 w-full rounded-xl border-2 border-slate-500 bg-white px-3 font-semibold">
-          {VOICE_LANGUAGES.map((language) => <option key={language.value} value={language.value}>{language.label}</option>)}
-        </select>
-      </label>
-      {saved && <p role="status" className="flex items-center gap-2 text-emerald-900"><Check size={18} aria-hidden="true" />{t("language.saved")}</p>}
-      {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
-      <PosPrimaryButton type="button" onClick={onBack} className="mt-auto">{t("credit.done")}</PosPrimaryButton>
-    </PosPage>
-  );
-}
 
 function SettingsGroup({ id, title, children }) {
   return (
@@ -132,7 +68,6 @@ export function SettingsProfitTools({
   const startingName = savedShopName ?? shopName;
   const [savedName, setSavedName] = useState(startingName);
   const [draft, setDraft] = useState(startingName);
-  const [audioEnabled, setAudioEnabled] = useState(isAudioFeedbackEnabled);
   // One switch hides the Estimated profit card on My money (33). It is on by default.
   const [showProfit, setShowProfit] = useState(true);
   const [momoSetUp, setMomoSetUp] = useState(false);
@@ -220,7 +155,6 @@ export function SettingsProfitTools({
       {saved && <p role="status" className="px-1 text-base font-bold text-emerald-900">{t("settings.saved")}</p>}
 
       <SettingsGroup id="settings-preferences" title={t("settings.groupPreferences")}>
-        <SwitchRow id="settings-sound" label={t("settings.soundFeedback")} helper={t("settings.soundHelper")} checked={audioEnabled} onChange={(event) => setAudioEnabled(setAudioFeedbackEnabled(event.target.checked))} />
         <SwitchRow id="settings-profit" label={t("settings.showEstimatedProfit")} helper={t("settings.showProfitHelper")} checked={showProfit} onChange={(event) => void changeShowProfit(event.target.checked)} />
       </SettingsGroup>
 

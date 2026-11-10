@@ -85,36 +85,28 @@ test("47: Shop name has Save beside it, disabled until the name changed and is n
   assert.deepEqual(calls.names, ["Ama Stores"], "the existing shop name save is unchanged");
 });
 
-test("47: Sound and Show estimated profit are switches with one helper line each", async () => {
+test("47: Show estimated profit is the only switch, with one helper line; no Sound and voice feedback switch", async () => {
   const { view } = await mountSettings();
   const list = switches(view.tree);
-  assert.equal(list.length, 2, "exactly two switches");
-  assert.deepEqual(list.map((node) => node.props["aria-label"] ?? null).filter(Boolean).length, 0, "named by their visible label");
+  assert.equal(list.length, 1, "exactly one switch");
+  assert.deepEqual(list.map((node) => node.props["aria-label"] ?? null).filter(Boolean).length, 0, "named by its visible label");
   const text = textOf(view.tree);
-  assert.match(text, /Sound and voice feedback/);
+  assert.doesNotMatch(text, /Sound and voice feedback/, "no switch that does nothing (decision 10 Nov 2026)");
+  assert.doesNotMatch(text, /Play confirmation sounds and spoken messages/);
   assert.match(text, /Show estimated profit/);
-  assert.match(text, /Play confirmation sounds and spoken messages/);
   assert.match(text, /Shows or hides the Estimated profit card on My money/);
   assert.doesNotMatch(text, /Track cost price/);
   for (const node of list) assert.equal(node.props.type, "checkbox");
 });
 
-test("47: the switches toggle (sound at once, profit saved)", async () => {
+test("47: the profit switch toggles and is saved", async () => {
   const { view } = await mountSettings();
-  const [sound, profit] = switches(view.tree);
-  assert.equal(sound.props.checked, true);
-  assert.equal(sound.props["aria-checked"], true);
-  sound.props.onChange({ target: { checked: false } });
-  view.rerender();
-  assert.equal(switches(view.tree)[0].props.checked, false);
-  assert.equal(switches(view.tree)[0].props["aria-checked"], false);
-  switches(view.tree)[0].props.onChange({ target: { checked: true } });
-  view.rerender();
-  assert.equal(switches(view.tree)[0].props.checked, true);
+  const [profit] = switches(view.tree);
   assert.equal(profit.props.checked, true);
+  assert.equal(profit.props["aria-checked"], true);
   profit.props.onChange({ target: { checked: false } });
   view.rerender();
-  assert.equal(switches(view.tree)[1].props.checked, false);
+  assert.equal(switches(view.tree)[0].props.checked, false);
   await waitFor(async () => (await db.settings.get("showEstimatedProfit"))?.value === false, "the profit switch to be saved");
 });
 

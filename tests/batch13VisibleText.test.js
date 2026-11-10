@@ -36,7 +36,7 @@ test("22: the money card uses the owner's headings (Money left today, Money in, 
   const { default: Home } = await loadJsx("src/pos/Home.jsx");
   setLiveQuery(() => ({ totals: { cashLeft: 0, moneyIn: 0, moneySpent: 0 }, debtPesewas: 0, urgentDebt: null }));
   try {
-    const view = render({ type: Home, props: { onNavigate() {}, onLegacyEntry() {} } });
+    const view = render({ type: Home, props: { onNavigate() {} } });
     const card = [...(function* walkAll(node) {
       if (Array.isArray(node)) { for (const child of node) yield* walkAll(child); return; }
       if (!node || typeof node !== "object") return;

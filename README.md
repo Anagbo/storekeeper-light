@@ -4,15 +4,12 @@ An offline-first React PWA for recording sales, expenses, and customer debts. Mo
 
 The dashboard shows live daily totals, a device-local editable shop name, and online/offline status. The transaction feed is virtualized and loads records in 50-item indexed cursor pages. The debt ledger loads active balances in 25-item pages. These queries use compound IndexedDB indexes and avoid loading the complete history into the UI.
 
-Sales record the customer, phone, item, quantity, total price, and payment type. Selecting credit saves the sale and its customer debt together in one IndexedDB transaction. Voice entry recognizes common numeric and English number phrases, then fills sale or expense fields for review before saving. For example, “Afi bought 2 bags of cement for 180 GHS on credit” fills a GHS 180 sale, while “paid ten cedis for transport” fills a GHS 10 expense with “transport” as its note. When an expense phrase contains multiple likely amounts, the app avoids guessing and asks the trader to enter the amount manually; transcripts should always be reviewed before saving.
-
+Sales record the customer, phone, item, quantity, total price, and payment type. Selecting credit saves the sale and its customer debt together in one IndexedDB transaction.
 The debts ledger pages outstanding debts in descending amount order using the `[status+amountPesewas+id]` IndexedDB index. Customer names and phone numbers are saved locally and searchable by name prefix in the quick-sale form; selecting a customer fills in their phone number and shows their outstanding balance. Named sales and debt-ledger entries update the local customer list, and marking a debt paid updates its balance. WhatsApp reminders are prefilled with the saved shop name, customer's balance in GHS, and an MTN MoMo payment suggestion.
 
 The dashboard's **View Weekly & Monthly Reports** button opens a financial overview modal for this week, this month, or a custom date range. It separates direct cash sales, collected debt payments, expenses, and newly extended credit; all amounts are calculated from locally stored transactions in integer pesewas and remain available offline.
 
 Use the header settings button to download a JSON backup of products, customers, debts, suppliers, payments, and transactions, or restore one offline. Restore merges by record ID: rows not present in the backup are kept, and a backup row is not allowed to replace a newer local row when both have `updatedAt` timestamps. The restore validates IDs, rejects duplicate records and broken debt/payment references, and applies the merge in one IndexedDB transaction.
-
-Sales, expenses, debt payments, and validation errors can play short synthesized audio cues and optional spoken confirmations using browser APIs. Feedback works offline and can be muted from the header settings; the preference is saved on the device.
 
 The dashboard sync badge reports network state and local transaction/debt records not marked synced. Tapping it shows local sales/debt record counts and whether browser-persistent storage is enabled; supported browsers can be asked to retain the local database if storage is low.
 

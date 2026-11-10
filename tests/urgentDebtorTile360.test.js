@@ -13,7 +13,7 @@ async function renderTile(debt) {
   const { default: Home } = await loadJsx("src/pos/Home.jsx");
   setLiveQuery(() => ({ totals: { cashLeft: 0, moneyIn: 0, moneySpent: 0 }, debtPesewas: debt.amountPesewas, urgentDebt: debt }));
   try {
-    const view = render({ type: Home, props: { onNavigate() {}, onLegacyEntry() {} } });
+    const view = render({ type: Home, props: { onNavigate() {} } });
     return [...walk(view.tree)];
   } finally {
     setLiveQuery(null);

@@ -92,7 +92,7 @@ test("F4: the server reminder takes its amount text from the same formatter file
 });
 
 test("Q5: no amount is hard-coded with GH₵ in a component, template or message", () => {
-  const allowed = new Set(["src/lib/formatGhs.js", "src/lib/money.js", "src/lib/saleParser.js"]);
+  const allowed = new Set(["src/lib/formatGhs.js", "src/lib/money.js"]);
   const isComment = (line) => /^\s*(\/\/|\*|\/\*|\{\/\*)/.test(line);
   const violations = [];
   for (const file of [...walk(`${root}src/`), ...walk(`${root}api/`)]) {
@@ -117,6 +117,5 @@ test("Q5: messages that name a zero amount take it from the formatter", () => {
 
 test("Q5: the screens that showed GH₵ plus a number now use the formatter", () => {
   assert.match(read("src/pos/ManualDebtScreens.jsx"), /\{formatGhs\(amountPesewas\)\}<\/strong>/);
-  assert.match(read("src/components/QuickSaleModal.jsx"), /Total: \{formatGhs\(saleAmountPesewas\)\}/);
   assert.match(read("src/components/WhatsAppReminderModal.jsx"), /\{formatGhs\(debt\.amountPesewas\)\}/);
 });

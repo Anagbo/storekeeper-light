@@ -144,7 +144,8 @@ test("47 rows: Backup and restore has the second line Keep a copy of your record
 
 test("47 rows: the shop and preference rows have no icons", async () => {
   const { view } = await mountSettings();
-  const preferences = nodes(view.tree, (node) => node.type === "label" && /Sound and voice feedback|Show estimated profit/.test(textOf(node)));
+  const preferences = nodes(view.tree, (node) => node.type === "label" && /Show estimated profit/.test(textOf(node)));
+  assert.equal(preferences.length, 1, "one preference row");
   for (const label of preferences) assert.equal(nodes(label, (node) => node.type === "svg").length, 0);
 });
 

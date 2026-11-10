@@ -187,7 +187,7 @@ test("22 Home: Money left today loads with a bad sale today and leaves it out", 
   const { default: Home } = await loadJsx("src/pos/Home.jsx");
   let query = null;
   setLiveQuery((_deps, run) => { query = run; return null; });
-  render({ type: Home, props: { onNavigate() {}, onLegacyEntry() {} } });
+  render({ type: Home, props: { onNavigate() {} } });
   setLiveQuery(null);
   const warnings = captureWarnings();
   let data;

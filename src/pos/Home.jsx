@@ -26,7 +26,7 @@ function WhatsAppIcon({ size = 27 }) {
   );
 }
 
-export default function Home({ onNavigate, onLegacyEntry, notice = "" }) {
+export default function Home({ onNavigate, notice = "" }) {
   const range = useMemo(() => getMoneyPeriodRange("day"), []);
   const data = useLiveQuery(async () => {
     const [transactions, debts] = await Promise.all([

@@ -1,4 +1,4 @@
-import { BarChart3, ClipboardList, Globe2, Home as HomeIcon, Package, Settings, X } from "lucide-react";
+import { BarChart3, ClipboardList, Home as HomeIcon, Package, Settings, X } from "lucide-react";
 import { PosPage } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
 
@@ -7,7 +7,6 @@ const menuLinks = [
   { label: "menu.transactions", detail: "menu.transactionsDetail", icon: ClipboardList, route: "TodaysTransactions" },
   { label: "menu.myMoney", detail: "menu.myMoneyDetail", icon: BarChart3, route: "MyMoney" },
   { label: "menu.items", detail: "menu.itemsDetail", icon: Package, route: "MyItems" },
-  { label: "menu.language", detail: "menu.languageDetail", icon: Globe2, route: "LanguageSettings" },
   { label: "menu.settings", detail: "", icon: Settings, route: "SettingsProfitTools" }
 ];
 
