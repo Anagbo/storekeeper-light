@@ -237,7 +237,7 @@ export function YouOweSuppliers({ onBack, onPay }) {
         <PosCard><p className="font-semibold">{t("supplier.empty")}</p></PosCard>
       ) : (
         <>
-          <PosCard className="amount-fit-container flex items-center justify-between gap-2"><strong>{t("supplier.totalOwed")}</strong><strong className="amount-fit text-right font-extrabold">{formatGhs(suppliers.reduce((sum, supplier) => sum + supplier.balancePesewas, 0))}</strong></PosCard>
+          <PosCard className="amount-fit-container amount-fit-row flex items-center justify-between gap-2"><strong>{t("supplier.totalOwed")}</strong><strong className="amount-fit text-right font-extrabold">{formatGhs(suppliers.reduce((sum, supplier) => sum + supplier.balancePesewas, 0))}</strong></PosCard>
           {suppliers.map((supplier) => (
             <PosCard key={supplier.id} className="amount-fit-container flex flex-col gap-2 sm:flex-row sm:items-center">
               <div className="min-w-0 flex-1">

@@ -140,7 +140,7 @@ function CollectionError({ children }) {
 
 function SheetAmount({ amountPesewas }) {
   return (
-    <div className="amount-fit-container flex min-h-16 items-center justify-between gap-2 rounded-2xl border-[3px] border-slate-500 px-4">
+    <div className="amount-fit-container amount-fit-row flex min-h-16 items-center justify-between gap-2 rounded-2xl border-[3px] border-slate-500 px-4">
       <span className="text-lg font-bold text-slate-700">GH₵</span>
       <span className="amount-fit text-right font-extrabold">{formatGhs(amountPesewas)}</span>
     </div>

@@ -199,8 +199,8 @@ export default function SellWithItems({ params = {}, onBack, onNavigate, onUpdat
       )}
 
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
-      <div className="mt-auto mb-2 grid grid-cols-2 gap-2">
-        <PosBackButton onClick={onBack} />
+      <div className="mt-auto mb-2 grid grid-cols-[auto_minmax(0,1fr)] gap-2">
+        <PosBackButton onClick={onBack} className="h-14!" />
         <PosPrimaryButton type="button" disabled={!cart.length || result === undefined} onClick={() => onNavigate("ReviewAndPay", { amountPesewas: total, saleItems: cart })}>
           {t("sellItems.next", { amount: formatGhs(total) })}
         </PosPrimaryButton>

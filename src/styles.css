@@ -48,6 +48,16 @@ button {
   line-height: 1.15;
 }
 
+/* A label beside the amount shares the row, so the amount gets less room. */
+.amount-fit-row .amount-fit {
+  font-size: clamp(0.75rem, 8cqi, 3.75rem);
+}
+
+/* Three summary tiles side by side: a narrow tile needs a smaller floor so a bold amount fits. */
+.amount-fit-tile .amount-fit {
+  font-size: clamp(0.625rem, 11cqi, 3.75rem);
+}
+
 @media (max-width: 480px) {
   input[inputmode="decimal"] {
     min-width: 0;

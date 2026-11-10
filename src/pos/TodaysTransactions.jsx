@@ -179,15 +179,15 @@ export default function TodaysTransactions({ onBack }) {
       ) : (
         <>
           <section aria-label={t("transactions.summary")} className="grid grid-cols-3 gap-2 lg:gap-4">
-            <div className="amount-fit-container min-w-0 rounded-2xl bg-emerald-900 p-3 text-white sm:px-4">
+            <div className="amount-fit-container amount-fit-tile min-w-0 rounded-2xl bg-emerald-900 p-3 text-white sm:px-4">
               <p className="text-sm font-bold sm:text-base">{t("transactions.moneyIn")}</p>
               <p className="amount-fit font-extrabold">{formatGhs(data.totals.cashInflow)}</p>
             </div>
-            <div className="amount-fit-container min-w-0 rounded-2xl bg-amber-100 p-3 text-slate-950 sm:px-4">
+            <div className="amount-fit-container amount-fit-tile min-w-0 rounded-2xl bg-amber-100 p-3 text-slate-950 sm:px-4">
               <p className="text-sm font-bold sm:text-base">{t("transactions.spent")}</p>
               <p className="amount-fit font-extrabold">{formatGhs(data.totals.expenses)}</p>
             </div>
-            <div className="amount-fit-container min-w-0 rounded-2xl bg-rose-200 p-3 text-rose-950 sm:px-4">
+            <div className="amount-fit-container amount-fit-tile min-w-0 rounded-2xl bg-rose-200 p-3 text-rose-950 sm:px-4">
               <p className="text-sm font-bold sm:text-base">{t("transactions.owed")}</p>
               <p className="amount-fit font-extrabold">{formatGhs(data.totals.newCreditExtended)}</p>
             </div>

@@ -29,7 +29,7 @@ function amountInputValue(amountPesewas) {
 
 function CreditAmount({ amountPesewas }) {
   return (
-    <div className="amount-fit-container flex items-center justify-between gap-3 rounded-2xl bg-rose-100 px-4 py-3 text-rose-950">
+    <div className="amount-fit-container amount-fit-row flex items-center justify-between gap-3 rounded-2xl bg-rose-100 px-4 py-3 text-rose-950">
       <span className="text-lg font-bold">{t("credit.owed")}</span>
       <strong className="amount-fit text-right font-extrabold">{formatGhs(amountPesewas)}</strong>
     </div>
