@@ -7,13 +7,14 @@ import { getAllStarterItems, groupCoreItemsByCategory, mergeStarterItems } from 
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { posText as t } from "./i18n.js";
+import { shortSaveName } from "./saveLabel.js";
 import { PosBackButton, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 
 function ScreenHeader({ title, onBack }) {
   return (
     <div className="flex items-center gap-3">
       <PosBackButton onClick={onBack} />
-      <h1 className="min-w-0 text-2xl font-extrabold">{title}</h1>
+      <h1 className="line-clamp-2 min-w-0 break-words text-2xl font-extrabold leading-tight">{title}</h1>
     </div>
   );
 }
@@ -166,7 +167,7 @@ function DeleteItem({ itemId, itemName, onBack, onReturnToItems, onDelete }) {
         <h2 id="delete-item-title" className="text-2xl font-extrabold">{t("items.deleteConfirm", { name: itemName })}</h2>
         <p className="text-base text-slate-800">{t("items.deleteExplanation")}</p>
         {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
-        <PosPrimaryButton type="button" disabled={busy} onClick={onBack} className="min-h-20 text-xl">{t("items.keep", { name: itemName })}</PosPrimaryButton>
+        <PosPrimaryButton type="button" disabled={busy} onClick={onBack} className="min-h-20 text-xl">{t("items.keep", { name: shortSaveName(itemName) })}</PosPrimaryButton>
         <button type="button" disabled={busy} onClick={() => void confirmDelete()} className="min-h-14 rounded-2xl border-[3px] border-rose-900 bg-white px-4 text-lg font-extrabold text-rose-900 disabled:opacity-50">
           {busy ? t("items.deleting") : t("items.confirmDelete")}
         </button>
