@@ -220,8 +220,8 @@ test("Home and My money summary labels resolve", () => {
   assert.equal(posText("money.back"), "Back");
   assert.equal(posText("money.moneyIn"), "Money in");
   assert.equal(posText("money.moneySpent"), "Money spent");
-  assert.equal(posText("money.wantProfit"), "Want to see your profit?");
-  assert.equal(posText("money.openSettings"), "Open Settings ›");
+  assert.equal(posText("money.moneyLeft", { period: "this week" }), "Money left this week"); // 33 heading (brief 3.11)
+  assert.equal(posText("money.estimatedProfit"), "Estimated profit");
   assert.equal(posText("transactions.title"), "Today’s transactions");
   assert.equal(posText("transactions.filter.credit"), "Credit");
   assert.equal(posText("collect.creditTaken"), "Added to debt");

@@ -6,6 +6,7 @@ import { formatDate } from "../lib/formatDate.js";
 import { formatGhs } from "../lib/money.js";
 import { isAudioFeedbackEnabled, setAudioFeedbackEnabled } from "../utils/audioFeedback.js";
 import { posText as t } from "./i18n.js";
+import { SHOW_PROFIT_PREFERENCE } from "./myMoneyReport.js";
 import { PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 
 const VOICE_LANGUAGES = [
@@ -87,10 +88,31 @@ export function SettingsProfitTools({
 }) {
   const [draft, setDraft] = useState(shopName);
   const [audioEnabled, setAudioEnabled] = useState(isAudioFeedbackEnabled);
+  // One switch hides the Estimated profit card on My money (33). It is on by default.
+  const [showProfit, setShowProfit] = useState(true);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
 
   useEffect(() => setDraft(shopName), [shopName]);
+  useEffect(() => {
+    let active = true;
+    getPreference(SHOW_PROFIT_PREFERENCE, true)
+      .then((value) => { if (active) setShowProfit(value !== false); })
+      .catch((loadError) => console.error("Could not load the profit setting.", loadError));
+    return () => { active = false; };
+  }, []);
+
+  async function changeShowProfit(checked) {
+    setShowProfit(checked);
+    setError("");
+    try {
+      await setPreference(SHOW_PROFIT_PREFERENCE, checked);
+    } catch (saveError) {
+      console.error("Could not save the profit setting.", saveError);
+      setShowProfit(!checked);
+      setError(t("settings.saveFailed"));
+    }
+  }
 
   function saveShopName(event) {
     event.preventDefault();
@@ -126,6 +148,10 @@ export function SettingsProfitTools({
       <label className="flex min-h-16 items-center justify-between gap-3 rounded-2xl border-2 border-slate-500 p-4">
         <span className="flex items-center gap-2 font-extrabold"><Volume2 size={20} aria-hidden="true" />{t("settings.soundFeedback")}</span>
         <input type="checkbox" checked={audioEnabled} onChange={(event) => setAudioEnabled(setAudioFeedbackEnabled(event.target.checked))} className="h-6 w-6 accent-emerald-800" />
+      </label>
+      <label className="flex min-h-16 items-center justify-between gap-3 rounded-2xl border-2 border-slate-500 p-4">
+        <span className="font-extrabold">{t("settings.showEstimatedProfit")}</span>
+        <input type="checkbox" role="switch" aria-checked={showProfit} checked={showProfit} onChange={(event) => void changeShowProfit(event.target.checked)} className="h-6 w-6 accent-emerald-800" />
       </label>
       {/* 63 must be reachable without the subscription flag: it holds the number customers send to. */}
       <PosSecondaryButton type="button" onClick={onOpenMomoSettings}>MoMo payments</PosSecondaryButton>
