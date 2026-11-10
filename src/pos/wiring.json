@@ -1455,7 +1455,8 @@
     "Profit card (Estimate, version A): Estimated profit = Sales − stock bought − other costs for the selected week or month, from the Spent money categories. Shown with an \"Estimate\" tag, the line \"Sales 300.00 − stock 150.00 − other costs 30.00\", and \"Average of last 4 weeks\" only when there are at least 4 weeks of data. A credit sale counts when it is sold. Shown by default; Settings has one switch to hide it. No nudge card pointing to Settings.",
     "Item-level profit (version B, \"Based on 8 of 10 items\" and Add costs ›) stays deferred until items have cost prices.",
     "The comparison with last week uses integer pesewas through the shared formatter. A value that cannot be real (for example more than a million cedis) must be checked as a possible unit bug.",
-    "Built and kept: no Open Settings or Add costs controls on 33. The profit card is hidden with the one switch in Settings (47); there is no nudge card."
+    "Built and kept: no Open Settings or Add costs controls on 33. The profit card is hidden with the one switch in Settings (47); there is no nudge card.",
+    "One bad or inconsistent record must never stop the screen loading. A record whose parts do not add up (for example a credit sale whose cash and credit parts do not match the sale amount) is left out of the totals, logged with its id to the console, and the screen shows one quiet line: \"1 sale is not counted because its amounts do not match.\" (plural: \"{n} sales are not counted...\"). The same must hold on every screen that sums money (22 and others), not only 33."
    ]
   },
   "34": {
@@ -2445,7 +2446,12 @@
     "MoMo payments row shows \"Not set up\" or \"Set up\" under the title.",
     "Shop name: Save is disabled until the name changes. After saving, the header shows Saved.",
     "No \"Track cost price of items\" switch while item-level profit is deferred.",
-    "Done sits at the end of the list (scrolls with it). It returns exactly like Back."
+    "Done sits at the end of the list (scrolls with it). It returns exactly like Back.",
+    "Built: the My plan row shows only when the subscription flag is on, as before. With the flag off, the Payments and plan group shows only MoMo payments.",
+    "Save button: grey and disabled while the name is unchanged or empty; the moment the name changes to something valid it turns green (#03543F, white bold text) and is tappable. After saving it goes back to grey.",
+    "The Shop name field starts with the current saved name filled in. If no name was ever saved it shows the default \"My shop\" as grey placeholder text, never an empty-looking field next to a header that says \"My shop\".",
+    "Every row in Payments and plan and Your records has a small green icon on the left (phone for MoMo payments, card for My plan, database for Backup and restore). Backup and restore has the second line \"Keep a copy of your records\".",
+    "Text style matches the prototype: Back and Done use bold (800) text, same as the other POS screens."
    ]
   },
   "51": {
@@ -3358,7 +3364,10 @@
    ],
    "inputs": [],
    "bottom_bar": false,
-   "change_request": "2026-11-07 MoMo choice and plan payments"
+   "change_request": "2026-11-07 MoMo choice and plan payments",
+   "rules": [
+    "Built: 64 has a Subscription card (status text and the View subscription / Subscribe button, which opens the Paystack plans pop-up with plans, prices, trial status and pending-payment verification). It shows only when the subscription flag is on."
+   ]
   },
   "65": {
    "name": "Pay for my plan",
