@@ -229,7 +229,7 @@ test("71: two cards, Save a backup (green Download backup) and Restore from a ba
   assert.match(text, /Restore from a backup/);
   const download = button(view.tree, "Download backup");
   const choose = button(view.tree, "Choose backup file");
-  assert.match(download.props.className, /bg-emerald-9/, "green");
+  assert.match(download.props.className, /bg-\[#03543F\]/, "green");
   assert.match(choose.props.className, /bg-white/, "outlined");
   assert.match(choose.props.className, /border-2/);
   nodes(view.tree, (node) => node.type === "button" && textOf(node).trim() === "Back")[0].props.onClick();
@@ -246,7 +246,7 @@ test("71: no sound switch, no emoji, no orange, no pop-up, no Last backup line (
   const source = read("src/pos/BackupRestore.jsx");
   assert.doesNotMatch(source, /amber|orange|backdrop-blur|role="dialog"|aria-modal|window\.confirm|setAudioFeedbackEnabled|\p{Extended_Pictographic}/u);
   for (const node of nodes(view.tree, (item) => item.props?.className)) assert.doesNotMatch(node.props.className, /amber|orange/);
-  for (const item of [button(view.tree, "Download backup"), button(view.tree, "Choose backup file")]) assert.match(item.props.className, /min-h-(12|14|16)/);
+  for (const item of [button(view.tree, "Download backup"), button(view.tree, "Choose backup file")]) assert.match(item.props.className, /\bh-(12|14|16)\b/);
 });
 
 test("71: Choose backup file opens the file picker", async () => {
