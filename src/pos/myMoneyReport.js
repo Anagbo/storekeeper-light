@@ -1,6 +1,6 @@
 import { db as defaultDb } from "../db/db.js";
 import { getFinancialTransactions, summarizePosMoney } from "../lib/money.js";
-import { getOutstandingDebtPesewas } from "./money.js";
+import { getMoneyPeriodRange, getOutstandingDebtPesewas, getPreviousMoneyPeriodRange } from "./money.js";
 import { getSupplierBalances } from "../utils/suppliers.js";
 
 // Brief 3.11 / wiring screen 33: the numbers behind My money. All amounts are integer pesewas.
@@ -113,6 +113,26 @@ export function buildMyMoneyReport({ currentTransactions, previousTransactions, 
  * less than four weeks of data (the oldest record must be from the Monday of the first of those four
  * weeks, or older). A quiet week inside the span counts as zero.
  */
+/**
+ * Everything the My money screen shows for a week or a month, read from the database. `now` is a
+ * parameter so the first week of a month, the year start and the days the clock changes can be tested.
+ */
+export async function loadMyMoneyReport({ period, now = new Date(), database = defaultDb }) {
+  const current = getMoneyPeriodRange(period, now);
+  const previous = getPreviousMoneyPeriodRange(period, now);
+  const [currentTransactions, previousTransactions, debts, allTransactions, suppliers, profitSetting] = await Promise.all([
+    getFinancialTransactions(current, database),
+    getFinancialTransactions(previous, database),
+    database.debts.where("status").equals("unpaid").toArray(),
+    database.transactions.toArray(),
+    database.suppliers.toArray(),
+    database.settings.get(SHOW_PROFIT_PREFERENCE)
+  ]);
+  const showProfit = profitSetting?.value !== false;
+  const averageProfitPesewas = showProfit && period === "week" ? await loadAverageWeeklyProfit(current, database) : null;
+  return buildMyMoneyReport({ currentTransactions, previousTransactions, debts, allTransactions, suppliers, showProfit, averageProfitPesewas });
+}
+
 export async function loadAverageWeeklyProfit(currentRange, database = defaultDb) {
   const oldest = await database.transactions.orderBy("createdAt").first();
   const oldestAt = oldest?.createdAt ?? oldest?.timestamp;

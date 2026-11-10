@@ -1,11 +1,9 @@
 import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
-import { db } from "../db/db.js";
-import { formatGhs, formatGhsAmount, getFinancialTransactions } from "../lib/money.js";
+import { formatGhs, formatGhsAmount } from "../lib/money.js";
 import { posText as t } from "./i18n.js";
-import { getMoneyPeriodRange, getPreviousMoneyPeriodRange } from "./money.js";
-import { SHOW_PROFIT_PREFERENCE, buildMyMoneyReport, loadAverageWeeklyProfit } from "./myMoneyReport.js";
+import { loadMyMoneyReport } from "./myMoneyReport.js";
 import { PosCard, PosPage } from "./PosComponents.jsx";
 
 // Brief 3.11 / wiring screen 33. One strong green block (Money left); every other card is white
@@ -18,23 +16,9 @@ const cardClass = "min-w-0 rounded-[18px] border-2 border-slate-300 bg-white px-
 
 export default function MyMoney({ onNavigate }) {
   const [period, setPeriod] = useState("week");
-  const ranges = useMemo(() => ({
-    current: getMoneyPeriodRange(period),
-    previous: getPreviousMoneyPeriodRange(period)
-  }), [period]);
-  const report = useLiveQuery(async () => {
-    const [currentTransactions, previousTransactions, debts, allTransactions, suppliers, profitSetting] = await Promise.all([
-      getFinancialTransactions(ranges.current),
-      getFinancialTransactions(ranges.previous),
-      db.debts.where("status").equals("unpaid").toArray(),
-      db.transactions.toArray(),
-      db.suppliers.toArray(),
-      db.settings.get(SHOW_PROFIT_PREFERENCE)
-    ]);
-    const showProfit = profitSetting?.value !== false;
-    const averageProfitPesewas = showProfit && period === "week" ? await loadAverageWeeklyProfit(ranges.current) : null;
-    return buildMyMoneyReport({ currentTransactions, previousTransactions, debts, allTransactions, suppliers, showProfit, averageProfitPesewas });
-  }, [period, ranges.current.start, ranges.current.end, ranges.previous.start, ranges.previous.end], null);
+  // The day the report is for is fixed when the period is chosen, so the screen does not re-read at midnight.
+  const now = useMemo(() => new Date(), [period]);
+  const report = useLiveQuery(() => loadMyMoneyReport({ period, now }), [period, now.getTime()], null);
   const periodLabel = period === "week" ? t("money.thisWeek").toLowerCase() : t("money.thisMonth").toLowerCase();
   const summary = report?.summary;
   const comparison = report?.comparison;
