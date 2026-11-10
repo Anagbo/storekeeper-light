@@ -129,7 +129,7 @@ async function saveOn63(env, { saved, payout, tap, switchNetwork = false }) {
   }
   const save = [...walk(view.tree)].find((node) => typeof node.props?.onClick === "function" && JSON.stringify(node.props.children ?? "").includes("Save") && node.props.className?.includes("h-[60px]"));
   await save.props.onClick();
-  await new Promise((resolve) => setTimeout(resolve, 80));
+  await waitFor(() => backed, "63 saved and went back");
   assert.ok(backed, "saved");
   return getPreference("momoDefault", "ask");
 }
