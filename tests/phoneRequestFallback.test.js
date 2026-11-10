@@ -110,3 +110,38 @@ test("63: Always: phone request is hidden with the flag off, greyed without a pa
   const chosen = await open63(FLAG_ON, { saved: "phone", payout: "0241234567" });
   assert.equal(chosen[2].props["aria-checked"], true);
 });
+
+// Saving 63 must keep the stored "When I tap MoMo" choice unless the owner tapped that radio group.
+async function saveOn63(env, { saved, payout, tap, switchNetwork = false }) {
+  const { getPreference } = await import("../src/db/preferences.js");
+  await setPreference("momoDefault", saved);
+  await setPreference("paystackPayoutNumber", payout);
+  const { PaymentSettings } = await loadJsx("src/pos/MoMoScreens.jsx", env);
+  let backed = false;
+  const view = render({ type: PaymentSettings, props: { onBack() { backed = true; }, onNavigate() {} } });
+  flushEffects(view);
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  view.rerender();
+  if (tap) {
+    const row = [...walk(view.tree)].find((node) => node.props?.role === "radio" && node.props.children && JSON.stringify(node.props.children).includes(tap));
+    row.props.onClick();
+    view.rerender();
+  }
+  const save = [...walk(view.tree)].find((node) => typeof node.props?.onClick === "function" && JSON.stringify(node.props.children ?? "").includes("Save") && node.props.className?.includes("h-[60px]"));
+  await save.props.onClick();
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  assert.ok(backed, "saved");
+  return getPreference("momoDefault", "ask");
+}
+
+test("63: saving something else keeps a stored 'Always: phone request' that is unavailable", async () => {
+  assert.equal(await saveOn63(FLAG_ON, { saved: "phone", payout: "" }), "phone", "flag on, no payout");
+  assert.equal(await saveOn63(FLAG_OFF, { saved: "phone", payout: "" }), "phone", "flag off");
+  assert.equal(await saveOn63(FLAG_ON, { saved: "phone", payout: "0241234567" }), "phone", "available");
+});
+
+test("63: tapping a radio saves what the owner picked", async () => {
+  assert.equal(await saveOn63(FLAG_ON, { saved: "phone", payout: "", tap: "Always: customer sends" }), "direct");
+  assert.equal(await saveOn63(FLAG_OFF, { saved: "phone", payout: "", tap: "Ask me each time" }), "ask");
+  assert.equal(await saveOn63(FLAG_ON, { saved: "ask", payout: "0241234567", tap: "Always: phone request" }), "phone");
+});

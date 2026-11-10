@@ -99,6 +99,9 @@ export function MoMoDirect({ params = {}, onBack, onConfirm, onPick }) {
 export function PaymentSettings({ onBack, onNavigate }) {
   const [settings, setSettings] = useState({ number: "", network: MOMO_CONFIG.defaultNetwork, defaultMethod: "ask" });
   const [enabled, setEnabled] = useState(false);
+  // The stored choice is only rewritten when the owner taps the radio group. An unavailable "phone"
+  // shows as Ask on screen but stays stored when something else (number, network) is saved.
+  const [tapChoiceChanged, setTapChoiceChanged] = useState(false);
   const [numberInput, setNumberInput] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState("");
@@ -124,7 +127,7 @@ export function PaymentSettings({ onBack, onNavigate }) {
     savingRef.current = true;
     try {
       await saveReceivingNumber({ enabled, number: numberInput, network: settings.network });
-      await setPreference("momoDefault", settings.defaultMethod);
+      if (tapChoiceChanged) await setPreference("momoDefault", settings.defaultMethod);
       setSaved(true);
       onBack();
     } catch (saveError) {
@@ -178,7 +181,7 @@ export function PaymentSettings({ onBack, onNavigate }) {
         {tapOptions.map(([value, label]) => {
           const chosen = settings.defaultMethod === value;
           const blocked = value === "phone" && !settings.phoneRequestAvailable;
-          return <button key={value} type="button" role="radio" aria-checked={chosen} aria-disabled={blocked ? true : undefined} onClick={blocked ? undefined : () => setSettings((current) => ({ ...current, defaultMethod: value }))} className={`flex min-h-20 w-full items-center gap-3 px-4 py-3 text-left text-lg font-extrabold first:rounded-t-2xl last:rounded-b-2xl ${blocked ? "cursor-not-allowed bg-slate-100 text-slate-500" : chosen ? "bg-green-100 text-slate-950" : "bg-white text-slate-950"}`}>
+          return <button key={value} type="button" role="radio" aria-checked={chosen} aria-disabled={blocked ? true : undefined} onClick={blocked ? undefined : () => { setTapChoiceChanged(true); setSettings((current) => ({ ...current, defaultMethod: value })); }} className={`flex min-h-20 w-full items-center gap-3 px-4 py-3 text-left text-lg font-extrabold first:rounded-t-2xl last:rounded-b-2xl ${blocked ? "cursor-not-allowed bg-slate-100 text-slate-500" : chosen ? "bg-green-100 text-slate-950" : "bg-white text-slate-950"}`}>
             <span aria-hidden="true" className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 ${chosen ? "border-emerald-900 bg-emerald-900" : "border-slate-500 bg-white"}`}>{chosen && <span className="h-2 w-2 rounded-full bg-white" />}</span>
             <span className="min-w-0"><span className="block">{label}</span>{blocked && <span className="block text-sm font-semibold">Set up phone request first</span>}</span>
           </button>;

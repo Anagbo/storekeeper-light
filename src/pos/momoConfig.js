@@ -46,6 +46,8 @@ function isAvailableMomoMethod(method) {
 
 // Phone request can be used right now: the flag is on AND a Paystack payout number is saved.
 // The one place that decides this; 61, 63 and every sale screen use it.
+// "Saved" is all it checks: nothing verifies the payout account yet. The phone-request flag must
+// stay off in production until the server verification exists.
 export function phoneRequestAvailable({ flagOn = PHONE_REQUEST_ENABLED, payoutNumber } = {}) {
   return Boolean(flagOn) && typeof payoutNumber === "string" && payoutNumber.trim() !== "";
 }
