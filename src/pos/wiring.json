@@ -1140,7 +1140,7 @@
    "inputs": [],
    "bottom_bar": false,
    "rules": [
-    "Under the balance, one line about when it is due. Fixed due date and no plan: \"Due 20/11/2026 · In 5 days\" (or \"Due 03/11/2026 · Late by 7 days\"; Due today when equal). Installment plan: \"GH₵10.00 every week · next 14/11/2026\" (already built, kept). No date and no plan: nothing. Date through the shared formatter; the In N days and Late wording is the existing wording."
+    "Under the balance, one line about when it is due. Fixed due date and no plan: \"Due 20/11/2026 · In 5 days\" (or \"Due 03/11/2026 · Late 7 days\"; Due today when equal). Installment plan: \"GH₵10.00 every week · next 14/11/2026\" (already built, kept). No date and no plan: nothing. Date through the shared formatter; the In N days and Late wording is the existing wording."
    ]
   },
   "30": {
@@ -1396,11 +1396,14 @@
      "effect": "Selects or edits a value on this screen. No navigation."
     }
    ],
-   "inputs": [],
+   "inputs": [
+    "Search by name or phone"
+   ],
    "bottom_bar": true,
    "rules": [
     "Collect for a person with several debts opens 43 so the merchant chooses the debt.",
-    "Extras kept: Load more."
+    "Extras kept: Load more.",
+    "Search field above the list, same field and wording as on 17 (\"Search by name or phone\"). It filters the list as the merchant types, ignoring case and spaces, and works together with the All, Late and Due soon filters. Clearing it shows the full list again. No search button: the field is always visible. When nobody matches, show the existing empty-list wording (or ask the owner for new text). Search never changes any data and works offline."
    ]
   },
   "33": {
@@ -2198,7 +2201,7 @@
    "rules": [
     "Late state button: \"Send reminder on WhatsApp\" (full width) and \"Last reminder: {n} days ago\" from lastReminderAt.",
     "Extra kept: Open debt entries list with \"Correct this entry\". A correction adds a debt_adjustment entry (old and new balance, reason) and lowers the balance in one transaction; raising is refused (\"Use Add to debt\").",
-    "Under the balance, one line about when it is due. Fixed due date and no plan: \"Due 20/11/2026 · In 5 days\" (or \"Due 03/11/2026 · Late by 7 days\"; Due today when equal). Installment plan: \"GH₵10.00 every week · next 14/11/2026\" (already built, kept). No date and no plan: nothing. Date through the shared formatter; the In N days and Late wording is the existing wording."
+    "Under the balance, one line about when it is due. Fixed due date and no plan: \"Due 20/11/2026 · In 5 days\" (or \"Due 03/11/2026 · Late 7 days\"; Due today when equal). Installment plan: \"GH₵10.00 every week · next 14/11/2026\" (already built, kept). No date and no plan: nothing. Date through the shared formatter; the In N days and Late wording is the existing wording."
    ]
   },
   "44": {
