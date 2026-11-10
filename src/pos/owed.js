@@ -11,6 +11,18 @@ function getDebtBalance(debt) {
   return debt.amountPesewas ?? debt.total_owed ?? 0;
 }
 
+// Search on 32: case and spaces do not matter ("kofi b" finds "Kofi Boateng", "020 123" finds
+// 0201234567). Name or phone; an empty search matches everyone.
+function squashSearchText(value) {
+  return String(value ?? "").toLowerCase().replace(/\s+/g, "");
+}
+
+export function matchesOwedSearch(customer, query) {
+  const wanted = squashSearchText(query);
+  if (!wanted) return true;
+  return squashSearchText(customer?.customerName).includes(wanted) || squashSearchText(customer?.phone).includes(wanted);
+}
+
 export function getDebtDueDate(debt) {
   if (!debt) return "";
   return debt.isInstallmentPlan ? debt.nextDueDate ?? "" : debt.dueDate ?? "";

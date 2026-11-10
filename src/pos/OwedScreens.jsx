@@ -3,7 +3,8 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { Banknote, Phone, Plus, UserRound, UserRoundPen } from "lucide-react";
 import { db } from "../db/db.js";
 import { formatGhs } from "../lib/money.js";
-import { getDebtDueDate, groupUnpaidDebts, isDebtDueSoon, isDebtLate, loadUnpaidDebtPage } from "./owed.js";
+import { getDebtDueDate, groupUnpaidDebts, isDebtDueSoon, isDebtLate, loadUnpaidDebtPage, matchesOwedSearch } from "./owed.js";
+import SearchField from "./SearchField.jsx";
 import { getDebtDueLabel } from "./money.js";
 import { PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag } from "./PosComponents.jsx";
 import { generateWhatsAppLink } from "../utils/whatsapp.js";
@@ -19,6 +20,7 @@ function WhatsAppIcon() {
 
 export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopName }) {
   const [filter, setFilter] = useState("all");
+  const [query, setQuery] = useState("");
   const [additionalDebts, setAdditionalDebts] = useState([]);
   const [nextCursor, setNextCursor] = useState(null);
   const [hasMore, setHasMore] = useState(false);
@@ -53,12 +55,14 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
     if (firstPage.status !== "ready" || customerResult.status !== "ready") return undefined;
     return groupUnpaidDebts([...firstPage.debts, ...additionalDebts], customerResult.customers);
   }, [additionalDebts, customerResult, firstPage]);
+  // The filter and the search work together: the search narrows whatever the filter shows.
   const visibleCustomers = useMemo(() => {
-    if (!data || filter === "all") return data ?? [];
-    return data.filter((customer) => filter === "late"
-      ? isDebtLate(customer.debt)
-      : isDebtDueSoon(customer.debt));
-  }, [data, filter]);
+    if (!data) return [];
+    return data.filter((customer) => matchesOwedSearch(customer, query) && (
+      filter === "all" ||
+      (filter === "late" ? isDebtLate(customer.debt) : isDebtDueSoon(customer.debt))
+    ));
+  }, [data, filter, query]);
 
   async function loadMore() {
     if (loadingMore || !hasMore || !nextCursor) return;
@@ -126,6 +130,7 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
           </button>
         ))}
       </div>
+      <SearchField value={query} onChange={setQuery} />
       {firstPage.status === "loading" || customerResult.status === "loading" ? (
         <section role="status" aria-label="Loading outstanding balances" className="flex flex-col gap-4">
           <div className="grid grid-cols-3 gap-2">
