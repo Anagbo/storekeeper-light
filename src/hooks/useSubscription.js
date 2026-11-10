@@ -5,8 +5,10 @@ import { FEATURE_FLAGS, FEATURE_SUBSCRIPTION_LOCKOUT } from "../config/features.
 import {
   applyVerifiedSubscriptionPayment,
   clearPendingSubscriptionPayment,
+  clearStalePendingSubscriptionPayment,
   isFinalPaymentFailure,
   isNetworkError,
+  isStalePendingPayment,
   parsePendingSubscriptionPayment,
   PAYMENT_NOT_COMPLETED_MESSAGE,
   readVerifyResponse,
@@ -44,6 +46,8 @@ export function useSubscription() {
   // Same object between renders unless the stored text changes, so the effects below
   // do not re-run on every render (D2).
   const pendingPayment = useMemo(() => parsePendingSubscriptionPayment(pendingRaw), [pendingRaw]);
+  // A record left over from an old or finished payment is cleared quietly below and never verified.
+  const stalePending = settingsReady && isStalePendingPayment(pendingPayment, { planActive: hasActiveSubscription });
   const subscriptionRequired = settingsReady && FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE
     && FEATURE_SUBSCRIPTION_LOCKOUT
     && !hasActiveSubscription
@@ -137,15 +141,24 @@ export function useSubscription() {
   }, []);
 
   const retryPendingPayment = useCallback(() => {
-    if (pendingPayment) void verifyPayment(pendingPayment.reference, pendingPayment.planId);
-  }, [pendingPayment, verifyPayment]);
+    if (pendingPayment && !stalePending) void verifyPayment(pendingPayment.reference, pendingPayment.planId);
+  }, [pendingPayment, stalePending, verifyPayment]);
+
+  // Quiet clean-up on startup: no notice. A record the page is returning from Paystack with is kept.
+  useEffect(() => {
+    if (!FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE || !stalePending) return;
+    const callbackUrl = new URL(window.location.href);
+    const keepReference = callbackUrl.searchParams.get("reference") || callbackUrl.searchParams.get("trxref") || "";
+    clearStalePendingSubscriptionPayment({ planActive: hasActiveSubscription, keepReference })
+      .catch((error) => console.error("Could not clear the old pending payment.", error));
+  }, [stalePending, hasActiveSubscription]);
 
   useEffect(() => {
     if (!FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE || !settingsReady) return undefined;
     const callbackUrl = new URL(window.location.href);
     const callbackReference = callbackUrl.searchParams.get("reference") || callbackUrl.searchParams.get("trxref");
     const storedPayment = pendingPayment?.reference === callbackReference ? pendingPayment : null;
-    const reference = callbackReference || pendingPayment?.reference;
+    const reference = callbackReference || (stalePending ? "" : pendingPayment?.reference);
     const planId = storedPayment?.planId || pendingPayment?.planId || callbackUrl.searchParams.get("plan") || "monthly";
     if (!reference || processedPaymentReference.current === reference || attemptedPaymentReference.current === reference) return undefined;
     attemptedPaymentReference.current = reference;
@@ -161,7 +174,7 @@ export function useSubscription() {
     }
     void prepareVerification();
     return () => { active = false; };
-  }, [pendingPayment, settingsReady, verifyPayment]);
+  }, [pendingPayment, settingsReady, stalePending, verifyPayment]);
 
   useEffect(() => {
     if (!FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE) return undefined;
@@ -177,7 +190,7 @@ export function useSubscription() {
     hasActiveSubscription,
     subscriptionRequired,
     subscriptionNotice,
-    paymentPending: Boolean(pendingPayment),
+    paymentPending: Boolean(pendingPayment && !stalePending),
     retryPendingPayment,
     setSubscriptionNotice
   };
