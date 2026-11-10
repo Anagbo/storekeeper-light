@@ -1444,20 +1444,6 @@
      "disabled_initially": false,
      "type": "navigate",
      "to": "46"
-    },
-    {
-     "label": "Open Settings ›",
-     "role": null,
-     "disabled_initially": false,
-     "type": "navigate",
-     "to": "47"
-    },
-    {
-     "label": "Add costs ›",
-     "role": null,
-     "disabled_initially": false,
-     "type": "navigate",
-     "to": "40"
     }
    ],
    "inputs": [],
@@ -1468,7 +1454,8 @@
     "Only one strong colour block on the screen. The other cards are white with a thin border.",
     "Profit card (Estimate, version A): Estimated profit = Sales − stock bought − other costs for the selected week or month, from the Spent money categories. Shown with an \"Estimate\" tag, the line \"Sales 300.00 − stock 150.00 − other costs 30.00\", and \"Average of last 4 weeks\" only when there are at least 4 weeks of data. A credit sale counts when it is sold. Shown by default; Settings has one switch to hide it. No nudge card pointing to Settings.",
     "Item-level profit (version B, \"Based on 8 of 10 items\" and Add costs ›) stays deferred until items have cost prices.",
-    "The comparison with last week uses integer pesewas through the shared formatter. A value that cannot be real (for example more than a million cedis) must be checked as a possible unit bug."
+    "The comparison with last week uses integer pesewas through the shared formatter. A value that cannot be real (for example more than a million cedis) must be checked as a possible unit bug.",
+    "Built and kept: no Open Settings or Add costs controls on 33. The profit card is hidden with the one switch in Settings (47); there is no nudge card."
    ]
   },
   "34": {
@@ -2382,7 +2369,7 @@
    "bottom_bar": false
   },
   "47": {
-   "name": "Settings: profit tools",
+   "name": "Settings",
    "component": "Settings",
    "controls": [
     {
@@ -2392,6 +2379,27 @@
      "type": "navigate",
      "to": "BACK",
      "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Save",
+     "role": null,
+     "disabled_initially": true,
+     "type": "action",
+     "effect": "Saves the shop name. Disabled until the name is changed and not empty."
+    },
+    {
+     "label": "Sound and voice feedback",
+     "role": "switch",
+     "disabled_initially": false,
+     "type": "toggle",
+     "effect": "Turns confirmation sounds and spoken messages on or off."
+    },
+    {
+     "label": "Show estimated profit",
+     "role": "switch",
+     "disabled_initially": false,
+     "type": "toggle",
+     "effect": "Shows or hides the Estimated profit card on screen 33."
     },
     {
      "label": "MoMo payments",
@@ -2408,25 +2416,36 @@
      "to": "64"
     },
     {
-     "label": "Show estimated profit",
-     "role": "switch",
+     "label": "Backup and restore",
+     "role": null,
      "disabled_initially": false,
-     "type": "toggle",
-     "effect": "Toggles the profit-tool flag (estimated profit or item costs). Affects screens 33 and 40."
+     "type": "navigate",
+     "to": "71"
     },
     {
-     "label": "Track cost price of items",
-     "role": "switch",
+     "label": "Done",
+     "role": null,
      "disabled_initially": false,
-     "type": "toggle",
-     "effect": "Toggles the profit-tool flag (estimated profit or item costs). Affects screens 33 and 40."
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Same as Back. Never goes to Home, so a draft is not dropped."
     }
    ],
-   "inputs": [],
+   "inputs": [
+    {
+     "label": "Shop name",
+     "type": "text"
+    }
+   ],
    "bottom_bar": false,
    "rules": [
-    "No \"Profit estimates\" text while the profit switches are deferred.",
-    "Built extra: Done. It returns the same way as Back (to the screen before Settings), not to Home, so a draft is never dropped."
+    "Layout: four groups, each one white card with a small heading above it: Shop (shop name field with Save beside it), Preferences (the two switches), Payments and plan (MoMo payments, My plan), Your records (Backup and restore). Rows inside a card are separated by a thin line, not separate boxes.",
+    "Use switches (role switch), not tick boxes, for Sound and voice feedback and Show estimated profit. Each has a one-line helper under it.",
+    "My plan row shows the status in words (\"Active until dd/mm/yyyy\") and a small green \"Active\" tag when active. The old separate \"View subscription\" button is removed; its content must be reachable from screen 64. Claude Code must check what it opened and keep that reachable.",
+    "MoMo payments row shows \"Not set up\" or \"Set up\" under the title.",
+    "Shop name: Save is disabled until the name changes. After saving, the header shows Saved.",
+    "No \"Track cost price of items\" switch while item-level profit is deferred.",
+    "Done sits at the end of the list (scrolls with it). It returns exactly like Back."
    ]
   },
   "51": {
@@ -3532,6 +3551,45 @@
     "reversed": "Payment reversed"
    }
   },
+  "71": {
+   "name": "Backup and restore",
+   "component": "BackupRestore",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history (Settings)."
+    },
+    {
+     "label": "Download backup",
+     "role": null,
+     "disabled_initially": false,
+     "type": "action",
+     "effect": "Saves one backup file with all records. Works offline."
+    },
+    {
+     "label": "Choose backup file",
+     "role": null,
+     "disabled_initially": false,
+     "type": "action",
+     "effect": "Opens the file picker. After a file is chosen, a confirmation asks before anything is changed."
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "rules": [
+    "This replaces the old Backup & restore pop-up. It is a normal screen with Back, not a dark pop-up over a blurred page.",
+    "Two cards: Save a backup (green button) and Restore from a backup (outlined button, because restoring is the riskier action).",
+    "No sound switch here (it lives in Settings only). No emoji in labels. No orange button.",
+    "Last backup line (\"Last backup: dd/mm/yyyy\") is shown only if the app already stores the last backup date. If it does not, leave the line out; do not add storage for it in this change.",
+    "Restore asks first: \"Restore from this file?\" with the number of records found if known, and the words \"Records already on this phone are kept. Matching ones are updated.\" Buttons: Restore / Cancel. Cancel changes nothing.",
+    "After a restore: \"Restore finished.\" A bad or wrong file shows \"This file cannot be used. Choose a StoreKeeper backup file.\" and changes nothing. Never show raw error text.",
+    "Existing backup and restore logic is not changed, only the screen around it."
+   ]
+  },
   "ManualDebtSaved": {
    "name": "Debt saved (add-debt flow)",
    "component": "ManualDebtSaved",
@@ -3562,7 +3620,17 @@
     ],
     "behaviour": "Change amount closes the dialog and returns to the screen with everything kept. Yes, save continues the normal save. The dialog opens before the save starts (before the save attempt key is used), works offline, is announced to screen readers, and the focus starts on Change amount (the safe choice)."
    },
-   "later": "Extend the same check to collections, spent money and manual debts after the owner decides."
+   "later": "Extend the same check to collections (including collecting by MoMo outside the split screen), spent money and manual debts after the owner decides. The legacy QuickSaleModal (old Dashboard) has no check.",
+   "momo": {
+    "rule": "A MoMo amount above the limit asks before it goes to 61, so the customer is never asked to pay a wrong large amount. It does not ask again on 62.",
+    "where": [
+     "MoMo tile on 15 and 55 (sale amount going to 61)",
+     "Save in the How much MoMo? editor on 16 and 27, including 27 from 19 and editing an already confirmed MoMo row (only the extra goes to 61)",
+     "MoMo choice for the payment today on 19"
+    ],
+    "wording": "This MoMo payment is GH₵{amount}. Is the amount right?",
+    "split": "A split asks once for the MoMo part at the editor, and once at Done for the sale total only when the total is above the limit. Exactly the limit never asks."
+   }
   }
  },
  "built_extras_kept": {
