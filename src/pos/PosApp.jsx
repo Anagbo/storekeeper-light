@@ -10,8 +10,9 @@ import {
   backRoute,
   createRouteState,
   getReceivedMomoInDraft,
+  isCollectSplit,
+  getLeaveOnBackRoute,
   isSaleSplitHub,
-  isSaleSplitHubScreen,
   popToRoute,
   POS_ROUTES,
   pushRoute,
@@ -26,7 +27,6 @@ import {
 } from "./routes.js";
 import { createBrowserBack, useBackHandler } from "./browserBack.js";
 import LeaveDraftDialog from "./LeaveDraftDialog.jsx";
-import { confirmDirectMomoParts } from "./splitTender.js";
 import Home from "./Home.jsx";
 import Menu from "./Menu.jsx";
 import MyMoney from "./MyMoney.jsx";
@@ -88,6 +88,13 @@ function getStatusLabel(sync) {
   }
   return t("app.readyToSync");
 }
+
+// Where Money received on 62 returns for each confirm step (MOMO16).
+const CONFIRM_RETURNS = {
+  sale16: { route: POS_ROUTES.SplitPayment, matches: isSaleSplitHub },
+  collect27: { route: POS_ROUTES.SplitPayment, matches: isCollectSplit },
+  plan19: { route: POS_ROUTES.ALittleAtATime, matches: () => true }
+};
 
 export default function PosApp() {
   const [routeState, setRouteState] = useState(() => createRouteState());
@@ -161,12 +168,12 @@ export default function PosApp() {
   // A back press with the question open is Stay.
   useBackHandler(leaveAsk !== null, () => setLeaveAsk(null));
 
-  // Back from 16 (on-screen or the phone's) with received MoMo leaves the draft: only after Leave,
-  // and then to an empty 15, so no received money stays in a hidden draft.
+  // Back (on-screen or the phone's) from 16, 27 or 19 holding received MoMo leaves the draft: only
+  // after Leave, and then to a fresh stack, so no received money stays in a hidden draft.
   function backFromScreen(backState) {
-    const state = routeRef.current;
-    if (isSaleSplitHubScreen(state) && getReceivedMomoInDraft(state) > 0) {
-      leaveDraft(() => { commit(createRouteState(POS_ROUTES.Sell)); setNotice(""); });
+    const leaveTo = getLeaveOnBackRoute(routeRef.current);
+    if (leaveTo) {
+      leaveDraft(() => { commit(createRouteState(leaveTo)); setNotice(""); });
       return;
     }
     commit(backState);
@@ -472,10 +479,12 @@ export default function PosApp() {
       });
     }}
     onPick={(details) => {
-      // MOMO16: Money received after Done on 16. The Direct part is now received (locked) and 16
-      // commits once; a failed commit leaves the draft on 16 with the part still locked.
-      if (details.confirmSplit) {
-        returnTo(POS_ROUTES.SplitPayment, { splitParts: confirmDirectMomoParts(details.confirmSplitParts ?? []), commitNow: true }, isSaleSplitHub);
+      // MOMO16: Money received after Done on 16, Received on 27 or Save plan on 19. The screen gets
+      // its draft back with the Direct part received (locked) and commits once; a failed commit
+      // leaves the draft there with the part still locked.
+      const target = details.confirmFor && CONFIRM_RETURNS[details.confirmFor];
+      if (target) {
+        returnTo(target.route, { ...details.confirmedParams, commitNow: true }, target.matches);
         return;
       }
       returnFromMomoPick(details);

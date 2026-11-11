@@ -295,18 +295,41 @@ export function isSaleSplitHub(params = {}) {
   return !params.installmentSplit && !params.debtId;
 }
 
-// Wiring 16 (11 Nov 2026): MoMo money already received (a locked MoMo row) held in the sale draft
-// on 16, whether 16 is the current screen or below it. Leaving the draft with it asks first.
-export function getReceivedMomoInDraft(state) {
-  const entries = [...(state.history ?? []), { current: state.current, params: state.params }];
-  const draft = entries.findLast((entry) => entry.current === POS_ROUTES.SplitPayment && isSaleSplitHub(entry.params ?? {}));
-  const parts = Array.isArray(draft?.params?.splitParts) ? draft.params.splitParts : [];
+// SplitPayment as 27 for a debt collection (not 27 opened from 19).
+export function isCollectSplit(params = {}) {
+  return Boolean(params.debtId) && !params.installmentSplit;
+}
+
+// MoMo money already received (locked MoMo parts) held by one screen's draft: the split on 16 or 27.
+export function getReceivedMomoOnScreen(entry = {}) {
+  const params = entry.params ?? {};
+  if (entry.current !== POS_ROUTES.SplitPayment || params.installmentSplit) return 0;
+  const parts = Array.isArray(params.splitParts) ? params.splitParts : [];
   return parts.filter(isLockedMomoRow).reduce((total, part) => total + part.amountPesewas, 0);
 }
 
-// Back from 16 (on-screen or phone) with received MoMo: only after Leave, and then to an empty 15.
+// Wiring 16 / MOMO16 (11 Nov 2026): MoMo money already received held in a draft (16, 27), whether
+// that screen is the current one or below it. Leaving the draft with it asks first. The most recent
+// screen holding it counts (a later screen may carry the same parts).
+export function getReceivedMomoInDraft(state) {
+  const entries = [...(state.history ?? []), { current: state.current, params: state.params }];
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    const amount = getReceivedMomoOnScreen(entries[index]);
+    if (amount > 0) return amount;
+  }
+  return 0;
+}
+
 export function isSaleSplitHubScreen(state) {
   return state.current === POS_ROUTES.SplitPayment && isSaleSplitHub(state.params ?? {});
+}
+
+// Back (on-screen or phone) from a screen holding received MoMo leaves its draft: it asks first, and
+// Leave drops the whole draft. Returns where Leave goes (a sale starts again on an empty 15, a
+// collection goes Home), or null when Back is an ordinary Back.
+export function getLeaveOnBackRoute(state) {
+  if (getReceivedMomoOnScreen(state) <= 0) return null;
+  return isSaleSplitHubScreen(state) ? POS_ROUTES.Sell : POS_ROUTES.Home;
 }
 
 const MOMO_FLOW_ROUTES = new Set(["MoMoChoice", "MoMoDirect", "MoMoSetup", "MoMoPayment", "MoMoWaiting", "MoMoCode", "MoMoNotCompleted"]);

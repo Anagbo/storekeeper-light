@@ -26,6 +26,7 @@ import { useSaveAttempt } from "./useSaveAttempt.js";
 import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
 import SplitPayment from "./SplitPayment.jsx";
 import { getInitialPaymentParts } from "./paymentAmount.js";
+import { confirmDirectMomoParts, describeSplitPart, isUnconfirmedDirectMomo } from "./splitTender.js";
 import { getMomoDisplayLabel } from "./momoMapping.js";
 import { secondsUntil } from "../lib/countdown.js";
 import { getDebtorItemDescription } from "../utils/debtorItemDescription.js";
@@ -302,6 +303,16 @@ export function CollectSplitPayment({ params, onBack, onNavigate, onUpdateParams
   const lastPartsRef = useRef(null);
   const totalPesewas = toPesewas(params?.amount ?? "");
 
+  // Money received on 62 after Received (MOMO16 on 27): record the collection once, straight away,
+  // as soon as the debt is loaded. A failed save leaves the draft here with the MoMo part locked.
+  const commitStarted = useRef(false);
+  useEffect(() => {
+    if (!params?.commitNow || !debt || commitStarted.current) return;
+    commitStarted.current = true;
+    onUpdateParams?.({ commitNow: undefined });
+    void receive(getInitialPaymentParts({ ...params, splitTotalPesewas: totalPesewas }, totalPesewas));
+  }, [debt]);
+
   if (debt === undefined) return <PosPage><p role="status">{t("collect.loading")}</p></PosPage>;
   if (!debt || !Number.isSafeInteger(totalPesewas) || totalPesewas <= 0 || totalPesewas > debt.amountPesewas) {
     return <PosPage><CollectionError>{t("collect.notFound")}</CollectionError></PosPage>;
@@ -309,6 +320,22 @@ export function CollectSplitPayment({ params, onBack, onNavigate, onUpdateParams
 
   async function receive(parts) {
     if (busyRef.current) return;
+    // MOMO16 on 27: a Direct MoMo part not confirmed yet is confirmed on 62 first; Money received
+    // there brings the draft back with the part received and the collection is recorded once
+    // (commitNow above). Back on 62 returns here with nothing confirmed or saved.
+    const unconfirmed = parts.find(isUnconfirmedDirectMomo);
+    if (unconfirmed) {
+      onNavigate("MoMoDirect", {
+        ...params,
+        splitTotalPesewas: totalPesewas,
+        splitParts: parts.filter((part) => part !== unconfirmed),
+        pendingMomoAmountPesewas: unconfirmed.amountPesewas,
+        momoMethod: "direct",
+        confirmFor: "collect27",
+        confirmedParams: { splitParts: confirmDirectMomoParts(parts) }
+      });
+      return;
+    }
     busyRef.current = true;
     setBusy(true);
     setError("");
@@ -341,9 +368,11 @@ export function CollectSplitPayment({ params, onBack, onNavigate, onUpdateParams
         pendingMomoAmountPesewas,
         ...extra,
         returnRoute: "SplitPayment",
-        pickOnly: true
+        pickOnly: true,
+        confirmAtDone: true
       })}
       initialParts={getInitialPaymentParts({ ...params, splitTotalPesewas: totalPesewas }, totalPesewas)}
+      partDetail={(part) => describeSplitPart(part, params)}
     />
   );
 }

@@ -6,7 +6,7 @@ import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { getInitialPaymentParts, getPaidPaymentPesewas } from "./paymentAmount.js";
 import SplitPayment from "./SplitPayment.jsx";
-import { describeSplitPart, isUnconfirmedDirectMomo } from "./splitTender.js";
+import { confirmDirectMomoParts, describeSplitPart, isUnconfirmedDirectMomo } from "./splitTender.js";
 import { useBackBlock } from "./browserBack.js";
 
 export default function SaleSplitPayment({ params = {}, onBack, onNavigate, onUpdateParams, onSaveSale }) {
@@ -30,15 +30,15 @@ export default function SaleSplitPayment({ params = {}, onBack, onNavigate, onUp
     // Back on 62 returns here with nothing confirmed or saved.
     const unconfirmed = parts.find(isUnconfirmedDirectMomo);
     if (unconfirmed) {
-      // 62 asks for the MoMo part (the other parts are what is already paid); the whole draft goes
-      // with it as confirmSplitParts.
+      // 62 asks for the MoMo part (the other parts are what is already paid); the draft as it will be
+      // once received goes with it (confirmedParams).
       onNavigate("MoMoDirect", {
         ...params,
         splitParts: parts.filter((part) => part !== unconfirmed),
         pendingMomoAmountPesewas: unconfirmed.amountPesewas,
         momoMethod: "direct",
-        confirmSplit: true,
-        confirmSplitParts: parts
+        confirmFor: "sale16",
+        confirmedParams: { splitParts: confirmDirectMomoParts(parts) }
       });
       return;
     }

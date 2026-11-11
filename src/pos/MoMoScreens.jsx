@@ -75,9 +75,9 @@ export function MoMoDirect({ params = {}, onBack, onConfirm, onPick }) {
     setSaveError("");
     const details = { ...params, momoMethod: "direct", verification: "merchant_confirmed" };
     try {
-      // D11: only a real save (not a pick) gets an attempt key. After Done on 16 (confirmSplit) the
-      // commit runs on 16 itself, with 16's own attempt key.
-      await (params.pickOnly || params.confirmSplit
+      // D11: only a real save (not a pick) gets an attempt key. A confirm step (confirmFor: Done on
+      // 16, Received on 27, Save plan on 19) returns to that screen, which commits with its own key.
+      await (params.pickOnly || params.confirmFor
         ? onPick(details)
         : saveAttempt.run(details, (attemptId) => onConfirm({ ...details, attemptId })));
     } catch (saveFailure) {
