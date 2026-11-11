@@ -248,20 +248,21 @@ test("split, MoMo GH₵3.00 + GH₵5.00 owed: ends on 30 with MoMo and the GH₵
   const app = await open();
   await sell(app, "8");
   await app.tap("Split payment");
-  // The MoMo tile asks how much first (prefilled with Left to pay), then 61 and 62.
+  // The MoMo tile asks how much first (prefilled with Left to pay), then 61; Direct returns to 16
+  // not confirmed yet, and 62 comes after Done (MOMO16).
   await app.tap(/^MoMo$/);
   await app.type("split-draft-amount", "3.00");
   await app.tap(/^Save$/);
   assert.equal(app.route, "MoMoChoice");
   await app.tap(/Customer sends to my number/);
-  assert.equal(app.route, "MoMoDirect");
-  await app.tap("Money received");
   assert.equal(app.route, "SplitPayment");
   await app.tap(/^Owe$/);
   await chooseCustomer(app, "Juju");
   await app.tap(/^Save · Juju owes/);
   assert.equal(app.route, "SplitPayment");
   await app.tap(/^Done$/);
+  assert.equal(app.route, "MoMoDirect");
+  await app.tap("Money received");
   assert.equal(app.route, "SaleRecorded", "money received today: 30");
   assertNoScreenError(app);
   assert.match(shown(app), /MoMo[^G]{0,30}GH₵3\.00/, "the MoMo part with its amount");

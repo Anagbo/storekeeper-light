@@ -67,9 +67,11 @@ test("E9: the sale tender (total, cash, MoMo, parts) is set after the route para
   const call = part(source, "const content = {", "};");
   assert.match(source, /onSaveSale\(\{ \.\.\.content, attemptId \}\)/);
   const at = (text) => call.indexOf(text);
-  assert.ok(at("...params") >= 0);
+  // The route params come in as draftParams (params without the one-shot commitNow flag).
+  assert.ok(source.includes("const { commitNow: _commitNow, ...draftParams } = params;"));
+  assert.ok(at("...draftParams") >= 0);
   for (const field of ["amountPesewas: totalPesewas", "cashReceivedPesewas: amountOf(\"cash\")", "momoReceivedPesewas: amountOf(\"momo\")", "parts"]) {
-    assert.ok(at(field) > at("...params"), `${field} must come after ...params`);
+    assert.ok(at(field) > at("...draftParams"), `${field} must come after ...draftParams`);
   }
 });
 

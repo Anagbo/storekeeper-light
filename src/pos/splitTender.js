@@ -49,6 +49,19 @@ export function isLockedMomoRow(part) {
   return part?.paymentMethod === "momo" && (part.verification === "verified" || part.verification === "merchant_confirmed");
 }
 
+// Wiring 16 (MOMO16, 11 Nov 2026): a Direct MoMo part picked on 61 is not confirmed yet. Done on
+// 16 opens 62 for it before the sale is committed.
+export function isUnconfirmedDirectMomo(part) {
+  return part?.paymentMethod === "momo" && part.momoMethod === "direct" && !isLockedMomoRow(part);
+}
+
+// "Money received" on 62 after Done: the Direct part becomes received (locked) for the amount on it.
+export function confirmDirectMomoParts(parts = []) {
+  return parts.map((part) => (isUnconfirmedDirectMomo(part)
+    ? { ...part, verification: "merchant_confirmed", confirmedPesewas: part.amountPesewas }
+    : part));
+}
+
 // The x on a row. Null for a locked MoMo row (the button is also hidden), so no caller can
 // remove money that was received.
 export function removePart(parts, target) {

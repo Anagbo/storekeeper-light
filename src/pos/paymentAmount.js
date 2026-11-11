@@ -53,6 +53,9 @@ export function applyMomoPick(details = {}) {
   const existing = parts.find((part) => part?.paymentMethod === "momo");
   const otherPaid = parts.reduce((total, part) => (part === existing ? total : total + part.amountPesewas), 0);
   const total = getPaymentTotalPesewas(details);
+  // A Direct pick on 16 comes back with no verification: not confirmed yet (MOMO16 confirms it on 62
+  // after Done), so it carries no confirmed amount either.
+  const confirmed = Boolean(details.verification);
   if (existing) {
     if (existing.momoMethod !== details.momoMethod || existing.verification !== details.verification) return parts;
     // A raise above the confirmed amount names the row's new total; a plain second tap adds the pick.
@@ -61,7 +64,7 @@ export function applyMomoPick(details = {}) {
       : existing.amountPesewas + pending;
     if (otherPaid + amountPesewas > total) return parts;
     return parts.map((part) => (part === existing
-      ? { ...part, amountPesewas, confirmedPesewas: (part.confirmedPesewas ?? part.amountPesewas) + pending }
+      ? { ...part, amountPesewas, ...(confirmed ? { confirmedPesewas: (part.confirmedPesewas ?? part.amountPesewas) + pending } : {}) }
       : part));
   }
   if (otherPaid + pending > total) return parts;
@@ -69,9 +72,9 @@ export function applyMomoPick(details = {}) {
     paymentMethod: "momo",
     amountPesewas: pending,
     momoMethod: details.momoMethod,
-    verification: details.verification,
+    ...(confirmed ? { verification: details.verification } : {}),
     ...(typeof details.reference === "string" && details.reference ? { reference: details.reference } : {}),
-    confirmedPesewas: pending
+    ...(confirmed ? { confirmedPesewas: pending } : {})
   }];
 }
 

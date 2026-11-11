@@ -58,8 +58,11 @@ test("K6: the Split button on 19 is named Split payment; 27 opened from 19 says 
 
 test("K12: an Always: customer sends setting on 63 skips 61 straight to 62", () => {
   const choice = section("MoMoChoice", "MoMoDirect");
-  assert.match(choice, /if \(settings\.defaultMethod === "direct"\) onReplace\("MoMoDirect", \{ \.\.\.params, momoMethod: "direct" \}\);/);
-  assert.match(read("PosApp.jsx"), /<MoMoChoice params=\{routeState\.params\} onBack=\{navigateBack\} onNavigate=\{navigate\} onReplace=\{replaceCurrentRoute\} \/>/);
+  // chooseDirect(true) replaces 61 with 62. A pick from 16 (confirmAtDone) returns to 16 instead,
+  // because there 62 comes after Done (MOMO16); 16's Always case is driven in splitDirectAtDone16.
+  assert.ok(choice.includes(`if (settings.defaultMethod === "direct") chooseDirect(true);`));
+  assert.ok(choice.includes(`else if (replace) onReplace("MoMoDirect", { ...params, momoMethod: "direct" });`));
+  assert.match(read("PosApp.jsx"), /<MoMoChoice params=\{routeState\.params\} onBack=\{navigateBack\} onNavigate=\{navigate\} onReplace=\{replaceCurrentRoute\} onPick=/);
 });
 
 test("K12: Always: phone request falls back to Ask while Phone request is off", async () => {

@@ -25,13 +25,21 @@ function ChoiceTile({ icon: Icon, title, detail, disabled = false, highlighted =
   </button>;
 }
 
-export function MoMoChoice({ params = {}, onBack, onNavigate, onReplace }) {
+export function MoMoChoice({ params = {}, onBack, onNavigate, onReplace, onPick }) {
   const [settings, setSettings] = useState({ defaultMethod: "ask", lastUsed: "", phoneRequestAvailable: false });
   useEffect(() => { getMerchantMomoSettings().then(setSettings).catch((error) => console.error("Could not load MoMo settings.", error)); }, []);
+  // MOMOPICK on 16: Direct records the method and returns to 16 "not confirmed yet"; 62 comes after
+  // Done (MOMO16). Nothing is requested or confirmed here.
+  const directReturnsNow = Boolean(params.pickOnly && params.confirmAtDone && onPick);
+  function chooseDirect(replace = false) {
+    if (directReturnsNow) onPick({ ...params, momoMethod: "direct" });
+    else if (replace) onReplace("MoMoDirect", { ...params, momoMethod: "direct" });
+    else onNavigate("MoMoDirect", { ...params, momoMethod: "direct" });
+  }
   // "When I tap MoMo" on 63 can skip this screen (K12). Always: phone request falls back to Ask
   // (this screen) unless Phone request is available: flag on and a payout saved (getMerchantMomoSettings).
   useEffect(() => {
-    if (settings.defaultMethod === "direct") onReplace("MoMoDirect", { ...params, momoMethod: "direct" });
+    if (settings.defaultMethod === "direct") chooseDirect(true);
     else if (settings.defaultMethod === "phone") onReplace("MoMoPayment", { ...params, momoMethod: "paystack", returnToMomo: true });
   }, [settings.defaultMethod]);
   // Only a method that was actually used before is tagged Last used (A5).
@@ -41,7 +49,7 @@ export function MoMoChoice({ params = {}, onBack, onNavigate, onReplace }) {
     <BackTitle title="MoMo payment" onBack={onBack} />
     <p className="text-[22px] font-extrabold">Customer pays {formatGhs(paymentAmountPesewas)}</p>
     <h2 className="text-xl font-extrabold">How will they pay?</h2>
-    <ChoiceTile icon={Send} title="Customer sends to my number" detail="Free. You check the MoMo message." highlighted={lastUsed === "direct"} onClick={() => { void recordMomoLastUsed("direct"); onNavigate("MoMoDirect", { ...params, momoMethod: "direct" }); }}>
+    <ChoiceTile icon={Send} title="Customer sends to my number" detail="Free. You check the MoMo message." highlighted={lastUsed === "direct"} onClick={() => { void recordMomoLastUsed("direct"); chooseDirect(); }}>
       {lastUsed === "direct" && <PosStatusTag compact>Last used</PosStatusTag>}
     </ChoiceTile>
     <ChoiceTile icon={Smartphone} title="Phone request" detail={PHONE_REQUEST_ENABLED ? `Customer approves on their phone. Confirmed by itself.${MOMO_CONFIG.phoneRequestFeePesewas > 0 ? ` Fee ${formatGhs(MOMO_CONFIG.phoneRequestFeePesewas)}.` : ""}` : "Not available yet"} disabled={!PHONE_REQUEST_ENABLED} highlighted={lastUsed === "phone"} onClick={() => { void recordMomoLastUsed("phone"); onNavigate(settings.phoneRequestAvailable ? "MoMoPayment" : "MoMoSetup", { ...params, momoMethod: "paystack", returnToMomo: true }); }}>
@@ -67,8 +75,9 @@ export function MoMoDirect({ params = {}, onBack, onConfirm, onPick }) {
     setSaveError("");
     const details = { ...params, momoMethod: "direct", verification: "merchant_confirmed" };
     try {
-      // D11: only a real save (not a pick) gets an attempt key.
-      await (params.pickOnly
+      // D11: only a real save (not a pick) gets an attempt key. After Done on 16 (confirmSplit) the
+      // commit runs on 16 itself, with 16's own attempt key.
+      await (params.pickOnly || params.confirmSplit
         ? onPick(details)
         : saveAttempt.run(details, (attemptId) => onConfirm({ ...details, attemptId })));
     } catch (saveFailure) {

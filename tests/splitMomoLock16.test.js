@@ -43,8 +43,11 @@ const labels = (tree) => nodes(tree).map((node) => node.props["aria-label"]).fil
 const buttonsIn = (node) => [...walk(node)].filter((child) => child.type === "button" || (typeof child.type === "function" && /Button$/.test(child.type.name)));
 const pencilsIn = (node) => [...walk(node)].filter((child) => child.props?.["data-pencil"] !== undefined);
 
-// Sell GH₵8.00 > Split payment > Cash 4.00 > MoMo 2.00 as Direct (61) > 62 Money received > back on 16.
+// Sell GH₵8.00 > Split payment > Cash 4.00 > MoMo 2.00 as Direct (61, back on 16 not confirmed yet)
+// > Owe Juju (17 > 18 Save returns to 16) > Done > 62 Money received > the commit fails in IndexedDB.
+// MOMO16: the draft returns to 16 with the MoMo part received, so it is locked.
 async function splitWithReceivedMomo(app) {
+  await recordCreditSale({ name: "Juju", amountPesewas: 500, now: Date.now() - 86_400_000 });
   await app.tap(/^Sell$/);
   await app.keys(["8"]);
   await app.tap("Split payment");
@@ -58,20 +61,16 @@ async function splitWithReceivedMomo(app) {
   await app.tap(/^Save$/);
   assert.equal(app.route, "MoMoChoice");
   await app.tap(/^Customer sends to my number/);
-  assert.equal(app.route, "MoMoDirect");
-  assert.match(shown(app), /send GH₵2\.00/);
-  await app.tap(/^Money received$/);
-  assert.equal(app.route, "SplitPayment");
-  assert.match(shown(app), /Left to payGH₵2\.00/);
-}
-
-// Owe the rest to Juju (17 > 18 Save returns to 16 in flow=split), then Done fails to save.
-async function oweThenFailDone(app) {
+  assert.equal(app.route, "SplitPayment", "Direct returns to 16, not confirmed yet");
+  assert.equal(app.params.splitParts.find((part) => part.paymentMethod === "momo").verification, undefined);
   await app.tap(/^Owe$/);
   await app.tap(/^JJuju/);
   await app.tap(/^Next/);
   await app.tap(/^Save · Juju owes/);
   assert.equal(app.route, "SplitPayment", "18 Save in flow=split returns to 16");
+  await app.tap(/^Done$/);
+  assert.equal(app.route, "MoMoDirect", "Done opens 62");
+  assert.match(shown(app), /send GH₵2.00/);
   // The screens load their own copy of db.js, so the write is failed in IndexedDB itself (shared).
   const store = globalThis.IDBObjectStore.prototype;
   const original = { add: store.add, put: store.put };
@@ -82,7 +81,7 @@ async function oweThenFailDone(app) {
     };
   }
   try {
-    await app.tap(/^Done$/);
+    await app.tap(/^Money received$/);
   } finally {
     Object.assign(store, original);
   }
@@ -107,17 +106,13 @@ function assertLocked(tree, amount) {
   assert.ok([...walk(status)].some((node) => typeof node.type === "function" || node.type?.displayName), "a green check icon");
 }
 
-test("16: a Direct MoMo confirmed on 62 is locked, and stays locked after a failed Owe commit returns to 16", async () => {
-  await recordCreditSale({ name: "Juju", amountPesewas: 500, now: Date.now() - 86_400_000 });
+test("16: a Direct MoMo confirmed on 62 after Done is locked, and stays locked on 16 after the commit fails", async () => {
   const app = await open();
   await splitWithReceivedMomo(app);
   // Where "received" is stored: on the part in the 16 route params (splitParts).
   const momo = app.params.splitParts.find((part) => part.paymentMethod === "momo");
   assert.deepEqual([momo.momoMethod, momo.verification, momo.confirmedPesewas, momo.amountPesewas], ["direct", "merchant_confirmed", 200, 200]);
   assertLocked(app.view.tree, "GH₵2.00");
-  await oweThenFailDone(app);
-  assertLocked(app.view.tree, "GH₵2.00");
-  assert.equal(app.params.splitParts.find((part) => part.paymentMethod === "momo").amountPesewas, 200);
   // Cash is never locked: its chip still opens the editor.
   assert.ok(labels(app.view.tree).includes("Edit Cash amount"));
   assert.ok(labels(app.view.tree).includes("Remove Cash"));
@@ -126,12 +121,14 @@ test("16: a Direct MoMo confirmed on 62 is locked, and stays locked after a fail
 test("16: Cash editing still works with a locked MoMo, and the Left to pay change never touches the MoMo part", async () => {
   const app = await open();
   await splitWithReceivedMomo(app);
+  await app.tap("Remove Owe");
+  assert.match(shown(app), /Left to payGH₵2.00/);
   await app.tap("Edit Cash amount");
   await app.type("split-draft-amount", "1.00");
   await app.tap(/^Save$/);
-  assert.match(shown(app), /Left to payGH₵5\.00/);
+  assert.match(shown(app), /Left to payGH₵5.00/);
   await app.tap(/^Cash$/);            // one tap: the whole Left to pay goes into Cash
-  assert.match(shown(app), /Left to payGH₵0\.00/);
+  assert.match(shown(app), /Left to payGH₵0.00/);
   const parts = app.params.splitParts;
   assert.deepEqual(parts.map((part) => [part.paymentMethod, part.amountPesewas]), [["cash", 600], ["momo", 200]]);
   assert.equal(parts[1].confirmedPesewas, 200);

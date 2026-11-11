@@ -291,7 +291,7 @@ export function returnToMomoOrigin(state) {
 
 // Pick-only flags must not leak into later screens (E4).
 function withoutMomoPickFlags(params = {}) {
-  const { pickOnly: _pickOnly, returnRoute: _returnRoute, ...rest } = params;
+  const { pickOnly: _pickOnly, returnRoute: _returnRoute, confirmAtDone: _confirmAtDone, ...rest } = params;
   return rest;
 }
 

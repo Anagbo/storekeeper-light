@@ -23,6 +23,7 @@ import {
   phoneBackState
 } from "./routes.js";
 import { createBrowserBack } from "./browserBack.js";
+import { confirmDirectMomoParts } from "./splitTender.js";
 import Home from "./Home.jsx";
 import Menu from "./Menu.jsx";
 import MyMoney from "./MyMoney.jsx";
@@ -422,7 +423,7 @@ export default function PosApp() {
       trialExpiry={trialExpiry}
     />
   ) : route === POS_ROUTES.MoMoChoice ? (
-    <MoMoChoice params={routeState.params} onBack={navigateBack} onNavigate={navigate} onReplace={replaceCurrentRoute} />
+    <MoMoChoice params={routeState.params} onBack={navigateBack} onNavigate={navigate} onReplace={replaceCurrentRoute} onPick={(details) => returnFromMomoPick(details)} />
   ) : route === POS_ROUTES.MoMoDirect ? (
     <MoMoDirect
     params={routeState.params}
@@ -438,7 +439,15 @@ export default function PosApp() {
         throw error;
       });
     }}
-    onPick={(details) => returnFromMomoPick(details)}
+    onPick={(details) => {
+      // MOMO16: Money received after Done on 16. The Direct part is now received (locked) and 16
+      // commits once; a failed commit leaves the draft on 16 with the part still locked.
+      if (details.confirmSplit) {
+        returnTo(POS_ROUTES.SplitPayment, { splitParts: confirmDirectMomoParts(details.confirmSplitParts ?? []), commitNow: true }, isSaleSplitHub);
+        return;
+      }
+      returnFromMomoPick(details);
+    }}
     />
   ) : route === POS_ROUTES.PaymentSettings ? (
     <PaymentSettings onBack={navigateBack} onNavigate={navigate} />
