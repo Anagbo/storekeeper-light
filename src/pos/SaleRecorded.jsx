@@ -31,6 +31,8 @@ export default function SaleRecorded({ transaction, shopName, onDone, onNewSale 
   const receiptText = getSaleReceiptText(transaction, shopName);
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(receiptText)}`;
   const owedPesewas = transaction?.creditExtendedPesewas ?? 0;
+  const paidPesewas = details.cashReceivedPesewas + details.momoReceivedPesewas;
+  const isSplit = details.paymentMethod === "split";
   const customerName = transaction?.customer_name ?? transaction?.customerName ?? "";
 
   async function shareReceiptFallback() {
@@ -78,17 +80,23 @@ export default function SaleRecorded({ transaction, shopName, onDone, onNewSale 
           </div>
         )}
         <div className="border-t-2 border-dashed border-slate-400 pt-2">
-          {details.paymentMethod === "split" ? (
+          {/* A split, or a sale with a part on credit (Owe on 16): each paid part, then what is still owed.
+              A zero part is left out unless the sale is a Cash + MoMo split. */}
+          {isSplit || owedPesewas > 0 ? (
             <div className="flex flex-col gap-1 text-lg">
-              <div className="flex justify-between gap-2">
-                <span>{t("saleRecorded.method.cash")}</span>
-                <strong>{formatGhs(details.cashReceivedPesewas)}</strong>
-              </div>
-              <div className="flex justify-between gap-2">
-                <span>{momoLabel}</span>
-                <strong>{formatGhs(details.momoReceivedPesewas)}</strong>
-              </div>
-              <div className="border-t-2 border-dashed border-slate-400 pt-1">
+              {(isSplit || details.cashReceivedPesewas > 0) && (
+                <div className="flex justify-between gap-2">
+                  <span>{t("saleRecorded.method.cash")}</span>
+                  <strong>{formatGhs(details.cashReceivedPesewas)}</strong>
+                </div>
+              )}
+              {(isSplit || details.momoReceivedPesewas > 0) && (
+                <div className="flex justify-between gap-2">
+                  <span>{momoLabel}</span>
+                  <strong>{formatGhs(details.momoReceivedPesewas)}</strong>
+                </div>
+              )}
+              <div className={paidPesewas > 0 || isSplit ? "border-t-2 border-dashed border-slate-400 pt-1" : undefined}>
                 <div className="flex justify-between gap-2">
                   <span>{customerName ? t("collect.customerStillOwes", { name: customerName }) : t("credit.owed")}</span>
                   <strong className="text-rose-900">{formatGhs(owedPesewas)}</strong>

@@ -39,7 +39,12 @@ export function getSaleReceiptDetails(transaction) {
   if (!Number.isFinite(timestamp) || !Number.isFinite(new Date(timestamp).getTime())) {
     throw new RangeError("The recorded sale has an invalid time.");
   }
-  const paymentMethod = transaction.payment_method ?? transaction.paymentType;
+  const creditExtendedPesewas = transaction.creditExtendedPesewas ?? 0;
+  // A sale wholly on credit (a split on 16 whose only part is Owe) is recorded by recordCreditSale
+  // with no payment method: nothing was paid. Its method here is "owe".
+  const wholeSaleOwed = transaction.paymentType === "credit" && transaction.payment_method == null &&
+    creditExtendedPesewas === amountPesewas;
+  const paymentMethod = wholeSaleOwed ? "owe" : transaction.payment_method ?? transaction.paymentType;
   const hasSplitParts = transaction.cashReceivedPesewas !== undefined ||
     transaction.momoReceivedPesewas !== undefined;
   const cashReceivedPesewas = hasSplitParts
@@ -48,9 +53,8 @@ export function getSaleReceiptDetails(transaction) {
   const momoReceivedPesewas = hasSplitParts
     ? transaction.momoReceivedPesewas ?? 0
     : paymentMethod === "momo" ? amountPesewas : 0;
-  const creditExtendedPesewas = transaction.creditExtendedPesewas ?? 0;
   const expectedPaidPesewas = amountPesewas - creditExtendedPesewas;
-  if (!["cash", "momo", "split"].includes(paymentMethod) ||
+  if (!["cash", "momo", "split", "owe"].includes(paymentMethod) ||
     !Number.isSafeInteger(creditExtendedPesewas) || creditExtendedPesewas < 0 ||
     creditExtendedPesewas > amountPesewas ||
     !Number.isSafeInteger(cashReceivedPesewas) || cashReceivedPesewas < 0 ||
@@ -76,9 +80,13 @@ export function buildSaleReceiptMessage(transaction, shopName) {
     ...details.items.map(({ name, quantity, amountPesewas }) =>
       `${name} × ${quantity}: ${formatGhs(amountPesewas)}`
     ),
-    ...(details.paymentMethod === "split"
+    ...(details.paymentMethod === "owe"
+      ? []
+      : details.paymentMethod === "split"
       ? [`Payment: Cash ${formatGhs(details.cashReceivedPesewas)} · MoMo ${formatGhs(details.momoReceivedPesewas)}`]
       : [`Payment: ${details.paymentMethod === "momo" ? "MoMo" : "Cash"}`]),
+    // The part on credit, worded as the receipt template words it.
+    ...(transaction.creditExtendedPesewas > 0 ? [`Owed: ${formatGhs(transaction.creditExtendedPesewas)}`] : []),
     "Thank you!"
   ];
   return lines.join("\n");
