@@ -1,3 +1,6 @@
+import { displayName } from "../lib/displayName.js";
+import { formatGhs } from "../lib/money.js";
+import { posText as t } from "./i18n.js";
 import { getTransactionTimestamp } from "./money.js";
 
 const SALE_TYPES = new Set(["sale", "cash_sale", "credit_sale", "installment_sale", "installment_addon"]);
@@ -89,14 +92,22 @@ export function createPosTransactionRows(transactions) {
         : isSale || isPayment
           ? amountPesewas
           : 0;
-    const cashPesewas = isInstallmentSale
+    // A plain sale paid with Cash and MoMo is stored with both parts (payment_method "split"):
+    // the chips show each part, not the whole sale as Cash.
+    const storedPlainSaleParts = isSale && !isCreditSale && !isInstallmentSale &&
+      Number.isSafeInteger(transaction.cashReceivedPesewas) && Number.isSafeInteger(transaction.momoReceivedPesewas) &&
+      transaction.cashReceivedPesewas >= 0 && transaction.momoReceivedPesewas >= 0 &&
+      transaction.cashReceivedPesewas + transaction.momoReceivedPesewas === amountPesewas
+      ? { cash: transaction.cashReceivedPesewas, momo: transaction.momoReceivedPesewas }
+      : null;
+    const cashPesewas = storedPlainSaleParts ? storedPlainSaleParts.cash : isInstallmentSale
       ? getOptionalAmount(
           transaction.cashReceivedPesewas,
           paymentMethod === "momo" ? 0 : legacyInstallmentPaymentPesewas,
           "Installment cash payment"
         )
       : (isSale || isPayment) && paymentMethod === "cash" ? cashReceivedPesewas : 0;
-    const momoPesewas = isInstallmentSale
+    const momoPesewas = storedPlainSaleParts ? storedPlainSaleParts.momo : isInstallmentSale
       ? getOptionalAmount(
           transaction.momoReceivedPesewas,
           paymentMethod === "momo" ? legacyInstallmentPaymentPesewas : 0,
@@ -154,6 +165,61 @@ export function createPosTransactionRows(transactions) {
     }
   }
   return groupedRows.sort((left, right) => right.timestamp - left.timestamp);
+}
+
+// 24 (redesign 11 Nov 2026): what one row shows. Money in is money actually received today, so a
+// sale's amount is what was received (+); the owed part is a pink person chip. A credit-only sale
+// shows its amount with no sign (nothing was received). The sum of the "+" amounts equals Money in.
+//   tone: "in" (green, +), "spent" (amber-brown, −), "credit" (dark red, no sign), "neutral".
+//   chips: { kind: "payment" | "person" | "category" | "credit", label }
+export function describeTransactionRow(row) {
+  const name = displayName(row.customerName);
+  const person = (label) => ({ kind: "person", label });
+  const paymentChips = () => [
+    ...(row.cashPesewas > 0 ? [{ kind: "payment", label: `${t("transactions.tag.cash")} ${formatGhs(row.cashPesewas)}` }] : []),
+    ...(row.momoPesewas > 0 ? [{ kind: "payment", label: `${t("transactions.tag.momo")} ${formatGhs(row.momoPesewas)}` }] : [])
+  ];
+  if (row.kind === "sold") {
+    const received = row.cashReceivedPesewas;
+    if (row.owedPesewas > 0 && received === 0) {
+      return { title: t("transactions.row.soldOnCredit"), amountPesewas: row.owedPesewas, tone: "credit", chips: name ? [person(name)] : [] };
+    }
+    if (row.owedPesewas > 0) {
+      return {
+        title: t("transactions.row.saleOf", { amount: formatGhs(received + row.owedPesewas) }),
+        amountPesewas: received,
+        tone: "in",
+        chips: [...paymentChips(), person(t("transactions.row.owes", { name: name || t("home.unnamedCustomer"), amount: formatGhs(row.owedPesewas) }))]
+      };
+    }
+    return { title: t("transactions.row.sale"), amountPesewas: received, tone: "in", chips: paymentChips() };
+  }
+  if (row.kind === "payment") {
+    return { title: t("transactions.row.paymentCollected"), amountPesewas: row.amountPesewas, tone: "in", chips: [...paymentChips(), ...(name ? [person(name)] : [])] };
+  }
+  if (row.kind === "spent" || row.kind === "credit") {
+    const category = categoryLabel(row.category);
+    const chips = [
+      ...(category ? [{ kind: "category", label: category }] : []),
+      ...(row.owedPesewas > 0 ? [{ kind: "credit", label: `${t("transactions.tag.credit")} ${formatGhs(row.owedPesewas)}` }] : [])
+    ];
+    // Stock bought fully on credit: nothing was paid today, so the amount has no sign.
+    if (row.kind === "credit") return { title: t("transactions.row.spent"), amountPesewas: row.amountPesewas, tone: "credit", chips };
+    return { title: t("transactions.row.spent"), amountPesewas: row.amountPesewas, tone: "spent", chips };
+  }
+  if (row.kind === "debt_added") {
+    return { title: t("transactions.row.addedToDebt"), amountPesewas: row.amountPesewas, tone: "credit", chips: name ? [person(name)] : [] };
+  }
+  if (row.kind === "adjustment") {
+    return { title: t("transactions.row.balanceCorrection"), amountPesewas: Math.abs(row.adjustmentDeltaPesewas), tone: "neutral", chips: name ? [person(name)] : [] };
+  }
+  return { title: "", amountPesewas: row.amountPesewas, tone: "neutral", chips: [] };
+}
+
+function categoryLabel(category) {
+  const text = String(category ?? "").trim();
+  const key = `transactions.category.${text.toLowerCase()}`;
+  return ["stock", "transport", "rent", "utilities", "other"].includes(text.toLowerCase()) ? t(key) : text;
 }
 
 export function filterPosTransactionRows(rows, filter) {

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "../db/db.js";
+import { UserRound } from "lucide-react";
+import { formatDate } from "../lib/formatDate.js";
 import {
   formatGhs,
   getFinancialTransactions,
@@ -8,8 +9,8 @@ import {
 } from "../lib/money.js";
 import { posText as t } from "./i18n.js";
 import { getMoneyPeriodRange } from "./money.js";
-import { PosBackButton, PosPage, PosStatusTag } from "./PosComponents.jsx";
-import { createPosTransactionRows, filterPosTransactionRows } from "./transactionFeed.js";
+import { PosBackButton, PosPage } from "./PosComponents.jsx";
+import { createPosTransactionRows, describeTransactionRow, filterPosTransactionRows } from "./transactionFeed.js";
 
 const FILTERS = ["all", "sold", "spent", "credit"];
 
@@ -20,112 +21,50 @@ function formatTransactionTime(timestamp) {
   });
 }
 
-function getCategoryLabel(category) {
-  const normalized = category.trim().toLowerCase();
-  const categoryKeys = {
-    stock: "transactions.category.stock",
-    transport: "transactions.category.transport",
-    rent: "transactions.category.rent",
-    utilities: "transactions.category.utilities",
-    other: "transactions.category.other"
-  };
-  return categoryKeys[normalized] ? t(categoryKeys[normalized]) : category.trim();
-}
+// Amount colours (wiring 24): money in green with +, spent amber-brown with −, credit-only dark red
+// with no sign (nothing was received).
+const AMOUNT_TONES = {
+  in: { className: "text-[#03543F]", sign: "+" },
+  spent: { className: "text-[#92400E]", sign: "−" },
+  credit: { className: "text-[#7F1D1D]", sign: "" },
+  neutral: { className: "text-slate-800", sign: "" }
+};
 
-function TransactionTags({ row }) {
-  if (row.kind === "adjustment") {
-    return (
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        <PosStatusTag compact>{t("transactions.tag.adjustment")}</PosStatusTag>
-        {row.customerName && <PosStatusTag compact>{row.customerName}</PosStatusTag>}
-      </div>
-    );
-  }
+const CHIP_STYLES = {
+  payment: "bg-[#CBD5E1] text-[#0F172A]",
+  person: "bg-[#FECDD3] text-[#0F172A]",
+  category: "bg-[#FDE68A] text-[#0F172A]",
+  credit: "bg-rose-100 text-rose-950"
+};
 
-  if (row.kind === "debt_added") {
-    return (
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        <PosStatusTag compact tone="red">{t("transactions.tag.debtAdded")}</PosStatusTag>
-        {row.customerName && <PosStatusTag compact>{row.customerName}</PosStatusTag>}
-      </div>
-    );
-  }
-
-  if (row.kind === "spent") {
-    const category = getCategoryLabel(row.category);
-    return (
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        <PosStatusTag compact tone="amber">{t("transactions.tag.spent")}</PosStatusTag>
-        {category && <PosStatusTag compact>{category}</PosStatusTag>}
-        {row.owedPesewas > 0 && <PosStatusTag compact tone="red">{t("transactions.tag.credit")} {formatGhs(row.owedPesewas)}</PosStatusTag>}
-      </div>
-    );
-  }
-
-  if (row.kind === "credit") {
-    const category = getCategoryLabel(row.category);
-    return (
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        <PosStatusTag compact tone="red">{t("transactions.tag.credit")}</PosStatusTag>
-        {category && <PosStatusTag compact>{category}</PosStatusTag>}
-      </div>
-    );
-  }
-
-  if (row.kind === "payment") {
-    return (
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        <PosStatusTag compact tone="green">{t("transactions.tag.collectedDebt")}</PosStatusTag>
-        {row.cashPesewas > 0 && <PosStatusTag compact>{t("transactions.tag.cash")} {formatGhs(row.cashPesewas)}</PosStatusTag>}
-        {row.momoPesewas > 0 && <PosStatusTag compact>{t("transactions.tag.momo")} {formatGhs(row.momoPesewas)}</PosStatusTag>}
-      </div>
-    );
-  }
-
-  if (row.kind === "sold") {
-    const isCreditOnly = row.isSale && row.isCredit && row.cashReceivedPesewas === 0;
-    return (
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {!isCreditOnly && <PosStatusTag compact tone="green">{t("transactions.tag.sold")}</PosStatusTag>}
-        {row.cashPesewas > 0 && <PosStatusTag compact>{t("transactions.tag.cash")} {formatGhs(row.cashPesewas)}</PosStatusTag>}
-        {row.momoPesewas > 0 && <PosStatusTag compact>{t("transactions.tag.momo")} {formatGhs(row.momoPesewas)}</PosStatusTag>}
-        {row.owedPesewas > 0 && (
-          <PosStatusTag compact tone="red">
-            {isCreditOnly ? t("transactions.tag.credit") : `${t("transactions.tag.owed")} ${formatGhs(row.owedPesewas)}`}
-          </PosStatusTag>
-        )}
-        {row.customerName && row.isCredit && <PosStatusTag compact>{row.customerName}</PosStatusTag>}
-      </div>
-    );
-  }
-
-  return null;
-}
-
-function TransactionRow({ row }) {
-  const isSpent = row.kind === "spent";
-  const isAdjustment = row.kind === "adjustment";
-  const isCreditOnly = row.isCredit && row.cashReceivedPesewas === 0;
-  const amount = formatGhs(isAdjustment ? Math.abs(row.adjustmentDeltaPesewas) : row.amountPesewas);
-  const signedAmount = isAdjustment
-    ? amount
-    : isSpent
-    ? `−${amount}`
-    : isCreditOnly
-      ? amount
-      : `+${amount}`;
-
+function Chip({ chip }) {
   return (
-    <article role="listitem" className="flex min-h-[76px] flex-col gap-1 rounded-2xl border-2 border-slate-300 bg-white px-3 py-2 sm:flex-row sm:items-center sm:gap-3 sm:px-4">
-      <div className="amount-fit-container min-w-0 flex-1">
-        <p className={`truncate text-lg font-bold leading-tight sm:text-xl ${isAdjustment ? "text-slate-800" : isSpent ? "text-amber-900" : isCreditOnly ? "text-rose-900" : "text-emerald-900"}`}>
-          {signedAmount}
-        </p>
-        <TransactionTags row={row} />
+    <span data-chip={chip.kind} className={`inline-flex max-w-full items-center gap-1 rounded-[10px] px-2 py-0.5 text-base font-bold [overflow-wrap:anywhere] ${CHIP_STYLES[chip.kind] ?? CHIP_STYLES.payment}`}>
+      {chip.kind === "person" && <UserRound size={16} aria-hidden="true" className="shrink-0" />}
+      {chip.label}
+    </span>
+  );
+}
+
+// One row: title and amount on line 1, chips and time on line 2. Rows are not buttons (no
+// chevron, no hover, not focusable) until their detail view is designed.
+function TransactionRow({ row }) {
+  const view = describeTransactionRow(row);
+  const tone = AMOUNT_TONES[view.tone] ?? AMOUNT_TONES.neutral;
+  return (
+    <article role="listitem" data-row-tone={view.tone} className="flex min-w-0 flex-col gap-1.5 rounded-[18px] border-2 border-[#CBD5E1] bg-white px-3.5 py-2.5">
+      <div className="flex min-w-0 items-baseline justify-between gap-2">
+        <b data-row-title="" className="min-w-0 text-lg font-extrabold leading-tight [overflow-wrap:anywhere]">{view.title}</b>
+        <b data-row-amount="" className={`shrink-0 whitespace-nowrap text-[22px] font-extrabold leading-tight ${tone.className}`}>{`${tone.sign}${formatGhs(view.amountPesewas)}`}</b>
       </div>
-      <time className="self-end text-sm font-bold text-slate-700 sm:shrink-0 sm:self-auto sm:text-base" dateTime={new Date(row.timestamp).toISOString()}>
-        {formatTransactionTime(row.timestamp)}
-      </time>
+      <div className="flex min-w-0 items-end justify-between gap-2">
+        <span className="flex min-w-0 flex-wrap gap-1.5">
+          {view.chips.map((chip) => <Chip key={`${chip.kind}:${chip.label}`} chip={chip} />)}
+        </span>
+        <time className="shrink-0 whitespace-nowrap text-base font-bold text-slate-800" dateTime={new Date(row.timestamp).toISOString()}>
+          {formatTransactionTime(row.timestamp)}
+        </time>
+      </div>
     </article>
   );
 }
@@ -151,22 +90,25 @@ export default function TodaysTransactions({ onBack }) {
 
   return (
     <PosPage className="flex flex-col gap-3 px-4 sm:px-6 lg:gap-5">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2.5">
         <PosBackButton onClick={onBack} />
-        <h1 className="min-w-0 text-xl font-extrabold sm:text-2xl">{t("transactions.title")}</h1>
+        <div className="min-w-0">
+          <h1 className="text-2xl font-extrabold leading-tight">{t("transactions.title")}</h1>
+          <p data-today-date="" className="text-base font-semibold text-slate-800">{t("transactions.todayDate", { date: formatDate(range.start) })}</p>
+        </div>
       </div>
 
       {data.status === "loading" ? (
         <section role="status" aria-label={t("transactions.loading")} className="flex flex-col gap-3">
-          <div className="grid grid-cols-3 gap-2 lg:gap-4">
-            {[1, 2, 3].map((card) => <div key={card} className="h-20 animate-pulse rounded-2xl bg-slate-200 sm:h-24" />)}
+          <div className="h-20 animate-pulse rounded-[20px] bg-slate-200" />
+          <div className="grid grid-cols-2 gap-2">
+            {[1, 2].map((card) => <div key={card} className="h-16 animate-pulse rounded-[18px] bg-slate-200" />)}
           </div>
-          <div className="h-4 w-36 animate-pulse rounded bg-slate-200" />
           <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
-            {[1, 2, 3, 4].map((filterButton) => <div key={filterButton} className="h-12 animate-pulse rounded-xl bg-slate-200" />)}
+            {[1, 2, 3, 4].map((filterButton) => <div key={filterButton} className="h-[52px] animate-pulse rounded-[14px] bg-slate-200" />)}
           </div>
           <div className="flex flex-col gap-2">
-            {[1, 2, 3].map((row) => <div key={row} className="h-[76px] animate-pulse rounded-2xl bg-slate-200" />)}
+            {[1, 2, 3].map((row) => <div key={row} className="h-[76px] animate-pulse rounded-[18px] bg-slate-200" />)}
           </div>
         </section>
       ) : data.status === "error" ? (
@@ -178,21 +120,22 @@ export default function TodaysTransactions({ onBack }) {
         </section>
       ) : (
         <>
-          <section aria-label={t("transactions.summary")} className="grid grid-cols-3 gap-2 lg:gap-4">
-            <div className="amount-fit-container amount-fit-tile min-w-0 rounded-2xl bg-emerald-900 p-3 text-white sm:px-4">
-              <p className="text-sm font-bold sm:text-base">{t("transactions.moneyIn")}</p>
-              <p className="amount-fit font-extrabold">{formatGhs(data.totals.cashInflow)}</p>
+          <section aria-label={t("transactions.summary")} className="flex flex-col gap-2 lg:gap-4">
+            <div data-summary="money-in" className="min-w-0 rounded-[20px] bg-[#03543F] px-4 py-3 text-white">
+              <p className="text-base font-bold">{t("transactions.moneyIn")}</p>
+              <p className="whitespace-nowrap text-[34px] font-extrabold leading-tight">{formatGhs(data.totals.cashInflow)}</p>
             </div>
-            <div className="amount-fit-container amount-fit-tile min-w-0 rounded-2xl bg-amber-100 p-3 text-slate-950 sm:px-4">
-              <p className="text-sm font-bold sm:text-base">{t("transactions.spent")}</p>
-              <p className="amount-fit font-extrabold">{formatGhs(data.totals.expenses)}</p>
-            </div>
-            <div className="amount-fit-container amount-fit-tile min-w-0 rounded-2xl bg-rose-200 p-3 text-rose-950 sm:px-4">
-              <p className="text-sm font-bold sm:text-base">{t("transactions.owed")}</p>
-              <p className="amount-fit font-extrabold">{formatGhs(data.totals.newCreditExtended)}</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div data-summary="spent" className="min-w-0 rounded-[18px] bg-[#FEF3C7] px-2 py-2 sm:px-3 text-[#0F172A]">
+                <p className="text-base font-bold">{t("transactions.spent")}</p>
+                <p className="whitespace-nowrap text-[22px] font-extrabold leading-tight">{formatGhs(data.totals.expenses)}</p>
+              </div>
+              <div data-summary="owed" className="min-w-0 rounded-[18px] bg-[#FECDD3] px-2 py-2 sm:px-3 text-[#7F1D1D]">
+                <p className="text-base font-bold">{t("transactions.owed")}</p>
+                <p className="whitespace-nowrap text-[22px] font-extrabold leading-tight">{formatGhs(data.totals.newCreditExtended)}</p>
+              </div>
             </div>
           </section>
-          <p className="-mt-1 text-sm font-semibold text-slate-700">{t("transactions.amountsInGhs")}</p>
 
           <div role="group" aria-label={t("transactions.filters")} className="grid grid-cols-4 gap-1.5 sm:gap-2">
             {FILTERS.map((value) => (
@@ -201,7 +144,7 @@ export default function TodaysTransactions({ onBack }) {
                 type="button"
                 aria-pressed={filter === value}
                 onClick={() => setFilter(value)}
-                className={`min-h-12 rounded-xl border-2 px-1 text-sm font-extrabold sm:text-base ${filter === value ? "border-emerald-900 bg-emerald-900 text-white" : "border-slate-500 bg-white text-slate-950"}`}
+                className={`h-[52px] min-w-0 rounded-[14px] border-2 px-1 text-[17px] font-extrabold ${filter === value ? "border-[#03543F] bg-[#03543F] text-white" : "border-slate-500 bg-white text-slate-950"}`}
               >
                 {t(`transactions.filter.${value}`)}
               </button>
@@ -213,9 +156,7 @@ export default function TodaysTransactions({ onBack }) {
               {visibleRows.map((row) => <TransactionRow key={row.id} row={row} />)}
             </div>
           ) : (
-            <section className="flex min-h-40 flex-col items-center justify-center rounded-2xl border-2 border-slate-300 bg-white p-5 text-center">
-              <p className="font-bold">{data.transactions.length ? t("transactions.noMatches") : t("transactions.noActivity")}</p>
-            </section>
+            <p data-empty="" className="py-2 text-center text-base font-semibold text-slate-700">{t("transactions.empty")}</p>
           )}
         </>
       )}
