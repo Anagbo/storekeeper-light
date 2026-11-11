@@ -284,7 +284,9 @@ export function returnToMomoOrigin(state) {
   while (originIndex >= 0 && MOMO_FLOW_ROUTES.has(state.history[originIndex].current)) originIndex -= 1;
   if (originIndex === state.history.length - 1 || originIndex < 0) return null;
   const origin = state.history[originIndex];
-  return { current: origin.current, params: origin.params, history: state.history.slice(0, originIndex) };
+  // Wiring 15: back on 15, pending MoMo values are removed so an old amount can never come back.
+  const params = origin.current === POS_ROUTES.Sell ? withoutPendingMomoValues(withoutMomoPickFlags(origin.params)) : origin.params;
+  return { current: origin.current, params, history: state.history.slice(0, originIndex) };
 }
 
 // Pick-only flags must not leak into later screens (E4).

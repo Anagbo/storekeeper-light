@@ -128,7 +128,8 @@ export default function PosApp() {
     if (!Object.values(POS_ROUTES).includes(route)) {
       throw new Error(`Unknown POS route: ${route}`);
     }
-    setRouteState(createRouteState(route));
+    // Wiring 15: the Sell tab pressed on 15 itself is not a different tab; the draft stays.
+    setRouteState((current) => (route === POS_ROUTES.Sell && current.current === POS_ROUTES.Sell ? current : createRouteState(route)));
     setNotice("");
   }
 
@@ -439,6 +440,7 @@ export default function PosApp() {
     <Sell
       params={routeState.params}
       onNavigate={navigate}
+      onUpdateParams={updateCurrentParams}
     />
   ) : route === POS_ROUTES.SellWithItems ? (
     <SellWithItems

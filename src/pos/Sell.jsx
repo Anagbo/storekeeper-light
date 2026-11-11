@@ -17,11 +17,15 @@ const paymentChoices = [
   { value: "credit", label: "sell.owe", icon: UserRound }
 ];
 
-export default function Sell({ params = {}, onNavigate, recordSale = recordCashSale }) {
-  const [amount, setAmount] = useState(Number.isSafeInteger(params.amountPesewas) && params.amountPesewas > 0
-    ? (params.amountPesewas / 100).toFixed(2)
-    : "");
-  const [paymentMethod, setPaymentMethod] = useState("cash");
+// Wiring 15: the draft (what is typed, Cash or MoMo, the added items) lives in the route parameters, like the
+// split screen, so it is still there when the owner comes back with Back. amountText is the pad as typed.
+export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSale = recordCashSale }) {
+  const [amount, setAmount] = useState(typeof params.amountText === "string"
+    ? params.amountText
+    : Number.isSafeInteger(params.amountPesewas) && params.amountPesewas > 0
+      ? (params.amountPesewas / 100).toFixed(2)
+      : "");
+  const [paymentMethod, setPaymentMethod] = useState(params.paymentMethod === "momo" ? "momo" : "cash");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const submitLock = useRef(false);
@@ -34,11 +38,20 @@ export default function Sell({ params = {}, onNavigate, recordSale = recordCashS
   const canSave = Number.isSafeInteger(amountPesewas) && amountPesewas > 0 &&
     (!hasSaleItems || amountPesewas === itemTotalPesewas);
 
+  // An amount that arrives from outside (not the one typed here) replaces what is on the pad.
   useEffect(() => {
-    if (Number.isSafeInteger(params.amountPesewas)) {
+    if (Number.isSafeInteger(params.amountPesewas) && params.amountPesewas !== (toPesewas(amount) ?? 0)) {
       setAmount(params.amountPesewas > 0 ? (params.amountPesewas / 100).toFixed(2) : "");
     }
   }, [params.amountPesewas]);
+
+  // Keep the draft in the route parameters (never the save attempt key: a restored screen starts a new one).
+  useEffect(() => {
+    const pesewas = Number.isSafeInteger(amountPesewas) && amountPesewas > 0 ? amountPesewas : 0;
+    if (!onUpdateParams) return;
+    if (params.amountText === amount && params.paymentMethod === paymentMethod && params.amountPesewas === pesewas) return;
+    onUpdateParams({ amountText: amount, paymentMethod, amountPesewas: pesewas });
+  }, [amount, paymentMethod]);
 
   function appendDigit(digit) {
     if (hasSaleItems) return;
