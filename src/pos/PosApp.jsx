@@ -28,6 +28,7 @@ import Menu from "./Menu.jsx";
 import MyMoney from "./MyMoney.jsx";
 import TodaysTransactions from "./TodaysTransactions.jsx";
 import { posText as t } from "./i18n.js";
+import { spentSavedNotice, stockSavedNotice } from "./expenseNotice.js";
 import { PosBottomNav, PosHeader, PosPage, PosSideNav } from "./PosComponents.jsx";
 import PlannedScreen from "./PlannedScreen.jsx";
 import PosErrorBoundary from "./PosErrorBoundary.jsx";
@@ -342,7 +343,7 @@ export default function PosApp() {
     const result = await recordExpense(details);
     void requestBackgroundSync();
     switchTab(POS_ROUTES.Home);
-    setNotice(t("expense.savedNotice", { amount: formatGhs(result.amountPesewas) }));
+    setNotice(spentSavedNotice(result));
   }
 
   async function saveStockExpense(details) {
@@ -352,7 +353,7 @@ export default function PosApp() {
     });
     void requestBackgroundSync();
     switchTab(POS_ROUTES.Home);
-    setNotice(t("expense.savedNotice", { amount: formatGhs(result.amountPesewas) }));
+    setNotice(stockSavedNotice(result));
   }
 
   async function paySupplier(supplierId, amountPesewas) {
