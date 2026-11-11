@@ -7,8 +7,8 @@ import { hasSearchText, squashSearchText } from "../lib/searchMatch.js";
 import { posText } from "./i18n.js";
 import { getDebtDueDate, groupUnpaidDebts, isDebtDueSoon, isDebtLate, loadAllUnpaidDebts, loadUnpaidDebtPage, matchesOwedSearch, OWED_PAGE_SIZE } from "./owed.js";
 import SearchField from "./SearchField.jsx";
-import { getDebtDueLabel } from "./money.js";
-import { PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag } from "./PosComponents.jsx";
+import { DueTag } from "./PartyCard.jsx";
+import { PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { generateWhatsAppLink } from "../utils/whatsapp.js";
 
 function WhatsAppIcon() {
@@ -210,7 +210,6 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
           <div className="flex flex-col gap-3" role="list">
           {visibleCustomers.map((customer) => {
             const dueDate = getDebtDueDate(customer.debt);
-            const dueLabel = dueDate ? getDebtDueLabel(dueDate) : "";
             const whatsappUrl = generateWhatsAppLink(
               customer.phone,
               customer.customerName,
@@ -223,7 +222,7 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
                   <span className="min-w-0 flex-1">
                     <strong className="block truncate text-xl">{customer.customerName}</strong>
                     <span className="block text-base text-slate-900">{formatGhs(customer.balancePesewas)}</span>
-                    {dueLabel && <PosStatusTag tone={dueLabel.startsWith("Late ") ? "red" : "amber"}>{dueLabel}</PosStatusTag>}
+                    {dueDate && <DueTag dueDate={dueDate} />}
                   </span>
                 </button>
                 <div className={`grid shrink-0 gap-2 ${whatsappUrl ? "grid-cols-3" : "grid-cols-2"}`}>

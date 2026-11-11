@@ -40,6 +40,23 @@ export function getPreviousMoneyPeriodRange(period, now = new Date()) {
 
 export { getOutstandingDebtPesewas };
 
+// 22 Owed card: how many people owe (unpaid debts grouped by name, as getMostUrgentCustomerDebt
+// groups them) and how many of them are late (an unpaid debt due before today).
+export function summarizeOwedPeople(debts, today = new Date()) {
+  const todayDate = new Date(today);
+  todayDate.setHours(0, 0, 0, 0);
+  const people = new Map();
+  for (const debt of debts) {
+    if (debt.status !== "unpaid" || getDebtBalancePesewas(debt) <= 0) continue;
+    const name = (debt.customerName ?? debt.customer_name ?? "").trim();
+    const key = name.toLowerCase() || `unnamed:${debt.id}`;
+    const dueDate = debt.isInstallmentPlan ? debt.nextDueDate : debt.dueDate;
+    const due = dueDate ? Date.parse(`${dueDate}T00:00:00`) : Number.NaN;
+    people.set(key, people.get(key) === true || (Number.isFinite(due) && due < todayDate.getTime()));
+  }
+  return { people: people.size, late: [...people.values()].filter(Boolean).length };
+}
+
 export function getMostUrgentCustomerDebt(debts, today = new Date()) {
   const todayDate = new Date(today);
   todayDate.setHours(0, 0, 0, 0);

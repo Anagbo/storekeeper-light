@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Phone, Plus, Wallet } from "lucide-react";
+import { Plus, Wallet } from "lucide-react";
 import { db } from "../db/db.js";
 import { displayName } from "../lib/displayName.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { localDateString } from "../utils/installments.js";
-import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { getSupplierBalances, orderSuppliersByRecentUse, SUPPLIER_CATEGORIES } from "../utils/suppliers.js";
 import { posText as t } from "./i18n.js";
-import { PosBackButton, PosCard, PosPage, PosPrimaryButton, PosStatusTag } from "./PosComponents.jsx";
+import { PartyCard } from "./PartyCard.jsx";
+import { PosBackButton, PosCard, PosPage, PosPrimaryButton } from "./PosComponents.jsx";
 import { useBackBlock, useBackHandler } from "./browserBack.js";
 
 const CATEGORY_LABELS = Object.freeze({
@@ -255,16 +255,6 @@ export function StockOnCredit({ params, onBack, onSaveExpense }) {
 }
 
 
-// 46: grey when more than 3 days away, amber for 3 days or less and today, red when late, nothing without a date.
-function dueTag(supplier, today) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(supplier.nextDueDate ?? "")) return null;
-  const days = Math.round((Date.parse(`${supplier.nextDueDate}T00:00:00.000Z`) - Date.parse(`${today}T00:00:00.000Z`)) / 86400000);
-  const plural = (n) => (n === 1 ? "" : "s");
-  if (days < 0) return { tone: "red", label: t("supplier.late", { days: -days, plural: plural(-days) }) };
-  if (days === 0) return { tone: "amber", label: t("supplier.dueToday") };
-  return { tone: days <= 3 ? "amber" : "neutral", label: t("supplier.dueInDays", { days, plural: plural(days) }) };
-}
-
 export function YouOweSuppliers({ onBack, onPay }) {
   const [selectedSupplier, setSelectedSupplier] = useState(null);
   const [amount, setAmount] = useState("");
@@ -315,22 +305,20 @@ export function YouOweSuppliers({ onBack, onPay }) {
           </section>
           {suppliers.map((supplier) => {
             const name = displayName(supplier.name);
-            const tag = dueTag(supplier, today);
-            const callable = Boolean(normalizeWhatsAppPhone(supplier.phone));
             return (
-              <PosCard key={supplier.id} data-supplier={supplier.name} className="flex min-w-0 flex-col gap-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <h2 className="line-clamp-2 min-w-0 break-words text-[19px] font-extrabold leading-tight">{name}</h2>
-                    {tag && <div className="mt-1.5"><PosStatusTag tone={tag.tone}>{tag.label}</PosStatusTag></div>}
-                  </div>
-                  <p className="shrink-0 whitespace-nowrap text-[24px] font-extrabold leading-tight">{formatGhs(supplier.balancePesewas)}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button type="button" aria-label={t("supplier.payAria", { name })} onClick={() => { setSelectedSupplier(supplier); setAmount((supplier.balancePesewas / 100).toFixed(2)); setError(""); }} className="flex h-[52px] min-w-0 flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-950 bg-emerald-900 px-4 text-lg font-extrabold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"><Wallet size={22} aria-hidden="true" />{t("supplier.pay")}</button>
-                  {callable && <a href={`tel:${supplier.phone.replace(/[^\d+]/g, "")}`} aria-label={t("supplier.call", { name })} className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-2xl border-2 border-[#0F172A] bg-white text-[#0F172A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"><Phone size={22} aria-hidden="true" /></a>}
-                </div>
-              </PosCard>
+              <PartyCard
+                key={supplier.id}
+                data-supplier={supplier.name}
+                name={supplier.name}
+                amountPesewas={supplier.balancePesewas}
+                amountSize={24}
+                dueDate={supplier.nextDueDate}
+                today={today}
+                wording="supplier"
+                action={{ label: t("supplier.pay"), ariaLabel: t("supplier.payAria", { name }), icon: Wallet, onClick: () => { setSelectedSupplier(supplier); setAmount((supplier.balancePesewas / 100).toFixed(2)); setError(""); } }}
+                phone={supplier.phone}
+                callLabel={t("supplier.call", { name })}
+              />
             );
           })}
         </>
