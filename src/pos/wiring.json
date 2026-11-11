@@ -269,7 +269,8 @@
    "bottom_bar": false,
    "rules": [
     "A verified (phone request) MoMo row cannot be edited or removed.",
-    "The draft survives Menu > Settings > Back; header Home discards it."
+    "The draft survives Menu > Settings > Back; header Home discards it.",
+    "Editable amounts must look editable (11 Nov 2026): on every row of the draft that can be changed (Cash, MoMo, Owe) the amount is shown as a tappable chip: light grey background, grey 2px border, the amount in bold 21px and a small green pencil icon on its right, at least 48px tall, with the accessible name \"Edit {Cash|MoMo|Owe} amount\". Tapping the chip (or the row) opens the same editor as today. The remove button (x) stays separate at the far right. Under \"Sale total\" one quiet line: \"Tap an amount to change it.\" A row that cannot be edited shows no pencil. At 360px the chip must not clip GH₵12,345.00 or push the remove button out of the row."
    ]
   },
   "17": {
@@ -862,7 +863,10 @@
    ],
    "inputs": [],
    "bottom_bar": true,
-   "bottom_bar_note": "The bar belongs to Home, which shows behind the Collect sheet (as in the prototype)."
+   "bottom_bar_note": "The bar belongs to Home, which shows behind the Collect sheet (as in the prototype).",
+   "rules": [
+    "Installment line (revised 11 Nov 2026, after a real mismatch: \"Payment 3 of 44 · 42 left\" on the sheet against \"2 paid · 42 left\" on the details screen, with only GH₵21.00 paid on a GH₵20.00-a-week plan). Never show \"Payment x of y\" or a paid-installment count, because part payments make those counters wrong. Everything comes from money: payments left = balance divided by the installment, rounded up. On the collect sheet, for \"Due now\" only: \"{left-1} left after this\" (for example 41 when the balance says 42 left now). Hidden for \"Pay all\" and \"Pay part\". On the debtor details plan card (43): \"GH₵{paid so far} paid · {left} left\" with the progress bar from money paid divided by the plan total. The same single function feeds every screen."
+   ]
   },
   "26": {
    "name": "Collect: pay part",
