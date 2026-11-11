@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { recordCashSale } from "../db/sales.js";
 import { setPreference, shouldShowPosSetup } from "../db/preferences.js";
 import { useSync } from "../hooks/useSync.js";
@@ -18,8 +18,11 @@ import {
   returnToMomoOrigin,
   showsBottomBar,
   closeMenuState,
-  openMenuState
+  navigateState,
+  openMenuState,
+  phoneBackState
 } from "./routes.js";
+import { createBrowserBack } from "./browserBack.js";
 import Home from "./Home.jsx";
 import Menu from "./Menu.jsx";
 import MyMoney from "./MyMoney.jsx";
@@ -83,6 +86,40 @@ function getStatusLabel(sync) {
 
 export default function PosApp() {
   const [routeState, setRouteState] = useState(() => createRouteState());
+  // The in-app stack, read synchronously by the phone's back button (two quick presses in a row).
+  const routeRef = useRef(routeState);
+  const browserBackRef = useRef(null);
+
+  // Every route change goes through here so the browser history stays in step (browserBack.js).
+  function commit(update) {
+    const next = typeof update === "function" ? update(routeRef.current) : update;
+    if (next === routeRef.current) return;
+    routeRef.current = next;
+    setRouteState(next);
+    browserBackRef.current?.sync(next);
+  }
+
+  // The phone's back button and the browser / swipe back: the same as the on-screen Back.
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.history) return undefined;
+    const controller = createBrowserBack({
+      history: window.history,
+      getState: () => routeRef.current,
+      goBack: () => {
+        commit(phoneBackState);
+        setNotice("");
+      }
+    });
+    browserBackRef.current = controller;
+    controller.sync();
+    const onPopState = (event) => controller.onPopState(event);
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+      controller.dispose();
+      browserBackRef.current = null;
+    };
+  }, []);
   const [shopName, setShopName] = useState(getSavedShopName);
   const [savedShopName, setSavedShopName] = useState(getRawSavedShopName);
   const [setupCategories, setSetupCategories] = useState([]);
@@ -100,7 +137,7 @@ export default function PosApp() {
     let active = true;
     shouldShowPosSetup()
       .then((showSetup) => {
-        if (active && showSetup) setRouteState(createRouteState(POS_ROUTES.HowDoYouWantToSell));
+        if (active && showSetup) commit(createRouteState(POS_ROUTES.HowDoYouWantToSell));
       })
       .catch((error) => console.error("Could not check first-run setup.", error))
       .finally(() => { if (active) setSetupReady(true); });
@@ -111,16 +148,12 @@ export default function PosApp() {
     if (!Object.values(POS_ROUTES).includes(route)) {
       throw new Error(`Unknown POS route: ${route}`);
     }
-    if (route === "Home") {
-      setRouteState(createRouteState(POS_ROUTES.Home));
-      setNotice("");
-      return;
-    }
     if (route === POS_ROUTES.Menu) {
       openMenu();
       return;
     }
-    setRouteState((current) => pushRoute(current, route, params));
+    // Home resets, a result screen (sale saved…) starts a fresh stack, anything else is pushed.
+    commit((current) => navigateState(current, route, params));
     setNotice("");
   }
 
@@ -129,17 +162,17 @@ export default function PosApp() {
       throw new Error(`Unknown POS route: ${route}`);
     }
     // Wiring 15: the Sell tab pressed on 15 itself is not a different tab; the draft stays.
-    setRouteState((current) => (route === POS_ROUTES.Sell && current.current === POS_ROUTES.Sell ? current : createRouteState(route)));
+    commit((current) => (route === POS_ROUTES.Sell && current.current === POS_ROUTES.Sell ? current : createRouteState(route)));
     setNotice("");
   }
 
   function navigateBack() {
-    setRouteState((current) => backRoute(current));
+    commit((current) => backRoute(current));
     setNotice("");
   }
 
   function returnToItemList() {
-    setRouteState((current) => {
+    commit((current) => {
       let itemListIndex = -1;
       for (let index = current.history.length - 1; index >= 0; index -= 1) {
         if (current.history[index].current === POS_ROUTES.MyItems) {
@@ -156,29 +189,29 @@ export default function PosApp() {
   }
 
   function updateCurrentParams(params) {
-    setRouteState((current) => replaceRoute(current, current.current, { ...current.params, ...params }));
+    commit((current) => replaceRoute(current, current.current, { ...current.params, ...params }));
   }
 
   function replaceCurrentRoute(route, params = {}) {
-    setRouteState((current) => replaceRoute(current, route, params));
+    commit((current) => replaceRoute(current, route, params));
     setNotice("");
   }
 
   function returnFromMomoPick(details) {
     if (!details.returnRoute) return;
-    setRouteState((current) => returnFromMomoPickState(current, details));
+    commit((current) => returnFromMomoPickState(current, details));
   }
 
   // Go back to an existing hub screen (16, 19) instead of stacking a copy (K4, E3).
   // If it is not in history, open it as before.
   function returnTo(route, params = {}, predicate) {
-    setRouteState((current) => popToRoute(current, route, params, predicate) ?? pushRoute(current, route, params));
+    commit((current) => popToRoute(current, route, params, predicate) ?? pushRoute(current, route, params));
     setNotice("");
   }
 
   // 57 Cancel request and 59 Pay another way: back to the screen that opened MoMo (K9, K10).
   function returnToOrigin() {
-    setRouteState((current) => returnToMomoOrigin(current) ?? backRoute(current));
+    commit((current) => returnToMomoOrigin(current) ?? backRoute(current));
     setNotice("");
   }
 
@@ -189,13 +222,13 @@ export default function PosApp() {
 
   // One history entry however often the menu is shown; opening it while it is open closes it.
   function openMenu() {
-    setRouteState((current) => openMenuState(current));
+    commit((current) => openMenuState(current));
     setNotice("");
   }
 
   // Close menu: back to the screen it was opened from, with its draft (not Home).
   function closeMenu() {
-    setRouteState((current) => closeMenuState(current));
+    commit((current) => closeMenuState(current));
     setNotice("");
   }
 

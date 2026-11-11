@@ -318,3 +318,27 @@ export function returnFromMomoPickState(state, details = {}) {
   while (history.length && MOMO_FLOW_ROUTES.has(history.at(-1).current)) history.pop();
   return { current: target, params: settle({ ...state.params, ...cleanDetails }), history };
 }
+
+// Screens that show a finished save. Opening one starts a fresh stack, so Back (on-screen or the
+// phone's) can never return into the sale, debt or collection that was just saved.
+export const RESULT_ROUTES = Object.freeze([POS_ROUTES.SaleRecorded, POS_ROUTES.CreditSaved, POS_ROUTES.PaymentReceived, POS_ROUTES.ManualDebtSaved]);
+
+// One in-app navigation (PosApp navigate): Home resets, Menu adds one entry at most, a result screen
+// starts a fresh stack, anything else is pushed.
+export function navigateState(state, route, params = {}) {
+  if (route === POS_ROUTES.Home) return createRouteState(POS_ROUTES.Home);
+  if (route === POS_ROUTES.Menu) return openMenuState(state);
+  if (RESULT_ROUTES.includes(route)) return createRouteState(route, params);
+  return pushRoute(state, route, params);
+}
+
+// Screens whose on-screen Back (or Close) goes to Home rather than one step back.
+const BACK_TO_HOME = new Set([POS_ROUTES.CollectPayment, POS_ROUTES.TodaysTransactions, POS_ROUTES.PeopleWhoOweYou]);
+
+// The phone's back button: exactly what the screen's own Back does (the BACK rule). Nothing behind
+// a screen other than Home means Home.
+export function phoneBackState(state) {
+  if (BACK_TO_HOME.has(state.current)) return createRouteState(POS_ROUTES.Home);
+  if (state.current === POS_ROUTES.Menu) return closeMenuState(state);
+  return backRoute(state);
+}
