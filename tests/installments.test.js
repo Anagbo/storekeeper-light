@@ -186,7 +186,8 @@ test("changing a plan preserves completed history and carries partial progress",
     isInstallmentPlan: true,
     installmentAmount: 1000,
     frequency: "monthly",
-    nextDueDate: "2026-05-31",
+    // The chosen date is saved; the carry no longer moves it a cycle.
+    nextDueDate: "2026-05-01",
     installmentsRemaining: 9,
     totalInstallments: 12,
     installmentPaymentCarryPesewas: 500
@@ -296,7 +297,8 @@ test("a smaller replacement amount converts carry into completed cycles and keep
 
   assert.equal(result.installmentsRemaining, 9);
   assert.equal(result.totalInstallments, 10);
-  assert.equal(result.nextDueDate, "2026-11-11");
+  // The chosen date is saved; the carry no longer moves it a cycle.
+  assert.equal(result.nextDueDate, "2026-11-04");
   assert.equal(result.installmentPaymentCarryPesewas, 900);
 });
 

@@ -309,9 +309,10 @@ export function reconcileInstallmentPlanChange(
     ...replacementPlan,
     installmentsRemaining: nextRemaining,
     totalInstallments: nextTotal,
-    nextDueDate: completedCycles > 0
-      ? addDueCycles(replacementPlan.nextDueDate, replacementPlan.frequency, completedCycles)
-      : replacementPlan.nextDueDate,
+    // The next payment date chosen on 19 is the date saved (owner rule). It already comes after
+    // today's payment, so whole installments paid today (with the old carry) do not move it again.
+    nextDueDate: replacementPlan.nextDueDate,
+    // Money paid toward the installment due on that date.
     installmentPaymentCarryPesewas: nextCarry
   };
 }

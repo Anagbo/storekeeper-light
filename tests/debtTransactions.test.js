@@ -214,7 +214,8 @@ test("credit sale returns the final active installment schedule after several cy
   });
 
   assert.equal(result.totalDebtPesewas, 10000);
-  assert.equal(result.debtAfter.nextDueDate, "2026-12-22");
+  // The date chosen on 19 is the date saved (was moved 6 weeks, to 22/12, by the cycles paid today).
+  assert.equal(result.debtAfter.nextDueDate, "2026-11-10");
   assert.equal(result.debtAfter.installmentAmount, 2000);
   assert.equal(result.debtAfter.installmentsRemaining, 5);
 });
@@ -462,7 +463,8 @@ test("credit sale payment applied to an existing installment advances its schedu
   assert.equal(debt.installmentsRemaining, 6);
   // Money: GH₵10.00 paid on the old debt (2 installments) + 6 left. Today's payment counts once.
   assert.equal(debt.totalInstallments, 8);
-  assert.equal(debt.nextDueDate, "2026-11-23");
+  // The date chosen on 19 is the date saved (was moved 2 weeks by the cycles paid today).
+  assert.equal(debt.nextDueDate, "2026-11-09");
   assert.equal((await db.payments.toArray()).reduce((total, payment) => total + payment.amountPesewas, 0), 3000);
   assert.equal(totals.totalSales, 2000);
   assert.equal(totals.cashReceived, 1000);
@@ -535,7 +537,8 @@ test("credit sale reconfiguration applies payment progress to the new installmen
   assert.equal(debt.amountPesewas, 3000);
   assert.equal(debt.installmentAmount, 800);
   assert.equal(debt.frequency, "bi-weekly");
-  assert.equal(debt.nextDueDate, "2026-11-23");
+  // The date chosen on 19 is the date saved (was moved one cycle by the installment completed today).
+  assert.equal(debt.nextDueDate, "2026-11-09");
   assert.equal(debt.installmentsRemaining, 4);
   // Carry GH₵3.00 + GH₵10.00 today = 1 installment of GH₵8.00 + 4 left. Today's payment counts once.
   assert.equal(debt.totalInstallments, 5);
