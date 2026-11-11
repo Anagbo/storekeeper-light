@@ -77,8 +77,8 @@ export function PosBackButton({ className = "", ...props }) {
   return <button type="button" aria-label={t("items.back")} {...props} className={`flex h-[52px] shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-[14px] border-2 border-[#0F172A] bg-white px-4 text-[18px] font-extrabold text-[#0F172A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}>‹ {t("items.back")}</button>;
 }
 
-export function PosCard({ children, className = "" }) {
-  return <section className={`rounded-2xl border-2 border-slate-600 bg-white p-4 ${className}`}>{children}</section>;
+export function PosCard({ children, className = "", ...rest }) {
+  return <section {...rest} className={`rounded-2xl border-2 border-slate-600 bg-white p-4 ${className}`}>{children}</section>;
 }
 
 export function SplitIcons({ withOwe = false, size = 20, className = "" }) {

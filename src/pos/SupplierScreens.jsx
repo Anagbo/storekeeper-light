@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Phone, Wallet } from "lucide-react";
 import { db } from "../db/db.js";
-import { formatDate } from "../lib/formatDate.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { localDateString } from "../utils/installments.js";
+import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { getSupplierBalances, SUPPLIER_CATEGORIES } from "../utils/suppliers.js";
 import { posText as t } from "./i18n.js";
 import { PosBackButton, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag } from "./PosComponents.jsx";
@@ -199,6 +199,22 @@ export function StockOnCredit({ params, onBack, onSaveExpense }) {
   );
 }
 
+// 46: the name is shown with a capital first letter; the stored name is not changed.
+function displayName(name) {
+  const text = String(name ?? "");
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+// 46: grey when more than 3 days away, amber for 3 days or less and today, red when late, nothing without a date.
+function dueTag(supplier, today) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(supplier.nextDueDate ?? "")) return null;
+  const days = Math.round((Date.parse(`${supplier.nextDueDate}T00:00:00.000Z`) - Date.parse(`${today}T00:00:00.000Z`)) / 86400000);
+  const plural = (n) => (n === 1 ? "" : "s");
+  if (days < 0) return { tone: "red", label: t("supplier.late", { days: -days, plural: plural(-days) }) };
+  if (days === 0) return { tone: "amber", label: t("supplier.dueToday") };
+  return { tone: days <= 3 ? "amber" : "neutral", label: t("supplier.dueInDays", { days, plural: plural(days) }) };
+}
+
 export function YouOweSuppliers({ onBack, onPay }) {
   const [selectedSupplier, setSelectedSupplier] = useState(null);
   const [amount, setAmount] = useState("");
@@ -237,24 +253,33 @@ export function YouOweSuppliers({ onBack, onPay }) {
         <PosCard><p className="font-semibold">{t("supplier.empty")}</p></PosCard>
       ) : (
         <>
-          <PosCard className="amount-fit-container amount-fit-row flex items-center justify-between gap-2"><strong>{t("supplier.totalOwed")}</strong><strong className="amount-fit text-right font-extrabold">{formatGhs(suppliers.reduce((sum, supplier) => sum + supplier.balancePesewas, 0))}</strong></PosCard>
-          {suppliers.map((supplier) => (
-            <PosCard key={supplier.id} className="amount-fit-container flex flex-col gap-2 sm:flex-row sm:items-center">
-              <div className="min-w-0 flex-1">
-                <h2 className="text-lg font-extrabold">{supplier.name}</h2>
-                <p className="amount-fit font-bold">{formatGhs(supplier.balancePesewas)}</p>
-                <PosStatusTag tone={supplier.dueStatus === "late" ? "red" : supplier.dueStatus === "today" ? "amber" : "neutral"}>
-                  {supplier.dueStatus === "late" ? t("supplier.late", { days: Math.ceil((Date.parse(`${today}T00:00:00.000Z`) - Date.parse(`${supplier.nextDueDate}T00:00:00.000Z`)) / 86400000) }) :
-                    supplier.dueStatus === "today" ? t("supplier.dueToday") :
-                      supplier.nextDueDate ? t("supplier.dueDate", { date: formatDate(supplier.nextDueDate) }) : t("supplier.noDueDate")}
-                </PosStatusTag>
-              </div>
-              <div className="flex gap-2">
-                <PosSecondaryButton type="button" onClick={() => { setSelectedSupplier(supplier); setAmount((supplier.balancePesewas / 100).toFixed(2)); setError(""); }}><Wallet size={20} aria-hidden="true" />{t("supplier.pay")}</PosSecondaryButton>
-                <a href={supplier.phone ? `tel:${supplier.phone.replace(/[^\d+]/g, "")}` : undefined} aria-label={t("supplier.call", { name: supplier.name })} aria-disabled={!supplier.phone} className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border-2 border-slate-600 aria-disabled:opacity-40"><Phone size={22} aria-hidden="true" /></a>
-              </div>
-            </PosCard>
-          ))}
+          <section data-summary="suppliers" className="rounded-2xl border-2 border-amber-800 bg-amber-100 p-4 text-amber-950">
+            <div className="flex items-baseline justify-between gap-2">
+              <strong className="text-lg">{t("supplier.totalOwed")}</strong>
+              <span className="font-bold">{suppliers.length === 1 ? t("supplier.countOne") : t("supplier.countMany", { count: suppliers.length })}</span>
+            </div>
+            <p className="mt-1 whitespace-nowrap text-[28px] font-extrabold leading-tight">{formatGhs(suppliers.reduce((sum, supplier) => sum + supplier.balancePesewas, 0))}</p>
+          </section>
+          {suppliers.map((supplier) => {
+            const name = displayName(supplier.name);
+            const tag = dueTag(supplier, today);
+            const callable = Boolean(normalizeWhatsAppPhone(supplier.phone));
+            return (
+              <PosCard key={supplier.id} data-supplier={supplier.name} className="flex min-w-0 flex-col gap-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <h2 className="line-clamp-2 min-w-0 break-words text-[19px] font-extrabold leading-tight">{name}</h2>
+                    {tag && <div className="mt-1.5"><PosStatusTag tone={tag.tone}>{tag.label}</PosStatusTag></div>}
+                  </div>
+                  <p className="shrink-0 whitespace-nowrap text-[24px] font-extrabold leading-tight">{formatGhs(supplier.balancePesewas)}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button type="button" aria-label={t("supplier.payAria", { name })} onClick={() => { setSelectedSupplier(supplier); setAmount((supplier.balancePesewas / 100).toFixed(2)); setError(""); }} className="flex h-[52px] min-w-0 flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-950 bg-emerald-900 px-4 text-lg font-extrabold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"><Wallet size={22} aria-hidden="true" />{t("supplier.pay")}</button>
+                  {callable && <a href={`tel:${supplier.phone.replace(/[^\d+]/g, "")}`} aria-label={t("supplier.call", { name })} className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-2xl border-2 border-[#0F172A] bg-white text-[#0F172A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"><Phone size={22} aria-hidden="true" /></a>}
+                </div>
+              </PosCard>
+            );
+          })}
         </>
       )}
       {selectedSupplier && (
