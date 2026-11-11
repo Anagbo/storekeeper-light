@@ -5,7 +5,10 @@ import { posText as t } from "./i18n.js";
 // Uses existing wording only: the 61 tile titles and the 19 frequency labels.
 export function describeSplitPart(part, params = {}) {
   if (part?.paymentMethod === "momo") {
-    if (part.momoMethod === "direct") return "Customer sends to my number";
+    // Wiring 16 (11 Nov 2026): a row whose money is received says so (SplitPayment adds the green
+    // check); a Direct row not yet confirmed on 62 says it is not confirmed yet.
+    if (isLockedMomoRow(part)) return t("split.received");
+    if (part.momoMethod === "direct") return t("split.directNotConfirmed");
     if (part.momoMethod === "paystack") return "Phone request";
     return "";
   }
@@ -33,34 +36,29 @@ export function addRemainingToPart(parts, paymentMethod, totalPesewas) {
   if (!Number.isSafeInteger(leftPesewas) || leftPesewas <= 0) return parts;
   const existing = parts.find((part) => part.paymentMethod === paymentMethod);
   if (!existing) return [...parts, { paymentMethod, amountPesewas: leftPesewas }];
+  if (isLockedMomoRow(existing)) return parts;
   return parts.map((part) => (part === existing ? { ...part, amountPesewas: part.amountPesewas + leftPesewas } : part));
 }
 
-// A MoMo row paid by phone request (verified) is final: its amount cannot be edited and it
-// cannot be removed (brief 3.8 rule 2; a Paystack charge cannot be undone here).
+// Wiring 16 (decided 11 Nov 2026): a MoMo row whose money has been received is locked: the
+// phone request is verified, or the owner tapped "Money received" on 62 for a Direct MoMo
+// (verification "merchant_confirmed", set by MoMoDirect and kept on the part in the 16 route
+// params). It cannot be edited or removed, also after a later step fails and the draft returns
+// to 16. Cash and Owe are never MoMo-locked.
 export function isLockedMomoRow(part) {
-  return part?.paymentMethod === "momo" && part.verification === "verified";
+  return part?.paymentMethod === "momo" && (part.verification === "verified" || part.verification === "merchant_confirmed");
 }
 
-// Editing a MoMo row (brief 3.8 rule 2). Up to the amount already confirmed on 62 the row is
-// simply set (lowering keeps what was confirmed, so the saved record shows both). Above it,
-// only the extra goes to 62: { kind: "confirm", extraPesewas, rowAmountPesewas }. Null when the
-// amount is not allowed.
-export function planMomoRowEdit(parts, amountPesewas, totalPesewas) {
-  const row = parts.find((part) => part.paymentMethod === "momo");
-  if (!row || isLockedMomoRow(row)) return null;
-  const limitPesewas = totalPesewas - sumPartsPesewas(parts) + row.amountPesewas;
-  if (!Number.isSafeInteger(amountPesewas) || amountPesewas <= 0 || amountPesewas > limitPesewas) return null;
-  const confirmedPesewas = row.confirmedPesewas ?? row.amountPesewas;
-  if (amountPesewas <= confirmedPesewas) {
-    return { kind: "set", parts: parts.map((part) => (part === row ? { ...part, amountPesewas, confirmedPesewas } : part)) };
-  }
-  return { kind: "confirm", extraPesewas: amountPesewas - confirmedPesewas, rowAmountPesewas: amountPesewas };
+// The x on a row. Null for a locked MoMo row (the button is also hidden), so no caller can
+// remove money that was received.
+export function removePart(parts, target) {
+  if (!parts.includes(target) || isLockedMomoRow(target)) return null;
+  return parts.filter((part) => part !== target);
 }
 
 // Tapping a row's amount edits it. The new amount replaces the old one and keeps the row's
 // other fields (the MoMo method). It may use what is left plus the row's own amount.
-// Returns null when the amount is not allowed. Owe is never typed; a verified row is never edited.
+// Returns null when the amount is not allowed. Owe is never typed; a locked MoMo row is never edited.
 export function setPartAmount(parts, paymentMethod, amountPesewas, totalPesewas) {
   const existing = parts.find((part) => part.paymentMethod === paymentMethod);
   if (!existing || paymentMethod === "owe" || isLockedMomoRow(existing)) return null;

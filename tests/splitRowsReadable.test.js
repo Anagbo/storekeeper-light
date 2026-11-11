@@ -20,16 +20,19 @@ async function rows({ busy = false } = {}) {
     totalPesewas: 800, totalLabel: "Total", doneLabel: "Done", allowOwe: true, busy, onBack() {}, onDone() {},
     initialParts: parts, partDetail: (part) => (part.paymentMethod === "owe" ? OWE_DETAIL : "")
   } });
-  const labelButton = (name) => [...walk(view.tree)].find((node) => node.type === "button" && textOf(node).startsWith(name) && /text-xl/.test(node.props?.className ?? ""));
-  return { cash: labelButton("Cash"), momo: labelButton("MoMo"), owe: labelButton("Owe"), view };
+  // The row's name element: a button on an editable row, plain text on a read-only one (wiring 16:
+  // Owe and a locked MoMo row are not tappable).
+  const label = (name) => [...walk(view.tree)].find((node) => (node.type === "button" || node.type === "div") && textOf(node).startsWith(name) && /text-xl/.test(node.props?.className ?? ""));
+  return { cash: label("Cash"), momo: label("MoMo"), owe: label("Owe"), view };
 }
 
 test("the Owe row and a verified MoMo row are not dimmed; they stay read-only", async () => {
   const { cash, momo, owe } = await rows();
   assert.ok(cash && momo && owe);
+  assert.equal(cash.type, "button");
   assert.equal(cash.props.disabled, false);
-  assert.equal(owe.props.disabled, true, "Owe is still never typed");
-  assert.equal(momo.props.disabled, true, "a verified row is still never edited");
+  assert.equal(owe.type, "div", "Owe is still never typed: not a button");
+  assert.equal(momo.type, "div", "a verified row is still never edited: not a button");
   for (const [name, button] of Object.entries({ cash, momo, owe })) {
     assert.doesNotMatch(button.props.className, /opacity/, `${name} row text is not dimmed`);
   }

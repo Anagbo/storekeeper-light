@@ -5,7 +5,7 @@ import { formatPesewasText, parseAmountToPesewas } from "../lib/parsePesewas.js"
 import { posText as t } from "./i18n.js";
 import { PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
 import { useLargeAmountConfirm } from "./LargeAmountConfirm.jsx";
-import { addRemainingToPart, isLockedMomoRow, planMomoRowEdit, setPartAmount } from "./splitTender.js";
+import { addRemainingToPart, isLockedMomoRow, removePart, setPartAmount } from "./splitTender.js";
 
 const METHOD_ICONS = { cash: Banknote, momo: Smartphone, owe: UserRound };
 
@@ -50,8 +50,10 @@ export default function SplitPayment({
   // Integer math on the typed text (cleanup batch, 1a), not floating-point toPesewas.
   const draftPesewas = draft ? parseAmountToPesewas(draft.value) : 0;
 
+  // One row per mode, so while a MoMo row is locked (money received) the MoMo tile is hidden: a
+  // second pick would grow a row that can no longer change.
   const hasLockedMomoRow = parts.some(isLockedMomoRow);
-  // Cash and MoMo amounts can be changed here; Owe is set on 18/19 and a verified MoMo row is final.
+  // Cash and MoMo amounts can be changed here; Owe is set on 18/19 and a received MoMo row is final.
   const isEditablePart = (part) => part.paymentMethod !== "owe" && !isLockedMomoRow(part);
   const editableParts = parts.filter(isEditablePart).length;
 
@@ -83,20 +85,7 @@ export default function SplitPayment({
       onMoMo(parts, draftPesewas);
       return;
     }
-    if (draft.paymentMethod === "momo") {
-      const plan = planMomoRowEdit(parts, draftPesewas, totalPesewas);
-      if (!plan || (plan.kind === "confirm" && !onMoMo)) {
-        setDraftError(t("split.amountTooHigh"));
-        return;
-      }
-      // Above the confirmed amount only the extra goes to 61 (and is asked about when it is large).
-      if (!confirmed && plan.kind === "confirm" && largeAmount.guard(plan.extraPesewas, () => confirmDraft(true), { momo: true })) return;
-      setDraft(null);
-      setDraftError("");
-      if (plan.kind === "confirm") onMoMo(parts, plan.extraPesewas, { momoRowAmountPesewas: plan.rowAmountPesewas });
-      else commitParts(plan.parts);
-      return;
-    }
+    // Only Cash and a MoMo row not yet confirmed get here; setPartAmount refuses a locked row.
     const next = setPartAmount(parts, draft.paymentMethod, draftPesewas, totalPesewas);
     if (!next) {
       setDraftError(t("split.amountTooHigh"));
@@ -123,22 +112,36 @@ export default function SplitPayment({
         const name = t(`sell.${part.paymentMethod}`);
         const detail = partDetail(part);
         const editable = isEditablePart(part);
+        const locked = isLockedMomoRow(part);
         // 16: the amount is a chip (grey, 2px border, bold 21px, 48px tall). An editable row's chip
-        // has a green pencil and opens the editor; Owe and a verified MoMo row show no pencil.
+        // has a green pencil and opens the editor; Owe shows the chip with no pencil. A locked MoMo
+        // row (money received) shows a plain amount, a green-check "Received" line, and no buttons.
         const chipClass = "flex min-h-12 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border-2 border-slate-400 bg-slate-100 px-3 text-[21px] font-extrabold text-[#0F172A]";
+        const status = detail && (locked
+          ? <span data-row-status="" className="flex items-center gap-1 text-sm font-bold text-emerald-900"><Check size={16} strokeWidth={3} className="shrink-0" aria-hidden="true" />{detail}</span>
+          : <span data-row-status="" className="block text-sm font-semibold text-slate-700">{detail}</span>);
         return (
           // The row wraps the chip and the remove button under the name when they do not fit
           // (GH₵12,345.00 at 360px), so neither is clipped or pushed out of the row.
           <div key={part.paymentMethod} data-split-row={part.paymentMethod} className="flex min-h-16 min-w-0 flex-wrap items-center gap-x-2 gap-y-2 rounded-2xl border-2 border-slate-500 bg-white px-3 py-2">
             <div className="flex min-w-0 flex-[1_1_5rem] items-center gap-2">
               <Icon size={28} className="shrink-0 text-emerald-900" aria-hidden="true" />
-              <button type="button" disabled={busy || !editable} onClick={() => startEdit(part)} className={`min-w-0 flex-1 text-left text-xl font-extrabold [overflow-wrap:anywhere]${busy ? " opacity-50" : ""}`}>
-                {name}
-                {detail && <span className="block text-sm font-semibold text-slate-700">{detail}</span>}
-              </button>
+              {editable ? (
+                <button type="button" disabled={busy} onClick={() => startEdit(part)} className={`min-w-0 flex-1 text-left text-xl font-extrabold [overflow-wrap:anywhere]${busy ? " opacity-50" : ""}`}>
+                  {name}
+                  {status}
+                </button>
+              ) : (
+                <div className={`min-w-0 flex-1 text-left text-xl font-extrabold [overflow-wrap:anywhere]${busy ? " opacity-50" : ""}`}>
+                  {name}
+                  {status}
+                </div>
+              )}
             </div>
             <div className="ml-auto flex shrink-0 items-center gap-2">
-              {editable ? (
+              {locked ? (
+                <strong data-row-amount="" className="shrink-0 whitespace-nowrap text-[21px] font-extrabold text-[#0F172A]">{formatGhs(part.amountPesewas)}</strong>
+              ) : editable ? (
                 <button type="button" disabled={busy} aria-label={t("split.editAmount", { method: name })} onClick={() => startEdit(part)} className={`${chipClass} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:opacity-50`}>
                   {formatGhs(part.amountPesewas)}
                   <Pencil data-pencil="" size={18} className="shrink-0 text-emerald-900" aria-hidden="true" />
@@ -146,11 +149,11 @@ export default function SplitPayment({
               ) : (
                 <strong className={chipClass}>{formatGhs(part.amountPesewas)}</strong>
               )}
-              {!isLockedMomoRow(part) && <button
+              {!locked && <button
                 type="button"
                 disabled={busy}
                 aria-label={t("split.remove", { method: name })}
-                onClick={() => commitParts(parts.filter((item) => item !== part))}
+                onClick={() => { const next = removePart(parts, part); if (next) commitParts(next); }}
                 className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-slate-300 text-slate-950 disabled:opacity-50"
               >
                 <X size={22} aria-hidden="true" />

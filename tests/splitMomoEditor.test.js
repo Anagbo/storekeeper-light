@@ -98,7 +98,7 @@ test("GH₵60: Cash 20, then MoMo opens the editor at GH₵40; 20 goes to 61 and
   assert.match(await run61And62(app), /send GH₵20\.00/);
   assert.equal(app.state.current, POS_ROUTES.SplitPayment);
   view = mount();
-  assert.match(textOf(view.tree), /MoMoCustomer sends to my numberGH₵20\.00/);
+  assert.match(textOf(view.tree), /MoMoReceivedGH₵20\.00/);
   assert.match(textOf(view.tree), /Left to payGH₵20\.00/);
   tileOf(view.tree, "Owe").props.onClick();
   assert.equal(app.state.current, POS_ROUTES.WhoOwesYou);
@@ -138,77 +138,25 @@ test("the editor refuses 0 and more than Left, and Cancel closes it without goin
   assert.equal([...walk(view.tree)].filter((node) => node.type === "input").length, 0);
 });
 
-test("a second MoMo tap goes through the editor and grows the row", async () => {
+// ---- a received Direct row is locked (wiring 16, 11 Nov 2026) -------------------------------------
+// Batch 17 let a "you confirmed" row be raised (only the extra to 62), lowered and grown by a
+// second MoMo tap. The owner's rule of 11 Nov 2026 replaces that: once 62 says Money received the
+// row is final, as a verified one is.
+
+test("a Direct row confirmed on 62 hides the MoMo tile, so no second pick can grow it", async () => {
   const app = makeApp({ amountPesewas: 6000, splitParts: [momoRow(2000)] });
-  const mount = await mountFor(app);
-  const view = mount();
-  openEditor(view, "MoMo");
-  assert.equal(editorInput(view.tree).props.value, "40.00");
-  typeAndSave(view, "40.00");
-  assert.equal(app.state.params.pendingMomoAmountPesewas, 4000);
-  await run61And62(app);
-  const momo = app.state.params.splitParts.filter((part) => part.paymentMethod === "momo");
-  assert.deepEqual([momo.length, momo[0].amountPesewas, momo[0].confirmedPesewas], [1, 6000, 6000]);
+  const view = (await mountFor(app))();
+  assert.equal(exactButtons(view.tree, "MoMo").length, 0, "no MoMo tile");
+  assert.ok(tileOf(view.tree, "Cash") && tileOf(view.tree, "Owe"));
 });
 
-// ---- raising and lowering a confirmed row --------------------------------------------------------
-
-test("lowering a confirmed row keeps the confirmed amount; raising up to it needs no new confirmation", async () => {
-  const app = makeApp({ amountPesewas: 800, splitParts: [momoRow(800)] });
-  const mount = await mountFor(app);
-  let view = mount();
-  rowOf(view.tree, "MoMo").props.onClick();
-  view.rerender();
-  typeAndSave(view, "4.00");
-  assert.deepEqual([app.state.params.splitParts[0].amountPesewas, app.state.params.splitParts[0].confirmedPesewas], [400, 800], "lowered, still confirmed 8.00");
-  view = mount();
-  rowOf(view.tree, "MoMo").props.onClick();
-  view.rerender();
-  typeAndSave(view, "7.00");
-  assert.equal(app.state.current, POS_ROUTES.SplitPayment, "within the confirmed amount: no 62");
-  assert.deepEqual([app.state.params.splitParts[0].amountPesewas, app.state.params.splitParts[0].confirmedPesewas], [700, 800]);
-});
-
-test("raising above the confirmed amount sends only the extra to 62; Back from there changes nothing", async () => {
+test("a Direct row confirmed on 62 cannot be lowered or raised: no editor, and setPartAmount refuses", async () => {
   const app = makeApp({ amountPesewas: 6000, splitParts: [{ paymentMethod: "cash", amountPesewas: 2000 }, momoRow(2000)] });
-  const mount = await mountFor(app);
-  let view = mount();
-  rowOf(view.tree, "MoMo").props.onClick();
-  view.rerender();
-  typeAndSave(view, "40.00");
-  assert.equal(app.state.current, POS_ROUTES.MoMoChoice);
-  assert.equal(app.state.params.pendingMomoAmountPesewas, 2000, "only the extra");
-  assert.equal(app.state.params.momoRowAmountPesewas, 4000);
-  // Back from 61: nothing changed.
-  const before = JSON.stringify(app.state.params.splitParts);
-  app.back();
+  const view = (await mountFor(app))();
+  assert.equal(rowOf(view.tree, "MoMo"), undefined, "the MoMo row is not a button");
+  assert.equal([...walk(view.tree)].filter((node) => node.props?.["aria-label"] === "Edit MoMo amount").length, 0);
+  for (const amount of [1000, 4000]) assert.equal(setPartAmount(app.state.params.splitParts, "momo", amount, 6000), null, String(amount));
   assert.equal(app.state.current, POS_ROUTES.SplitPayment);
-  assert.equal(JSON.stringify(app.state.params.splitParts), before.replace(/"confirmedPesewas":2000\}\]$/, '"confirmedPesewas":2000}]'));
-  assert.deepEqual(app.state.params.splitParts.find((part) => part.paymentMethod === "momo").amountPesewas, 2000);
-  assert.equal("pendingMomoAmountPesewas" in app.state.params, false);
-  // Again, and confirm on 62.
-  view = mount();
-  rowOf(view.tree, "MoMo").props.onClick();
-  view.rerender();
-  typeAndSave(view, "40.00");
-  assert.match(await run61And62(app), /send GH₵20\.00/);
-  const momo = app.state.params.splitParts.find((part) => part.paymentMethod === "momo");
-  assert.deepEqual([momo.amountPesewas, momo.confirmedPesewas], [4000, 4000]);
-  assert.equal("momoRowAmountPesewas" in app.state.params, false);
-  assert.match(textOf(mount().tree), /Left to payGH₵0\.00/);
-});
-
-test("raising a lowered row above what was confirmed asks only for the difference to the confirmed amount", async () => {
-  const app = makeApp({ amountPesewas: 6000, splitParts: [momoRow(1000, 3000)] });
-  const mount = await mountFor(app);
-  const view = mount();
-  rowOf(view.tree, "MoMo").props.onClick();
-  view.rerender();
-  typeAndSave(view, "50.00");
-  assert.equal(app.state.params.pendingMomoAmountPesewas, 2000, "5000 - 3000 confirmed");
-  assert.match(await run61And62(app), /send GH₵20\.00/);
-  const momo = app.state.params.splitParts[0];
-  assert.deepEqual([momo.amountPesewas, momo.confirmedPesewas], [5000, 5000]);
 });
 
 test("applyMomoPick: a raise target sets the row amount and adds the extra to the confirmed amount", () => {
@@ -226,7 +174,7 @@ const verifiedRow = { paymentMethod: "momo", amountPesewas: 2000, momoMethod: "p
 test("a verified MoMo row's amount cannot be edited and it cannot be removed; the MoMo tile is hidden", async () => {
   const app = makeApp({ amountPesewas: 6000, splitParts: [verifiedRow, { paymentMethod: "cash", amountPesewas: 1000 }] });
   const view = (await mountFor(app))();
-  assert.equal(rowOf(view.tree, "MoMo").props.disabled, true, "amount button disabled");
+  assert.equal(rowOf(view.tree, "MoMo"), undefined, "the row is not a button (not tappable)");
   assert.equal(removeButton(view.tree, "MoMo"), undefined, "no remove button on the verified row");
   assert.ok(removeButton(view.tree, "Cash"), "other rows keep theirs");
   assert.equal(exactButtons(view.tree, "MoMo").length, 0, "no MoMo tile while a verified row exists");
@@ -234,11 +182,12 @@ test("a verified MoMo row's amount cannot be edited and it cannot be removed; th
   assert.equal(setPartAmount([verifiedRow], "momo", 1000, 6000), null, "the guard in setPartAmount");
 });
 
-test("a direct (you confirmed) MoMo row can still be edited and removed", async () => {
+test("a direct (you confirmed) MoMo row is locked too: no pencil, no x (wiring 16, 11 Nov 2026)", async () => {
   const app = makeApp({ amountPesewas: 6000, splitParts: [momoRow(2000)] });
   const view = (await mountFor(app))();
-  assert.equal(rowOf(view.tree, "MoMo").props.disabled, false);
-  assert.ok(removeButton(view.tree, "MoMo"));
+  assert.equal(rowOf(view.tree, "MoMo"), undefined, "not tappable");
+  assert.equal(removeButton(view.tree, "MoMo"), undefined, "no x");
+  assert.match(textOf(view.tree), /MoMoReceivedGH₵20\.00/);
 });
 
 // ---- 27 and 27 from 19 -----------------------------------------------------------------------------

@@ -33,10 +33,11 @@ test("K1: with a Cash row already there, tapping Cash adds the rest to the same 
 test("K1: tapping the amount edits it; the new amount replaces the old one and keeps the MoMo method", () => {
   const { setPartAmount } = splitTender;
   assert.equal(typeof setPartAmount, "function");
-  const parts = [{ paymentMethod: "cash", amountPesewas: 500 }, { paymentMethod: "momo", amountPesewas: 300, momoMethod: "direct", verification: "merchant_confirmed" }];
+  // A Direct MoMo row not yet confirmed on 62 (once confirmed it is locked: wiring 16, 11 Nov 2026).
+  const parts = [{ paymentMethod: "cash", amountPesewas: 500 }, { paymentMethod: "momo", amountPesewas: 300, momoMethod: "direct" }];
   assert.deepEqual(setPartAmount(parts, "momo", 400, 1300), [
     { paymentMethod: "cash", amountPesewas: 500 },
-    { paymentMethod: "momo", amountPesewas: 400, momoMethod: "direct", verification: "merchant_confirmed" }
+    { paymentMethod: "momo", amountPesewas: 400, momoMethod: "direct" }
   ]);
   // Can use what is left plus the row's own amount: 1300 - 500 = 800 for MoMo.
   assert.equal(setPartAmount(parts, "momo", 800, 1300)[1].amountPesewas, 800);
@@ -74,14 +75,15 @@ test("K1: the row amount opens the editor, prefilled with the row's amount, and 
   assert.match(split, /function startEdit\(part\)/);
   assert.match(split, /value: formatDraft\(part\.amountPesewas\)/);
   assert.match(split, /setPartAmount\(parts, draft\.paymentMethod, draftPesewas, totalPesewas\)/);
-  // Editing a row only goes to 62 for a raise above the confirmed amount (planMomoRowEdit), and only for the extra.
-  assert.match(split, /onMoMo\(parts, plan\.extraPesewas, \{ momoRowAmountPesewas: plan\.rowAmountPesewas \}\)/);
+  // Wiring 16 (11 Nov 2026): a confirmed MoMo row is locked, so editing a row never goes to 61/62.
+  assert.doesNotMatch(split, /planMomoRowEdit|momoRowAmountPesewas/);
   assert.equal(posText("split.save"), "Save");
 });
 
 test("K1: the Owe row is still never typed", () => {
   // Item 5 (11 Nov 2026): the row name and the amount chip open the editor only for an editable part.
   assert.match(split, /const isEditablePart = \(part\) => part\.paymentMethod !== "owe" && !isLockedMomoRow\(part\);/);
-  assert.match(split, /disabled=\{busy \|\| !editable\} onClick=\{\(\) => startEdit\(part\)\}/);
-  assert.match(split, /\{editable \? \(\s*<button type="button" disabled=\{busy\} aria-label=\{t\("split\.editAmount"/);
+  // A row that cannot be edited is not a button at all (wiring 16: not tappable).
+  assert.match(split, /\{editable \? \(\s*<button type="button" disabled=\{busy\} onClick=\{\(\) => startEdit\(part\)\}/);
+  assert.match(split, /editable \? \(\s*<button type="button" disabled=\{busy\} aria-label=\{t\("split\.editAmount"/);
 });
