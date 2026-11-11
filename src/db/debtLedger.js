@@ -304,10 +304,10 @@ export async function recordManualDebt({
       ? null
       : installmentPlan;
     assertManualDebtPlan(appliedPlan, newBalancePesewas);
-    // Progress toward the new plan: as before, the payment today. When it is more than the amount
-    // added, only what pays older debt counts (recordCreditSale does the same), so the first
-    // payment date chosen on 19 is not pushed out by the payment made today.
-    const planProgressPesewas = initialPaymentPesewas > amountPesewas ? extraToTargetPesewas : initialPaymentPesewas;
+    // Progress toward the new plan: the part of today's payment that lands on this debt (the amount
+    // added and its older balance; the ledger counts both as paid against it). The date chosen on 19
+    // is saved as is (reconcileInstallmentPlanChange), so the payment today does not move it.
+    const planProgressPesewas = addedPaymentPesewas + extraToTargetPesewas;
 
     const debt = existingDebt
       ? {
@@ -321,14 +321,9 @@ export async function recordManualDebt({
           amountPesewas: newBalancePesewas,
           total_owed: newBalancePesewas,
           ...(newBalancePesewas === 0 ? { status: "paid", dueDate: "" } : {}),
+          // A debt with no plan before gets the same reconcile (no earlier plan, so no earlier carry).
           ...(appliedPlan
-            ? existingDebt.isInstallmentPlan
-              ? reconcileInstallmentPlanChange(existingDebt, newBalancePesewas, appliedPlan, planProgressPesewas)
-              : {
-                  ...appliedPlan,
-                  installmentsRemaining: Math.ceil(newBalancePesewas / appliedPlan.installmentAmount),
-                  totalInstallments: Math.ceil(newBalancePesewas / appliedPlan.installmentAmount) + (initialPaymentPesewas > 0 ? 1 : 0)
-                }
+            ? reconcileInstallmentPlanChange(existingDebt, newBalancePesewas, appliedPlan, planProgressPesewas)
             : existingDebt.isInstallmentPlan
               ? reconcileInstallmentBalanceCorrection(existingDebt, newBalancePesewas)
               : {}),
