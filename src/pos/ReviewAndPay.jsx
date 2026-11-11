@@ -9,6 +9,7 @@ import { useLargeAmountConfirm } from "./LargeAmountConfirm.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { useBackBlock } from "./browserBack.js";
+import { getSplitPaymentParams } from "./routes.js";
 
 const paymentChoices = [
   { value: "cash", label: "sell.cash", icon: Banknote },
@@ -114,7 +115,12 @@ export default function ReviewAndPay({ params = {}, onBack, onNavigate, onUpdate
       </div>
       <button
         type="button"
-        onClick={() => onNavigate("SplitPayment", { ...params, amountPesewas: totalPesewas, saleItems })}
+        onClick={() => {
+          // MOMO16: the parts kept from the last Back on 16 come back while the total is unchanged.
+          const splitParams = getSplitPaymentParams(params, totalPesewas, saleItems, params);
+          if (params.splitDraft) onUpdateParams?.({ splitDraft: undefined });
+          onNavigate("SplitPayment", splitParams);
+        }}
         className="flex min-h-[68px] items-center justify-center gap-2 rounded-[18px] border-[3px] border-emerald-900 bg-white px-3 text-lg font-extrabold text-emerald-900"
       >
         <SplitIcons withOwe size={18} /> {t("review.split")}

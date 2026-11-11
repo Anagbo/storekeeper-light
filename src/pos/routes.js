@@ -254,10 +254,10 @@ export function closeMenuState(state) {
 export function backRoute(state, fallback = POS_ROUTES.Home) {
   const previous = state.history.at(-1);
   if (!previous) return createRouteState(fallback);
-  // Wiring 16 (11 Nov 2026): Back from 16 to 15 keeps the split draft (parts, and the Owe customer
+  // Wiring 16 (11 Nov 2026): Back from 16 to 15 (or to 55, MOMO16) keeps the split draft (parts, and the Owe customer
   // and terms) in 15's route params, so Split payment can reopen it. Received MoMo never gets here:
   // Back with a locked row asks first and Leave goes to an empty 15 (PosApp backFromScreen).
-  const params = previous.current === POS_ROUTES.Sell && isSaleSplitHubScreen(state)
+  const params = (previous.current === POS_ROUTES.Sell || previous.current === POS_ROUTES.ReviewAndPay) && isSaleSplitHubScreen(state)
     ? { ...previous.params, splitDraft: getSplitDraft(state.params) }
     : previous.params;
   return { current: previous.current, params, history: state.history.slice(0, -1) };
@@ -269,12 +269,14 @@ function getSplitDraft(params = {}) {
   return rest;
 }
 
-// 15 > Split payment: reopen the kept draft when its total still matches the amount on 15;
-// otherwise 16 starts again with the new total.
-export function getSplitPaymentParams(sellParams = {}, amountPesewas, saleItems) {
-  const draft = sellParams.splitDraft;
-  if (draft && draft.amountPesewas === amountPesewas) return { ...draft, amountPesewas, saleItems };
-  return { amountPesewas, saleItems };
+// 15 or 55 > Split payment: reopen the kept draft when its total still matches the amount;
+// otherwise 16 starts again with the new total. baseParams (55 passes its own) never carry the
+// kept draft itself into 16.
+export function getSplitPaymentParams(sourceParams = {}, amountPesewas, saleItems, baseParams = {}) {
+  const { splitDraft: _kept, ...base } = baseParams;
+  const draft = sourceParams.splitDraft;
+  if (draft && draft.amountPesewas === amountPesewas) return { ...base, ...draft, amountPesewas, saleItems };
+  return { ...base, amountPesewas, saleItems };
 }
 
 // Return to the most recent history entry for `route` (that also matches `predicate`),
