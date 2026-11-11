@@ -269,6 +269,7 @@
    "bottom_bar": false,
    "rules": [
     "A verified (phone request) MoMo row cannot be edited or removed.",
+    "Where Done ends (decided 11 Nov 2026): after the sale is saved, if any money was received today (a Cash or MoMo part above zero) go to 30 Sale recorded, which lists each paid part and a line \"{Name} still owes GH₵x\" for the owed part. If nothing was received today (the whole sale is owed, so the only part is Owe) go to 31 Saved as credit, the same as a plain credit sale from 15. Screen 30 must never refuse a saved sale: if its receipt cannot be built it shows \"Sale saved.\" with a Done button that goes Home.",
     "The draft survives Menu > Settings > Back; header Home discards it.",
     "Editable amounts must look editable (11 Nov 2026): on every row of the draft that can be changed (Cash, MoMo, Owe) the amount is shown as a tappable chip: light grey background, grey 2px border, the amount in bold 21px and a small green pencil icon on its right, at least 48px tall, with the accessible name \"Edit {Cash|MoMo|Owe} amount\". Tapping the chip (or the row) opens the same editor as today. The remove button (x) stays separate at the far right. Under \"Sale total\" one quiet line: \"Tap an amount to change it.\" A row that cannot be edited shows no pencil. At 360px the chip must not clip GH₵12,345.00 or push the remove button out of the row."
    ]
@@ -665,7 +666,8 @@
    "bottom_bar": true,
    "rules": [
     "Tapping the debtor name opens 43 (brief line 122).",
-    "Built extras kept: People-who-owe link, Add contact."
+    "Built extras kept: People-who-owe link, Add contact.",
+    "Owed card on Home (redesign 11 Nov 2026, layout and wording only): a white card with a 2px light grey border and a thicker red left edge (the same style as the debt tiles on My money), not a pink block. Top: the label \"Owed to you\" (17px, grey), the total in bold dark text (30px, never red or pink), a quiet line \"{n} people · {m} late\" (\"1 person\"; leave out \"· {m} late\" when none is late), and \"See all ›\" in green on the right. The whole top part is one tappable area that opens 32 (accessible name \"Owed to you, see all\"). Under a thin line and the small heading \"Collect first\": the most urgent debtor (same ordering as today) with the name (bold 19px, up to 2 lines, capital first letter), the amount (bold 22px, never clipped, at the right), and the due tag under the name in the same wording and colours as the Owed list (\"Late 1 day\" red, \"Due today\" and \"Due in n days\" amber, grey when far). Then one row of buttons: a green \"Collect\" button with a small cash icon and the word Collect (52px, takes the remaining width, accessible name \"Collect payment from {name}\", opens 25), a square WhatsApp button (52px, green outline) and a square Call button (52px, dark outline) shown only when the person has a valid phone number (never a greyed disabled Call button). Icon-only buttons keep their accessible names."
    ]
   },
   "23": {
@@ -798,6 +800,15 @@
     }
    ],
    "inputs": [],
+   "rules": [
+    "Redesign 11 Nov 2026. Header: Back and the title \\\"Today’s transactions\\\" (use the curly apostrophe ’, never ´) with a small line under it \\\"Today · dd/mm/yyyy\\\" (formatDate.js). The title may wrap to two lines at 360px.",
+    "Summary: one full-width green card \\\"Money in\\\" with the amount at 34px bold, then two half-width tiles, Spent (amber) and Owed (pink), amounts at 22px bold. Every amount uses formatGhs (GH₵ shown). Remove the old line \\\"All amounts in GH₵\\\" and the tiny 10px tile text. The amount must not clip GH₵12,345.00 at 360px.",
+    "Money in is money actually received today (cash and MoMo parts of sales, plus collections). Each row's amount must be consistent with it: a sale paid in part shows the money received as its amount (+GH₵4.00) and the title \\\"Sale of GH₵8.00\\\"; the owed part is the pink chip \\\"{Name} owes GH₵4.00\\\". The sum of the green + amounts in the list equals the Money in card (add a test).",
+    "Row layout: a white card, 2px #CBD5E1 border, 18px radius. Line 1: title in bold 18px on the left (Sale, Sale of GH₵x, Sold on credit, Spent, Payment collected, Added to debt, Balance correction) and the amount in bold 22px on the right. Line 2: chips on the left (grey payment chips \\\"Cash GH₵x\\\", \\\"MoMo GH₵x\\\"; pink person chip with a small person icon, \\\"{Name} owes GH₵x\\\" for the owed part or just the name for a credit-only sale; amber category chip for Spent) and the time in 16px bold on the right. Chips wrap. Person names are capitalised (Juju, not juju) and a name is never a plain grey chip that looks like a payment.",
+    "Amount colours: money in green #03543F with a +, spent amber-brown #92400E with a −, credit-only sale dark red #7F1D1D with no sign (nothing was received).",
+    "Rows are not buttons until their detail view is designed: no chevron, no hover, not focusable. Do not make them tappable.",
+    "A filter with no rows shows one quiet line, \\\"Nothing here yet today.\\\" Filters All, Sold, Spent and Credit stay as a radio-style row (52px, bold, selected = solid green)."
+   ],
    "bottom_bar": false
   },
   "25": {
