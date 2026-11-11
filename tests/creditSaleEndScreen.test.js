@@ -151,9 +151,19 @@ test("15 > Owe > 19 with a payment today (Today, GH₵60.00 cash): ends on 31, s
   assert.equal(data.unpaid[0].nextDueDate, NEXT_WEEK);
 });
 
-// ---- Split sale (15 > Split payment > Owe, flow=split): 19 returns to 16, Done goes to 30 ----
+// ---- Split sale (15 > Split payment > Owe, flow=split): 19 returns to 16 ----
+// Where Done ends (wiring 16, 11 Nov 2026): money received today (Cash or MoMo above zero) -> 30
+// Sale recorded; nothing received (the only part is Owe) -> 31 Saved as credit. Both start a fresh
+// stack, so the phone back lands on Home, never on the split screen.
 
-test("split, all owed, plan with Next cycle: Save plan returns to 16, Done shows 30 with the owed part, saved once", async () => {
+async function phoneBackLandsHome(app) {
+  await app.phoneBack();
+  assert.equal(app.route, "Home", "phone back after the result screen goes Home");
+  assert.deepEqual(app.state.history, []);
+  assert.doesNotMatch(app.text(), /Split payment/);
+}
+
+test("split, all owed, plan with Next cycle: Save plan returns to 16, Done ends on 31, saved once", async () => {
   await seedDebt("Juju", 19620);
   const app = await open();
   await sell(app, "8");
@@ -165,15 +175,16 @@ test("split, all owed, plan with Next cycle: Save plan returns to 16, Done shows
   assert.match(shown(app), /Left to payGH₵0\.00/);
   assert.equal((await ledger("Juju")).sales.length, 1, "nothing is saved before Done on 16");
   await app.tap(/^Done$/);
-  assert.equal(app.route, "SaleRecorded", "MOMO16: Done on 16 goes to 30");
-  // The sale 30 is given (the one that crashed): nothing paid, so no payment method.
-  assert.equal(app.params.transaction.payment_method, null);
-  assert.equal(app.params.transaction.paymentType, "credit");
-  assert.equal(app.params.transaction.creditExtendedPesewas, 800);
+  assert.equal(app.route, "CreditSaved", "nothing received today: Done on 16 goes to 31");
+  assert.deepEqual(app.state.history, [], "31 starts a fresh stack");
   assertNoScreenError(app);
-  assert.match(shown(app), /Sale recorded/);
-  assert.match(shown(app), /Juju still owesGH₵8\.00/);
+  assert.match(shown(app), /Saved as credit/);
+  assert.match(shown(app), /owes GH₵204\.20/);
   assert.doesNotMatch(shown(app), /CashGH₵8\.00/, "the owed amount is not shown as cash");
+  const saved = app.params.creditResult.saleTransaction;
+  assert.equal(saved.payment_method, null, "nothing paid: no payment method on the sale");
+  assert.equal(saved.paymentType, "credit");
+  assert.equal(saved.creditExtendedPesewas, 800);
   const data = await ledger("Juju");
   assert.equal(data.balancePesewas, 20420);
   assert.equal(data.sales.filter((row) => row.amountPesewas === 800).length, 1);
@@ -181,9 +192,11 @@ test("split, all owed, plan with Next cycle: Save plan returns to 16, Done shows
   assert.equal(data.unpaid[0].installmentAmount, 6000);
   assert.equal(data.unpaid[0].nextDueDate, NEXT_WEEK);
   assert.equal(data.payments.length, 0);
+  await phoneBackLandsHome(app);
+  assert.equal((await ledger("Juju")).sales.filter((row) => row.amountPesewas === 800).length, 1, "still saved once");
 });
 
-test("split, all owed, no plan (18 Save): 16, then Done shows 30, saved once", async () => {
+test("split, all owed, no plan (18 Save): 16, then Done ends on 31, saved once", async () => {
   await seedDebt("Juju", 19620);
   const app = await open();
   await sell(app, "8");
@@ -193,12 +206,13 @@ test("split, all owed, no plan (18 Save): 16, then Done shows 30, saved once", a
   await app.tap(/^Save · Juju owes/);
   assert.equal(app.route, "SplitPayment");
   await app.tap(/^Done$/);
-  assert.equal(app.route, "SaleRecorded");
+  assert.equal(app.route, "CreditSaved");
   assertNoScreenError(app);
-  assert.match(shown(app), /Juju still owesGH₵8\.00/);
+  assert.match(shown(app), /Saved as credit/);
   const data = await ledger("Juju");
   assert.equal(data.balancePesewas, 20420);
   assert.equal(data.sales.filter((row) => row.amountPesewas === 800).length, 1);
+  await phoneBackLandsHome(app);
 });
 
 test("split, GH₵3.00 cash + GH₵5.00 owed with a plan: 30 shows Cash GH₵3.00 and the GH₵5.00 still owed", async () => {
@@ -224,6 +238,39 @@ test("split, GH₵3.00 cash + GH₵5.00 owed with a plan: 30 shows Cash GH₵3.0
   assert.equal(data.balancePesewas, 19620 + 500);
   assert.equal(data.sales.filter((row) => row.amountPesewas === 800).length, 1);
   assert.equal(data.payments.reduce((sum, row) => sum + row.amountPesewas, 0), 300);
+  await phoneBackLandsHome(app);
+});
+
+test("split, MoMo GH₵3.00 + GH₵5.00 owed: ends on 30 with MoMo and the GH₵5.00 still owed; phone back goes Home", async () => {
+  await setPreference("momoReceivingNumber", "0241234567");
+  await setPreference("momoReceivingNetwork", "MTN");
+  await seedDebt("Juju", 19620);
+  const app = await open();
+  await sell(app, "8");
+  await app.tap("Split payment");
+  // The MoMo tile asks how much first (prefilled with Left to pay), then 61 and 62.
+  await app.tap(/^MoMo$/);
+  await app.type("split-draft-amount", "3.00");
+  await app.tap(/^Save$/);
+  assert.equal(app.route, "MoMoChoice");
+  await app.tap(/Customer sends to my number/);
+  assert.equal(app.route, "MoMoDirect");
+  await app.tap("Money received");
+  assert.equal(app.route, "SplitPayment");
+  await app.tap(/^Owe$/);
+  await chooseCustomer(app, "Juju");
+  await app.tap(/^Save · Juju owes/);
+  assert.equal(app.route, "SplitPayment");
+  await app.tap(/^Done$/);
+  assert.equal(app.route, "SaleRecorded", "money received today: 30");
+  assertNoScreenError(app);
+  assert.match(shown(app), /MoMo[^G]{0,30}GH₵3\.00/, "the MoMo part with its amount");
+  assert.doesNotMatch(shown(app), /CashGH₵/, "no cash part");
+  assert.match(shown(app), /Juju still owesGH₵5\.00/);
+  const data = await ledger("Juju");
+  assert.equal(data.sales.filter((row) => row.amountPesewas === 800).length, 1, "saved once");
+  assert.equal(data.balancePesewas, 19620 + 500);
+  await phoneBackLandsHome(app);
 });
 
 // ---- 4b: 19 shows the balance after this sale ----
@@ -249,7 +296,8 @@ for (const flow of ["plain", "split"]) {
     await app.type("How much each time?", "60");
     await app.tap(/^Save plan$/);
     if (flow === "split") await app.tap(/^Done$/);
-    assert.equal(app.route, flow === "split" ? "SaleRecorded" : "CreditSaved");
+    // Nothing received today: both flows end on 31.
+    assert.equal(app.route, "CreditSaved");
     assertNoScreenError(app);
     const data = await ledger("Juju");
     assert.equal(data.balancePesewas, 21220, "old + this sale, once");

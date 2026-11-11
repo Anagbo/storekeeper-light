@@ -313,6 +313,14 @@ export default function PosApp() {
         attemptId: details.attemptId
       });
       void requestBackgroundSync();
+      // Wiring 16 (11 Nov 2026): money received today (a Cash or MoMo part above zero) ends on 30;
+      // a split owed in full ends on 31 Saved as credit, as a plain credit sale from 15 does.
+      // Both are result screens: the stack starts fresh, so the phone back goes Home.
+      const receivedTodayPesewas = paidParts.reduce((sum, part) => sum + (part.amountPesewas > 0 ? part.amountPesewas : 0), 0);
+      if (receivedTodayPesewas === 0) {
+        navigate(POS_ROUTES.CreditSaved, { ...details, creditResult });
+        return;
+      }
       navigate(POS_ROUTES.SaleRecorded, { transaction: creditResult.saleTransaction, creditResult });
       return;
     }
