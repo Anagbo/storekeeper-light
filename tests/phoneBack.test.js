@@ -79,7 +79,9 @@ for (const [name, steps] of Object.entries(paths)) {
     }
     sim.pressBack();
     assert.equal(sim.state.current, "Sell");
-    assert.deepEqual(sim.state.params, SELL_DRAFT, "the draft is kept, as with the on-screen Back");
+    // Wiring 16 (11 Nov 2026): Back from 16 also keeps the split draft in 15's params (splitDraft).
+    const expected = name === "Split" ? { ...SELL_DRAFT, splitDraft: { amountPesewas: 12500 } } : SELL_DRAFT;
+    assert.deepEqual(sim.state.params, expected, "the draft is kept, as with the on-screen Back");
     sim.pressBack();
     assert.equal(sim.state.current, "Home");
     assert.equal(sim.history.left, false);
