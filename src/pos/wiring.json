@@ -205,7 +205,10 @@
     }
    ],
    "inputs": [],
-   "bottom_bar": true
+   "bottom_bar": true,
+   "rules": [
+    "Draft survives a trip away (bug found 11 Nov 2026): the amount typed on the keypad, the payment choice (Cash or MoMo) and any items added are kept when the owner goes to a screen opened from 15 (Add items, Owe and its steps, Split payment, MoMo and its steps, Menu > Settings) and comes back with Back or the phone's back button. 15 must show the same amount, not 0.00. The draft is cleared only after a sale is saved (Done), or when the owner taps the header Home or a different bottom-bar tab (Home, Owed). Like the split screen, 15 keeps its draft in the route parameters. After a MoMo pick returns, the pending MoMo values are removed so an old amount can never come back."
+   ]
   },
   "16": {
    "name": "Split payment",
@@ -2303,7 +2306,15 @@
     "pn",
     "pb"
    ],
-   "bottom_bar": false
+   "bottom_bar": false,
+   "rules": [
+    "Supplier names are shown with a capital first letter everywhere (select options, the Supplier name field result, messages, sheets), without changing the stored name.",
+    "After saving stock bought on credit, Home shows a calm message in words the owner uses: \"Stock of GH₵80.00 saved. You still owe GH₵80.00.\" (when part is paid now: \"Stock of GH₵80.00 saved. You paid GH₵30.00 and still owe GH₵50.00.\"; when all is paid now: \"Stock of GH₵80.00 saved. Paid in full.\"). The word \"Expense\" is not used for this. Spent money (other costs) keeps \"Spent GH₵x saved.\"",
+    "The Supplier select shows no stray marks or text other than the chosen name or \"Choose supplier\". The pay-by date uses the phone's own date picker; the saved date is shown as dd/mm/yyyy everywhere else.",
+    "Supplier picker (replaces the dropdown, decision 11 Nov 2026): inside one card headed \"Who do you owe?\" the suppliers are a vertical list of selectable rows (role radio, 60px tall, a circle on the left, the supplier name in bold, long names wrap). The chosen row has a green border, a light green background and a filled circle. The last row is a dashed green \"+ New supplier\" row. Tapping it selects it (solid green border, light green background) and shows the fields \"Supplier name\" and \"Phone (optional)\" below the list inside the same card. Choosing a supplier hides those fields and keeps what was typed until Save.",
+    "More than 4 suppliers: show the 4 most recently used, then a row \"Show all {n} suppliers ›\" that shows the whole list. With no suppliers yet, only the \"+ New supplier\" row is shown, already selected, with its fields open. No native dropdown (select) anywhere in the POS for choosing a supplier or customer.",
+    "Layout: Stock total and Still owed in one card at the top (Still owed in dark red); Paid now in its own card with the amount right-aligned; the supplier card; Pay by (optional) in its own card with the phone's date picker; a green Save button at the end of the list."
+   ]
   },
   "46": {
    "name": "You owe suppliers",
@@ -2366,7 +2377,8 @@
     "One card per supplier, soonest due first. Inside the card: top row = supplier name (bold 19px, up to 2 lines, first letter shown in capitals even if saved in lowercase) on the left and the amount (bold 24px, never shrunk or clipped) on the right; the due tag under the name; bottom row = a green \"Pay\" button with a wallet icon (52px, takes the remaining width) and, only when the supplier has a valid phone number, a square Call icon button (52px, dark outline). If there is no number, the Call button is not shown. Never show a greyed disabled Call button.",
     "Due tag wording and colour: \"Due in n days\" grey when more than 3 days away; \"Due in n days\" or \"Due today\" amber when 3 days or less; \"Late n days\" in the red style used on the Owed list when past due; no tag when there is no due date. Dates elsewhere dd/mm/yyyy.",
     "Empty state: \"You don't owe any suppliers.\" with no summary card.",
-    "The Pay and Call buttons keep their accessible names (\"Pay Kofi Wholesale\", \"Call Kofi Wholesale\")."
+    "The Pay and Call buttons keep their accessible names (\"Pay Kofi Wholesale\", \"Call Kofi Wholesale\").",
+    "Pay sheet (opened by Pay): the title \"Pay {Supplier name}\" wraps onto more lines for a long name and never runs past the sheet edge at 360px (overflow-wrap anywhere). The supplier name is capitalised as on the list. \"Record payment\" is the full-width green button and \"Cancel\" is a full-width outlined button below it (same width, 52px)."
    ]
   },
   "47": {
