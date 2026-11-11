@@ -225,15 +225,28 @@ test("19: the date field starts at tomorrow", async () => {
   assert.deepEqual(alerts(view.tree), [], "the default date shows no message");
 });
 
-test("18: Today is still a valid fixed due date", async () => {
+// Deterministic (item 7): the clock is fixed, not the real date and time. Only Date is mocked, so
+// IndexedDB's own timers still run. The fixed time is one second before local midnight, so a save
+// that read the date twice would cross into tomorrow; with a fixed clock it never can, at any time
+// of day and in any timezone (local midnight is built in the timezone the test runs in).
+test("18: Today is still a valid fixed due date", async (t) => {
   const { default: CreditScreens } = await loadJsx("src/pos/CreditScreens.jsx");
+  const fixedNow = new Date(2026, 2, 15, 23, 59, 59, 0).getTime();
+  t.mock.timers.enable({ apis: ["Date"], now: fixedNow });
+  const fixedToday = localDateString(new Date(fixedNow));
+  assert.equal(fixedToday, "2026-03-15", "the fixed day is the local calendar day");
   let result = null;
-  const view = render({ type: CreditScreens, props: { route: "WhenWillTheyPay", params: { amountPesewas: 5000, customer: { name: "Ama", totalDebtPesewas: 0 }, creditDueChoice: "today" }, onBack() {}, onNavigate() {}, onReturnToSplit() {}, onSaveCredit: async (details) => { result = await posSave(details); } } });
+  let failure = null;
+  const view = render({ type: CreditScreens, props: { route: "WhenWillTheyPay", params: { amountPesewas: 5000, customer: { name: "Ama", totalDebtPesewas: 0 }, creditDueChoice: "today" }, onBack() {}, onNavigate() {}, onReturnToSplit() {}, onSaveCredit: async (details) => { try { result = await posSave(details); } catch (error) { failure = error; } } } });
   const save = [...walk(view.tree)].filter((node) => node.type === "button" && /^Save /.test(textOf(node))).at(-1);
   await save.props.onClick();
-  await settle();
+  // Wait for the save itself (a fixed pause was too short on a busy machine); Date is frozen, so count rounds.
+  for (let round = 0; round < 2000 && !result && !failure; round += 1) await new Promise((resolve) => setTimeout(resolve, 2));
+  assert.equal(failure, null, "the writer accepted today");
   assert.ok(result, "saved");
-  assert.equal((await db.debts.toArray())[0].dueDate, TODAY);
+  const debts = await db.debts.toArray();
+  assert.equal(debts.length, 1);
+  assert.equal(debts[0].dueDate, fixedToday);
 });
 
 // ---- the wording -----------------------------------------------------------------------------------------------------------
