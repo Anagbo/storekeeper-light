@@ -9,7 +9,9 @@ import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import {
   backRoute,
   createRouteState,
+  getReceivedMomoInDraft,
   isSaleSplitHub,
+  isSaleSplitHubScreen,
   popToRoute,
   POS_ROUTES,
   pushRoute,
@@ -22,7 +24,8 @@ import {
   openMenuState,
   phoneBackState
 } from "./routes.js";
-import { createBrowserBack } from "./browserBack.js";
+import { createBrowserBack, useBackHandler } from "./browserBack.js";
+import LeaveDraftDialog from "./LeaveDraftDialog.jsx";
 import { confirmDirectMomoParts } from "./splitTender.js";
 import Home from "./Home.jsx";
 import Menu from "./Menu.jsx";
@@ -107,10 +110,7 @@ export default function PosApp() {
     const controller = createBrowserBack({
       history: window.history,
       getState: () => routeRef.current,
-      goBack: () => {
-        commit(phoneBackState);
-        setNotice("");
-      }
+      goBack: () => backFromScreen(phoneBackState)
     });
     browserBackRef.current = controller;
     controller.sync();
@@ -146,12 +146,44 @@ export default function PosApp() {
     return () => { active = false; };
   }, []);
 
+  // Wiring 16 (11 Nov 2026): leaving a sale draft that holds MoMo money already received (a locked
+  // MoMo row on 16) asks first. Stay keeps everything; only Leave runs `proceed`, which must drop
+  // the whole draft. With no received MoMo, `proceed` runs straight away, as before.
+  const [leaveAsk, setLeaveAsk] = useState(null);
+  function leaveDraft(proceed) {
+    const amountPesewas = getReceivedMomoInDraft(routeRef.current);
+    if (amountPesewas > 0) {
+      setLeaveAsk({ amountPesewas, proceed });
+      return;
+    }
+    proceed();
+  }
+  // A back press with the question open is Stay.
+  useBackHandler(leaveAsk !== null, () => setLeaveAsk(null));
+
+  // Back from 16 (on-screen or the phone's) with received MoMo leaves the draft: only after Leave,
+  // and then to an empty 15, so no received money stays in a hidden draft.
+  function backFromScreen(backState) {
+    const state = routeRef.current;
+    if (isSaleSplitHubScreen(state) && getReceivedMomoInDraft(state) > 0) {
+      leaveDraft(() => { commit(createRouteState(POS_ROUTES.Sell)); setNotice(""); });
+      return;
+    }
+    commit(backState);
+    setNotice("");
+  }
+
   function navigate(route, params = {}) {
     if (!Object.values(POS_ROUTES).includes(route)) {
       throw new Error(`Unknown POS route: ${route}`);
     }
     if (route === POS_ROUTES.Menu) {
       openMenu();
+      return;
+    }
+    // Home (Cancel sale on 59, Menu > Home) leaves the draft.
+    if (route === POS_ROUTES.Home) {
+      leaveDraft(() => { commit((current) => navigateState(current, route, params)); setNotice(""); });
       return;
     }
     // Home resets, a result screen (sale saved…) starts a fresh stack, anything else is pushed.
@@ -164,13 +196,13 @@ export default function PosApp() {
       throw new Error(`Unknown POS route: ${route}`);
     }
     // Wiring 15: the Sell tab pressed on 15 itself is not a different tab; the draft stays.
-    commit((current) => (route === POS_ROUTES.Sell && current.current === POS_ROUTES.Sell ? current : createRouteState(route)));
-    setNotice("");
+    if (route === POS_ROUTES.Sell && routeRef.current.current === POS_ROUTES.Sell) return;
+    // Header Home and the tabs leave the draft (wiring 16: ask first when MoMo was received).
+    leaveDraft(() => { commit(createRouteState(route)); setNotice(""); });
   }
 
   function navigateBack() {
-    commit((current) => backRoute(current));
-    setNotice("");
+    backFromScreen(backRoute);
   }
 
   function returnToItemList() {
@@ -642,6 +674,13 @@ export default function PosApp() {
         </div>
       </div>
       {showsBottomBar(route) && <PosBottomNav current={route} onNavigate={switchTab} />}
+      {leaveAsk && (
+        <LeaveDraftDialog
+          amountPesewas={leaveAsk.amountPesewas}
+          onStay={() => setLeaveAsk(null)}
+          onLeave={() => { const { proceed } = leaveAsk; setLeaveAsk(null); proceed(); }}
+        />
+      )}
     </div>
   );
 }

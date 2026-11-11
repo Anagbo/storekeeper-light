@@ -1,4 +1,5 @@
 import { applyMomoPick } from "./paymentAmount.js";
+import { isLockedMomoRow } from "./splitTender.js";
 
 export const POS_ROUTES = Object.freeze({
   Sell: "Sell",
@@ -272,6 +273,20 @@ export function popToRoute(state, route, params = {}, predicate = () => true) {
 // SplitPayment is the sale hub (16) unless it is 27 opened from 19 or a collection split.
 export function isSaleSplitHub(params = {}) {
   return !params.installmentSplit && !params.debtId;
+}
+
+// Wiring 16 (11 Nov 2026): MoMo money already received (a locked MoMo row) held in the sale draft
+// on 16, whether 16 is the current screen or below it. Leaving the draft with it asks first.
+export function getReceivedMomoInDraft(state) {
+  const entries = [...(state.history ?? []), { current: state.current, params: state.params }];
+  const draft = entries.findLast((entry) => entry.current === POS_ROUTES.SplitPayment && isSaleSplitHub(entry.params ?? {}));
+  const parts = Array.isArray(draft?.params?.splitParts) ? draft.params.splitParts : [];
+  return parts.filter(isLockedMomoRow).reduce((total, part) => total + part.amountPesewas, 0);
+}
+
+// Back from 16 (on-screen or phone) with received MoMo: only after Leave, and then to an empty 15.
+export function isSaleSplitHubScreen(state) {
+  return state.current === POS_ROUTES.SplitPayment && isSaleSplitHub(state.params ?? {});
 }
 
 const MOMO_FLOW_ROUTES = new Set(["MoMoChoice", "MoMoDirect", "MoMoSetup", "MoMoPayment", "MoMoWaiting", "MoMoCode", "MoMoNotCompleted"]);
