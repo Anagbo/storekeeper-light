@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { UserRound } from "lucide-react";
+import { db } from "../db/db.js";
 import { formatDate } from "../lib/formatDate.js";
 import {
   formatGhs,
@@ -75,10 +76,10 @@ export default function TodaysTransactions({ onBack }) {
   const range = useMemo(() => getMoneyPeriodRange("day"), []);
   const data = useLiveQuery(async () => {
     try {
-      const transactions = await getFinancialTransactions(range);
+      const [transactions, suppliers] = await Promise.all([getFinancialTransactions(range), db.suppliers.toArray()]);
       return {
         status: "ready",
-        transactions: createPosTransactionRows(transactions),
+        transactions: createPosTransactionRows(transactions, new Map(suppliers.map((supplier) => [supplier.id, supplier.name]))),
         totals: summarizeFinancialTransactionsSafely(transactions).totals
       };
     } catch (error) {

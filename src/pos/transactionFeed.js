@@ -33,7 +33,9 @@ function getPaymentMethod(transaction) {
   return method === "momo" || method === "telecel_cash" ? "momo" : "cash";
 }
 
-export function createPosTransactionRows(transactions) {
+// supplierNames: a Map of supplier id to stored name, so a stock purchase on credit can say who
+// is owed ("You owe Kofi wholesale").
+export function createPosTransactionRows(transactions, supplierNames = new Map()) {
   const reversedTransactionIds = new Set(
     transactions
       .filter((transaction) => transaction.type === "income_reversal")
@@ -118,6 +120,7 @@ export function createPosTransactionRows(transactions) {
       ? getOptionalAmount(transaction.creditExtendedPesewas, amountPesewas - cashReceivedPesewas, "Credit extended")
       : 0;
     const customerName = (transaction.customer_name ?? transaction.customerName ?? "").trim();
+    const supplierName = isExpense && transaction.supplierId ? String(supplierNames.get(transaction.supplierId) ?? "").trim() : "";
 
     return {
       id: transaction.id,
@@ -139,6 +142,7 @@ export function createPosTransactionRows(transactions) {
       cashPesewas: isPayment || isSale ? cashPesewas : 0,
       momoPesewas: isPayment || isSale ? momoPesewas : 0,
       customerName,
+      supplierName,
       category: transaction.category ?? transaction.expenseCategory ?? transaction.note ?? "",
       adjustmentDeltaPesewas: isAdjustment ? transaction.deltaPesewas : 0
     };
@@ -197,14 +201,24 @@ export function describeTransactionRow(row) {
   if (row.kind === "payment") {
     return { title: t("transactions.row.paymentCollected"), amountPesewas: row.amountPesewas, tone: "in", chips: [...paymentChips(), ...(name ? [person(name)] : [])] };
   }
+  if ((row.kind === "spent" || row.kind === "credit") && row.owedPesewas > 0) {
+    // Stock bought on credit (wiring 24, 11 Nov 2026; only stock can be owed to a supplier).
+    // Nothing paid now: "Stock on credit", dark red, no sign. Part paid: "Stock", the amount paid
+    // now with a minus. Either way a pink "You owe {Supplier}" chip, with the rest when part paid.
+    const supplier = displayName(row.supplierName) || t("expense.supplier");
+    if (row.kind === "credit") {
+      return { title: t("transactions.row.stockOnCredit"), amountPesewas: row.owedPesewas, tone: "credit", chips: [person(t("transactions.row.youOwe", { name: supplier }))] };
+    }
+    return {
+      title: t("transactions.row.stock"),
+      amountPesewas: row.amountPesewas,
+      tone: "spent",
+      chips: [person(t("transactions.row.youOweAmount", { name: supplier, amount: formatGhs(row.owedPesewas) }))]
+    };
+  }
   if (row.kind === "spent" || row.kind === "credit") {
     const category = categoryLabel(row.category);
-    const chips = [
-      ...(category ? [{ kind: "category", label: category }] : []),
-      ...(row.owedPesewas > 0 ? [{ kind: "credit", label: `${t("transactions.tag.credit")} ${formatGhs(row.owedPesewas)}` }] : [])
-    ];
-    // Stock bought fully on credit: nothing was paid today, so the amount has no sign.
-    if (row.kind === "credit") return { title: t("transactions.row.spent"), amountPesewas: row.amountPesewas, tone: "credit", chips };
+    const chips = category ? [{ kind: "category", label: category }] : [];
     return { title: t("transactions.row.spent"), amountPesewas: row.amountPesewas, tone: "spent", chips };
   }
   if (row.kind === "debt_added") {

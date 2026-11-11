@@ -29,7 +29,8 @@ const cls = (node) => String(node?.props?.className ?? "");
 
 async function today() {
   const transactions = await getFinancialTransactions(getMoneyPeriodRange("day"));
-  return { rows: createPosTransactionRows(transactions), totals: summarizeFinancialTransactionsSafely(transactions).totals };
+  const suppliers = new Map((await db.suppliers.toArray()).map((supplier) => [supplier.id, supplier.name]));
+  return { rows: createPosTransactionRows(transactions, suppliers), totals: summarizeFinancialTransactionsSafely(transactions).totals };
 }
 
 async function mount(rows, totals) {
@@ -204,4 +205,56 @@ test("24: rows are not buttons (no chevron, not focusable)", async () => {
     assert.doesNotMatch(cls(row), /hover:|cursor-pointer/);
   }
   assert.doesNotMatch(readFileSync(new URL("../src/pos/TodaysTransactions.jsx", import.meta.url), "utf8"), /ChevronRight/);
+});
+
+// Stock bought on credit (wiring 24, decided 11 Nov 2026). The supplier is stored as "kofi
+// wholesale" and shown through the shared displayName helper.
+const buyStock = (paidAmountPesewas) => recordExpense({ amountPesewas: 8000, paidAmountPesewas, category: "stock", newSupplier: { name: "kofi wholesale" } });
+
+test("24: stock GH₵80.00 with nothing paid is \"Stock on credit\", dark red with no sign, pink \"You owe Kofi wholesale\"", async () => {
+  await buyStock(0);
+  const { rows, totals } = await today();
+  const [row] = rowViews((await mount(rows, totals)).tree);
+  assert.equal(row.title, "Stock on credit");
+  assert.equal(row.amount, "GH₵80.00");
+  assert.match(cls(row.amountNode), /text-\[#7F1D1D\]/);
+  assert.deepEqual(row.chips, [{ kind: "person", text: "You owe Kofi wholesale" }]);
+  const chip = all(row.node, (n) => n.props["data-chip"] === "person" && n.type === "span")[0];
+  assert.match(cls(chip), /bg-\[#FECDD3\]/, "pink chip");
+  assert.equal(totals.expenses, 0, "no money went out");
+});
+
+test("24: stock GH₵80.00 with GH₵30.00 paid is \"Stock\", −GH₵30.00 in amber-brown, pink \"You owe Kofi wholesale GH₵50.00\"", async () => {
+  await buyStock(3000);
+  const { rows, totals } = await today();
+  const [row] = rowViews((await mount(rows, totals)).tree);
+  assert.equal(row.title, "Stock");
+  assert.equal(row.amount, "−GH₵30.00");
+  assert.match(cls(row.amountNode), /text-\[#92400E\]/);
+  assert.deepEqual(row.chips, [{ kind: "person", text: "You owe Kofi wholesale GH₵50.00" }]);
+  assert.equal(totals.expenses, 3000);
+});
+
+test("24: stock GH₵80.00 fully paid is a normal Spent row", async () => {
+  await recordExpense({ amountPesewas: 8000, paidAmountPesewas: 8000, category: "stock", note: "" });
+  const { rows, totals } = await today();
+  const [row] = rowViews((await mount(rows, totals)).tree);
+  assert.equal(row.title, "Spent");
+  assert.equal(row.amount, "−GH₵80.00");
+  assert.match(cls(row.amountNode), /text-\[#92400E\]/);
+  assert.deepEqual(row.chips, [{ kind: "category", text: "Stock" }]);
+});
+
+test("24: the Spent tile equals the sum of the money paid out (stock on credit counts only what was paid)", async () => {
+  await buyStock(0);
+  await buyStock(3000);
+  await recordExpense({ amountPesewas: 8000, paidAmountPesewas: 8000, category: "stock", note: "" });
+  await recordExpense({ amountPesewas: 500, paidAmountPesewas: 500, category: "transport", note: "" });
+  const { rows, totals } = await today();
+  // 0 + 30.00 + 80.00 + 5.00 paid out = GH₵115.00
+  assert.equal(totals.expenses, 11500);
+  const view = await mount(rows, totals);
+  const minus = rowViews(view.tree).filter((row) => row.amount.startsWith("−")).reduce((sum, row) => sum + pesewas(row.amount), 0);
+  assert.equal(minus, totals.expenses);
+  assert.ok(textOf(all(view.tree, (n) => n.props["data-summary"] === "spent")[0]).includes("GH₵115.00"));
 });
