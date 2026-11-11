@@ -2,6 +2,7 @@ import { toPesewas } from "../lib/money.js";
 import { posText as t } from "./i18n.js";
 import { getInitialPaymentParts } from "./paymentAmount.js";
 import SplitPayment from "./SplitPayment.jsx";
+import { describeSplitPart } from "./splitTender.js";
 
 export default function InstallmentSplitPayment({ params = {}, onBack, onReturnTo, onNavigate, onUpdateParams }) {
   const totalPesewas = Number.isSafeInteger(params.splitTotalPesewas)
@@ -35,9 +36,13 @@ export default function InstallmentSplitPayment({ params = {}, onBack, onReturnT
         pendingMomoAmountPesewas,
         ...extra,
         returnRoute: "SplitPayment",
-        pickOnly: true
+        pickOnly: true,
+        // MOMO16: Direct returns here not confirmed yet; Received returns the parts to 19, and Save
+        // plan on 19 opens 62 before the commit.
+        confirmAtDone: true
       })}
       initialParts={getInitialPaymentParts({ ...params, splitTotalPesewas: totalPesewas }, totalPesewas)}
+      partDetail={(part) => describeSplitPart(part, params)}
     />
   );
 }

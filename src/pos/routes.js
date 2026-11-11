@@ -1,4 +1,4 @@
-import { applyMomoPick } from "./paymentAmount.js";
+import { applyMomoPick, getCarriedPaymentParts } from "./paymentAmount.js";
 import { isLockedMomoRow } from "./splitTender.js";
 
 export const POS_ROUTES = Object.freeze({
@@ -300,12 +300,18 @@ export function isCollectSplit(params = {}) {
   return Boolean(params.debtId) && !params.installmentSplit;
 }
 
-// MoMo money already received (locked MoMo parts) held by one screen's draft: the split on 16 or 27.
+// MoMo money already received (locked MoMo parts) held by one screen's draft: the split on 16 or
+// 27, or today's payment on 19 (the parts back from 27, or 19's own MoMo choice).
 export function getReceivedMomoOnScreen(entry = {}) {
   const params = entry.params ?? {};
+  const lockedTotal = (parts) => parts.filter(isLockedMomoRow).reduce((total, part) => total + part.amountPesewas, 0);
+  if (entry.current === POS_ROUTES.ALittleAtATime) {
+    const single = params.paymentMethod === "momo" && isLockedMomoRow({ paymentMethod: "momo", verification: params.verification }) &&
+      Number.isSafeInteger(params.momoConfirmedPesewas) ? params.momoConfirmedPesewas : 0;
+    return lockedTotal(getCarriedPaymentParts(params)) + single;
+  }
   if (entry.current !== POS_ROUTES.SplitPayment || params.installmentSplit) return 0;
-  const parts = Array.isArray(params.splitParts) ? params.splitParts : [];
-  return parts.filter(isLockedMomoRow).reduce((total, part) => total + part.amountPesewas, 0);
+  return lockedTotal(Array.isArray(params.splitParts) ? params.splitParts : []);
 }
 
 // Wiring 16 / MOMO16 (11 Nov 2026): MoMo money already received held in a draft (16, 27), whether
@@ -328,8 +334,13 @@ export function isSaleSplitHubScreen(state) {
 // Leave drops the whole draft. Returns where Leave goes (a sale starts again on an empty 15, a
 // collection goes Home), or null when Back is an ordinary Back.
 export function getLeaveOnBackRoute(state) {
+  // 19 in flow=split only carries 16's parts: Back returns to the draft on 16, it does not leave it.
+  if (state.current === POS_ROUTES.ALittleAtATime && state.params?.flow === "split") return null;
   if (getReceivedMomoOnScreen(state) <= 0) return null;
-  return isSaleSplitHubScreen(state) ? POS_ROUTES.Sell : POS_ROUTES.Home;
+  if (isSaleSplitHubScreen(state)) return POS_ROUTES.Sell;
+  // 19 in a sale (15 > Owe) starts again on an empty 15; 19 for a debt added by hand goes Home.
+  if (state.current === POS_ROUTES.ALittleAtATime && !state.params?.manualDebt) return POS_ROUTES.Sell;
+  return POS_ROUTES.Home;
 }
 
 const MOMO_FLOW_ROUTES = new Set(["MoMoChoice", "MoMoDirect", "MoMoSetup", "MoMoPayment", "MoMoWaiting", "MoMoCode", "MoMoNotCompleted"]);

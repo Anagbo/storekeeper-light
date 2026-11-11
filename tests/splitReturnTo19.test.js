@@ -126,9 +126,16 @@ const choose = (a, label) => { button(a.tree, (_props, text) => text === label).
 const chooseNextCycle = (a) => { button(a.tree, (_props, text) => /^Next cycle/.test(text)).props.onClick(); a.rerender(); };
 const typeToday = (a, value) => { input(a.tree, (props) => props["aria-label"] === "Amount paid today").props.onChange({ target: { value } }); a.rerender(); };
 const openSplit = async (a) => { button(a.tree, (props) => props["aria-label"] === "Split payment").props.onClick(); await waitFor(() => a.state.current === "SplitPayment", "27 to open"); assert.equal(a.state.current, "SplitPayment"); };
+// The MoMo part as received on 62 (these 19 tests save without opening 62).
 const cashMoMo = (cash, momo) => [
   { paymentMethod: "cash", amountPesewas: cash },
   { paymentMethod: "momo", amountPesewas: momo, momoMethod: "direct", verification: "merchant_confirmed", confirmedPesewas: momo }
+];
+// MOMO16 (11 Nov 2026): a Direct part back from 27 is not confirmed until Save plan opens 62. Next
+// cycle can drop parts only while nothing was received (received MoMo is locked).
+const cashMoMoNotConfirmed = (cash, momo) => [
+  { paymentMethod: "cash", amountPesewas: cash },
+  { paymentMethod: "momo", amountPesewas: momo, momoMethod: "direct" }
 ];
 
 // What is on 27 as rows, handed back with Received (the rows were built on 27).
@@ -216,7 +223,7 @@ test("Next cycle after a recorded split discards the parts, hides the panel, rec
   choose(a, "Today");
   typeToday(a, "200");
   await openSplit(a);
-  await receive(a, cashMoMo(12000, 8000));
+  await receive(a, cashMoMoNotConfirmed(12000, 8000));
   assert.equal(screen19(a).recordedPanel, true);
 
   chooseNextCycle(a);
@@ -243,7 +250,7 @@ test("Today again after Next cycle starts clean: no recorded panel, a payment mu
   choose(a, "Today");
   typeToday(a, "200");
   await openSplit(a);
-  await receive(a, cashMoMo(12000, 8000));
+  await receive(a, cashMoMoNotConfirmed(12000, 8000));
   chooseNextCycle(a);
   choose(a, "Today");
   const again = screen19(a);

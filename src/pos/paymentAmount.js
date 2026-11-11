@@ -38,7 +38,9 @@ export function getMomoPickParams(params = {}, { todayPaymentPesewas, maxCreditP
     pendingMomoAmountPesewas: todayPaymentPesewas,
     ...(validAmount && { splitTotalPesewas: Math.max(maxCreditPesewas ?? 0, todayPaymentPesewas) }),
     returnRoute: "ALittleAtATime",
-    pickOnly: true
+    pickOnly: true,
+    // MOMO16 on 19: Direct returns to 19 not confirmed yet; 62 opens at Save plan.
+    confirmAtDone: true
   };
 }
 

@@ -24,6 +24,7 @@ import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { getCarriedPaymentParts, getMomoPickParams, getPaidPaymentPesewas } from "./paymentAmount.js";
 import { useBackBlock } from "./browserBack.js";
+import { confirmDirectMomoParts, describeSplitPart, isLockedMomoRow, isUnconfirmedDirectMomo } from "./splitTender.js";
 
 function amountInputValue(amountPesewas) {
   return (amountPesewas / 100).toFixed(2);
@@ -348,6 +349,39 @@ function describePlanSaveError(saveError, maxCreditPesewas) {
   return t("credit.invalidInstallment");
 }
 
+// 19's own MoMo choice carries its method and confirmation on the saved part (MOMO16).
+function getMomoChoiceFields(paymentMethod, params) {
+  if (paymentMethod !== "momo") return {};
+  return {
+    ...(params.momoMethod ? { momoMethod: params.momoMethod } : {}),
+    ...(params.verification ? { verification: params.verification } : {}),
+    ...(Number.isSafeInteger(params.momoConfirmedPesewas) ? { confirmedPesewas: params.momoConfirmedPesewas } : {})
+  };
+}
+
+// A part of today's payment on 19, with its status: "Received" (green check) once the MoMo money is
+// confirmed, "Customer sends to my number · not confirmed yet" before.
+function RecordedPartRow({ part }) {
+  const status = describeSplitPart(part);
+  const locked = isLockedMomoRow(part);
+  return (
+    <div data-recorded-part={part.paymentMethod} className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 font-bold">
+      <span className="flex min-w-0 items-center gap-2">
+        {part.paymentMethod === "cash"
+          ? <Banknote size={18} className="shrink-0" aria-hidden="true" />
+          : <Smartphone size={18} className="shrink-0" aria-hidden="true" />}
+        <span className="min-w-0">
+          <span className="block truncate">{t(`credit.method.${part.paymentMethod}`)}</span>
+          {status && (locked
+            ? <span data-row-status="" className="flex items-center gap-1 text-sm font-bold text-emerald-900"><Check size={16} strokeWidth={3} className="shrink-0" aria-hidden="true" />{status}</span>
+            : <span data-row-status="" className="block text-sm font-semibold text-slate-700 [overflow-wrap:anywhere]">{status}</span>)}
+        </span>
+      </span>
+      <span className="shrink-0 whitespace-nowrap">{formatGhs(part.amountPesewas)}</span>
+    </div>
+  );
+}
+
 function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnToSplit, onSaveCredit }) {
   const today = localDateString();
   const [installmentAmount, setInstallmentAmount] = useState(params.installmentAmount ?? "");
@@ -386,6 +420,15 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
   const todayPaymentInput = todayPaymentAmount ?? installmentAmount;
   const todayPaymentPesewas = toPesewas(todayPaymentInput);
   const splitParts = carriedPaymentParts;
+  // MOMO16 on 19: today's MoMo payment (19's own MoMo choice) once received on 62 is locked: the
+  // amount, the method and Next cycle cannot change it. Shown like the parts that come back from 27.
+  const singleMomoReceived = paymentMethod === "momo" && isLockedMomoRow({ paymentMethod: "momo", verification: params.verification });
+  const recordedParts = splitParts.length > 0
+    ? splitParts
+    : singleMomoReceived && Number.isSafeInteger(params.momoConfirmedPesewas)
+      ? [{ paymentMethod: "momo", amountPesewas: params.momoConfirmedPesewas, momoMethod: params.momoMethod, verification: params.verification }]
+      : [];
+  const hasReceivedMomo = recordedParts.some(isLockedMomoRow);
   const validTodayPayment = Number.isSafeInteger(todayPaymentPesewas) &&
     todayPaymentPesewas > 0 &&
     todayPaymentPesewas <= maxCreditPesewas;
@@ -413,6 +456,13 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
     setNextDueDate(nextDate);
     onUpdateParams?.({ frequency: nextFrequency, nextDueDate: nextDate });
   }
+
+  // Money received on 62 after Save plan: commit once, straight away (the large-amount ask already ran).
+  useEffect(() => {
+    if (!params.commitNow) return;
+    onUpdateParams?.({ commitNow: undefined });
+    void savePlan(true);
+  }, []);
 
   async function savePlan(confirmed = false) {
     if (savingRef.current) return;
@@ -454,7 +504,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
         : startToday && paymentMethod === "split"
         ? [...(params.initialPaymentParts ?? []), ...splitParts]
         : startToday && prepared.initialPaymentPesewas > 0
-          ? [...(params.initialPaymentParts ?? []), { paymentMethod, amountPesewas: prepared.initialPaymentPesewas }]
+          ? [...(params.initialPaymentParts ?? []), { paymentMethod, amountPesewas: prepared.initialPaymentPesewas, ...getMomoChoiceFields(paymentMethod, params) }]
           : (params.initialPaymentParts ?? []);
       if (params.flow === "split") {
         // SAVE19 in a split: back to the existing 16 with the Owe part complete (K4).
@@ -467,8 +517,27 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
         });
         return;
       }
+      // SAVE19 / MOMO16: a Direct MoMo part not confirmed yet is confirmed on 62 first. Money received
+      // there brings 19 back with the part received and the plan is saved once (commitNow above).
+      const unconfirmed = initialPaymentParts.find(isUnconfirmedDirectMomo);
+      if (unconfirmed) {
+        const confirmedParts = confirmDirectMomoParts(splitParts);
+        onNavigate("MoMoDirect", {
+          ...params,
+          splitTotalPesewas: initialPaymentParts.reduce((sum, part) => sum + part.amountPesewas, 0),
+          splitParts: initialPaymentParts.filter((part) => part !== unconfirmed),
+          pendingMomoAmountPesewas: unconfirmed.amountPesewas,
+          momoMethod: "direct",
+          confirmFor: "plan19",
+          confirmedParams: paymentMethod === "split"
+            ? { firstPaymentParts: confirmedParts, splitParts: confirmedParts }
+            : { paymentMethod: "momo", momoMethod: "direct", verification: "merchant_confirmed", momoConfirmedPesewas: unconfirmed.amountPesewas, todayPaymentAmount: todayPaymentInput, startToday: true }
+        });
+        return;
+      }
+      const { commitNow: _commitNow, ...draftParams } = params;
       const content = {
-        ...params,
+        ...draftParams,
         dueDate: "",
         installmentPlan: plan,
         initialPaymentPesewas: alreadyPaidPesewas + prepared.initialPaymentPesewas,
@@ -591,7 +660,9 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
           >
             {t("credit.today")}
           </button>
-          <button type="button" aria-pressed={!startToday} onClick={() => {
+          <button type="button" aria-pressed={!startToday} disabled={hasReceivedMomo} onClick={() => {
+            // Received MoMo is locked: Next cycle would drop it, so it is not offered then.
+            if (hasReceivedMomo) return;
             setStartToday(false);
             setTodayPaymentSubmitAttempted(false);
             const nextDate = getNextCycleDate(today, frequency);
@@ -603,7 +674,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
               Object.assign(draftUpdates, { firstPaymentParts: undefined, splitParts: undefined, splitTotalPesewas: undefined, paymentMethod: "cash" });
             }
             onUpdateParams?.(draftUpdates);
-          }} className={`min-h-14 min-w-0 rounded-2xl border-[3px] px-1 text-[15px] leading-tight font-extrabold ${!startToday ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{t("credit.nextCycle", { frequency: t(`credit.frequency.${frequency}`) })}</button>
+          }} className={`min-h-14 min-w-0 rounded-2xl border-[3px] px-1 text-[15px] leading-tight font-extrabold disabled:cursor-not-allowed disabled:opacity-60 ${!startToday ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{t("credit.nextCycle", { frequency: t(`credit.frequency.${frequency}`) })}</button>
         </div>
       </fieldset>
       {startToday && !paymentAlreadyMadeToday && (
@@ -622,7 +693,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
               aria-describedby="today-payment-limit"
               aria-invalid={todayPaymentSubmitAttempted && !validTodayPayment}
               value={todayPaymentInput}
-              disabled={splitParts.length > 0}
+              disabled={recordedParts.length > 0}
               onChange={(event) => {
                 setTodayPaymentAmount(event.target.value);
                 // Kept in the route params, so Menu > Settings > Back > Close menu restores it.
@@ -635,7 +706,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
             />
           </span>
           <span id="today-payment-limit" className="mt-1 block text-sm font-semibold text-slate-700">
-            {splitParts.length > 0
+            {recordedParts.length > 0
               ? t("credit.paymentRecorded")
               : t("credit.paymentTodayMaximum", { amount: formatGhs(maxCreditPesewas) })}
           </span>
@@ -656,25 +727,15 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
       {startToday && !paymentAlreadyMadeToday && (
         <fieldset>
           <legend className="mb-1 text-base font-extrabold">{t("credit.firstPaymentMethod")}</legend>
-          {splitParts.length > 0 ? (
+          {recordedParts.length > 0 ? (
             <div className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
               <p className="mb-2 font-extrabold text-emerald-950">{t("credit.paymentRecorded")}</p>
               <div className="flex flex-col gap-2">
-                {splitParts.map((part) => (
-                  <div key={`${part.paymentMethod}-${part.amountPesewas}`} className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 font-bold">
-                    <span className="flex min-w-0 items-center gap-2">
-                      {part.paymentMethod === "cash"
-                        ? <Banknote size={18} aria-hidden="true" />
-                        : <Smartphone size={18} aria-hidden="true" />}
-                      <span className="truncate">{t(`credit.method.${part.paymentMethod}`)}</span>
-                    </span>
-                    <span className="shrink-0">{formatGhs(part.amountPesewas)}</span>
-                  </div>
-                ))}
+                {recordedParts.map((part) => <RecordedPartRow key={`${part.paymentMethod}-${part.amountPesewas}`} part={part} />)}
               </div>
               <div className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 pt-2 font-extrabold text-emerald-950">
                 <span>{t("credit.paymentRecordedTotal")}</span>
-                <span>{formatGhs(splitParts.reduce((total, part) => total + part.amountPesewas, 0))}</span>
+                <span>{formatGhs(recordedParts.reduce((total, part) => total + part.amountPesewas, 0))}</span>
               </div>
             </div>
           ) : (
