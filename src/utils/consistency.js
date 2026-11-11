@@ -38,10 +38,10 @@ function checkInstallment(issues, debt) {
     addIssue(issues, "installment_schedule_mismatch", `Debt ${debt.id} has an invalid installment amount or balance.`, debt.id);
     return;
   }
+  // The stored totalInstallments is not checked (owner rule, 11 Nov 2026): screens count from
+  // money (getPlanProgress). The field stays on the record and in backups.
   const expectedRemaining = Math.ceil(balance / debt.installmentAmount);
-  if (debt.installmentsRemaining !== expectedRemaining ||
-    !Number.isSafeInteger(debt.totalInstallments) ||
-    debt.totalInstallments < debt.installmentsRemaining) {
+  if (debt.installmentsRemaining !== expectedRemaining) {
     addIssue(issues, "installment_schedule_mismatch", `Debt ${debt.id} installment counts do not match its balance.`, debt.id);
   }
 }
@@ -87,7 +87,7 @@ function checkDebtLedger(issues, debt, debts, transactions, payments, checkedCus
     }
   }
 
-  const expectedBalance = calculateLedgerEventBalance(
+  const { balancePesewas: expectedBalance } = calculateLedgerEventBalance(
     ledgerRecords.transactions,
     ledgerRecords.payments
   );
