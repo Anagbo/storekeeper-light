@@ -2360,7 +2360,14 @@
     }
    ],
    "inputs": [],
-   "bottom_bar": false
+   "bottom_bar": false,
+   "rules": [
+    "Redesign (layout only, no behaviour change). Summary card at the top: \"Total you owe\", the supplier count (\"2 suppliers\", \"1 supplier\") and the total in bold. It uses a calm amber background, because this is money the shop owes.",
+    "One card per supplier, soonest due first. Inside the card: top row = supplier name (bold 19px, up to 2 lines, first letter shown in capitals even if saved in lowercase) on the left and the amount (bold 24px, never shrunk or clipped) on the right; the due tag under the name; bottom row = a green \"Pay\" button with a wallet icon (52px, takes the remaining width) and, only when the supplier has a valid phone number, a square Call icon button (52px, dark outline). If there is no number, the Call button is not shown. Never show a greyed disabled Call button.",
+    "Due tag wording and colour: \"Due in n days\" grey when more than 3 days away; \"Due in n days\" or \"Due today\" amber when 3 days or less; \"Late n days\" in the red style used on the Owed list when past due; no tag when there is no due date. Dates elsewhere dd/mm/yyyy.",
+    "Empty state: \"You don't owe any suppliers.\" with no summary card.",
+    "The Pay and Call buttons keep their accessible names (\"Pay Kofi Wholesale\", \"Call Kofi Wholesale\")."
+   ]
   },
   "47": {
    "name": "Settings",
