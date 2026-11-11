@@ -16,14 +16,14 @@ const income = { id: "inc-1", type: "income", amountPesewas: 2000 };
 const paymentRow = { id: "pay-1", amountPesewas: 2000, transactionId: "inc-1" };
 
 test("D15: a payment whose income was reversed by Undo no longer counts in the ledger balance", () => {
-  assert.equal(calculateLedgerEventBalance([credit, income], [paymentRow]), 3000);
+  assert.equal(calculateLedgerEventBalance([credit, income], [paymentRow]).balancePesewas, 3000);
   const reversal = { id: "rev-1", type: "income_reversal", amountPesewas: 2000, reversalOfTransactionId: "inc-1" };
-  assert.equal(calculateLedgerEventBalance([credit, income, reversal], [paymentRow]), 5000);
+  assert.equal(calculateLedgerEventBalance([credit, income, reversal], [paymentRow]).balancePesewas, 5000);
 });
 
 test("D15: a reversal of a different payment does not hide this one", () => {
   const otherReversal = { id: "rev-2", type: "income_reversal", amountPesewas: 2000, reversalOfTransactionId: "inc-other" };
-  assert.equal(calculateLedgerEventBalance([credit, income, otherReversal], [paymentRow]), 3000);
+  assert.equal(calculateLedgerEventBalance([credit, income, otherReversal], [paymentRow]).balancePesewas, 3000);
 });
 
 test("D15: after collect then Undo, the balance can still be corrected (events reconcile)", async () => {

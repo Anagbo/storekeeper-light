@@ -16,7 +16,8 @@ import { buildCollectionReceiptLink } from "./collectionReceipt.js";
 import { buildCustomerBalanceReceipt, getCollectionReceiptText } from "./receiptTemplates.js";
 import { normalizeCollectionAmountInput } from "./collectionSplit.js";
 import { getDebtDueLabel, getDebtDueLine } from "./money.js";
-import { getInstallmentsLeft } from "../utils/installments.js";
+import { getInstallmentsLeft, getPlanProgress } from "../utils/installments.js";
+import { getCustomerLedgerRecords, getPlanPaidPesewas } from "../utils/debtLedgerMath.js";
 import { posText as t } from "./i18n.js";
 import { PosBackButton, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, SplitIcons } from "./PosComponents.jsx";
 import CustomerContactEditor from "./CustomerContactEditor.jsx";
@@ -159,6 +160,13 @@ function CollectionSheet({ debt, onClose, onNavigate, onRecordCollection }) {
     ? Math.min(debt.amountPesewas, debt.installmentAmount)
     : debt.amountPesewas;
   const amountPesewas = mode === "all" ? debt.amountPesewas : dueAmount;
+  // Wiring 25: only for Due now, from money (never "Payment x of y").
+  const paymentsLeft = getInstallmentsLeft(debt);
+  const dueNowLine = mode !== "due" || paymentsLeft <= 0
+    ? ""
+    : paymentsLeft === 1
+      ? t("collect.lastPayment")
+      : t("collect.leftAfterThis", { left: paymentsLeft - 1 });
 
   async function receivePayment() {
     if (busy || amountPesewas <= 0) return;
@@ -207,15 +215,7 @@ function CollectionSheet({ debt, onClose, onNavigate, onRecordCollection }) {
         </div>
 
         <div className="mt-3"><SheetAmount amountPesewas={amountPesewas} /></div>
-        {debt.isInstallmentPlan && (
-          <p className="mt-2 text-sm font-semibold text-slate-700">
-            {t("collect.installmentProgress", {
-              payment: Math.max(debt.totalInstallments ?? 0, getInstallmentsLeft(debt)) - getInstallmentsLeft(debt) + 1,
-              total: Math.max(debt.totalInstallments ?? 0, getInstallmentsLeft(debt)),
-              left: getInstallmentsLeft(debt)
-            })}
-          </p>
-        )}
+        {dueNowLine && <p className="mt-2 text-sm font-semibold text-slate-700">{dueNowLine}</p>}
         <div className="mt-4">
           <PaymentMethodPicker
             value={paymentMethod}
@@ -600,13 +600,25 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
     const historyRows = groupCollectionHistory(history.events);
     const selectedOpenDebt = customerDebts.find((debt) => debt.id === selectedDebt?.id && debt.status === "unpaid");
     const unpaidDebts = customerDebts.filter((debt) => debt.status === "unpaid");
+    const shownDebt = selectedOpenDebt ?? unpaidDebts[0] ?? selectedDebt ?? customerDebts[0];
+    // Money paid against the plan's debt, for the plan card (getPlanProgress).
+    const planPaidPesewas = shownDebt?.isInstallmentPlan
+      ? getPlanPaidPesewas(getCustomerLedgerRecords({
+          customerId: customer?.id ?? customerId,
+          customerName: name,
+          debts,
+          transactions: await db.transactions.toArray(),
+          payments: await db.payments.toArray()
+        }), shownDebt.id)
+      : 0;
     return {
       name,
       customerId: customer?.id ?? customerId,
       phone: customer?.phone || selectedDebt?.phone || selectedDebt?.customer_phone || "",
       ghanaCardNumber: customer?.ghanaCardNumber || selectedDebt?.ghanaCardNumber || "",
       balancePesewas: getOutstandingDebtPesewas(customerDebts),
-      debt: selectedOpenDebt ?? unpaidDebts[0] ?? selectedDebt ?? customerDebts[0],
+      debt: shownDebt,
+      planPaidPesewas,
       unpaidDebts: unpaidDebts.sort((left, right) => (
         (right.createdAt ?? right.created_at ?? 0) - (left.createdAt ?? left.created_at ?? 0)
       )),
@@ -659,19 +671,13 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
   // 29 and 43: a fixed due date with no plan gets "Due dd/mm/yyyy · In N days" under the balance.
   // An installment plan keeps its own line (the plan card), and a late plan its late line.
   const dueLine = data?.debt && !data.debt.isInstallmentPlan && dueDate ? getDebtDueLine(dueDate) : "";
-  // Payments left from the balance (DRIFT fix); the stored total is only used for "paid".
-  const installmentsLeft = getInstallmentsLeft(data?.debt);
-  const installmentCount = data?.debt?.isInstallmentPlan
-    ? Math.max(data.debt.totalInstallments ?? 0, installmentsLeft)
-    : 0;
-  const paidInstallments = installmentCount - installmentsLeft;
-  const progressInstallmentCount = Number.isSafeInteger(installmentCount) && installmentCount > 0
-    ? installmentCount
-    : 0;
-  const completedInstallments = Math.min(progressInstallmentCount, Math.max(0, paidInstallments));
-  const installmentProgress = progressInstallmentCount > 0
-    ? (completedInstallments / progressInstallmentCount) * 100
-    : 0;
+  // Plan card (wiring 25/43): paid, left and the bar from money only, never the stored counters.
+  const planProgress = getPlanProgress({
+    balancePesewas: getInstallmentsLeft(data?.debt) > 0 ? data.debt.amountPesewas ?? data.debt.total_owed : 0,
+    installmentAmountPesewas: data?.debt?.installmentAmount,
+    paidPesewas: data?.planPaidPesewas ?? 0
+  });
+  const installmentProgress = planProgress.progress * 100;
   const nextDueDate = dueDate ? formatDate(dueDate) : t("collect.notSet");
   const installmentFrequency = ["weekly", "bi-weekly", "monthly"].includes(data?.debt?.frequency)
     ? t(`collect.installmentFrequency.${data.debt.frequency}`)
@@ -833,14 +839,14 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                 role="progressbar"
                 aria-label={t("collect.installmentTitle")}
                 aria-valuemin={0}
-                aria-valuemax={progressInstallmentCount}
-                aria-valuenow={completedInstallments}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(installmentProgress)}
                 className="h-3.5 w-full overflow-hidden rounded-md border-2 border-emerald-900 bg-white"
               >
                 <span className="block h-full bg-emerald-900" style={{ width: `${installmentProgress}%` }} />
               </div>
               <div className="flex justify-between gap-2 text-sm font-extrabold">
-                <span>{t("collect.installmentPaid", { paid: paidInstallments, left: installmentsLeft })}</span>
+                <span>{t("collect.installmentPaid", { paid: planProgress.paid, left: planProgress.left })}</span>
                 <span>{t("collect.nextLabel", { date: nextDueDate })}</span>
               </div>
             </section>

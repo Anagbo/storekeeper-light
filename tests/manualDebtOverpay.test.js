@@ -40,7 +40,7 @@ async function olderDebt(kind, amount = 3000) {
 }
 async function ledger(customerId) {
   const records = getCustomerLedgerRecords({ customerId, customerName: "Ama", debts: await db.debts.toArray(), transactions: await db.transactions.toArray(), payments: await db.payments.toArray() });
-  return calculateLedgerEventBalance(records.transactions, records.payments);
+  return calculateLedgerEventBalance(records.transactions, records.payments).balancePesewas;
 }
 async function assertConsistent() {
   const report = await checkLedgerConsistency();

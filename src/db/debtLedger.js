@@ -106,7 +106,7 @@ async function assertDebtBalanceMatchesEvents({
   // migrated, but there is no event-based baseline to reconcile yet.
   if (!creditEvents.length && !ledgerRecords.payments.length) return;
 
-  const eventBalancePesewas = calculateLedgerEventBalance(
+  const { balancePesewas: eventBalancePesewas } = calculateLedgerEventBalance(
     ledgerRecords.transactions,
     ledgerRecords.payments
   );

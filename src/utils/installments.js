@@ -371,7 +371,22 @@ export function getInstallmentsLeft(debt) {
     !Number.isSafeInteger(debt.installmentAmount) || debt.installmentAmount <= 0) {
     return 0;
   }
-  return Math.ceil(balance / debt.installmentAmount);
+  return getPlanProgress({ balancePesewas: balance, installmentAmountPesewas: debt.installmentAmount, paidPesewas: 0 }).left;
+}
+
+// Plan counts from money only (owner rule, wiring 25, 11 Nov 2026). The stored
+// totalInstallments is not read: part payments made counters drift ("Payment 3 of 44").
+// left = balance ÷ installment rounded up; paid = money paid ÷ installment rounded down;
+// total = paid + left; progress = money paid ÷ (money paid + balance), from 0 to 1.
+export function getPlanProgress({ balancePesewas, installmentAmountPesewas, paidPesewas }) {
+  const none = { paid: 0, left: 0, total: 0, progress: 0 };
+  if (!Number.isSafeInteger(installmentAmountPesewas) || installmentAmountPesewas <= 0) return none;
+  const balance = Number.isSafeInteger(balancePesewas) && balancePesewas > 0 ? balancePesewas : 0;
+  const paidMoney = Number.isSafeInteger(paidPesewas) && paidPesewas > 0 ? paidPesewas : 0;
+  const left = Math.ceil(balance / installmentAmountPesewas);
+  const paid = Math.floor(paidMoney / installmentAmountPesewas);
+  const owed = paidMoney + balance;
+  return { paid, left, total: paid + left, progress: owed > 0 ? paidMoney / owed : 0 };
 }
 
 export function isInstallmentDue(debt, today = localDateString()) {

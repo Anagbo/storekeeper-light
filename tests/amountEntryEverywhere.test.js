@@ -234,7 +234,7 @@ const NUMBER_ALLOWED = [
 ];
 // Every "* 100" in src that is not the parser: percentages.
 const TIMES_100_ALLOWED = [
-  ["pos/DebtCollection.jsx", "progressInstallmentCount) * 100", "a percentage"],
+  ["pos/DebtCollection.jsx", "planProgress.progress * 100", "a percentage"],
   ["pos/ManualDebtScreens.jsx", "debt.installmentAmount) * 100", "a percentage"]
 ];
 

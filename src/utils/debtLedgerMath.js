@@ -90,6 +90,8 @@ export function getCustomerLedgerRecords({
   };
 }
 
+// Returns { balancePesewas, paidPesewas }: paidPesewas is the debt payments counted against
+// the balance (sale-time rows and undone payments left out).
 export function calculateLedgerEventBalance(transactions, payments) {
   const saleTimePayments = matchSaleTimePayments(transactions, payments);
   const creditTotal = transactions.reduce((total, record) => (
@@ -108,5 +110,15 @@ export function calculateLedgerEventBalance(transactions, payments) {
   const adjustmentTotal = transactions
     .filter((record) => record.type === "debt_adjustment")
     .reduce((total, record) => total + (record.deltaPesewas ?? 0), 0);
-  return creditTotal - paymentTotal + adjustmentTotal;
+  return { balancePesewas: creditTotal - paymentTotal + adjustmentTotal, paidPesewas: paymentTotal };
+}
+
+// Money paid against one debt (the plan card on 43): the customer's records, with only the
+// payments linked to that debt, so a sale's own payment and undone payments stay out.
+export function getPlanPaidPesewas(ledgerRecords, debtId) {
+  if (!debtId) return 0;
+  return calculateLedgerEventBalance(
+    ledgerRecords.transactions,
+    ledgerRecords.payments.filter((payment) => payment.debtId === debtId)
+  ).paidPesewas;
 }

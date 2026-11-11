@@ -42,7 +42,7 @@ async function ledgerBalance(customerId, customerName) {
     transactions: await db.transactions.toArray(),
     payments: await db.payments.toArray()
   });
-  return calculateLedgerEventBalance(records.transactions, records.payments);
+  return calculateLedgerEventBalance(records.transactions, records.payments).balancePesewas;
 }
 
 async function expectConsistent() {
