@@ -181,6 +181,8 @@ const ENGLISH = Object.freeze({
   "split.add": "Add",
   "split.save": "Save",
   "split.remove": "Remove {method}",
+  "split.editAmount": "Edit {method} amount",
+  "split.tapToChange": "Tap an amount to change it.",
   "split.howMuch": "How much {method}?",
   "split.collectPays": "{name} pays",
   "split.saleTotal": "Sale total",

@@ -80,5 +80,8 @@ test("K1: the row amount opens the editor, prefilled with the row's amount, and 
 });
 
 test("K1: the Owe row is still never typed", () => {
-  assert.match(split, /disabled=\{busy \|\| part\.paymentMethod === "owe" \|\| isLockedMomoRow\(part\)\} onClick=\{\(\) => startEdit\(part\)\}/);
+  // Item 5 (11 Nov 2026): the row name and the amount chip open the editor only for an editable part.
+  assert.match(split, /const isEditablePart = \(part\) => part\.paymentMethod !== "owe" && !isLockedMomoRow\(part\);/);
+  assert.match(split, /disabled=\{busy \|\| !editable\} onClick=\{\(\) => startEdit\(part\)\}/);
+  assert.match(split, /\{editable \? \(\s*<button type="button" disabled=\{busy\} aria-label=\{t\("split\.editAmount"/);
 });
