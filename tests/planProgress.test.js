@@ -253,18 +253,21 @@ async function detail(debt, planPaidPesewas) {
 }
 const progressBar = (tree) => [...walk(tree)].find((node) => node.props?.role === "progressbar");
 
-test("43 plan card: amos shows '1 paid · 42 left' and a bar of about 2.5%", async () => {
+test("43 plan card: amos shows 'GH₵21.00 paid · 42 payments left' and a bar of about 2.5%", async () => {
   const view = await detail(planDebt(), 2100);
-  assert.match(textOf(view.tree), /1 paid · 42 left/);
-  assert.doesNotMatch(textOf(view.tree), /2 paid/);
+  assert.match(textOf(view.tree), /GH₵21\.00 paid · 42 payments left/);
+  assert.doesNotMatch(textOf(view.tree), /(?<![.\d])\d+ paid/, "no count of payments paid");
   const bar = progressBar(view.tree);
   const width = Number.parseFloat([...walk(bar)].find((node) => node.props?.style?.width)?.props.style.width);
   assert.ok(width > 2.4 && width < 2.5, `bar width ${width}%`);
 });
 
-test("43 plan card: nothing paid and exact multiples", async () => {
+test("43 plan card: nothing paid, exact multiples and one payment left", async () => {
   const none = await detail(planDebt({ amountPesewas: 3000, installmentAmount: 1000 }), 0);
-  assert.match(textOf(none.tree), /0 paid · 3 left/);
+  assert.match(textOf(none.tree), /GH₵0\.00 paid · 3 payments left/);
   const exact = await detail(planDebt({ amountPesewas: 3000, installmentAmount: 1000 }), 2000);
-  assert.match(textOf(exact.tree), /2 paid · 3 left/);
+  assert.match(textOf(exact.tree), /GH₵20\.00 paid · 3 payments left/);
+  const one = await detail(planDebt({ amountPesewas: 500, installmentAmount: 1000 }), 2500);
+  assert.match(textOf(one.tree), /GH₵25\.00 paid · 1 payment left/);
+  assert.doesNotMatch(textOf(one.tree), /1 payments left/);
 });

@@ -846,7 +846,10 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                 <span className="block h-full bg-emerald-900" style={{ width: `${installmentProgress}%` }} />
               </div>
               <div className="flex justify-between gap-2 text-sm font-extrabold">
-                <span>{t("collect.installmentPaid", { paid: planProgress.paid, left: planProgress.left })}</span>
+                <span>{t(planProgress.left === 1 ? "collect.installmentPaidOne" : "collect.installmentPaid", {
+                  paid: formatGhs(data?.planPaidPesewas ?? 0),
+                  left: planProgress.left
+                })}</span>
                 <span>{t("collect.nextLabel", { date: nextDueDate })}</span>
               </div>
             </section>
