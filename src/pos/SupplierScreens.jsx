@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Phone, Plus, Wallet } from "lucide-react";
 import { db } from "../db/db.js";
+import { displayName } from "../lib/displayName.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { localDateString } from "../utils/installments.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
@@ -253,11 +254,6 @@ export function StockOnCredit({ params, onBack, onSaveExpense }) {
   );
 }
 
-// 46: the name is shown with a capital first letter; the stored name is not changed.
-function displayName(name) {
-  const text = String(name ?? "");
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
 
 // 46: grey when more than 3 days away, amber for 3 days or less and today, red when late, nothing without a date.
 function dueTag(supplier, today) {
