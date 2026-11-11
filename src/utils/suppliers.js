@@ -91,3 +91,20 @@ export function validateSupplierExpense({ amountPesewas, paidAmountPesewas, cate
     throw new TypeError("Choose a supplier when recording an unpaid balance.");
   }
 }
+
+// 45 supplier picker: the most recently used supplier first. "Used" is the newest transaction
+// linked to the supplier; a supplier never used falls back to when it was added. Ties keep the
+// name order. Nothing is changed in the records.
+const timeOf = (value) => (typeof value === "number" && Number.isFinite(value) ? value : 0);
+
+export function orderSuppliersByRecentUse(suppliers, transactions = []) {
+  const lastUsed = new Map();
+  for (const transaction of transactions) {
+    if (!transaction?.supplierId) continue;
+    const when = timeOf(transaction.createdAt ?? transaction.timestamp);
+    if (when > (lastUsed.get(transaction.supplierId) ?? -Infinity)) lastUsed.set(transaction.supplierId, when);
+  }
+  const usedAt = (supplier) => lastUsed.get(supplier.id) ?? timeOf(supplier.createdAt);
+  return [...suppliers].sort((left, right) => usedAt(right) - usedAt(left)
+    || String(left.nameLower ?? left.name ?? "").localeCompare(String(right.nameLower ?? right.name ?? "")));
+}

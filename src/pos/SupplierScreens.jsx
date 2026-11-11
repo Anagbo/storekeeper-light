@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Phone, Wallet } from "lucide-react";
+import { Phone, Plus, Wallet } from "lucide-react";
 import { db } from "../db/db.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { localDateString } from "../utils/installments.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
-import { getSupplierBalances, SUPPLIER_CATEGORIES } from "../utils/suppliers.js";
+import { getSupplierBalances, orderSuppliersByRecentUse, SUPPLIER_CATEGORIES } from "../utils/suppliers.js";
 import { posText as t } from "./i18n.js";
 import { PosBackButton, PosCard, PosPage, PosPrimaryButton, PosStatusTag } from "./PosComponents.jsx";
 import { useBackBlock, useBackHandler } from "./browserBack.js";
@@ -113,12 +113,29 @@ export function SpentMoney({ onBack, onNavigate, onSave }) {
   );
 }
 
+// 45: a supplier row in the "Who do you owe?" picker (role radio, 60px, circle on the left).
+function SupplierRadio({ checked, onSelect, children, dashed = false, ...rest }) {
+  const tone = checked
+    ? "border-solid border-emerald-900 bg-emerald-50"
+    : dashed ? "border-dashed border-emerald-900 bg-white" : "border-solid border-slate-300 bg-white";
+  return (
+    <button type="button" role="radio" aria-checked={checked} onClick={onSelect} {...rest} className={`flex min-h-[60px] w-full min-w-0 items-center gap-3 rounded-[14px] border-2 px-3.5 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 ${dashed ? "text-emerald-900" : "text-[#0F172A]"} ${tone}`}>
+      {children}
+    </button>
+  );
+}
+
 export function StockOnCredit({ params, onBack, onSaveExpense }) {
-  const suppliers = useLiveQuery(() => db.suppliers.orderBy("nameLower").toArray(), [], []);
+  // 45: the most recently used suppliers come first (undefined while loading).
+  const suppliers = useLiveQuery(async () => {
+    const [records, linked] = await Promise.all([db.suppliers.toArray(), db.transactions.where("supplierId").above("").toArray()]);
+    return orderSuppliersByRecentUse(records, linked);
+  }, [], undefined);
   const amountPesewas = Number.isSafeInteger(params?.amountPesewas) ? params.amountPesewas : 0;
   const [paidAmount, setPaidAmount] = useState("0");
   const [supplierId, setSupplierId] = useState("");
   const [newSupplier, setNewSupplier] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const [supplierName, setSupplierName] = useState("");
   const [supplierPhone, setSupplierPhone] = useState("");
   const [payBy, setPayBy] = useState("");
@@ -128,14 +145,26 @@ export function StockOnCredit({ params, onBack, onSaveExpense }) {
   const paidPesewas = toPesewas(paidAmount);
   const validPaidAmount = Number.isSafeInteger(paidPesewas) && paidPesewas >= 0 && paidPesewas <= amountPesewas;
   const owedPesewas = Math.max(0, amountPesewas - (Number.isSafeInteger(paidPesewas) ? paidPesewas : 0));
+  // With no suppliers yet, "+ New supplier" is the only row and is already chosen.
+  const noSuppliers = Array.isArray(suppliers) && suppliers.length === 0;
+  const isNew = newSupplier || noSuppliers;
+  const listed = suppliers ?? [];
+  const visible = showAll || listed.length <= 4 ? listed : listed.slice(0, 4);
+
+  function chooseSupplier(id) {
+    // The new supplier fields are hidden, but what was typed in them is kept until Save.
+    setNewSupplier(false);
+    setSupplierId(id);
+    setError("");
+  }
 
   async function save() {
     if (saving || !Number.isSafeInteger(paidPesewas) || paidPesewas < 0 || paidPesewas > amountPesewas) return;
-    if (owedPesewas > 0 && !newSupplier && !supplierId) {
+    if (owedPesewas > 0 && !isNew && !supplierId) {
       setError(t("expense.supplierRequired"));
       return;
     }
-    if (owedPesewas > 0 && newSupplier && !supplierName.trim()) {
+    if (owedPesewas > 0 && isNew && !supplierName.trim()) {
       setError(t("expense.supplierNameRequired"));
       return;
     }
@@ -147,8 +176,8 @@ export function StockOnCredit({ params, onBack, onSaveExpense }) {
         paidAmountPesewas: paidPesewas,
         category: "stock",
         note: params?.note ?? "",
-        supplierId: newSupplier ? undefined : supplierId || undefined,
-        newSupplier: newSupplier ? { name: supplierName, phone: supplierPhone } : undefined,
+        supplierId: isNew ? undefined : supplierId || undefined,
+        newSupplier: isNew ? { name: supplierName, phone: supplierPhone } : undefined,
         payBy
       });
     } catch (saveError) {
@@ -159,40 +188,62 @@ export function StockOnCredit({ params, onBack, onSaveExpense }) {
     }
   }
 
+  const card = "rounded-[18px] border-2 border-slate-300 bg-white px-4 py-3.5";
+  const field = "h-[52px] w-full min-w-0 rounded-[14px] border-2 border-slate-500 bg-white px-3.5 text-lg font-semibold text-[#0F172A]";
   return (
     <PosPage className="flex max-w-2xl flex-col gap-3">
       <div className="flex items-center gap-3">
         <PosBackButton onClick={onBack} />
         <h1 className="text-2xl font-extrabold">{t("expense.stockTitle")}</h1>
       </div>
-      <PosCard className="space-y-2">
-        <div className="flex justify-between gap-3"><span>{t("expense.stockTotal")}</span><strong>{formatGhs(amountPesewas ?? 0)}</strong></div>
-        <div className="flex justify-between gap-3"><span>{t("expense.stillOwed")}</span><strong className={owedPesewas > 0 ? "text-rose-900" : "text-emerald-900"}>{formatGhs(owedPesewas)}</strong></div>
-      </PosCard>
-      <AmountInput label={t("expense.paidNow")} value={paidAmount} onChange={setPaidAmount} />
+      <section data-card="totals" className={`flex flex-col gap-2 ${card}`}>
+        <div className="flex items-center justify-between gap-3 text-[17px]"><span>{t("expense.stockTotal")}</span><strong className="whitespace-nowrap text-xl">{formatGhs(amountPesewas ?? 0)}</strong></div>
+        <div className="flex items-center justify-between gap-3 text-[17px]"><span>{t("expense.stillOwed")}</span><strong data-still-owed="" className={`whitespace-nowrap text-xl ${owedPesewas > 0 ? "text-rose-800" : "text-emerald-900"}`}>{formatGhs(owedPesewas)}</strong></div>
+      </section>
+      <section data-card="paid-now" className={card}>
+        <label className="block">
+          <span className="mb-1.5 block text-base font-extrabold">{t("expense.paidNow")}</span>
+          <input type="text" inputMode="decimal" autoComplete="off" value={paidAmount} onChange={(event) => setPaidAmount(event.target.value)} placeholder="0.00" className="h-14 w-full min-w-0 rounded-[14px] border-2 border-slate-500 bg-white px-3.5 text-right text-2xl font-extrabold" />
+        </label>
+      </section>
       {!validPaidAmount && <p role="alert" className="rounded-xl bg-rose-100 p-3 font-semibold text-rose-950">{t("expense.paidAmountTooHigh")}</p>}
       {owedPesewas > 0 && (
-        <section className="space-y-3 rounded-2xl border-2 border-slate-500 p-3">
-          <label className="block space-y-1">
-            <span className="font-bold">{t("expense.supplier")}</span>
-            <select value={newSupplier ? "__new__" : supplierId} onChange={(event) => {
-              const value = event.target.value;
-              setNewSupplier(value === "__new__");
-              setSupplierId(value === "__new__" ? "" : value);
-            }} className="min-h-12 w-full rounded-xl border-2 border-slate-500 bg-white px-3">
-              <option value="">{t("expense.chooseSupplier")}</option>
-              {suppliers?.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}
-              <option value="__new__">{t("expense.newSupplier")}</option>
-            </select>
-          </label>
-          {newSupplier && (
-            <>
-              <label className="block space-y-1"><span className="font-bold">{t("expense.supplierName")}</span><input value={supplierName} onChange={(event) => setSupplierName(event.target.value)} className="min-h-12 w-full rounded-xl border-2 border-slate-500 px-3" /></label>
-              <label className="block space-y-1"><span className="font-bold">{t("expense.supplierPhone")}</span><input type="tel" inputMode="tel" value={supplierPhone} onChange={(event) => setSupplierPhone(event.target.value)} className="min-h-12 w-full rounded-xl border-2 border-slate-500 px-3" /></label>
-            </>
-          )}
-          <label className="block space-y-1"><span className="font-bold">{t("expense.payBy")}</span><input type="date" value={payBy} onChange={(event) => setPayBy(event.target.value)} className="min-h-12 w-full rounded-xl border-2 border-slate-500 px-3" /></label>
-        </section>
+        <>
+          <section data-card="supplier" className={`flex flex-col gap-2.5 ${card}`}>
+            <h2 id="who-do-you-owe" className="text-base font-extrabold">{t("expense.whoDoYouOwe")}</h2>
+            <div role="radiogroup" aria-labelledby="who-do-you-owe" className="flex flex-col gap-2">
+              {visible.map((supplier) => {
+                const checked = !isNew && supplierId === supplier.id;
+                return (
+                  <SupplierRadio key={supplier.id} data-supplier-id={supplier.id} checked={checked} onSelect={() => chooseSupplier(supplier.id)}>
+                    <span aria-hidden="true" className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 ${checked ? "border-emerald-900" : "border-slate-500"}`}>
+                      {checked && <span data-dot="" className="h-3 w-3 rounded-full bg-emerald-900" />}
+                    </span>
+                    <b className="min-w-0 flex-1 text-lg [overflow-wrap:anywhere]">{displayName(supplier.name)}</b>
+                  </SupplierRadio>
+                );
+              })}
+              {!showAll && listed.length > 4 && (
+                <button type="button" data-show-all="" onClick={() => setShowAll(true)} className="flex min-h-12 w-full items-center rounded-[14px] px-3.5 text-left text-lg font-extrabold text-emerald-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">
+                  {t("expense.showAllSuppliers", { count: listed.length })}
+                </button>
+              )}
+              <SupplierRadio dashed checked={isNew} data-supplier-id="new" onSelect={() => { setNewSupplier(true); setError(""); }}>
+                <Plus size={24} aria-hidden="true" className="shrink-0" />
+                <b className="min-w-0 flex-1 text-lg">{t("expense.newSupplierRow")}</b>
+              </SupplierRadio>
+            </div>
+            {isNew && (
+              <div data-new-supplier-fields="" className="flex flex-col gap-2.5 pt-1">
+                <label className="block"><span className="mb-1.5 block text-[15px] font-bold text-slate-600">{t("expense.supplierName")}</span><input value={supplierName} onChange={(event) => setSupplierName(event.target.value)} className={field} /></label>
+                <label className="block"><span className="mb-1.5 block text-[15px] font-bold text-slate-600">{t("expense.supplierPhone")}</span><input type="tel" inputMode="tel" value={supplierPhone} onChange={(event) => setSupplierPhone(event.target.value)} className={field} /></label>
+              </div>
+            )}
+          </section>
+          <section data-card="pay-by" className={card}>
+            <label className="block"><span className="mb-1.5 block text-base font-extrabold">{t("expense.payBy")}</span><input type="date" value={payBy} onChange={(event) => setPayBy(event.target.value)} className={field} /></label>
+          </section>
+        </>
       )}
       {error && <p role="alert" className="rounded-xl bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
       <PosPrimaryButton type="button" onClick={() => void save()} disabled={saving || !Number.isSafeInteger(amountPesewas) || amountPesewas <= 0 || !validPaidAmount}>
