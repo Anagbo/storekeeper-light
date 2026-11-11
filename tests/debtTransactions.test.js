@@ -409,7 +409,8 @@ test("Start Today applies the full installment to existing debt and the new sale
   assert.equal(debt.amountPesewas, 73000);
   assert.equal(debt.installmentAmount, 20000);
   assert.equal(debt.installmentsRemaining, 4);
-  assert.equal(debt.totalInstallments, 5);
+  // Money: GH₵190.00 paid on the old debt (0 whole installments) + 4 left. Today's payment counts once.
+  assert.equal(debt.totalInstallments, 4);
   assert.equal(debt.nextDueDate, "2026-11-09");
   assert.equal(payments.reduce((sum, payment) => sum + payment.amountPesewas, 0), 20000);
   assert.equal(totals.totalSales, 1000);
@@ -459,7 +460,8 @@ test("credit sale payment applied to an existing installment advances its schedu
   assert.equal(debt.amountPesewas, 3000);
   assert.equal(debt.installmentAmount, 500);
   assert.equal(debt.installmentsRemaining, 6);
-  assert.equal(debt.totalInstallments, 9);
+  // Money: GH₵10.00 paid on the old debt (2 installments) + 6 left. Today's payment counts once.
+  assert.equal(debt.totalInstallments, 8);
   assert.equal(debt.nextDueDate, "2026-11-23");
   assert.equal((await db.payments.toArray()).reduce((total, payment) => total + payment.amountPesewas, 0), 3000);
   assert.equal(totals.totalSales, 2000);
@@ -535,7 +537,8 @@ test("credit sale reconfiguration applies payment progress to the new installmen
   assert.equal(debt.frequency, "bi-weekly");
   assert.equal(debt.nextDueDate, "2026-11-23");
   assert.equal(debt.installmentsRemaining, 4);
-  assert.equal(debt.totalInstallments, 6);
+  // Carry GH₵3.00 + GH₵10.00 today = 1 installment of GH₵8.00 + 4 left. Today's payment counts once.
+  assert.equal(debt.totalInstallments, 5);
   assert.equal(debt.installmentPaymentCarryPesewas, 500);
 });
 

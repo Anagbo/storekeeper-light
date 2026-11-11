@@ -293,7 +293,10 @@ export function reconcileInstallmentPlanChange(
   const completedCycles = Math.floor(progressPesewas / replacementPlan.installmentAmount);
   const nextCarry = progressPesewas % replacementPlan.installmentAmount;
   const nextRemaining = Math.ceil(nextBalancePesewas / replacementPlan.installmentAmount);
-  const plannedRemaining = Number.isSafeInteger(replacementPlan.totalInstallments) &&
+  // A payment today is already in completedCycles; the replacement plan's total (prepareInstallmentPlan
+  // adds 1 for the payment today) would count it a second time.
+  const plannedRemaining = additionalPaymentPesewas === 0 &&
+    Number.isSafeInteger(replacementPlan.totalInstallments) &&
     replacementPlan.totalInstallments >= nextRemaining
     ? replacementPlan.totalInstallments
     : nextRemaining;
