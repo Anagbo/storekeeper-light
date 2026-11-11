@@ -377,15 +377,19 @@ export async function recordManualDebt({
           phone: phone.trim() || customer.phone || "",
           customer_phone: phone.trim() || customer.phone || "",
           ghanaCardNumber: cleanGhanaCardNumber || customer.ghanaCardNumber || "",
-          ...(appliedPlan ?? {
-            isInstallmentPlan: false,
-            installmentAmount: 0,
-            frequency: "",
-            nextDueDate: "",
-            installmentsRemaining: 0,
-            totalInstallments: 0,
-            installmentPaymentCarryPesewas: 0
-          }),
+          // A new plan starts fresh: only the payment today counts, carried modulo the installment
+          // (owner rule, 11 Nov 2026), the same reconcile as a debt with no plan before.
+          ...(appliedPlan?.isInstallmentPlan
+            ? reconcileInstallmentPlanChange({ isInstallmentPlan: false }, newBalancePesewas, appliedPlan, planProgressPesewas)
+            : appliedPlan ?? {
+              isInstallmentPlan: false,
+              installmentAmount: 0,
+              frequency: "",
+              nextDueDate: "",
+              installmentsRemaining: 0,
+              totalInstallments: 0,
+              installmentPaymentCarryPesewas: 0
+            }),
           dueDate: appliedPlan ? "" : dueDate,
           amountPesewas: newBalancePesewas,
           total_owed: newBalancePesewas,

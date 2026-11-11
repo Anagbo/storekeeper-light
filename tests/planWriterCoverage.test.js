@@ -65,8 +65,8 @@ async function assertPlan(debtId, { balancePesewas, paidPesewas, nextDueDate = C
 }
 // Each case runs twice: left, paid, next date and carry; then the stored total on its own
 // (owner rule, 11 Nov 2026: every writer stores getPlanProgress paid + left).
-function planTest(name, run, { fieldsTodo } = {}) {
-  test(`${name}: left, paid, next date, carry`, fieldsTodo ? { todo: fieldsTodo } : {}, async () => { checkTotal = false; await run(); });
+function planTest(name, run) {
+  test(`${name}: left, paid, next date, carry`, async () => { checkTotal = false; await run(); });
   test(`${name}: stored total = paid + left`, async () => { checkTotal = true; await run(); });
 }
 
@@ -98,9 +98,14 @@ planTest("credit sale, start today, existing debt with no plan and a part paymen
 
 planTest("manual debt, start today, new customer, paying less than one installment", async () => {
   const { debt } = await recordManualDebt({ name: "Kofi", amountPesewas: 3000, ...startToday(3000, 1000, 400) });
+  // Owner rule (11 Nov 2026): a payment today shorter than one installment is carried
+  // (payment today modulo the installment), as a collection does.
   await assertPlan(debt.id, { balancePesewas: 2600, paidPesewas: 400, carryPesewas: 400 });
-}, {
-  fieldsTodo: "carry is 0 although GH₵4.00 paid today counts against the debt (owner: is a short payment today toward the next installment?)"
+});
+
+planTest("manual debt, start today, new customer, GH₵16.00 today on a GH₵20.00 installment", async () => {
+  const { debt } = await recordManualDebt({ name: "Kofi", amountPesewas: 10000, ...startToday(10000, 2000, 1600) });
+  await assertPlan(debt.id, { balancePesewas: 8400, paidPesewas: 1600, carryPesewas: 1600 });
 });
 
 planTest("53 keeps the plan (no 19, nothing paid today) after whole installments were paid", async () => {
