@@ -57,8 +57,16 @@ export function resetBrowserBack() {
 
 const GUARD = { posGuard: true };
 
+// The roots of the in-app stack: Home, and 21 "How do you want to sell?" on a fresh start (the
+// root of the setup flow). With nothing behind a root, the phone back leaves the app.
+const ROOT_ROUTES = new Set(["Home", "HowDoYouWantToSell"]);
+
+export function isAtRoot(state) {
+  return ROOT_ROUTES.has(state.current) && state.history.length === 0;
+}
+
 export function needsGuard(state) {
-  return state.current !== "Home" || state.history.length > 0 || handlers.length > 0;
+  return !isAtRoot(state) || handlers.length > 0;
 }
 
 // history: window.history (or a test double). getState: the current in-app state.
@@ -99,7 +107,7 @@ export function createBrowserBack({ history, getState, goBack }) {
       return;
     }
     const state = getState();
-    if (state.current === "Home" && state.history.length === 0) {
+    if (isAtRoot(state)) {
       // A guard left over from an earlier screen: leave the app now, do not ask for a second press.
       history.back();
       return;
