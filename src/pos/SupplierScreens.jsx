@@ -7,7 +7,7 @@ import { localDateString } from "../utils/installments.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { getSupplierBalances, SUPPLIER_CATEGORIES } from "../utils/suppliers.js";
 import { posText as t } from "./i18n.js";
-import { PosBackButton, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag } from "./PosComponents.jsx";
+import { PosBackButton, PosCard, PosPage, PosPrimaryButton, PosStatusTag } from "./PosComponents.jsx";
 import { useBackBlock, useBackHandler } from "./browserBack.js";
 
 const CATEGORY_LABELS = Object.freeze({
@@ -290,15 +290,16 @@ export function YouOweSuppliers({ onBack, onPay }) {
       )}
       {selectedSupplier && (
         <section role="dialog" aria-modal="true" aria-labelledby="supplier-payment-title" className="fixed inset-0 z-40 flex items-end justify-center bg-slate-950/60 p-3 sm:items-center">
-          <div className="w-full max-w-md space-y-3 rounded-2xl border-2 border-slate-900 bg-white p-4">
-            <h2 id="supplier-payment-title" className="text-xl font-extrabold">{t("supplier.payTitle", { name: selectedSupplier.name })}</h2>
+          <div className="w-full min-w-0 max-w-md space-y-3 rounded-2xl border-2 border-slate-900 bg-white p-4">
+            <h2 id="supplier-payment-title" data-sheet-title="supplier-pay" className="min-w-0 text-xl font-extrabold [overflow-wrap:anywhere]">{t("supplier.payTitle", { name: displayName(selectedSupplier.name) })}</h2>
             <p className="font-semibold">{t("supplier.balance", { amount: formatGhs(selectedSupplier.balancePesewas) })}</p>
             <AmountInput label={t("supplier.paymentAmount")} value={amount} onChange={setAmount} />
             {error && <p role="alert" className="rounded-xl bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
-            <PosPrimaryButton type="button" onClick={() => void submitPayment(selectedSupplier)} disabled={saving || !Number.isSafeInteger(toPesewas(amount)) || toPesewas(amount) <= 0 || toPesewas(amount) > selectedSupplier.balancePesewas}>
+            {/* 46 Pay sheet: Record payment (green) and Cancel (outlined) below it, both full width and 52px. */}
+            <button type="button" onClick={() => void submitPayment(selectedSupplier)} disabled={saving || !Number.isSafeInteger(toPesewas(amount)) || toPesewas(amount) <= 0 || toPesewas(amount) > selectedSupplier.balancePesewas} className="flex h-[52px] w-full items-center justify-center rounded-2xl border-2 border-emerald-950 bg-emerald-900 px-4 text-lg font-extrabold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50">
               {saving ? t("expense.saving") : t("supplier.recordPayment")}
-            </PosPrimaryButton>
-            <PosSecondaryButton type="button" onClick={() => setSelectedSupplier(null)}>{t("expense.cancel")}</PosSecondaryButton>
+            </button>
+            <button type="button" onClick={() => setSelectedSupplier(null)} className="flex h-[52px] w-full items-center justify-center rounded-2xl border-2 border-slate-600 bg-white px-4 text-lg font-extrabold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">{t("expense.cancel")}</button>
           </div>
         </section>
       )}

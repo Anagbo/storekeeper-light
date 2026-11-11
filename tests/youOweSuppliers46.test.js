@@ -133,3 +133,55 @@ test("46 uses PosBackButton", () => {
   const source = readFileSync(new URL("../src/pos/SupplierScreens.jsx", import.meta.url), "utf8");
   assert.ok(source.slice(source.indexOf("export function YouOweSuppliers")).includes("<PosBackButton"));
 });
+
+// Item 1 (11 Nov 2026): the Pay sheet.
+async function openPaySheet(name) {
+  const view = await mount([supplier({ name, phone: "0241234567", balancePesewas: 1234500 })]);
+  const pay = all(view.tree, (n) => n.type === "button" && /^Pay /.test(n.props["aria-label"] ?? ""))[0];
+  pay.props.onClick();
+  const tree = view.rerender().tree;
+  const sheet = all(tree, (n) => n.props.role === "dialog")[0];
+  assert.ok(sheet, "Pay sheet is open");
+  return sheet;
+}
+
+test("46 Pay sheet: a long supplier name wraps in the title and cannot run past the sheet at 360px", async () => {
+  const longName = "Nana Akosua Frimpomaa-Boateng Wholesale Distributors and Sons Limited";
+  const sheet = await openPaySheet(longName);
+  const title = all(sheet, (n) => n.type === "h2" && n.props["data-sheet-title"] === "supplier-pay")[0];
+  assert.equal(textOf(title), `Pay ${longName}`);
+  const classes = cls(title).split(/\s+/);
+  assert.ok(classes.includes("[overflow-wrap:anywhere]"), "overflow-wrap anywhere");
+  assert.ok(classes.includes("min-w-0"));
+  assert.ok(!classes.some((c) => /^(truncate|whitespace-nowrap|line-clamp-)/.test(c)), "the title wraps onto more lines, never cut");
+  const panel = all(sheet, (n) => n.type === "div" && /rounded-2xl/.test(cls(n)))[0];
+  assert.match(cls(panel), /\bw-full\b/);
+  assert.match(cls(panel), /\bmin-w-0\b/);
+});
+
+test("46 Pay sheet: Record payment (green) and Cancel (outlined) are both full width and 52px, Cancel below", async () => {
+  const sheet = await openPaySheet("Kofi Wholesale");
+  const buttons = all(sheet, (n) => n.type === "button");
+  const record = buttons.find((n) => textOf(n) === "Record payment");
+  const cancel = buttons.find((n) => textOf(n) === "Cancel");
+  assert.ok(record && cancel);
+  assert.ok(buttons.indexOf(record) < buttons.indexOf(cancel), "Cancel is below Record payment");
+  for (const button of [record, cancel]) {
+    const c = cls(button).split(/\s+/);
+    assert.ok(c.includes("w-full"), `${textOf(button)} full width`);
+    assert.ok(c.includes("h-[52px]"), `${textOf(button)} 52px`);
+    assert.ok(!c.some((x) => /^min-h-/.test(x)), `${textOf(button)} has no taller minimum`);
+  }
+  assert.match(cls(record), /bg-emerald-900/);
+  assert.match(cls(cancel), /bg-white/);
+  assert.match(cls(cancel), /border-2/);
+});
+
+test("46 Pay sheet: a lowercase stored name is shown capitalised; the stored name is unchanged", async () => {
+  const input = [supplier({ name: "kofi wholesale", phone: "0241234567" })];
+  const view = await mount(input);
+  all(view.tree, (n) => n.type === "button" && n.props["aria-label"] === "Pay Kofi wholesale")[0].props.onClick();
+  const sheet = all(view.rerender().tree, (n) => n.props.role === "dialog")[0];
+  assert.equal(textOf(all(sheet, (n) => n.type === "h2")[0]), "Pay Kofi wholesale");
+  assert.equal(input[0].name, "kofi wholesale");
+});
