@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Check, Plus } from "lucide-react";
 import { formatDate } from "../lib/formatDate.js";
 import { formatGhs, formatGhsAmount } from "../lib/money.js";
@@ -17,9 +17,38 @@ function WhatsAppIcon({ size = 26 }) {
   );
 }
 
+// The receipt details and text, or null when the record cannot give them. 30 opens only after the
+// sale is saved, so a bad record must not hide that: it is logged with the sale id instead.
+function readReceipt(transaction, shopName) {
+  try {
+    return { details: getSaleReceiptDetails(transaction), receiptText: getSaleReceiptText(transaction, shopName) };
+  } catch (error) {
+    console.warn(`Sale ${transaction?.id ?? "(no id)"} was saved, but its receipt could not be built.`, error);
+    return null;
+  }
+}
+
+function SaleSaved({ onDone }) {
+  return (
+    <PosPage className="flex flex-col gap-3">
+      <section className="pt-2 text-center">
+        <div className="mx-auto mb-3 grid h-24 w-24 place-items-center rounded-full bg-emerald-900 text-white">
+          <Check size={56} aria-hidden="true" />
+        </div>
+        <h1 className="text-2xl font-extrabold">{t("saleRecorded.savedFallback")}</h1>
+      </section>
+      <PosPrimaryButton type="button" onClick={onDone} className="mt-auto h-[68px] text-2xl">
+        {t("saleRecorded.done")}
+      </PosPrimaryButton>
+    </PosPage>
+  );
+}
+
 export default function SaleRecorded({ transaction, shopName, onDone, onNewSale }) {
   const [shareStatus, setShareStatus] = useState("");
-  const details = getSaleReceiptDetails(transaction);
+  const receipt = useMemo(() => readReceipt(transaction, shopName), [transaction, shopName]);
+  if (!receipt) return <SaleSaved onDone={onDone} />;
+  const { details, receiptText } = receipt;
   // Records saved before MoMo verification was stored keep the translated plain label.
   const momoLabel = transaction?.momoVerification ? getMomoDisplayLabel(transaction) : t("saleRecorded.method.momo");
   const when = new Date(details.timestamp);
@@ -28,7 +57,6 @@ export default function SaleRecorded({ transaction, shopName, onDone, onNewSale 
     ? t("saleRecorded.today")
     : formatDate(when);
 
-  const receiptText = getSaleReceiptText(transaction, shopName);
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(receiptText)}`;
   const owedPesewas = transaction?.creditExtendedPesewas ?? 0;
   const paidPesewas = details.cashReceivedPesewas + details.momoReceivedPesewas;

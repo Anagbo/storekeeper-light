@@ -290,6 +290,7 @@ const ENGLISH = Object.freeze({
   "review.howPaid": "How is it paid?",
   "review.split": "Split payment",
   "saleRecorded.title": "Sale recorded",
+  "saleRecorded.savedFallback": "Sale saved.",
   "saleRecorded.today": "Today",
   "saleRecorded.sale": "Sale",
   "saleRecorded.method.cash": "Cash",
