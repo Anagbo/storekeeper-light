@@ -596,7 +596,8 @@ test("corrects an installment balance while preserving completed payments and sc
   });
 
   assert.equal(result.debt.installmentsRemaining, 3);
-  assert.equal(result.debt.totalInstallments, 5);
+  // Stored total = paid + left from money (owner rule, 11 Nov 2026): no payment rows, so 0 + 3.
+  assert.equal(result.debt.totalInstallments, 3);
   assert.equal(result.debt.nextDueDate, "2020-05-10");
   assert.equal(result.debt.installmentPaymentCarryPesewas, 0);
 });
@@ -624,7 +625,8 @@ test("preserves a valid partial-installment carry during a correction", async ()
   });
 
   assert.equal(result.debt.installmentsRemaining, 2);
-  assert.equal(result.debt.totalInstallments, 3);
+  // Stored total = paid + left from money (owner rule, 11 Nov 2026): no payment rows, so 0 + 2.
+  assert.equal(result.debt.totalInstallments, 2);
   assert.equal(result.debt.installmentPaymentCarryPesewas, 500);
 });
 

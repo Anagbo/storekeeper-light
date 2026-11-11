@@ -178,7 +178,9 @@ test("Start Today reduces a new GHS 100 installment debt by the GHS 20 paid toda
   assert.equal(debt.amountPesewas, 8000);
   assert.equal(debt.total_owed, 8000);
   assert.equal(debt.installmentsRemaining, 4);
-  assert.equal(debt.totalInstallments, 5);
+  // Stored total = paid + left from money (owner rule, 11 Nov 2026): the GH₵20.00 pays the sale,
+  // not the debt, so 0 + 4.
+  assert.equal(debt.totalInstallments, 4);
   assert.equal(payment.amountPesewas, 2000);
   assert.equal(customer.totalDebtPesewas, 8000);
 });

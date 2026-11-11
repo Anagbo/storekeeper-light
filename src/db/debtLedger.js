@@ -9,6 +9,7 @@ import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { getMomoConfirmedPesewas, getMomoDetails, getMomoVerification, MOMO_VERIFICATION } from "../pos/momoMapping.js";
 import {
   isValidDateString,
+  getPlanProgress,
   isValidInstallmentPlanForBalance,
   localDateString,
   reconcileInstallmentBalanceCorrection,
@@ -19,6 +20,7 @@ import {
   calculateLedgerEventBalance,
   getCustomerLedgerRecords,
   getCreditEventAmount,
+  getPlanPaidPesewas,
   matchSaleTimePayments
 } from "../utils/debtLedgerMath.js";
 
@@ -64,6 +66,40 @@ function getCustomerName(record) {
 
 function getDebtBalance(debt) {
   return debt?.amountPesewas ?? debt?.total_owed;
+}
+
+// Stored plan total (owner rule, 11 Nov 2026): getPlanProgress paid + left, paid from the money
+// paid against this debt in the ledger, left from the balance. Every writer of totalInstallments
+// stores this value instead of its own count, once the payment rows are written.
+export async function getStoredPlanTotal(debt, database = db) {
+  const [debts, transactions, payments] = await Promise.all([
+    database.debts.toArray(),
+    database.transactions.toArray(),
+    database.payments.toArray()
+  ]);
+  const ledgerRecords = getCustomerLedgerRecords({
+    customerId: debt.customerId,
+    customerName: getCustomerName(debt),
+    debts,
+    transactions,
+    payments
+  });
+  return getPlanProgress({
+    balancePesewas: getDebtBalance(debt),
+    installmentAmountPesewas: debt.installmentAmount,
+    paidPesewas: getPlanPaidPesewas(ledgerRecords, debt.id)
+  }).total;
+}
+
+// Writes the stored plan total on a debt that has a plan; returns the debt as saved.
+export async function writeStoredPlanTotal(debtId, database = db) {
+  const debt = await database.debts.get(debtId);
+  if (!debt?.isInstallmentPlan) return debt;
+  const totalInstallments = await getStoredPlanTotal(debt, database);
+  if (debt.totalInstallments !== totalInstallments) {
+    await database.debts.update(debtId, { totalInstallments });
+  }
+  return { ...debt, totalInstallments };
 }
 
 function assertPesewasAmount(value, label) {
@@ -530,12 +566,13 @@ export async function recordManualDebt({
     if (existingDebt) await db.debts.put(debt);
     else await db.debts.add(debt);
     await db.transactions.add(event);
+    const savedDebt = await writeStoredPlanTotal(debt.id);
     const updatedCustomer = await recalculateCustomerDebtBalance({
       customerId: customer.id,
       now
     }, db);
     return {
-      debt,
+      debt: savedDebt,
       customer: updatedCustomer,
       event,
       initialPaymentPesewas,
@@ -647,6 +684,10 @@ export async function correctDebtBalance({
     });
     const deltaPesewas = newBalancePesewas - previousBalancePesewas;
     const installmentUpdates = reconcileInstallmentBalanceCorrection(debt, newBalancePesewas);
+    if (installmentUpdates.isInstallmentPlan) {
+      // A correction adds no payment, so the ledger before it gives the money paid.
+      installmentUpdates.totalInstallments = await getStoredPlanTotal({ ...debt, customerId: customer.id, amountPesewas: newBalancePesewas });
+    }
     const debtUpdates = {
       customerId: customer.id,
       amountPesewas: newBalancePesewas,

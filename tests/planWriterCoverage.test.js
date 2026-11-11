@@ -63,12 +63,11 @@ async function assertPlan(debtId, { balancePesewas, paidPesewas, nextDueDate = C
   assert.equal(debt.nextDueDate, nextDueDate, "next due date");
   assert.equal(debt.installmentPaymentCarryPesewas ?? 0, carryPesewas, "carry");
 }
-// Each case runs twice: left, paid, next date and carry; then the stored total on its own.
-// totalTodo: the stored total is known not to match the money (finding, not fixed; no screen reads
-// totalInstallments since 8f03279 and the consistency check no longer compares it).
-function planTest(name, run, { totalTodo, fieldsTodo } = {}) {
+// Each case runs twice: left, paid, next date and carry; then the stored total on its own
+// (owner rule, 11 Nov 2026: every writer stores getPlanProgress paid + left).
+function planTest(name, run, { fieldsTodo } = {}) {
   test(`${name}: left, paid, next date, carry`, fieldsTodo ? { todo: fieldsTodo } : {}, async () => { checkTotal = false; await run(); });
-  test(`${name}: stored total = paid + left`, totalTodo ? { todo: totalTodo } : {}, async () => { checkTotal = true; await run(); });
+  test(`${name}: stored total = paid + left`, async () => { checkTotal = true; await run(); });
 }
 
 // ---- recordCreditSale (19, and 16 when the Owe part has a plan: same writer, same plan shape) ----
@@ -77,7 +76,7 @@ planTest("credit sale, start today, new customer", async () => {
   // GH₵30.00 sale, GH₵10.00 today pays the sale (not a debt payment), GH₵20.00 left.
   const { debtId } = await recordCreditSale({ name: "Kofi", amountPesewas: 3000, ...startToday(3000, 1000, 1000) });
   await assertPlan(debtId, { balancePesewas: 2000, paidPesewas: 0, carryPesewas: 0 });
-}, { totalTodo: "stored total counts the payment today as one installment (prepareInstallmentPlan +1) although the money paid against the debt does not" });
+});
 
 planTest("credit sale, start today, existing plan debt with a part payment, paying no more than the sale", async () => {
   const { debtId } = await recordCreditSale({ name: "Kofi", amountPesewas: 3000, installmentPlan: weekly(3000, 1000) });
@@ -85,7 +84,7 @@ planTest("credit sale, start today, existing plan debt with a part payment, payi
   // GH₵10.00 sale paid in full today; the plan's GH₵5.00 carry stays.
   await recordCreditSale({ name: "Kofi", amountPesewas: 1000, ...startToday(3500, 1000, 1000) });
   await assertPlan(debtId, { balancePesewas: 2500, paidPesewas: 500, carryPesewas: 500 });
-}, { totalTodo: "stored total counts the payment today as one installment (prepareInstallmentPlan +1) although the money paid against the debt does not" });
+});
 
 planTest("credit sale, start today, existing debt with no plan and a part payment, paying more than the sale", async () => {
   const { debtId } = await recordCreditSale({ name: "Kofi", amountPesewas: 3000 });
@@ -93,7 +92,7 @@ planTest("credit sale, start today, existing debt with no plan and a part paymen
   // GH₵2.00 sale, GH₵10.00 today: GH₵8.00 pays the old debt. Money paid before the plan is not in the carry.
   await recordCreditSale({ name: "Kofi", amountPesewas: 200, ...startToday(2700, 1000, 1000) });
   await assertPlan(debtId, { balancePesewas: 1700, paidPesewas: 1300, carryPesewas: 800 });
-}, { totalTodo: "stored total leaves out the GH₵5.00 paid before there was a plan; the plan card counts it" });
+});
 
 // ---- recordManualDebt (19 for a manual debt, and 53 keeping the plan without 19) ----
 
@@ -101,7 +100,6 @@ planTest("manual debt, start today, new customer, paying less than one installme
   const { debt } = await recordManualDebt({ name: "Kofi", amountPesewas: 3000, ...startToday(3000, 1000, 400) });
   await assertPlan(debt.id, { balancePesewas: 2600, paidPesewas: 400, carryPesewas: 400 });
 }, {
-  totalTodo: "stored total counts the GH₵4.00 today as one whole installment (prepareInstallmentPlan +1)",
   fieldsTodo: "carry is 0 although GH₵4.00 paid today counts against the debt (owner: is a short payment today toward the next installment?)"
 });
 
@@ -115,7 +113,7 @@ planTest("53 keeps the plan (no 19, nothing paid today) after whole installments
     installmentsRemaining: 2, totalInstallments: debt.totalInstallments
   } });
   await assertPlan(first.id, { balancePesewas: 1500, paidPesewas: 2000, nextDueDate: debt.nextDueDate, carryPesewas: 0 });
-}, { totalTodo: "53 passes the stored total as the plan's total, so the installments already paid are counted twice (5 for 2 paid + 2 left)" });
+});
 
 planTest("manual debt, plan changed on 19 with the next cycle (nothing paid today) after a part payment", async () => {
   const { debt: first, customer } = await recordManualDebt({ name: "Kofi", amountPesewas: 3000, installmentPlan: weekly(3000, 1000) });
@@ -135,4 +133,4 @@ planTest("saveAddedDebt, start today, existing plan debt with a part payment", a
     installmentStartMode: "today", existingDebtPesewas: 2500 });
   await assertPlan(debtId, { balancePesewas: 2500, paidPesewas: 500,
     nextDueDate: getNextCycleDate(localDateString(), "weekly"), carryPesewas: 500 });
-}, { totalTodo: "stored total counts the payment today as one installment (prepareInstallmentPlan +1) although the money paid against the debt does not" });
+});

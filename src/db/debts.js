@@ -1,6 +1,6 @@
 import { db } from "./db.js";
 import { upsertCustomer } from "./customers.js";
-import { recalculateCustomerDebtBalance } from "./debtLedger.js";
+import { recalculateCustomerDebtBalance, writeStoredPlanTotal } from "./debtLedger.js";
 import { runTransactionWithTimeout } from "./runTransactionWithTimeout.js";
 import { runIdempotentSave } from "./saveAttempts.js";
 import { createId } from "../lib/ids.js";
@@ -209,6 +209,7 @@ export async function addDebtToCustomer({
       syncStatus: "pending"
     };
     await db.debts.update(existingDebt.id, updatedDebt);
+    updatedDebt.totalInstallments = (await writeStoredPlanTotal(existingDebt.id)).totalInstallments;
     const customer = customerId
       ? await db.customers.get(customerId)
       : await db.customers.where("nameLower").equals(normalizedName).first();
@@ -581,6 +582,8 @@ export async function recordCreditSale({
       syncStatus: "pending"
     };
     await db.transactions.add(transaction);
+    // The plan's stored total, once every payment row of this sale is written.
+    if (debtResult?.id) await writeStoredPlanTotal(debtResult.id);
     const updatedCustomer = await refreshCustomerDebtBalance(customer, cleanName, now);
     const remainingCustomerDebts = await db.debts
       .where("status")
