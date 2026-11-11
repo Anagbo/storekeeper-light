@@ -23,6 +23,7 @@ import { useLargeAmountConfirm } from "./LargeAmountConfirm.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { getCarriedPaymentParts, getMomoPickParams, getPaidPaymentPesewas } from "./paymentAmount.js";
+import { useBackBlock } from "./browserBack.js";
 
 function amountInputValue(amountPesewas) {
   return (amountPesewas / 100).toFixed(2);
@@ -265,6 +266,7 @@ function NewPerson({ params, onBack, onNavigate }) {
 function WhenWillTheyPay({ params, onBack, onNavigate, onReturnToSplit, onSaveCredit }) {
   const [dueChoice, setDueChoice] = useState(params.creditDueChoice ?? "week");
   const [saving, setSaving] = useState(false);
+  useBackBlock(saving);
   const [error, setError] = useState("");
   // E8: a ref, not the state, so a second tap in the same frame sees the first one.
   const savingRef = useRef(false);
@@ -362,6 +364,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
   const [todayPaymentAmount, setTodayPaymentAmount] = useState(params.todayPaymentAmount ?? null);
   const [todayPaymentSubmitAttempted, setTodayPaymentSubmitAttempted] = useState(false);
   const [saving, setSaving] = useState(false);
+  useBackBlock(saving);
   const [error, setError] = useState("");
   // E8: a ref, not the state, so a second tap in the same frame sees the first one.
   const savingRef = useRef(false);

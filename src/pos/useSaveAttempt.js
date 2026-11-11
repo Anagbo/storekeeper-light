@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { createId } from "../lib/ids.js";
 import { fingerprintSave, isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
 import { SAVE_TIMEOUT_MS } from "../db/runTransactionWithTimeout.js";
+import { holdBack } from "./browserBack.js";
 
 // D11: one save attempt key per screen, tied to what is being saved (owner condition).
 // - The same content keeps the key until the outcome is known, so Try again after an
@@ -20,6 +21,8 @@ export function useSaveAttempt() {
     }
     const attemptId = attemptRef.current.id;
     setStatus("saving");
+    // The phone's back button does nothing while this save runs.
+    const releaseBack = holdBack();
     const checkingTimer = setTimeout(() => setStatus("checking"), SAVE_TIMEOUT_MS);
     try {
       const result = await save(attemptId);
@@ -36,6 +39,7 @@ export function useSaveAttempt() {
       throw error;
     } finally {
       clearTimeout(checkingTimer);
+      releaseBack();
     }
   }
 

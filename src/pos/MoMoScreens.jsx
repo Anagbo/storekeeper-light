@@ -9,6 +9,7 @@ import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, P
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
+import { useBackBlock } from "./browserBack.js";
 
 const NETWORKS = ["MTN", "Telecel", "AirtelTigo"];
 
@@ -54,6 +55,7 @@ export function MoMoDirect({ params = {}, onBack, onConfirm, onPick }) {
   const [settings, setSettings] = useState({ number: "", network: "" });
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
+  useBackBlock(saving);
   const [saveError, setSaveError] = useState("");
   const savingRef = useRef(false);
   const saveAttempt = useSaveAttempt();

@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { exportDatabaseToJson, importDatabaseFromJson, validateBackupData } from "../utils/backup.js";
 import { posText as t } from "./i18n.js";
 import { PosPage, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
+import { useBackBlock } from "./browserBack.js";
 
 // Screen 71 (brief 3.13): Backup and restore as a normal screen with Back. Layout only: the backup
 // and restore logic is the existing one in utils/backup.js. Restore asks first; a file that cannot
@@ -28,6 +29,7 @@ export default function BackupRestore({ onBack }) {
   // A ref as well as the state, so a second tap in the same frame sees the first one.
   const busyRef = useRef(false);
   const [busy, setBusy] = useState(false);
+  useBackBlock(busy);
   const [pending, setPending] = useState(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");

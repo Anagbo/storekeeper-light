@@ -4,11 +4,14 @@ import { formatGhanaCard } from "../utils/formatters.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
+import { useBackBlock, useBackHandler } from "./browserBack.js";
 
 export default function CustomerContactEditor({ customer, onClose, onSave }) {
   const [phone, setPhone] = useState(customer.phone ?? "");
   const [ghanaCardNumber, setGhanaCardNumber] = useState(formatGhanaCard(customer.ghanaCardNumber ?? ""));
   const [busy, setBusy] = useState(false);
+  useBackBlock(busy);
+  useBackHandler(true, onClose);
   const [error, setError] = useState("");
   const phoneInvalid = Boolean(phone.trim() && !normalizeWhatsAppPhone(phone));
 

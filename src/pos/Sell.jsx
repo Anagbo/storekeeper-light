@@ -10,6 +10,7 @@ import { posText as t } from "./i18n.js";
 import { useLargeAmountConfirm } from "./LargeAmountConfirm.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
+import { useBackBlock } from "./browserBack.js";
 
 const paymentChoices = [
   { value: "cash", label: "sell.cash", icon: Banknote },
@@ -27,6 +28,7 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
       : "");
   const [paymentMethod, setPaymentMethod] = useState(params.paymentMethod === "momo" ? "momo" : "cash");
   const [busy, setBusy] = useState(false);
+  useBackBlock(busy);
   const [error, setError] = useState("");
   const submitLock = useRef(false);
   const saveAttempt = useSaveAttempt();

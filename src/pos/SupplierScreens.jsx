@@ -8,6 +8,7 @@ import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { getSupplierBalances, SUPPLIER_CATEGORIES } from "../utils/suppliers.js";
 import { posText as t } from "./i18n.js";
 import { PosBackButton, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag } from "./PosComponents.jsx";
+import { useBackBlock, useBackHandler } from "./browserBack.js";
 
 const CATEGORY_LABELS = Object.freeze({
   stock: "expense.category.stock",
@@ -42,6 +43,7 @@ export function SpentMoney({ onBack, onNavigate, onSave }) {
   const [category, setCategory] = useState("stock");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+  useBackBlock(saving);
   const [error, setError] = useState("");
   const amountPesewas = toPesewas(amount);
 
@@ -121,6 +123,7 @@ export function StockOnCredit({ params, onBack, onSaveExpense }) {
   const [supplierPhone, setSupplierPhone] = useState("");
   const [payBy, setPayBy] = useState("");
   const [saving, setSaving] = useState(false);
+  useBackBlock(saving);
   const [error, setError] = useState("");
   const paidPesewas = toPesewas(paidAmount);
   const validPaidAmount = Number.isSafeInteger(paidPesewas) && paidPesewas >= 0 && paidPesewas <= amountPesewas;
@@ -219,7 +222,10 @@ export function YouOweSuppliers({ onBack, onPay }) {
   const [selectedSupplier, setSelectedSupplier] = useState(null);
   const [amount, setAmount] = useState("");
   const [saving, setSaving] = useState(false);
+  useBackBlock(saving);
   const [error, setError] = useState("");
+  // A back press closes the Pay sheet as Cancel does (not while the payment is saving).
+  useBackHandler(Boolean(selectedSupplier), () => setSelectedSupplier(null));
   const today = localDateString();
   const suppliers = useLiveQuery(async () => {
     const [transactions, records] = await Promise.all([db.transactions.toArray(), db.suppliers.toArray()]);

@@ -6,6 +6,7 @@ import { getPreference } from "../db/preferences.js";
 import { appendPlanPayment, createPlanCashCode, describePlanPayment, getPlanLastUsedMethod, getPlanPaymentConfiguration, groupPlanPayments, listPlanPayments, PLAN_CONFIG, planMethodLabel, planStatusLabel } from "./planPayments.js";
 import { MOMO_CONFIG, PHONE_REQUEST_ENABLED } from "./momoConfig.js";
 import { PosCard, PosPage, PosPrimaryButton, PosStatusTag, PosBackButton } from "./PosComponents.jsx";
+import { useBackBlock } from "./browserBack.js";
 
 const NETWORKS = ["MTN", "Telecel", "AirtelTigo"];
 
@@ -99,6 +100,7 @@ export function PlanPayMethod({ onBack, onNavigate }) {
 // only when the save fails; on success the screen is replaced by the result.
 function useSavePlanPayment(onNavigate) {
   const [saving, setSaving] = useState(false);
+  useBackBlock(saving);
   const [error, setError] = useState("");
   const savingRef = useRef(false);
   async function save(details) {

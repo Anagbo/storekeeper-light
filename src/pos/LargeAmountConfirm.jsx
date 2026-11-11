@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { formatGhs } from "../lib/money.js";
 import { posText as t } from "./i18n.js";
 import { isLargeAmount } from "./largeAmount.js";
+import { useBackHandler } from "./browserBack.js";
 
 // Brief 3.12. One hook per screen that saves a sale:
 //   if (largeAmount.guard(totalPesewas, () => void save(true))) return;
@@ -14,6 +15,9 @@ export function useLargeAmountConfirm() {
   const [pending, setPending] = useState(null);
   // A ref as well as the state, so a second tap in the same frame sees the first one.
   const pendingRef = useRef(null);
+
+  // A back press with the dialog open is Change amount: it closes, nothing is confirmed.
+  useBackHandler(pending !== null, () => change());
 
   function guard(totalPesewas, proceed, { momo = false } = {}) {
     if (!isLargeAmount(totalPesewas)) return false;

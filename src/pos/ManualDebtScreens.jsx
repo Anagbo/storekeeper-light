@@ -11,6 +11,7 @@ import { posText as t } from "./i18n.js";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
+import { useBackBlock } from "./browserBack.js";
 
 export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, onSaveManualDebt }) {
   // The typed amount and note are kept in the route params (as the split parts on 16 are), so
@@ -21,6 +22,7 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, o
   const [note, setNote] = useState(typeof params.note === "string" ? params.note : "");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  useBackBlock(saving);
   const saveAttempt = useSaveAttempt();
   // Taken on (brief line 372): defaults to today, can be set to an older date.
   const today = localDateString();

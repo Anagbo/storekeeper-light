@@ -8,6 +8,7 @@ import { posText as t } from "./i18n.js";
 import { useLargeAmountConfirm } from "./LargeAmountConfirm.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
+import { useBackBlock } from "./browserBack.js";
 
 const paymentChoices = [
   { value: "cash", label: "sell.cash", icon: Banknote },
@@ -23,6 +24,7 @@ export default function ReviewAndPay({ params = {}, onBack, onNavigate, onUpdate
   // drafts; nothing is read back for MoMo, so a stray value can never pre-select an unconfirmed MoMo save.
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [busy, setBusy] = useState(false);
+  useBackBlock(busy);
   const [error, setError] = useState("");
   const saveAttempt = useSaveAttempt();
   const largeAmount = useLargeAmountConfirm();

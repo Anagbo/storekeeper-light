@@ -28,6 +28,7 @@ import { getInitialPaymentParts } from "./paymentAmount.js";
 import { getMomoDisplayLabel } from "./momoMapping.js";
 import { secondsUntil } from "../lib/countdown.js";
 import { getDebtorItemDescription } from "../utils/debtorItemDescription.js";
+import { useBackBlock, useBackHandler } from "./browserBack.js";
 
 const PAYMENT_METHODS = [
   { value: "cash", label: "collect.cash", icon: Banknote },
@@ -151,6 +152,7 @@ function CollectionSheet({ debt, onClose, onNavigate, onRecordCollection }) {
   const [mode, setMode] = useState("due");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [busy, setBusy] = useState(false);
+  useBackBlock(busy);
   const [error, setError] = useState("");
   const saveAttempt = useSaveAttempt();
   const dueAmount = debt.isInstallmentPlan && Number.isSafeInteger(debt.installmentAmount) && debt.installmentAmount > 0
@@ -292,6 +294,7 @@ export function CollectPayPart(props) {
 export function CollectSplitPayment({ params, onBack, onNavigate, onUpdateParams, onRecordCollection }) {
   const debt = useCollectionDebt(params?.debtId, params?.customerName);
   const [busy, setBusy] = useState(false);
+  useBackBlock(busy);
   const [error, setError] = useState("");
   // E8: a ref, not the state, so a second tap in the same frame sees the first one.
   const busyRef = useRef(false);
@@ -352,6 +355,7 @@ function CollectPayPartScreen({ params, onBack, onNavigate, onUpdateParams, onRe
     ["cash", "momo"].includes(params?.paymentMethod) ? params.paymentMethod : "cash"
   ));
   const [busy, setBusy] = useState(false);
+  useBackBlock(busy);
   const [error, setError] = useState("");
   const saveAttempt = useSaveAttempt();
   const amountPesewas = toPesewas(amount);
@@ -440,6 +444,7 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
   const result = params;
   const [remainingSeconds, setRemainingSeconds] = useState(() => Math.max(0, Math.ceil((result.undoExpiresAt - Date.now()) / 1000)));
   const [busy, setBusy] = useState(false);
+  useBackBlock(busy);
   const [error, setError] = useState("");
   const [undone, setUndone] = useState(false);
   const [contact, setContact] = useState({
@@ -574,6 +579,8 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
   const [correctionDebtSnapshot, setCorrectionDebtSnapshot] = useState(null);
   const [correctionError, setCorrectionError] = useState("");
   const [correctionSaving, setCorrectionSaving] = useState(false);
+  useBackBlock(correctionSaving);
+  useBackHandler(correctionOpen, () => setCorrectionOpen(false));
   const data = useLiveQuery(async () => {
     const selectedDebt = params?.debtId ? await db.debts.get(params.debtId) : null;
     const name = selectedDebt?.customerName ?? selectedDebt?.customer_name ?? params?.customerName ?? "";

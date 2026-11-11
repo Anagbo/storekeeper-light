@@ -9,6 +9,7 @@ import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { posText as t } from "./i18n.js";
 import { shortSaveName } from "./saveLabel.js";
 import { PosBackButton, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
+import { useBackBlock } from "./browserBack.js";
 
 function ScreenHeader({ title, onBack }) {
   return (
@@ -83,6 +84,7 @@ function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCom
   const [price, setPrice] = useState(item?.default_price > 0 ? item.default_price.toFixed(2) : "");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  useBackBlock(saving);
 
   async function submit(event) {
     event.preventDefault();
@@ -141,6 +143,7 @@ function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCom
 
 function DeleteItem({ itemId, itemName, onBack, onReturnToItems, onDelete }) {
   const [busy, setBusy] = useState(false);
+  useBackBlock(busy);
   const [error, setError] = useState("");
 
   async function confirmDelete() {
@@ -191,6 +194,7 @@ function StarterList({ grouped = false, params, onBack, onAdd, onCompleteSetup }
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  useBackBlock(saving);
   const existingNames = new Set((result?.products ?? []).map((product) => product.name.trim().toLowerCase()));
   const isAvailable = ({ name }) => !existingNames.has(name.toLowerCase());
   const availableItems = [...merged.core, ...merged.more].filter(isAvailable);

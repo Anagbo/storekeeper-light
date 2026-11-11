@@ -7,10 +7,12 @@ import { useSaveAttempt } from "./useSaveAttempt.js";
 import { getInitialPaymentParts, getPaidPaymentPesewas } from "./paymentAmount.js";
 import SplitPayment from "./SplitPayment.jsx";
 import { describeSplitPart } from "./splitTender.js";
+import { useBackBlock } from "./browserBack.js";
 
 export default function SaleSplitPayment({ params = {}, onBack, onNavigate, onUpdateParams, onSaveSale }) {
   const totalPesewas = Number.isSafeInteger(params.amountPesewas) ? params.amountPesewas : 0;
   const [saving, setSaving] = useState(false);
+  useBackBlock(saving);
   const [error, setError] = useState("");
   // E8: a ref, not the state, so a second tap in the same frame sees the first one.
   const savingRef = useRef(false);

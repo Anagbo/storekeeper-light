@@ -10,11 +10,13 @@ import { padCount, padMoney, pressPad, startPad } from "./amountPad.js";
 import { posText as t } from "./i18n.js";
 import NumberPad from "./NumberPad.jsx";
 import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
+import { useBackBlock } from "./browserBack.js";
 
 export function HowDoYouWantToSell({ onNavigate, onCompleteSetup }) {
   const [sellMode, setSellMode] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  useBackBlock(saving);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -113,6 +115,7 @@ function toggleId(ids, id) {
 export function WhatDoYouSell({ selected, onSelectedChange, onBack, onNavigate, onCompleteSetup }) {
   const [query, setQuery] = useState("");
   const [saving, setSaving] = useState(false);
+  useBackBlock(saving);
   const [error, setError] = useState("");
   const searchText = query.trim();
   const found = searchText ? searchStarterCategories(searchText) : [];
@@ -209,6 +212,7 @@ export function HowMuchIsItem({ params, onBack, onReturnTo }) {
   // The price is typed on the number pad as whole pesewas (4 5 0 = GH₵4.50), never as a decimal.
   const [pad, setPad] = useState(() => startPad(0));
   const [saving, setSaving] = useState(false);
+  useBackBlock(saving);
   const [error, setError] = useState("");
   const pricePesewas = pad.value;
 
