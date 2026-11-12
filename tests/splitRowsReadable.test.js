@@ -22,12 +22,12 @@ async function rows({ busy = false } = {}) {
   } });
   // The row's name element: a button on an editable row, plain text on a read-only one (wiring 16:
   // Owe and a locked MoMo row are not tappable).
-  const label = (name) => [...walk(view.tree)].find((node) => (node.type === "button" || node.type === "div") && textOf(node).startsWith(name) && /text-xl/.test(node.props?.className ?? ""));
+  const label = (name) => [...walk(view.tree)].find((node) => (node.type === "button" || node.type === "div") && textOf(node).startsWith(name) && /text-lg/.test(node.props?.className ?? ""));
   return { cash: label("Cash"), momo: label("MoMo"), owe: label("Owe"), view };
 }
 
 test("the Owe row and a verified MoMo row are not dimmed; they stay read-only", async () => {
-  const { cash, momo, owe } = await rows();
+  const { cash, momo, owe, view } = await rows();
   assert.ok(cash && momo && owe);
   assert.equal(cash.type, "button");
   assert.equal(cash.props.disabled, false);
@@ -37,7 +37,11 @@ test("the Owe row and a verified MoMo row are not dimmed; they stay read-only", 
     assert.doesNotMatch(button.props.className, /opacity/, `${name} row text is not dimmed`);
   }
   assert.equal(owe.props.className, cash.props.className, "same classes as the Cash row, so the same text colour");
-  assert.match(textOf(owe), /First payment 07\/03\/2099/);
+  // Wiring 16 row layout (12 Nov 2026): the terms are on the row's own status line, not in the name.
+  const oweRow = [...walk(view.tree)].find((node) => node.props?.["data-split-row"] === "owe");
+  const status = [...walk(oweRow)].find((node) => node.props?.["data-row-status"] !== undefined);
+  assert.equal(textOf(status), OWE_DETAIL);
+  assert.doesNotMatch(status.props.className, /opacity/);
 });
 
 test("a saving screen still dims every row", async () => {
@@ -67,6 +71,6 @@ test("the detail line keeps text-slate-700 and the page keeps text-slate-950 (th
   const { readFileSync } = await import("node:fs");
   const split = readFileSync(new URL("../src/pos/SplitPayment.jsx", import.meta.url), "utf8");
   const app = readFileSync(new URL("../src/pos/PosApp.jsx", import.meta.url), "utf8");
-  assert.match(split, /block text-sm font-semibold text-slate-700/);
+  assert.match(split, /"font-semibold text-slate-700"/);
   assert.match(app, /pos-app [^"]*text-slate-950/);
 });

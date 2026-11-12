@@ -15,7 +15,7 @@ import { loadJsx, render, textOf, walk } from "./helpers/renderJsx.js";
 // phone request is verified, or the owner tapped "Money received" on 62 for a Direct MoMo. No
 // pencil, no x, a plain amount (not a chip), a green-check "Received" status line, not tappable;
 // setPartAmount and remove refuse it in code. An unconfirmed Direct row stays editable with
-// "Customer sends to my number · not confirmed yet". Cash is never locked.
+// "Customer sends · not confirmed yet". Cash is never locked.
 
 after(async () => {
   db.close();
@@ -101,9 +101,9 @@ function assertLocked(tree, amount) {
   assert.equal(textOf(plain), amount);
   assert.doesNotMatch(String(plain.props.className), /border|bg-|rounded/, "a plain amount, not a chip");
   const status = [...walk(row)].find((node) => node.props?.["data-row-status"] !== undefined);
-  assert.equal(textOf(status), "Received");
+  // Wiring 16 row layout (12 Nov 2026): the green check is part of the status wording.
+  assert.equal(textOf(status), "Customer sent · received ✓");
   assert.match(String(status.props.className), /text-emerald-900/);
-  assert.ok([...walk(status)].some((node) => typeof node.type === "function" || node.type?.displayName), "a green check icon");
 }
 
 test("16: a Direct MoMo confirmed on 62 after Done is locked, and stays locked on 16 after the commit fails", async () => {
@@ -156,7 +156,7 @@ test("16: an unconfirmed Direct MoMo row stays editable and removable, with \"no
   assert.ok(labels(view.tree).includes("Edit MoMo amount"));
   assert.ok(labels(view.tree).includes("Remove MoMo"));
   assert.ok(pencilsIn(row).length > 0, "a pencil");
-  assert.equal(textOf([...walk(row)].find((node) => node.props?.["data-row-status"] !== undefined)), "Customer sends to my number · not confirmed yet");
+  assert.equal(textOf([...walk(row)].find((node) => node.props?.["data-row-status"] !== undefined)), "Customer sends · not confirmed yet");
   // Editing sets the amount and marks nothing as confirmed.
   [...walk(view.tree)].find((node) => node.props?.["aria-label"] === "Edit MoMo amount").props.onClick();
   view.rerender();
@@ -204,8 +204,9 @@ test("16 at 360px: a locked GH₵12,345.00 MoMo row keeps the amount whole and o
   assert.match(String(amount.props.className), /whitespace-nowrap/);
   assert.match(String(amount.props.className), /shrink-0/);
   assert.doesNotMatch(String(amount.props.className), /truncate|overflow-hidden/);
-  assert.match(String(row.props.className), /flex-wrap/, "the amount wraps under the name rather than clipping");
-  // 360px: 16px gutters, 2px border and 12px padding each side leave 360 - 32 - 4 - 24 = 300px.
-  // GH₵12,345.00 at bold 21px is about 135px; icon 28 + gap 8 + "MoMo" about 60px = 96px. 96 + 8 + 135 < 300.
-  assert.ok(28 + 8 + 60 + 8 + 135 < 360 - 32 - 4 - 24);
+  const line = [...walk(row)].find((node) => node.props?.["data-row-line"] !== undefined);
+  assert.match(String(line.props.className), /flex-wrap/, "the amount wraps under the name rather than clipping");
+  // 360px: 16px gutters, 2px border and 10px padding each side leave 360 - 32 - 4 - 20 = 304px.
+  // GH₵12,345.00 at bold 21px is about 135px; icon 24 + gap 8 + "MoMo" about 60px = 92px. 92 + 8 + 135 < 304.
+  assert.ok(24 + 8 + 60 + 8 + 135 < 360 - 32 - 4 - 20);
 });

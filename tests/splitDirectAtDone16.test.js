@@ -71,7 +71,7 @@ test("16: Direct on 61 returns straight to 16 with the MoMo part not confirmed y
   assert.equal(part.verification, undefined, "not confirmed");
   assert.equal(part.confirmedPesewas, undefined, "nothing confirmed yet");
   assert.equal(part.amountPesewas, 400);
-  assert.equal(rowStatus(app.view.tree, "momo"), "Customer sends to my number · not confirmed yet");
+  assert.equal(rowStatus(app.view.tree, "momo"), "Customer sends · not confirmed yet");
   assert.ok(labels(app.view.tree).includes("Edit MoMo amount"));
   assert.ok(labels(app.view.tree).includes("Remove MoMo"));
   assert.match(shown(app), /Left to payGH₵0\.00/);
@@ -138,7 +138,7 @@ test("16: Back on 62 returns to 16 with the part still not confirmed and nothing
   await app.tap("Back");
   assert.equal(app.route, "SplitPayment");
   assert.equal(momoPart(app).verification, undefined);
-  assert.equal(rowStatus(app.view.tree, "momo"), "Customer sends to my number · not confirmed yet");
+  assert.equal(rowStatus(app.view.tree, "momo"), "Customer sends · not confirmed yet");
   assert.match(shown(app), /Left to payGH₵0\.00/);
   assert.equal((await db.transactions.toArray()).length, 0);
   // The phone back on 62 does the same.
@@ -201,7 +201,7 @@ test("16: a commit that fails after Money received returns to 16 with the MoMo p
   assert.deepEqual([part.verification, part.confirmedPesewas, part.amountPesewas], ["merchant_confirmed", 400, 400]);
   assert.ok(!labels(app.view.tree).includes("Edit MoMo amount"), "locked: no pencil");
   assert.ok(!labels(app.view.tree).includes("Remove MoMo"), "locked: no x");
-  assert.equal(rowStatus(app.view.tree, "momo"), "Received");
+  assert.equal(rowStatus(app.view.tree, "momo"), "Customer sent · received ✓");
   assert.equal((await db.transactions.toArray()).length, 0, "nothing saved");
   // Done again: the part is already confirmed, so it saves straight away, once.
   await app.tap(/^Done$/);

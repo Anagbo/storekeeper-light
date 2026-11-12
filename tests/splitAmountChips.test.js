@@ -92,8 +92,9 @@ test("16: one quiet line under Sale total, \"Tap an amount to change it.\"", asy
 test("16 at 360px: GH₵12,345.00 is never clipped and the remove button stays in the row (class contract)", async () => {
   const view = await mount([{ paymentMethod: "cash", amountPesewas: 1234500 }], 2000000);
   const r = row(view.tree, "cash");
-  assert.ok(cls(r).includes("flex-wrap"), "chip and remove wrap under the name when they do not fit");
-  assert.ok(cls(r).includes("min-w-0"));
+  const line = all(r, (n) => n.props["data-row-line"] !== undefined)[0];
+  assert.ok(cls(line).includes("flex-wrap"), "chip and remove wrap under the name only when they do not fit");
+  assert.ok(cls(r).includes("min-w-0") && cls(line).includes("min-w-0"));
   const c = chip(view.tree, "Cash");
   assert.equal(textOf(c), "GH₵12,345.00");
   assert.ok(cls(c).includes("whitespace-nowrap") && cls(c).includes("shrink-0"));
@@ -102,7 +103,7 @@ test("16 at 360px: GH₵12,345.00 is never clipped and the remove button stays i
   assert.ok(group, "chip and remove travel together");
   assert.ok(cls(group).includes("shrink-0"));
   assert.ok(all(group, (n) => n.props["aria-label"] === "Remove Cash").length === 1);
-  // Width check at 360px: page 16px gutters, row border 2px and padding 12px each side = 300px inside.
-  // Chip: ~150px text + 8px gap + 18px pencil + 24px padding + 4px border; then 8px gap and the 48px remove.
-  assert.ok(150 + 8 + 18 + 24 + 4 + 8 + 48 <= 360 - 32 - 4 - 24);
+  // Width check at 360px: page 16px gutters, row border 2px and padding 10px each side = 304px inside.
+  // Chip: ~150px text + 6px gap + 18px pencil + 20px padding + 4px border; then 8px gap and the 48px remove.
+  assert.ok(150 + 6 + 18 + 20 + 4 + 8 + 48 <= 360 - 32 - 4 - 20);
 });

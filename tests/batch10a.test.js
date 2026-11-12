@@ -29,10 +29,10 @@ const hasLink = (from, action, to) => POS_LINKS.some((link) => link.from === fro
 test("K3: rows on 16 show the MoMo method and the Owe person and terms", () => {
   const { describeSplitPart } = splitTender;
   assert.equal(typeof describeSplitPart, "function");
-  // Wiring 16 (11 Nov 2026): a Direct row before 62 is "not confirmed yet"; a received row says "Received".
-  assert.equal(describeSplitPart({ paymentMethod: "momo", momoMethod: "direct" }), "Customer sends to my number · not confirmed yet");
-  assert.equal(describeSplitPart({ paymentMethod: "momo", momoMethod: "direct", verification: "merchant_confirmed" }), "Received");
-  assert.equal(describeSplitPart({ paymentMethod: "momo", momoMethod: "paystack", verification: "verified" }), "Received");
+  // Wiring 16 (11 Nov 2026): a Direct row before 62 is "not confirmed yet"; a received row says "Customer sent · received ✓" (12 Nov 2026).
+  assert.equal(describeSplitPart({ paymentMethod: "momo", momoMethod: "direct" }), "Customer sends · not confirmed yet");
+  assert.equal(describeSplitPart({ paymentMethod: "momo", momoMethod: "direct", verification: "merchant_confirmed" }), "Customer sent · received ✓");
+  assert.equal(describeSplitPart({ paymentMethod: "momo", momoMethod: "paystack", verification: "verified" }), "Customer sent · received ✓");
   assert.equal(describeSplitPart({ paymentMethod: "momo", momoMethod: "paystack" }), "Phone request");
   assert.equal(describeSplitPart({ paymentMethod: "momo" }), "");
   assert.equal(describeSplitPart({ paymentMethod: "cash" }), "");

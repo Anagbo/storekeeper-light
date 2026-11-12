@@ -360,10 +360,10 @@ function getMomoChoiceFields(paymentMethod, params) {
 }
 
 // A part of today's payment on 19, with its status: "Received" (green check) once the MoMo money is
-// confirmed, "Customer sends to my number · not confirmed yet" before.
+// confirmed, "Customer sends · not confirmed yet" before.
 function RecordedPartRow({ part }) {
-  const status = describeSplitPart(part);
   const locked = isLockedMomoRow(part);
+  const status = locked ? t("split.received") : describeSplitPart(part);
   return (
     <div data-recorded-part={part.paymentMethod} className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 font-bold">
       <span className="flex min-w-0 items-center gap-2">
@@ -513,7 +513,9 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
           dueDate: "",
           installmentPlan: plan,
           splitParts: initialPaymentParts,
-          payBackLabel
+          payBackLabel,
+          // The 16 Owe row says "first payment {date}" (wiring 16 row layout, 12 Nov 2026).
+          firstPaymentDate: startToday ? today : nextDueDate
         });
         return;
       }

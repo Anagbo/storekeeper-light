@@ -116,7 +116,7 @@ test("27 collect: Direct returns to 27 not confirmed and saves nothing; Received
   assert.equal(app.route, "SplitPayment", "Direct returns to 27, not to 62");
   assert.equal(momoOf(app.params.splitParts).verification, undefined);
   assert.ok(labels(app.view.tree).includes("Edit MoMo amount"));
-  assert.match(shown(app), /Customer sends to my number · not confirmed yet/);
+  assert.match(shown(app), /Customer sends · not confirmed yet/);
   assert.deepEqual(await counts(), before, "nothing saved");
   await app.tap(/^Received$/);
   assert.equal(app.route, "MoMoDirect");
@@ -147,7 +147,7 @@ test("27 collect: a save that fails after Money received stays on 27 with the Mo
   assert.deepEqual([part.verification, part.confirmedPesewas], ["merchant_confirmed", 400]);
   assert.ok(!labels(app.view.tree).includes("Edit MoMo amount"), "no pencil");
   assert.ok(!labels(app.view.tree).includes("Remove MoMo"), "no x");
-  assert.match(shown(app), /MoMoReceived/);
+  assert.match(shown(app), /MoMoGH₵4.00Customer sent · received ✓/);
   assert.equal((await collectionsSaved()).count, 0);
 
   // The leave question: on-screen Back, phone back, header Home. Stay keeps 27.

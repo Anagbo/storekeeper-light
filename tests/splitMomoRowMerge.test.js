@@ -102,7 +102,7 @@ test("a MoMo row is not re-created from the pick values when the screen is mount
   for (let index = 0; index < 3; index += 1) {
     const again = mount();
     const text = textOf(again.tree);
-    assert.match(text, /MoMoReceivedGH₵4\.00/, `mount ${index + 1}`);
+    assert.match(text, /MoMoGH₵4.00Customer sent · received ✓/, `mount ${index + 1}`);
     assert.match(text, /CashGH₵4\.00/);
     assert.match(text, /Left to payGH₵0\.00/);
   }
@@ -167,7 +167,7 @@ test("the draft is restored after Menu > Settings > Back > Back (route params on
   app.back();
   assert.equal(app.state.current, POS_ROUTES.SplitPayment);
   const text = textOf(mount().tree);
-  assert.match(text, /MoMoReceivedGH₵4\.00/);
+  assert.match(text, /MoMoGH₵4.00Customer sent · received ✓/);
   assert.match(text, /CashGH₵4\.00/);
   assert.match(text, /Left to payGH₵0\.00/);
 });

@@ -1,13 +1,13 @@
 import { formatGhs } from "../lib/money.js";
+import { formatDate } from "../lib/formatDate.js";
 import { posText as t } from "./i18n.js";
 
-// Row status on 16 (contract state): the MoMo method, and the Owe person and terms.
-// Uses existing wording only: the 61 tile titles and the 19 frequency labels.
+// Row status on 16 and 27 (wiring "Row layout on 16 and 27", 12 Nov 2026): MoMo not confirmed
+// "Customer sends · not confirmed yet", MoMo received "Customer sent · received ✓", Owe
+// "{Name} · GH₵{amount} · {frequency} · first payment {dd/mm/yyyy}". Cash has no status line.
 export function describeSplitPart(part, params = {}) {
   if (part?.paymentMethod === "momo") {
-    // Wiring 16 (11 Nov 2026): a row whose money is received says so (SplitPayment adds the green
-    // check); a Direct row not yet confirmed on 62 says it is not confirmed yet.
-    if (isLockedMomoRow(part)) return t("split.received");
+    if (isLockedMomoRow(part)) return t("split.receivedRow");
     if (part.momoMethod === "direct") return t("split.directNotConfirmed");
     if (part.momoMethod === "paystack") return "Phone request";
     return "";
@@ -20,8 +20,16 @@ export function describeSplitPart(part, params = {}) {
     name,
     plan && Number.isSafeInteger(plan.installmentAmount) ? formatGhs(plan.installmentAmount) : "",
     plan ? t(`credit.frequency.${plan.frequency}`) : "",
-    typeof params.payBackLabel === "string" ? params.payBackLabel : ""
+    oweWhenLabel(plan, params)
   ].filter(Boolean).join(" · ");
+}
+
+// A plan names its first payment day (today when it starts today); a fixed due date from 18 keeps
+// 18's own label ("In 1 week").
+function oweWhenLabel(plan, params) {
+  const firstDate = plan ? (params.firstPaymentDate || plan.nextDueDate) : "";
+  if (plan && firstDate) return t("split.firstPaymentOn", { date: formatDate(firstDate) });
+  return typeof params.payBackLabel === "string" ? params.payBackLabel : "";
 }
 
 function sumPartsPesewas(parts) {

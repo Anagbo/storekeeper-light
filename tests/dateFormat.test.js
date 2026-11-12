@@ -29,7 +29,7 @@ test("the Owe row shows 'First payment 07/03/2099', not the ISO date", async () 
   assert.equal(returned.length, 1, "19 returned to 16");
   assert.equal(returned[0].payBackLabel, "First payment 07/03/2099");
   const row = describeSplitPart({ paymentMethod: "owe", amountPesewas: 200 }, returned[0]);
-  assert.match(row, /Ama · .*First payment 07\/03\/2099$/);
+  assert.match(row, /Ama · .*first payment 07\/03\/2099$/);
   assert.doesNotMatch(row, /2099-03-07/);
   assert.equal(returned[0].installmentPlan.nextDueDate, FAR, "the plan itself keeps the ISO date");
 });

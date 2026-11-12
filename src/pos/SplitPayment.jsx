@@ -113,52 +113,49 @@ export default function SplitPayment({
         const detail = partDetail(part);
         const editable = isEditablePart(part);
         const locked = isLockedMomoRow(part);
-        // 16: the amount is a chip (grey, 2px border, bold 21px, 48px tall). An editable row's chip
-        // has a green pencil and opens the editor; Owe shows the chip with no pencil. A locked MoMo
-        // row (money received) shows a plain amount, a green-check "Received" line, and no buttons.
-        const chipClass = "flex min-h-12 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border-2 border-slate-400 bg-slate-100 px-3 text-[21px] font-extrabold text-[#0F172A]";
-        const status = detail && (locked
-          ? <span data-row-status="" className="flex items-center gap-1 text-sm font-bold text-emerald-900"><Check size={16} strokeWidth={3} className="shrink-0" aria-hidden="true" />{detail}</span>
-          : <span data-row-status="" className="block text-sm font-semibold text-slate-700">{detail}</span>);
+        // 16 and 27: the amount is a chip (grey, 2px border, bold 21px, 48px tall). An editable row's
+        // chip has a green pencil and opens the editor; Owe shows the chip with no pencil. A locked
+        // MoMo row (money received) shows a plain amount, a green "received ✓" line, and no buttons.
+        const chipClass = "flex min-h-12 shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border-2 border-slate-400 bg-slate-100 px-2 text-[21px] font-extrabold text-[#0F172A]";
+        const nameClass = `grow shrink-0 whitespace-nowrap text-left text-lg font-extrabold${busy ? " opacity-50" : ""}`;
         return (
-          // The row wraps the chip and the remove button under the name when they do not fit
-          // (GH₵12,345.00 at 360px), so neither is clipped or pushed out of the row.
-          <div key={part.paymentMethod} data-split-row={part.paymentMethod} className="flex min-h-16 min-w-0 flex-wrap items-center gap-x-2 gap-y-2 rounded-2xl border-2 border-slate-500 bg-white px-3 py-2">
-            <div className="flex min-w-0 flex-[1_1_5rem] items-center gap-2">
-              <Icon size={28} className="shrink-0 text-emerald-900" aria-hidden="true" />
+          // Wiring "Row layout on 16 and 27" (12 Nov 2026), the same at every width: line 1 = icon,
+          // short name, chip and x; line 2 = the status across the full card width (at most 2 lines).
+          // The name never breaks ("MoMo" stays whole). Only an amount too long for the phone
+          // (GH₵12,345.00 at 360px) moves the chip and x under the name, so neither is clipped.
+          <div key={part.paymentMethod} data-split-row={part.paymentMethod} className="flex min-h-16 min-w-0 flex-col justify-center gap-1 rounded-2xl border-2 border-slate-500 bg-white px-2 py-2">
+            <div data-row-line="" className="flex min-w-0 flex-wrap items-center gap-1.5">
+              <Icon size={22} className="shrink-0 text-emerald-900" aria-hidden="true" />
               {editable ? (
-                <button type="button" disabled={busy} onClick={() => startEdit(part)} className={`min-w-0 flex-1 text-left text-xl font-extrabold [overflow-wrap:anywhere]${busy ? " opacity-50" : ""}`}>
-                  {name}
-                  {status}
-                </button>
+                <button type="button" disabled={busy} onClick={() => startEdit(part)} className={nameClass}>{name}</button>
               ) : (
-                <div className={`min-w-0 flex-1 text-left text-xl font-extrabold [overflow-wrap:anywhere]${busy ? " opacity-50" : ""}`}>
-                  {name}
-                  {status}
-                </div>
+                <div className={nameClass}>{name}</div>
               )}
+              <div className="ml-auto flex shrink-0 items-center gap-1.5">
+                {locked ? (
+                  <strong data-row-amount="" className="shrink-0 whitespace-nowrap text-[21px] font-extrabold text-[#0F172A]">{formatGhs(part.amountPesewas)}</strong>
+                ) : editable ? (
+                  <button type="button" disabled={busy} aria-label={t("split.editAmount", { method: name })} onClick={() => startEdit(part)} className={`${chipClass} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:opacity-50`}>
+                    {formatGhs(part.amountPesewas)}
+                    <Pencil data-pencil="" size={16} className="shrink-0 text-emerald-900" aria-hidden="true" />
+                  </button>
+                ) : (
+                  <strong className={chipClass}>{formatGhs(part.amountPesewas)}</strong>
+                )}
+                {!locked && <button
+                  type="button"
+                  disabled={busy}
+                  aria-label={t("split.remove", { method: name })}
+                  onClick={() => { const next = removePart(parts, part); if (next) commitParts(next); }}
+                  className="grid h-12 w-11 shrink-0 place-items-center rounded-xl bg-slate-300 text-slate-950 disabled:opacity-50"
+                >
+                  <X size={22} aria-hidden="true" />
+                </button>}
+              </div>
             </div>
-            <div className="ml-auto flex shrink-0 items-center gap-2">
-              {locked ? (
-                <strong data-row-amount="" className="shrink-0 whitespace-nowrap text-[21px] font-extrabold text-[#0F172A]">{formatGhs(part.amountPesewas)}</strong>
-              ) : editable ? (
-                <button type="button" disabled={busy} aria-label={t("split.editAmount", { method: name })} onClick={() => startEdit(part)} className={`${chipClass} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:opacity-50`}>
-                  {formatGhs(part.amountPesewas)}
-                  <Pencil data-pencil="" size={18} className="shrink-0 text-emerald-900" aria-hidden="true" />
-                </button>
-              ) : (
-                <strong className={chipClass}>{formatGhs(part.amountPesewas)}</strong>
-              )}
-              {!locked && <button
-                type="button"
-                disabled={busy}
-                aria-label={t("split.remove", { method: name })}
-                onClick={() => { const next = removePart(parts, part); if (next) commitParts(next); }}
-                className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-slate-300 text-slate-950 disabled:opacity-50"
-              >
-                <X size={22} aria-hidden="true" />
-              </button>}
-            </div>
+            {detail && (
+              <p data-row-status="" className={`line-clamp-2 w-full text-[15px] leading-snug [overflow-wrap:anywhere] ${locked ? "font-bold text-emerald-900" : "font-semibold text-slate-700"}${busy ? " opacity-50" : ""}`}>{detail}</p>
+            )}
           </div>
         );
       })}
