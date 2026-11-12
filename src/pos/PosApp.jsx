@@ -515,11 +515,11 @@ export default function PosApp() {
     }}
     />
   ) : route === POS_ROUTES.PaymentSettings ? (
-    <PaymentSettings onBack={navigateBack} onNavigate={navigate} />
+    <PaymentSettings params={routeState.params} onBack={navigateBack} onNavigate={navigate} onUpdateParams={updateCurrentParams} />
   ) : route === POS_ROUTES.MoMoSetup ? (
-    <MoMoSetup params={routeState.params} onBack={navigateBack} onNavigate={navigate} shopName={shopName} />
+    <MoMoSetup params={routeState.params} onBack={navigateBack} onNavigate={navigate} onUpdateParams={updateCurrentParams} shopName={shopName} />
   ) : route === POS_ROUTES.MoMoPayment ? (
-    <MoMoPayment params={routeState.params} onBack={navigateBack} onNavigate={navigate} />
+    <MoMoPayment params={routeState.params} onBack={navigateBack} onNavigate={navigate} onUpdateParams={updateCurrentParams} />
   ) : route === POS_ROUTES.MoMoWaiting ? (
     <MoMoWaiting
       params={routeState.params}

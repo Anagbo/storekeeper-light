@@ -283,6 +283,8 @@ function getInstallmentSplitDraft(params = {}) {
 export const KEPT_ON_BACK = Object.freeze({
   [POS_ROUTES.NewPerson]: ["newPersonName", "newPersonPhone", "newPersonGhanaCard", "newPersonAmount"],
   [POS_ROUTES.WhenWillTheyPay]: ["creditDueChoice"],
+  [POS_ROUTES.MoMoSetup]: ["payoutNetwork", "payoutNumber"],
+  [POS_ROUTES.MoMoPayment]: ["requestNetwork", "requestPhone"],
   [POS_ROUTES.ManualDebtAmount]: ["amountDigits", "note", "takenOn"],
   [POS_ROUTES.StockOnCredit]: ["stockPaidNow", "stockSupplierId", "stockNewSupplier", "stockSupplierName", "stockSupplierPhone", "stockPayBy"],
   [POS_ROUTES.ALittleAtATime]: ["installmentAmount", "frequency", "startToday", "nextDueDate", "todayPaymentAmount", "paymentMethod", "momoMethod", "installmentSplitDraft"]
@@ -319,9 +321,10 @@ function keepDraftOnBack(state, previousParams = {}) {
   return { ...previousParams, keptDrafts: kept };
 }
 
-// Opening a screen again in the same task: its kept draft comes back into its params.
-export function withKeptDraft(route, params = {}) {
-  const kept = params.keptDrafts?.[route];
+// Opening a screen again in the same task: its kept draft comes back into its params. The kept drafts
+// are looked up in the new params, or on the screen it is opened from (63 opens 60 with no params).
+export function withKeptDraft(route, params = {}, fromParams = {}) {
+  const kept = (params.keptDrafts ?? fromParams?.keptDrafts)?.[route];
   if (!kept || kept.key !== draftTaskKey(params)) return params;
   return { ...params, ...kept.draft };
 }
@@ -465,7 +468,7 @@ export function navigateState(state, route, params = {}) {
   if (route === POS_ROUTES.Home) return createRouteState(POS_ROUTES.Home);
   if (route === POS_ROUTES.Menu) return openMenuState(state);
   if (RESULT_ROUTES.includes(route)) return createRouteState(route, params);
-  return pushRoute(state, route, withKeptDraft(route, params));
+  return pushRoute(state, route, withKeptDraft(route, params, state.params));
 }
 
 // Screens whose on-screen Back (or Close) goes to Home rather than one step back.
