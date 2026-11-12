@@ -152,8 +152,10 @@ function SheetAmount({ amountPesewas }) {
   );
 }
 
-function CollectionSheet({ debt, onClose, onNavigate, onRecordCollection }) {
-  const [mode, setMode] = useState("due");
+function CollectionSheet({ debt, params = {}, onClose, onNavigate, onUpdateParams, onRecordCollection }) {
+  // draft_survives_trip_away: Due now / Pay all is also kept in the route params, so 26, 61 or 43 and
+  // Back show the same choice. Close (Home) drops it.
+  const [mode, setMode] = useState(params.collectMode === "all" ? "all" : "due");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [busy, setBusy] = useState(false);
   useBackBlock(busy);
@@ -208,7 +210,7 @@ function CollectionSheet({ debt, onClose, onNavigate, onRecordCollection }) {
             ["due", "collect.dueNow"],
             ["all", "collect.payAll"]
           ].map(([value, label]) => (
-            <button key={value} type="button" aria-pressed={mode === value} onClick={() => setMode(value)} className={`min-h-12 rounded-xl border-2 px-2 text-sm font-extrabold sm:text-base ${mode === value ? "border-emerald-900 bg-emerald-900 text-white" : "border-slate-500 bg-white text-slate-950"}`}>
+            <button key={value} type="button" aria-pressed={mode === value} onClick={() => { setMode(value); onUpdateParams?.({ collectMode: value }); }} className={`min-h-12 rounded-xl border-2 px-2 text-sm font-extrabold sm:text-base ${mode === value ? "border-emerald-900 bg-emerald-900 text-white" : "border-slate-500 bg-white text-slate-950"}`}>
               {t(label)}
             </button>
           ))}
@@ -250,11 +252,11 @@ function CollectionSheet({ debt, onClose, onNavigate, onRecordCollection }) {
   );
 }
 
-export function CollectPayment({ params, onClose, onNavigate, onRecordCollection }) {
+export function CollectPayment({ params, onClose, onNavigate, onUpdateParams, onRecordCollection }) {
   const debt = useCollectionDebt(params?.debtId, params?.customerName);
   if (debt === undefined) return <CollectionSheetError loading={true} onClose={onClose} />;
   if (!debt) return <CollectionSheetError loading={false} onClose={onClose} />;
-  return <CollectionSheet debt={debt} onClose={onClose} onNavigate={onNavigate} onRecordCollection={onRecordCollection} />;
+  return <CollectionSheet debt={debt} params={params ?? {}} onClose={onClose} onNavigate={onNavigate} onUpdateParams={onUpdateParams} onRecordCollection={onRecordCollection} />;
 }
 
 function CollectionSheetError({ loading, onClose }) {

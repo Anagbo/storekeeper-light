@@ -589,6 +589,7 @@ export default function PosApp() {
         params={routeState.params}
         onClose={() => switchTab(POS_ROUTES.Home)}
         onNavigate={navigate}
+        onUpdateParams={updateCurrentParams}
         onRecordCollection={saveDebtCollection}
       />
     </>
