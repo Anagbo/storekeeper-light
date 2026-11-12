@@ -56,7 +56,7 @@ test("37: Save price returns to 20 with the item in the sale, not to 38", async 
 // ---- 38 "Add {quantity}" ----
 test("38: the button reads Add {quantity}", async () => {
   const { HowManyItem } = await loadJsx("src/pos/SetupScreens.jsx");
-  const view = render({ type: HowManyItem, props: { params: { product: { id: 1, name: "Bread", default_price: "2.00" }, quantity: 12 }, onBack() {}, onReplace() {} } });
+  const view = render({ type: HowManyItem, props: { params: { product: { id: 1, name: "Bread", default_price: "2.00" }, quantity: 12 }, onBack() {}, onReturnTo() {} } });
   assert.ok(findButton(view.tree, "Add 12"), "Add 12");
   assert.doesNotMatch(textOf(view.tree), /Add to sale/);
   assert.match(wiring.screens["38"].rules[0], /Add \{quantity\}/);

@@ -259,7 +259,7 @@ export function HowMuchIsItem({ params, onBack, onReturnTo }) {
   );
 }
 
-export function HowManyItem({ params, onBack, onReplace }) {
+export function HowManyItem({ params, onBack, onReturnTo }) {
   const product = params.product;
   const unitPricePesewas = params.unitPricePesewas ??
     (product ? toPesewas(product.default_price) : null);
@@ -292,7 +292,8 @@ export function HowManyItem({ params, onBack, onReplace }) {
           unitPricePesewas
         }];
       totalSaleItemsPesewas(nextItems);
-      onReplace("SellWithItems", { saleItems: nextItems });
+      // Back to the 20 that opened 38 (pop to it), never a second 20 on top of it.
+      onReturnTo("SellWithItems", { saleItems: nextItems, amountPesewas: totalSaleItemsPesewas(nextItems) });
     } catch (addError) {
       setError(addError instanceof RangeError ? t("sellItems.totalTooLarge") : t("sellItems.updateFailed"));
     }

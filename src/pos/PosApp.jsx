@@ -461,7 +461,7 @@ export default function PosApp() {
   ) : route === POS_ROUTES.HowMuchIsItem ? (
     <HowMuchIsItem params={routeState.params} onBack={navigateBack} onReturnTo={returnTo} />
   ) : route === POS_ROUTES.HowManyItem ? (
-    <HowManyItem params={routeState.params} onBack={navigateBack} onReplace={replaceCurrentRoute} />
+    <HowManyItem params={routeState.params} onBack={navigateBack} onReturnTo={returnTo} />
   ) : route === POS_ROUTES.SplitPayment && routeState.params.installmentSplit ? (
     <InstallmentSplitPayment params={routeState.params} onBack={navigateBack} onReturnTo={returnTo} onNavigate={navigate} onUpdateParams={updateCurrentParams} />
   ) : route === POS_ROUTES.SplitPayment && routeState.params.debtId ? (

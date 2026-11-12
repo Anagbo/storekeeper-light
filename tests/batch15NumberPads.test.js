@@ -160,7 +160,7 @@ test("37: Back goes back", async () => {
 
 test("38: shows the pad from the wiring file in place of the plus and minus buttons", async () => {
   const { HowManyItem } = await loadJsx("src/pos/SetupScreens.jsx");
-  const view = render({ type: HowManyItem, props: { params: { product: { id: 1, name: "Bread", default_price: 2 }, quantity: 12 }, onBack() {}, onReplace() {} } });
+  const view = render({ type: HowManyItem, props: { params: { product: { id: 1, name: "Bread", default_price: 2 }, quantity: 12 }, onBack() {}, onReturnTo() {} } });
   for (const label of padLabels("38")) assert.ok(key(view.tree, label), `${label} key`);
   assert.ok(!key(view.tree, "Remove one") && !key(view.tree, "Add one"), "no plus or minus");
   assert.match(textOf(view.tree), /Number of Bread/);
@@ -174,7 +174,7 @@ test("38: typing changes the number and the button; Add puts that many in the sa
   const view = render({ type: HowManyItem, props: {
     params: { product: { id: 7, name: "Bread", default_price: 2 }, saleItems: [] },
     onBack() {},
-    onReplace: (...args) => calls.push(args)
+    onReturnTo: (...args) => calls.push(args)
   } });
   assert.ok(findButton(view.tree, "Add 1"));
   press(view, "1", "2");
@@ -192,7 +192,7 @@ test("38: typing changes the number and the button; Add puts that many in the sa
 test("38: Add with zero shows an error and adds nothing", async () => {
   const { HowManyItem } = await loadJsx("src/pos/SetupScreens.jsx");
   const calls = [];
-  const view = render({ type: HowManyItem, props: { params: { product: { id: 7, name: "Bread", default_price: 2 }, saleItems: [] }, onBack() {}, onReplace: (...args) => calls.push(args) } });
+  const view = render({ type: HowManyItem, props: { params: { product: { id: 7, name: "Bread", default_price: 2 }, saleItems: [] }, onBack() {}, onReturnTo: (...args) => calls.push(args) } });
   press(view, "Delete");
   findButton(view.tree, "Add 0").props.onClick();
   view.rerender();
