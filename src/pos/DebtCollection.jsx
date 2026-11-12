@@ -13,7 +13,7 @@ import { loadCustomerHistory } from "../utils/loadCustomerDebtHistory.js";
 import { getOutstandingDebtPesewas } from "../lib/money.js";
 import { generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { buildCollectionReceiptLink } from "./collectionReceipt.js";
-import { buildCustomerBalanceReceipt, getCollectionReceiptText } from "./receiptTemplates.js";
+import { buildCustomerBalanceReceipt, getCollectionReceiptText, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
 import { normalizeCollectionAmountInput } from "./collectionSplit.js";
 import { getDebtDueLabel, getDebtDueLine } from "./money.js";
 import { getInstallmentsLeft, getPlanProgress } from "../utils/installments.js";
@@ -512,6 +512,9 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
   const [contactEditorOpen, setContactEditorOpen] = useState(false);
   const totalCash = result.parts.filter((part) => part.paymentMethod === "cash").reduce((sum, part) => sum + part.amountPesewas, 0);
   const totalMomo = result.parts.filter((part) => part.paymentMethod === "momo").reduce((sum, part) => sum + part.amountPesewas, 0);
+  // Send receipt, its wait line and its add-phone prompt show only with VITE_ENABLE_POS_RECEIPTS
+  // on (FEATURE_FLAGS.SHOW_POS_RECEIPTS).
+  const receiptsOn = isReceiptTemplatesEnabled();
   const receiptMessage = getCollectionReceiptText(result, shopName);
   const receiptLink = buildCollectionReceiptLink(contact.phone, receiptMessage);
 
@@ -576,11 +579,11 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
       </section>
 
       <CollectionError>{error}</CollectionError>
-      <div className="grid grid-cols-2 gap-2">
+      <div className={`grid gap-2 ${receiptsOn ? "grid-cols-2" : "grid-cols-1"}`}>
         <PosSecondaryButton type="button" disabled={busy || remainingSeconds <= 0 || undone} onClick={() => void undo()} className="h-14 min-h-0 rounded-2xl border-rose-900 text-[17px] text-rose-900">
           <Undo2 size={22} aria-hidden="true" /> {t("collect.undo")}
         </PosSecondaryButton>
-        {receiptLink && remainingSeconds <= 0 && !undone ? (
+        {!receiptsOn ? null : receiptLink && remainingSeconds <= 0 && !undone ? (
           <a href={receiptLink} target="_blank" rel="noopener noreferrer" className="flex h-14 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-center text-[17px] font-extrabold text-emerald-900">
             <MessageCircle size={24} aria-hidden="true" /> {t("collect.receiptShare")}
           </a>
@@ -590,7 +593,7 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
           </button>
         )}
       </div>
-      {receiptLink && remainingSeconds > 0 && !undone ? (
+      {!receiptsOn ? null : receiptLink && remainingSeconds > 0 && !undone ? (
         <p role="status" className="text-center text-sm font-semibold text-slate-700">{t("collect.receiptWait", { seconds: remainingSeconds })}</p>
       ) : !receiptLink && !undone ? (
         <div className="rounded-xl bg-amber-50 p-3 text-center">
@@ -705,7 +708,8 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
   const markReminderOpened = () => {
     pendingReminderDebtIds.current = (data?.unpaidDebts ?? []).map((debt) => debt.id);
   };
-  const balanceReceiptLink = data && phone
+  // The current-balance Receipt button shows only with VITE_ENABLE_POS_RECEIPTS on.
+  const balanceReceiptLink = isReceiptTemplatesEnabled() && data && phone
     ? `https://wa.me/${phone.slice(1)}?text=${encodeURIComponent(buildCustomerBalanceReceipt({
         shopName,
         customerName: data.name,
@@ -849,7 +853,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               {lastReminderLabel && <p className="text-center text-base text-slate-800">{lastReminderLabel}</p>}
             </div>
           )}
-          <div className={`grid grid-cols-2 gap-2 sm:gap-3 ${phone && reminderLink ? (isLate ? "sm:grid-cols-3" : "sm:grid-cols-4") : ""}`}>
+          <div className={`grid grid-cols-2 gap-2 sm:gap-3 ${phone && reminderLink ? (balanceReceiptLink ? (isLate ? "sm:grid-cols-3" : "sm:grid-cols-4") : (isLate ? "sm:grid-cols-2" : "sm:grid-cols-3")) : ""}`}>
             <button type="button" disabled={data.balancePesewas <= 0 || !data.debt?.id} onClick={() => onCollect(data.debt)} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-emerald-900 px-2 text-base font-extrabold text-white disabled:opacity-50 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
               <Banknote size={26} aria-hidden="true" /> <span className="truncate">{t("collect.collect")}</span>
             </button>
@@ -860,9 +864,9 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                     <WhatsAppIcon /> <span className="truncate">Reminder</span>
                   </a>
                 )}
-                <a href={balanceReceiptLink} target="_blank" rel="noopener noreferrer" aria-label={`Send current balance receipt for ${displayName(data.name)}`} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
+                {balanceReceiptLink && <a href={balanceReceiptLink} target="_blank" rel="noopener noreferrer" aria-label={`Send current balance receipt for ${displayName(data.name)}`} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
                   <ReceiptText size={26} aria-hidden="true" /> <span className="truncate">Receipt</span>
-                </a>
+                </a>}
                 <a href={`tel:${phone}`} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-slate-500 bg-slate-300 px-2 text-base font-extrabold text-slate-950 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
                   <Phone size={26} aria-hidden="true" /> <span className="truncate">{t("collect.call")}</span>
                 </a>

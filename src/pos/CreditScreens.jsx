@@ -895,6 +895,9 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
   const shownName = displayName(customerName);
   const totalDebtPesewas = result?.totalDebtPesewas ?? 0;
   const whatsappLink = generateWhatsAppLink(phone, shownName, totalDebtPesewas, shopName);
+  // Send receipt (the link, or the add-contact button standing in for it) shows only with
+  // VITE_ENABLE_POS_RECEIPTS on (FEATURE_FLAGS.SHOW_POS_RECEIPTS).
+  const receiptsOn = isReceiptTemplatesEnabled();
   const receiptLink = buildCreditReceiptLink(result, phone, shopName);
   function openContactEditor(event) {
     event.preventDefault();
@@ -959,7 +962,7 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
           </div>
         </div>
       )}
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className={`grid grid-cols-1 gap-2 ${receiptsOn ? "sm:grid-cols-2" : ""}`}>
         {whatsappLink ? (
           <a href={whatsappLink} target="_blank" rel="noreferrer" className="flex min-h-14 min-w-0 items-center justify-center rounded-2xl border-2 border-emerald-900 px-3 text-center font-extrabold text-emerald-900">
             {t("credit.whatsapp", { name: shownName })}
@@ -969,7 +972,7 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
             {t("credit.whatsapp", { name: shownName })}
           </button>
         )}
-        {receiptLink ? (
+        {receiptsOn && (receiptLink ? (
           <a href={receiptLink} target="_blank" rel="noopener noreferrer" className="flex min-h-14 min-w-0 items-center justify-center rounded-2xl border-2 border-emerald-900 px-3 text-center font-extrabold text-emerald-900">
             {t("collect.receiptShare")}
           </a>
@@ -977,7 +980,7 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
           <button type="button" onClick={openContactEditor} className="flex min-h-14 min-w-0 items-center justify-center rounded-2xl border-2 border-emerald-900 px-3 text-center font-extrabold text-emerald-900">
             {t("collect.receiptShare")}
           </button>
-        )}
+        ))}
       </div>
       {result?.debtId && <PosSecondaryButton type="button" className="w-full" onClick={() => onNavigate("DebtorDetail", { debtId: result.debtId, customerName })}>{t("credit.seeDetails", { name: shownName })}</PosSecondaryButton>}
       {!whatsappLink && <PosSecondaryButton type="button" className="w-full" onClick={() => setContactEditorOpen(true)}>{t("contact.add")}</PosSecondaryButton>}

@@ -6,7 +6,7 @@ import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosCom
 import { posText as t } from "./i18n.js";
 import { displayName } from "../lib/displayName.js";
 import { getSaleReceiptDetails } from "./saleReceipt.js";
-import { getSaleReceiptText } from "./receiptTemplates.js";
+import { getSaleReceiptText, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
 import { getMomoDisplayLabel } from "./momoMapping.js";
 
 function WhatsAppIcon({ size = 26 }) {
@@ -58,6 +58,8 @@ export default function SaleRecorded({ transaction, creditResult, shopName, onDo
     ? t("saleRecorded.today")
     : formatDate(when);
 
+  // Send receipt shows only with VITE_ENABLE_POS_RECEIPTS on (FEATURE_FLAGS.SHOW_POS_RECEIPTS).
+  const receiptsOn = isReceiptTemplatesEnabled();
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(receiptText)}`;
   const owedPesewas = transaction?.creditExtendedPesewas ?? 0;
   const paidPesewas = details.cashReceivedPesewas + details.momoReceivedPesewas;
@@ -149,8 +151,8 @@ export default function SaleRecorded({ transaction, creditResult, shopName, onDo
         </div>
       </PosCard>
 
-      <div className="grid grid-cols-2 gap-2">
-        <a
+      <div className={`grid gap-2 ${receiptsOn ? "grid-cols-2" : "grid-cols-1"}`}>
+        {receiptsOn && <a
           href={whatsappUrl}
           target="_blank"
           rel="noopener noreferrer"
@@ -165,7 +167,7 @@ export default function SaleRecorded({ transaction, creditResult, shopName, onDo
         >
           <WhatsAppIcon size={26} />
           <span>{t("saleRecorded.sendReceipt")}</span>
-        </a>
+        </a>}
         <PosSecondaryButton type="button" onClick={onDone} className="h-14 min-h-0 rounded-2xl border-2 border-slate-900 text-[17px]">
           {t("saleRecorded.done")}
         </PosSecondaryButton>
