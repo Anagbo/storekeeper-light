@@ -4,7 +4,7 @@ Status audit: 3 Nov 2026. This records the working tree at the time of review, i
 
 ## Decisions
 
-- Build the POS beside the legacy app and gate the POS entry point with `VITE_ENABLE_POS_SCREENS`; keep the existing sync behavior until a backend migration is decided.
+- Build the POS beside the legacy app and ship the POS as the only app shell (no POS flag); keep the existing sync behavior until a backend migration is decided.
 - Keep Dexie/IndexedDB as the local data store. Its current schema is version 12.
 - Keep the settled brief decisions: additive rollout with backup/restore, 10-second collection undo, append-only financial corrections, no starter-product seeding for new shops, and the specified Ghana Card validation.
 - Screens 35/36 are driven by `src/data/starter-items.json` (version 2), loaded as data via `src/db/starterItems.js` (merge, core/more, search). Screen 35 shows popular categories first, then "More categories" grouped by `group`. Merge de-duplicates by case-insensitive name; core wins over more. "Something else" alone skips the starter list and opens New item (setup completes on save).
@@ -101,7 +101,7 @@ Every release must pass these gates in order:
    - Confirm Paystack secret variables exist only in the server environment.
    - Confirm subscription prices and durations match the approved Ghana pricing.
    - Confirm `VITE_SUBSCRIPTION_TRIAL_DAYS` is intentional for the release.
-   - Keep `FEATURE_SUBSCRIPTION_LOCKOUT=false` until server-authoritative subscription state and recovery monitoring are approved.
+   - Keep `VITE_ENABLE_SUBSCRIPTION` off in production; enable it only when subscription monetization launches.
    - Confirm `VITE_SYNC_ENDPOINT` uses HTTPS and the sync server implements idempotency keys, transactional acceptance, acknowledgements, and conflicts.
 2. **Data-safety rehearsal**
    - Export a backup from a representative device.
@@ -134,7 +134,7 @@ Rollback means disabling the POS or sync feature flags, stopping new subscriptio
 - `git diff --check`: passed
 - Reliability ledger tasks 1–11: complete
 
-**Go/no-go: blocked pending field evidence.** This environment cannot execute the required production-like deployment and representative Ghana handset/carrier checks. Before enabling production subscription lockout or broad sync rollout, record evidence for MTN, Vodafone/Telecel, 2G/3G/4G transitions, airplane mode, captive portals, browser suspension, power loss during a write, low storage, and Paystack redirect loss/recovery. Keep `FEATURE_SUBSCRIPTION_LOCKOUT=false` and treat the release as internal-only until those checks pass.
+**Go/no-go: blocked pending field evidence.** This environment cannot execute the required production-like deployment and representative Ghana handset/carrier checks. Before enabling production subscription lockout or broad sync rollout, record evidence for MTN, Vodafone/Telecel, 2G/3G/4G transitions, airplane mode, captive portals, browser suspension, power loss during a write, low storage, and Paystack redirect loss/recovery. Keep `VITE_ENABLE_SUBSCRIPTION` off and treat the release as internal-only until those checks pass.
 
 ## Screens 15–47
 
@@ -157,7 +157,7 @@ Rollback means disabling the POS or sync feature flags, stopping new subscriptio
 | 29 | Debtor detail (on-time) | done | `src/pos/DebtCollection.jsx` (`DebtorDetail`), data-derived state |
 | 30 | Sale recorded | done | `src/pos/SaleRecorded.jsx`; shows the same itemized lines, including `Other amount`, and the recorded payment parts. |
 | 31 | Credit saved | done | `src/pos/CreditScreens.jsx` |
-| 32 | People who owe you | done | Existing `src/components/DebtLedger.jsx` |
+| 32 | People who owe you | done | `src/pos/DebtCollection.jsx` |
 | 33 | My money | partial | `src/pos/MyMoney.jsx`; week/month totals and balances exist, but profit views are not implemented and spending breakdown is unavailable. |
 | 34 | New person | done | `src/pos/CreditScreens.jsx`, reuses the existing customer/Ghana Card validation. |
 | 35 | What do you sell? | done | `src/pos/SetupScreens.jsx`; popular tiles, "Find your business" category search, More categories › (51), multi-select shared with 51, Something else; "Something else" only goes to New item. |
@@ -290,36 +290,9 @@ Thank you!
 - The checker reports invalid amounts, broken customer/debt/supplier/payment/transaction references, customer balance mismatches, installment schedule mismatches, invalid supplier balances, financial-summary failures, and summary mismatches.
 - Added clean-ledger, intentionally inconsistent-ledger, v1-upgrade, and v11-upgrade tests.
 
-## Owed tab parity audit
+## Owed tab
 
-Audit source: the POS brief's screen 32 (`PeopleWhoOweYou`) and screens 29/43 (`DebtorDetail`), compared with the current legacy `src/components/DebtLedger.jsx`.
-
-| Old DebtLedger feature | New destination | Current status | Gap or required action |
-|---|---|---|---|
-| WhatsApp reminder | `DebtorDetail` | Normal WhatsApp reminder link already exists when a valid phone is present. | Mostly covered. The old WhatsApp Business sign-in/server reminder capability still needs an explicit retain-or-drop decision. |
-| Call customer | `DebtorDetail` | `tel:` link already exists for customers with a valid phone. | Covered. |
-| View payment history | `DebtorDetail` → “What happened” | Data-derived history already exists through `loadCustomerHistory()`, with grouped collection parts. | Covered, but currently limited to the first eight history rows; decide whether more history is needed. |
-| Mark as Paid | `DebtorDetail` → Collect → `Pay all` | `CollectPayment` already supports `Pay all`, due-now, and pay-part modes using the existing collection logic. | Functionally covered. |
-| Edit debt | `DebtorDetail` → Edit | `DebtorDetail` currently supports Edit contact only. | Missing. Reuse the old edit form and validation for balance, phone, and Ghana Card changes. |
-| Edit-phone pencil | `DebtorDetail` → Edit/contact | Old page has a phone pencil; new page has Edit contact/add contact. | Partially covered. Preserve the existing phone validation and persistence behavior. |
-| Add debt | `PeopleWhoOweYou` → `+ Add debt` | Complete add-debt flow exists only in `DebtLedger`, including customer search and installment setup. | Missing on the new screen. Reuse the existing flow. |
-| Previous / Next customers | `PeopleWhoOweYou` list | Old page uses Previous/Next customer paging. | Missing replacement. Use Show more or incremental scrolling; Show more is preferred for bounded IndexedDB reads. |
-| Sale/item description | People list or `DebtorDetail` | Old page displays the debt note, which may contain a sale description. New detail history shows event type and amount, not item details. | Decide whether to omit item details or show only the last three items; do not copy the full old list. |
-| Installment count | `DebtorDetail` | Already shows paid count, remaining count, progress, frequency, status, and next due date. | Covered and matches the brief's “X paid · Y left” expectation. |
-| Customer balance grouping | `PeopleWhoOweYou` → `DebtorDetail` | `DebtorDetail` groups matching debts by normalized customer name and derives the outstanding balance. | The new list must show one customer per row and pass a stable customer/debt identifier. |
-
-### Owed-tab routing and rollout state
-
-- `PosBottomNav` already labels the tab `Owed` and navigates to `PeopleWhoOweYou`.
-- `POS_ROUTES.PeopleWhoOweYou` and the route graph already exist.
-- `PosApp` currently renders the `PeopleWhoOweYou` route with the legacy `DebtLedger` component.
-- `DebtorDetail` already exists in `src/pos/DebtCollection.jsx` and is rendered from live ledger data.
-- The only current POS flag is `VITE_ENABLE_POS_SCREENS`; there is no separate Owed-specific flag.
-- When the POS flag is off, the legacy app and old debt page remain reachable. When it is on, the Owed tab still opens `DebtLedger`.
-
-### Owed migration boundary
-
-Do not delete `DebtLedger` until the new flow has parity for the table above. First build the new `PeopleWhoOweYou` customer list, reuse the existing add-debt and edit-debt logic through shared components/helpers, route each customer to `DebtorDetail`, verify the parity manually and with tests, and keep the old page reachable while the new Owed experience is behind its rollout flag.
+The Owed tab and debtor detail are native POS screens; the old debt page is gone and its parity audit is retired.
 
 ### Owed migration task status
 
@@ -414,7 +387,7 @@ Do not delete `DebtLedger` until the new flow has parity for the table above. Fi
 
 ## Differences and open questions
 
-- `src/config/features.js` has one POS flag (`VITE_ENABLE_POS_SCREENS`), one receipt flag (`VITE_ENABLE_POS_RECEIPTS`) plus the subscription flag; it does not gate individual screen groups as requested in the rollout section.
+- `src/config/features.js` has no POS flag, one receipt flag (`VITE_ENABLE_POS_RECEIPTS`) plus the subscription flag; it does not gate individual screen groups as requested in the rollout section.
 - Setup entry checks that the shop has no products, transactions, debts, customers, or suppliers, as well as no completed-setup preference; this is intentionally stricter than checking only sales and products to protect existing merchants with debt/contact data.
 - Profit estimate/item-cost views, settings switches, and item cost-price fields are absent. `MyMoney` currently says the spending breakdown is unavailable.
 - Receipt generation is wired in the current POS even though the Decisions section says to present the proposed receipt text for approval before wiring it. The proposed templates are now implemented behind `VITE_ENABLE_POS_RECEIPTS` (Step 5); confirm approval of the samples before enabling it.
@@ -431,7 +404,7 @@ Do not delete `DebtLedger` until the new flow has parity for the table above. Fi
   suite passes: **13 tests, 0 failures**.
 - **M02 — Extract a reusable POS add-debt entry point: approved 4 Nov 2026.**
   Added `src/utils/addDebt.js` with shared add-debt preparation and persistence
-  through `recordCreditSale()`. The legacy `DebtLedger` now uses that shared
+  through `recordCreditSale()`. The add-debt flow uses that shared
   entry point while preserving customer, contact, Ghana Card, note, and
   installment behavior. Focused add-debt and debt-lifecycle tests pass:
   **29 tests, 0 failures**; the production build succeeds.

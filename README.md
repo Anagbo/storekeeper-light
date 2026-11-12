@@ -33,7 +33,24 @@ Sync reconciliation is deliberately conservative. `transactions` are append-only
 
 The app retries on connection restoration, when the page becomes visible, and periodically while open. Each sync request has a 30-second deadline so a stalled Ghana mobile-data connection does not hold the sync loop indefinitely. Failed or partially acknowledged records remain pending and are retried without blocking entry or showing sync errors. Where the browser supports Background Sync, the service worker reads and uploads the IndexedDB queue itself, even when no app page is open; the browser controls when that event runs, and failed attempts are left for its retry mechanism. Other browsers sync while the app is open. Without an endpoint, all features remain available locally and the header says data is saved on this device.
 
-Before enabling production sync or subscription lockout, follow the rollout and release gates in `docs/PROGRESS.md`. In particular, run `npm.cmd run test:reliability`, `npm.cmd run build`, and `git diff --check`; rehearse backup restore on a separate profile; verify Paystack recovery and offline reconciliation; and complete representative Ghana SIM/network and Android device checks. Keep subscription lockout disabled until subscription state is server-authoritative and recovery monitoring is available.
+## Environment variables
+
+Client variables (`VITE_*`) are baked in at build time. Production values:
+
+| Variable | Production value | Meaning |
+| --- | --- | --- |
+| `VITE_ENABLE_MOMO_PHONE_REQUEST` | `false` (OFF) | Shows the "request payment on customer's phone" option. Must stay off until the payout account is verified and an offline check exists. |
+| `VITE_MOMO_PHONE_REQUEST_FEE_PESEWAS` | `0` | Fee per phone request, whole pesewas, shown as configured. Who pays it is not decided. |
+| `VITE_LARGE_AMOUNT_CONFIRM_PESEWAS` | `100000` (default) | A sale above this many pesewas asks "Is the amount right?" before saving. Exactly this amount saves without asking; a missing or invalid value uses 100000. |
+| `VITE_ENABLE_POS_RECEIPTS` | `false` unless receipts are under review | Shows the POS receipt screens when `true`. |
+| `VITE_STOREKEEPER_RECEIVING_NUMBER` | the MoMo number that receives plan payments | Number customers pay My plan to. Empty by default. |
+| `VITE_STOREKEEPER_RECEIVING_NAME` | `StoreKeeper` (default) | Name shown with the receiving number. |
+| `VITE_SYNC_ENDPOINT` | empty until the sync backend is ready | HTTPS endpoint for optional cloud sync (see below). Empty means local-only. |
+| `VITE_ENABLE_SUBSCRIPTION` | `false` (OFF) | Subscription UI and payment-return verification. Enable only when subscription monetization launches. |
+| `VITE_SUBSCRIPTION_TRIAL_DAYS` | `30` | Free trial length in days; `0` disables it. |
+| `VITE_SUBSCRIPTION_MONTHLY_AMOUNT_PESEWAS`, `VITE_SUBSCRIPTION_SIX_MONTHS_AMOUNT_PESEWAS`, `VITE_SUBSCRIPTION_YEARLY_AMOUNT_PESEWAS` | `1500`, `7500`, `15000` | Displayed plan prices; must equal the server values. |
+
+Server-only variables (Vercel, never `VITE_`): `PAYSTACK_SECRET_KEY`, `APP_URL`, `SUBSCRIPTION_MONTHLY_AMOUNT_PESEWAS`, `SUBSCRIPTION_SIX_MONTHS_AMOUNT_PESEWAS`, `SUBSCRIPTION_YEARLY_AMOUNT_PESEWAS`. See `.env.example`.
 
 ## Paystack Mobile Money subscription
 
