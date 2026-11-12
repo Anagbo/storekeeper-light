@@ -477,7 +477,8 @@
     "Amount paid today equal to the full amount owed settles the debt: record the debt and the payment, save NO plan, balance becomes 0. (Decided by the owner, matches the live app.)",
     "In flow=split the payment section is hidden because the cash and MoMo parts on 16 already cover today. (Decided by the owner, matches the live app.)",
     "Wording before and after the money is confirmed (decided 12 Nov 2026): in the draft panel on 19 (and after a failed save) use \"Paying today\" as the heading, \"Paid today\" for the helper text under Amount paid today, and \"Total today\" for the total. A MoMo row that was confirmed on 62 shows \"Received ✓\" in its own status line. The words \"Payment received today\" and \"Total received\" are only used on the result screens (31, 28, 30) after the money has arrived.",
-    "Owe in the draft panel (decided 12 Nov 2026): the rows above \"Total today\" must add up to it, so Owe is never listed among the payment rows. \"Paying today\" lists only Cash and MoMo, then a divider and \"Total today\" (money paid today). Below the total, a separate pink row with a person icon shows the unpaid part: \"Still owed · {Name}\" with the amount on the right. It is not part of the total. If nothing is owed the pink row is not shown. The same rule applies to any panel with a total line on 27, 28, 30 and 31: a total always equals the sum of the rows above it."
+    "Owe in the draft panel (decided 12 Nov 2026): the rows above \"Total today\" must add up to it, so Owe is never listed among the payment rows. \"Paying today\" lists only Cash and MoMo, then a divider and \"Total today\" (money paid today). Below the total, a separate pink row with a person icon shows the unpaid part: \"Still owed · {Name}\" with the amount on the right. It is not part of the total. If nothing is owed the pink row is not shown. The same rule applies to any panel with a total line on 27, 28, 30 and 31: a total always equals the sum of the rows above it.",
+    "Draft survives Back (decided 12 Nov 2026, reported on the phone): in the sale-on-credit flow (15 → 17 → 34/18 → 19 → 27) everything the owner has typed or chosen is kept when they go Back and return, until the sale is saved (Done or Save plan) or the owner leaves with header Home or another tab. Nothing is lost by going one step back and forward. Kept values live in the route parameters, like 15 and 16. On 19 that means How much each time, How often, First payment (Today or Next cycle), Amount paid today, Next payment date and the chosen method or split parts. Opening Split payment (27) from 19 and coming back with Back keeps the 19 values; opening 27 again reopens it with the same Cash and MoMo parts."
    ]
   },
   "20": {
@@ -1061,7 +1062,8 @@
    ],
    "rules": [
     "Split screens use one ending word (decided 12 Nov 2026): the button on 27 is \"Done\", not \"Received\", because nothing is received until the confirm step. Done continues to 62 for an unconfirmed Direct MoMo part and then saves (28), or, when 27 was opened from 19, returns the parts to 19 and saves nothing.",
-    "Row layout on 27 (same component as 16) (decided 12 Nov 2026), the same at every width (360px, 393px and wider): line 1 = icon, short name (Cash, MoMo, Owe), the amount chip and the x; line 2 = the status text using the full card width (at most 2 lines). Never put the status text in a narrow column beside the chip. Status wording: MoMo not confirmed \"Customer sends · not confirmed yet\"; MoMo confirmed \"Customer sent · received ✓\"; Owe \"{Name} · GH₵{amount} {every week|every 2 weeks|every month} · first payment {dd/mm/yyyy}\" (the amount is the payment each time, so it must read as \"GH₵50.00 every week\", never a bare \"· GH₵50.00 ·\" that looks like the Owe chip amount); Cash has no status line."
+    "Row layout on 27 (same component as 16) (decided 12 Nov 2026), the same at every width (360px, 393px and wider): line 1 = icon, short name (Cash, MoMo, Owe), the amount chip and the x; line 2 = the status text using the full card width (at most 2 lines). Never put the status text in a narrow column beside the chip. Status wording: MoMo not confirmed \"Customer sends · not confirmed yet\"; MoMo confirmed \"Customer sent · received ✓\"; Owe \"{Name} · GH₵{amount} {every week|every 2 weeks|every month} · first payment {dd/mm/yyyy}\" (the amount is the payment each time, so it must read as \"GH₵50.00 every week\", never a bare \"· GH₵50.00 ·\" that looks like the Owe chip amount); Cash has no status line.",
+    "Back from 27 opened from 19 keeps the parts in 19's route parameters. Tapping Split payment on 19 again reopens 27 with the same Cash and MoMo parts while the amount paid today is unchanged; if the amount changed, the parts are cleared and 27 starts again with the new amount. Same locked-row and leave-question rules as 16 when a MoMo part has been confirmed."
    ]
   },
   "28": {
@@ -1505,7 +1507,10 @@
     "024 000 0000",
     "GHA-000000000-0"
    ],
-   "bottom_bar": false
+   "bottom_bar": false,
+   "rules": [
+    "Draft survives Back (decided 12 Nov 2026, reported on the phone): in the sale-on-credit flow (15 → 17 → 34/18 → 19 → 27) everything the owner has typed or chosen is kept when they go Back and return, until the sale is saved (Done or Save plan) or the owner leaves with header Home or another tab. Nothing is lost by going one step back and forward. Kept values live in the route parameters, like 15 and 16. On 34 that means the Name, Phone number and Ghana Card number fields and the Amount owed (if the owner edited it). Returning to 34 shows them filled in. The error box \"Enter the customer's name and a valid amount.\" only appears after the owner taps Next with a problem, never on a fresh or returning form."
+   ]
   },
   "35": {
    "name": "What do you sell?",
@@ -3689,7 +3694,8 @@
   "back_button": {
    "rule": "Every POS screen with a Back button uses the one shared PosBackButton: label \"‹ Back\", bold (800) 18px, 52px tall, 2px #0F172A border, accessible name \"Back\". Where Back sits in a bottom row beside a main button, both have the same height (56px). Button text is bold as in the prototype. Text must never wrap to a third line on a 360px-wide phone; shorten the label or reduce the side padding instead of letting the button grow."
   },
-  "person_names": "Person names (customers and suppliers) are shown with a capital first letter everywhere (Juju, Kofi wholesale): 16 Owe row, 17, 18, 24 chips, 30, 31, 43, buttons such as \"WhatsApp Juju\" and \"See Juju's details\", messages and sheets. Use one shared displayName helper. The stored name is not changed."
+  "person_names": "Person names (customers and suppliers) are shown with a capital first letter everywhere (Juju, Kofi wholesale): 16 Owe row, 17, 18, 24 chips, 30, 31, 43, buttons such as \"WhatsApp Juju\" and \"See Juju's details\", messages and sheets. Use one shared displayName helper. The stored name is not changed.",
+  "draft_survives_trip_away": "Draft survives a trip away (decided 12 Nov 2026), for every form or multi-step task: when the owner goes from a screen to another screen of the same task (to pick, set up, confirm or review something) and returns with Back or the phone back button, everything typed or chosen on the screen they left is still there. This applies to 15, 16, 17 (search text), 19, 20 (items in the cart), 25/26 (collect amount and method), 27, 34, 35 (chosen businesses and categories, also after 51), 44 and 45 (amount, category, stock total, paid now, chosen or typed supplier, pay-by date), 47 (an unsaved Shop name when going to 63, 64 or 71), 53, 55, 60 and 63 (unsaved choices when going to 60). Kept values live in the route parameters. Cleared only by saving or finishing (Done, Save, Save plan), the header Home, another bottom-bar tab, or Leave in the leave question. Not applicable where Back deliberately cancels a standalone form with no trip away (closing a sheet, Cancel on 54, Back from 41 New item with nothing sent elsewhere): those discard as designed."
  },
  "built_extras_kept": {
   "24": "row tags Collected Debt, Balance correction, Added to debt",
