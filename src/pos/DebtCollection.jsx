@@ -459,7 +459,14 @@ function CollectPayPartScreen({ params, onBack, onNavigate, onUpdateParams, onRe
               }
             }}
             splitDisabled={!canReceive || busy}
-            onSplit={() => onNavigate("SplitPayment", { ...params, amount })}
+            onSplit={() => {
+              // Wiring 27 (12 Nov 2026): the parts kept after Back from 27 come back while the amount
+              // is unchanged; a changed amount clears them and 27 starts with the new amount.
+              const kept = params?.collectSplitDraft;
+              const keptParts = kept?.totalPesewas === amountPesewas ? kept.splitParts : [];
+              if (kept && !keptParts.length) onUpdateParams({ collectSplitDraft: undefined });
+              onNavigate("SplitPayment", { ...params, amount, collectSplitDraft: undefined, splitParts: keptParts });
+            }}
           />
           <CollectionError>{error}</CollectionError>
           <SaveAttemptNotice saveAttempt={saveAttempt} busy={busy} onTryAgain={() => void receivePayment()} />

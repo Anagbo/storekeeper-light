@@ -1,4 +1,5 @@
-import { applyMomoPick, getCarriedPaymentParts } from "./paymentAmount.js";
+import { applyMomoPick, getCarriedPaymentParts, getInitialPaymentParts } from "./paymentAmount.js";
+import { toPesewas } from "../lib/money.js";
 import { isLockedMomoRow } from "./splitTender.js";
 
 export const POS_ROUTES = Object.freeze({
@@ -265,6 +266,12 @@ export function backRoute(state, fallback = POS_ROUTES.Home) {
   if (previous.current === POS_ROUTES.ALittleAtATime && state.current === POS_ROUTES.SplitPayment && state.params?.installmentSplit) {
     params = { ...params, installmentSplitDraft: getInstallmentSplitDraft(state.params) };
   }
+  // Wiring 27 (12 Nov 2026, same fix as 19): Back from 27 opened from 26 (collect split) keeps the
+  // Cash and MoMo parts in 26's route params; Split payment on 26 reopens them while the amount is
+  // unchanged.
+  if (previous.current === POS_ROUTES.CollectPayPart && state.current === POS_ROUTES.SplitPayment && isCollectSplit(state.params ?? {})) {
+    params = { ...params, collectSplitDraft: getCollectSplitDraft(state.params) };
+  }
   params = keepDraftOnBack(state, params);
   return { current: previous.current, params, history: state.history.slice(0, -1) };
 }
@@ -274,6 +281,16 @@ function getInstallmentSplitDraft(params = {}) {
   const splitParts = Array.isArray(params.splitParts) ? params.splitParts : [];
   if (!splitParts.length || !Number.isSafeInteger(params.splitTotalPesewas)) return undefined;
   return { totalPesewas: params.splitTotalPesewas, splitParts };
+}
+
+// The parts on 27 opened from 26, with the amount they split (a MoMo part just picked on 61 is
+// one of them). Nothing added: no draft.
+function getCollectSplitDraft(params = {}) {
+  const totalPesewas = toPesewas(params.amount ?? "");
+  if (!Number.isSafeInteger(totalPesewas) || totalPesewas <= 0) return undefined;
+  const splitParts = getInitialPaymentParts({ ...params, splitTotalPesewas: totalPesewas }, totalPesewas);
+  if (!splitParts.length) return undefined;
+  return { totalPesewas, splitParts };
 }
 
 // draft_survives_trip_away (decided 12 Nov 2026): what each screen keeps in its route params while
@@ -379,6 +396,10 @@ export function getReceivedMomoOnScreen(entry = {}) {
     // Parts kept from 27 after Back (wiring 27): a received MoMo part there stays locked and asks too.
     const keptSplit = Array.isArray(params.installmentSplitDraft?.splitParts) ? params.installmentSplitDraft.splitParts : [];
     return lockedTotal(getCarriedPaymentParts(params)) + single + lockedTotal(keptSplit);
+  }
+  // Parts kept on 26 after Back from 27 (collect split): a received MoMo part there asks too.
+  if (entry.current === POS_ROUTES.CollectPayPart) {
+    return lockedTotal(Array.isArray(params.collectSplitDraft?.splitParts) ? params.collectSplitDraft.splitParts : []);
   }
   if (entry.current !== POS_ROUTES.SplitPayment || params.installmentSplit) return 0;
   return lockedTotal(Array.isArray(params.splitParts) ? params.splitParts : []);
