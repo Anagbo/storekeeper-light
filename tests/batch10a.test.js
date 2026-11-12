@@ -39,7 +39,7 @@ test("K3: rows on 16 show the MoMo method and the Owe person and terms", () => {
   assert.equal(describeSplitPart({ paymentMethod: "owe" }, {}), "");
   assert.equal(
     describeSplitPart({ paymentMethod: "owe" }, { customer: { name: "Amoto" }, installmentPlan: { isInstallmentPlan: true, installmentAmount: 250, frequency: "weekly" }, payBackLabel: "First payment today" }),
-    "Amoto · GH₵2.50 · Every week · First payment today"
+    "Amoto · GH₵2.50 every week · First payment today"
   );
   assert.equal(describeSplitPart({ paymentMethod: "owe" }, { customer: { name: "Kofi" }, payBackLabel: "In 1 week" }), "Kofi · In 1 week");
 });
