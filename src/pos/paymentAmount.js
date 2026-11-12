@@ -80,28 +80,35 @@ export function applyMomoPick(details = {}) {
   }];
 }
 
+// The parts a split screen (16, 27, 26) opens with. Called while rendering, so it never throws: a
+// screen that cannot load loses the owner's draft. Parts with an invalid amount are dropped, parts
+// that add up to more than the total (kept from an earlier amount) are dropped, and a picked MoMo
+// amount is clamped to what is left after the other parts. The checks that throw stay in
+// getMomoAmountPesewas and getRemainingPaymentPesewas for the save path.
 export function getInitialPaymentParts(params = {}, totalPesewas) {
-  const parts = Array.isArray(params.splitParts) ? params.splitParts : [];
-  if (!params.momoMethod || !Number.isSafeInteger(params.pendingMomoAmountPesewas) || params.pendingMomoAmountPesewas <= 0) {
-    return parts;
-  }
-  if (getRemainingPaymentPesewas({
-    ...params,
-    splitTotalPesewas: totalPesewas,
-    pendingMomoAmountPesewas: undefined
-  }) === 0) {
-    return parts;
-  }
+  const total = Number.isSafeInteger(totalPesewas) && totalPesewas >= 0 ? totalPesewas : getPaymentTotalPesewas(params);
+  const rawParts = Array.isArray(params.splitParts) ? params.splitParts : [];
+  const validParts = rawParts.filter((part) => Number.isSafeInteger(part?.amountPesewas) && part.amountPesewas >= 0);
+  const parts = sumOf(validParts) > total ? [] : validParts;
+  const pending = params.pendingMomoAmountPesewas;
+  if (!params.momoMethod || !Number.isSafeInteger(pending) || pending <= 0) return parts;
+  if (sumOf(parts) === total) return parts;
   const nonMomoParts = parts.filter((part) => part.paymentMethod !== "momo");
+  const momoPesewas = Math.min(pending, total - sumOf(nonMomoParts));
+  if (momoPesewas <= 0) return nonMomoParts;
   return [
     ...nonMomoParts,
     {
       paymentMethod: "momo",
-      amountPesewas: getMomoAmountPesewas({ ...params, splitTotalPesewas: totalPesewas }),
+      amountPesewas: momoPesewas,
       momoMethod: params.momoMethod,
       verification: params.verification
     }
   ];
+}
+
+function sumOf(parts) {
+  return parts.reduce((total, part) => total + part.amountPesewas, 0);
 }
 
 export function getPaidPaymentPesewas(parts = []) {

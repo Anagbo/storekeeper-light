@@ -456,7 +456,9 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
   // Next cycle, for nothing paid today, and while a split is still to be entered on 27.
   const singlePreviewParts = startToday && !paymentAlreadyMadeToday && recordedParts.length === 0 &&
     validTodayPayment && (paymentMethod === "cash" || paymentMethod === "momo")
-    ? [{ paymentMethod, amountPesewas: todayPaymentPesewas }]
+    // A MoMo row carries its method, so it shows the same status line as on the split panel
+    // ("Customer sends · not confirmed yet").
+    ? [{ paymentMethod, amountPesewas: todayPaymentPesewas, ...(paymentMethod === "momo" ? { momoMethod: params.momoMethod, verification: params.verification } : {}) }]
     : [];
   // Save plan stays disabled until the plan is valid (K5): an amount each time, a next
   // payment date from today on, and, when paying today on this screen, a valid amount.
@@ -606,10 +608,18 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
     const kept = params.installmentSplitDraft;
     const keptParts = kept?.totalPesewas === todayPaymentPesewas ? kept.splitParts : [];
     if (kept && !keptParts.length) onUpdateParams?.({ installmentSplitDraft: undefined });
+    // 19's own MoMo pick (61 Direct) stays in the params with the amount it was picked at. 27 starts
+    // from the amount paid today as it is now (the figure the Paying today panel shows): MoMo was
+    // the chosen method, so it opens with MoMo for that amount. A pick left over from an earlier
+    // amount, or from before Cash was chosen, is dropped, never sent to 27.
+    const singleMomo = !keptParts.length && paymentMethod === "momo" && Boolean(params.momoMethod);
     onNavigate("SplitPayment", {
       ...params,
       paymentMethod: "split",
       installmentSplit: true,
+      pendingMomoAmountPesewas: singleMomo ? todayPaymentPesewas : undefined,
+      momoMethod: singleMomo ? params.momoMethod : undefined,
+      verification: singleMomo ? params.verification : undefined,
       installmentSplitDraft: undefined,
       splitParts: keptParts,
       splitTotalPesewas: todayPaymentPesewas,

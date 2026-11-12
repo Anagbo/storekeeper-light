@@ -457,6 +457,7 @@ const ENGLISH = Object.freeze({
   "money.seeList": "See list ›",
   "money.screenError": "This screen could not load.",
   "money.retry": "Try again",
+  "money.goBack": "Go back",
   "transactions.back": "Back",
   "transactions.title": "Today’s transactions",
   "transactions.loading": "Loading today’s transactions…",

@@ -702,7 +702,7 @@ export default function PosApp() {
       <div className="flex min-h-[calc(100vh-4rem)]">
         {!isSetupFlow && <PosSideNav current={route} onNavigate={switchTab} />}
         <div className="min-w-0 flex-1">
-          <PosErrorBoundary key={`${route}:${pickRemount}`}>
+          <PosErrorBoundary key={`${route}:${pickRemount}`} onBack={navigateBack}>
             <Suspense fallback={<PosPage><p role="status">{t("app.loadingScreen")}</p></PosPage>}>
                   {setupReady ? content : <PosPage><p role="status">{t("app.loadingScreen")}</p></PosPage>}
             </Suspense>
