@@ -62,10 +62,12 @@ function CustomerChoice({ customer, selected, onSelect }) {
   );
 }
 
-function WhoOwesYou({ params, onBack, onNavigate }) {
+function WhoOwesYou({ params, onBack, onNavigate, onUpdateParams }) {
   const [customers, setCustomers] = useState([]);
-  const [query, setQuery] = useState("");
-  const [selectedCustomer, setSelectedCustomer] = useState(params.customer ?? null);
+  // draft_survives_trip_away: the search text and the chosen person are also kept in the route
+  // params, so New person (34) or Next (18) and Back show them again.
+  const [query, setQuery] = useState(params.customerSearch ?? "");
+  const [selectedCustomer, setSelectedCustomer] = useState(params.selectedCustomer ?? params.customer ?? null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const amountOwedPesewas = getCreditAmountOwedPesewas(params);
@@ -131,7 +133,7 @@ function WhoOwesYou({ params, onBack, onNavigate }) {
     <PosPage className="flex flex-col gap-3">
       <h1 className="text-2xl font-extrabold">{t("credit.whoOwes")}</h1>
       {!params.manualDebt && <CreditAmount amountPesewas={amountOwedPesewas} />}
-      <SearchField value={query} onChange={setQuery} />
+      <SearchField value={query} onChange={(next) => { setQuery(next); onUpdateParams?.({ customerSearch: next }); }} />
       <h2 className="text-lg font-extrabold text-slate-800">{hasSearchText(query) ? t("credit.searchResults") : t("credit.topDebtors")}</h2>
       {loading ? <p role="status">{t("credit.loading")}</p> : (
         <div className="flex flex-col gap-2">
@@ -140,7 +142,7 @@ function WhoOwesYou({ params, onBack, onNavigate }) {
               key={customer.id || customer.nameLower}
               customer={customer}
               selected={selectedCustomer?.nameLower === customer.nameLower}
-              onSelect={() => setSelectedCustomer(customer)}
+              onSelect={() => { setSelectedCustomer(customer); onUpdateParams?.({ selectedCustomer: customer }); }}
             />
           ))}
           {!filteredCustomers.length && <p className="rounded-xl bg-slate-100 p-3">{hasSearchText(query) ? t("credit.noMatches") : t("credit.noDebtors")}</p>}
@@ -968,7 +970,7 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
 }
 
 export default function CreditScreens({ route, params, onBack, onNavigate, onUpdateParams, onReturnToSplit, onSaveCredit, onSaveCustomerContact, onHome, shopName }) {
-  if (route === "WhoOwesYou") return <WhoOwesYou params={params} onBack={onBack} onNavigate={onNavigate} />;
+  if (route === "WhoOwesYou") return <WhoOwesYou params={params} onBack={onBack} onNavigate={onNavigate} onUpdateParams={onUpdateParams} />;
   if (route === "NewPerson") return <NewPerson params={params} onBack={onBack} onNavigate={onNavigate} onUpdateParams={onUpdateParams} />;
   if (route === "WhenWillTheyPay") return <WhenWillTheyPay params={params} onBack={onBack} onNavigate={onNavigate} onUpdateParams={onUpdateParams} onReturnToSplit={onReturnToSplit} onSaveCredit={onSaveCredit} />;
   if (route === "ALittleAtATime") return <ALittleAtATime params={params} onBack={onBack} onNavigate={onNavigate} onUpdateParams={onUpdateParams} onReturnToSplit={onReturnToSplit} onSaveCredit={onSaveCredit} />;
