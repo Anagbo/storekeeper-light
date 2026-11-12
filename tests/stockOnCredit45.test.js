@@ -38,7 +38,7 @@ test("45 picker: one card headed \"Who do you owe?\", radio rows 60px, names in 
   assert.equal(textOf(name), "Nana Akosua Frimpomaa-Boateng Wholesale Distributors and Sons");
   assert.match(cls(name), /\[overflow-wrap:anywhere\]/);
   assert.match(cls(name), /min-w-0/);
-  assert.equal(textOf(rows[0]), "Kofi wholesale");
+  assert.equal(textOf(rows[0]), "Kofi Wholesale");
   assert.match(cls(rows[2]), /border-dashed/);
   assert.match(cls(rows[2]), /text-emerald-900/);
   assert.equal(textOf(rows[2]), "New supplier");

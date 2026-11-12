@@ -211,27 +211,27 @@ test("24: rows are not buttons (no chevron, not focusable)", async () => {
 // wholesale" and shown through the shared displayName helper.
 const buyStock = (paidAmountPesewas) => recordExpense({ amountPesewas: 8000, paidAmountPesewas, category: "stock", newSupplier: { name: "kofi wholesale" } });
 
-test("24: stock GH₵80.00 with nothing paid is \"Stock on credit\", dark red with no sign, pink \"You owe Kofi wholesale\"", async () => {
+test("24: stock GH₵80.00 with nothing paid is \"Stock on credit\", dark red with no sign, pink \"You owe Kofi Wholesale\"", async () => {
   await buyStock(0);
   const { rows, totals } = await today();
   const [row] = rowViews((await mount(rows, totals)).tree);
   assert.equal(row.title, "Stock on credit");
   assert.equal(row.amount, "GH₵80.00");
   assert.match(cls(row.amountNode), /text-\[#7F1D1D\]/);
-  assert.deepEqual(row.chips, [{ kind: "person", text: "You owe Kofi wholesale" }]);
+  assert.deepEqual(row.chips, [{ kind: "person", text: "You owe Kofi Wholesale" }]);
   const chip = all(row.node, (n) => n.props["data-chip"] === "person" && n.type === "span")[0];
   assert.match(cls(chip), /bg-\[#FECDD3\]/, "pink chip");
   assert.equal(totals.expenses, 0, "no money went out");
 });
 
-test("24: stock GH₵80.00 with GH₵30.00 paid is \"Stock\", −GH₵30.00 in amber-brown, pink \"You owe Kofi wholesale GH₵50.00\"", async () => {
+test("24: stock GH₵80.00 with GH₵30.00 paid is \"Stock\", −GH₵30.00 in amber-brown, pink \"You owe Kofi Wholesale GH₵50.00\"", async () => {
   await buyStock(3000);
   const { rows, totals } = await today();
   const [row] = rowViews((await mount(rows, totals)).tree);
   assert.equal(row.title, "Stock");
   assert.equal(row.amount, "−GH₵30.00");
   assert.match(cls(row.amountNode), /text-\[#92400E\]/);
-  assert.deepEqual(row.chips, [{ kind: "person", text: "You owe Kofi wholesale GH₵50.00" }]);
+  assert.deepEqual(row.chips, [{ kind: "person", text: "You owe Kofi Wholesale GH₵50.00" }]);
   assert.equal(totals.expenses, 3000);
 });
 

@@ -102,8 +102,7 @@ test("phone repro: GH₵8.00 to KOFI MENSAH, 2.00 today split Cash 1.00 + MoMo 1
   const box = panel(app);
   assert.ok(box, "Paying today panel shown");
   assert.equal(box.total, 200);
-  // The capitals of the name are item 2 (displayName); here the row and its amount.
-  assert.match(box.owedText, /^Still owed · Kofi mensahGH₵6.00$/i);
+  assert.equal(box.owedText, "Still owed · Kofi MensahGH₵6.00");
   assert.equal(box.owedPesewas, owedAtTop(app) - box.total);
   assert.match(box.owedClass, /bg-rose-100/);
 

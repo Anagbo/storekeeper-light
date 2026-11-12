@@ -107,8 +107,8 @@ test("46 empty state: no summary card", async () => {
 test("46 display name has a capital first letter; the stored name is untouched", async () => {
   const input = [supplier({ name: "kofi wholesale", phone: "0241234567" })];
   const tree = (await mount(input)).tree;
-  assert.ok(textOf(tree).includes("Kofi wholesale"));
-  assert.equal(all(tree, (n) => n.props["aria-label"] === "Pay Kofi wholesale").length, 1);
+  assert.ok(textOf(tree).includes("Kofi Wholesale"));
+  assert.equal(all(tree, (n) => n.props["aria-label"] === "Pay Kofi Wholesale").length, 1);
   assert.equal(input[0].name, "kofi wholesale");
 });
 
@@ -180,8 +180,8 @@ test("46 Pay sheet: Record payment (green) and Cancel (outlined) are both full w
 test("46 Pay sheet: a lowercase stored name is shown capitalised; the stored name is unchanged", async () => {
   const input = [supplier({ name: "kofi wholesale", phone: "0241234567" })];
   const view = await mount(input);
-  all(view.tree, (n) => n.type === "button" && n.props["aria-label"] === "Pay Kofi wholesale")[0].props.onClick();
+  all(view.tree, (n) => n.type === "button" && n.props["aria-label"] === "Pay Kofi Wholesale")[0].props.onClick();
   const sheet = all(view.rerender().tree, (n) => n.props.role === "dialog")[0];
-  assert.equal(textOf(all(sheet, (n) => n.type === "h2")[0]), "Pay Kofi wholesale");
+  assert.equal(textOf(all(sheet, (n) => n.type === "h2")[0]), "Pay Kofi Wholesale");
   assert.equal(input[0].name, "kofi wholesale");
 });
