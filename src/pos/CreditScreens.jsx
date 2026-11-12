@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Banknote, Check, Plus, Smartphone, UserRoundPlus } from "lucide-react";
+import { Banknote, Check, Plus, Smartphone, UserRound, UserRoundPlus } from "lucide-react";
 import SearchField from "./SearchField.jsx";
 import { hasSearchText, matchesSearch } from "../lib/searchMatch.js";
 import { db } from "../db/db.js";
@@ -384,6 +384,25 @@ function RecordedPartRow({ part }) {
   );
 }
 
+// 19 "Owe in the draft panel" (12 Nov 2026): the rows above "Total today" are only the paid parts
+// (Cash, MoMo) and add up to it. What is still owed is a separate pink row below the total.
+function StillOwedRow({ amountPesewas, customerName }) {
+  if (!(amountPesewas > 0)) return null;
+  const name = displayName(customerName ?? "");
+  return (
+    <div data-still-owed="" className="mt-2 flex min-w-0 items-center justify-between gap-3 rounded-xl bg-rose-100 px-3 py-2 font-extrabold text-rose-900">
+      <span className="flex min-w-0 items-center gap-2">
+        <UserRound size={18} className="shrink-0" aria-hidden="true" />
+        <span className="min-w-0 [overflow-wrap:anywhere]">{name ? t("credit.stillOwedName", { name }) : t("credit.stillOwed")}</span>
+      </span>
+      <span className="shrink-0 whitespace-nowrap">{formatGhs(amountPesewas)}</span>
+    </div>
+  );
+}
+
+const paidOnly = (parts) => parts.filter((part) => part.paymentMethod !== "owe");
+const owedOf = (parts) => parts.filter((part) => part.paymentMethod === "owe").reduce((sum, part) => sum + part.amountPesewas, 0);
+
 function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnToSplit, onSaveCredit }) {
   const today = localDateString();
   const [installmentAmount, setInstallmentAmount] = useState(params.installmentAmount ?? "");
@@ -735,12 +754,13 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
             <div className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
               <p className="mb-2 font-extrabold text-emerald-950">{t("credit.payingToday")}</p>
               <div className="flex flex-col gap-2">
-                {recordedParts.map((part) => <RecordedPartRow key={`${part.paymentMethod}-${part.amountPesewas}`} part={part} />)}
+                {paidOnly(recordedParts).map((part) => <RecordedPartRow key={`${part.paymentMethod}-${part.amountPesewas}`} part={part} />)}
               </div>
               <div className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 pt-2 font-extrabold text-emerald-950">
                 <span>{t("credit.totalToday")}</span>
-                <span>{formatGhs(recordedParts.reduce((total, part) => total + part.amountPesewas, 0))}</span>
+                <span>{formatGhs(getPaidPaymentPesewas(recordedParts))}</span>
               </div>
+              <StillOwedRow amountPesewas={owedOf(recordedParts)} customerName={params.customer?.name} />
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-2">
@@ -772,7 +792,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
         <div className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
         <p className="mb-2 font-extrabold text-emerald-950">{t("credit.payingToday")}</p>
         <div className="flex flex-col gap-2">
-          {splitParts.map((part) => (
+          {paidOnly(splitParts).map((part) => (
             <div key={`${part.paymentMethod}-${part.amountPesewas}`} className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 font-bold">
               <span>{t(`credit.method.${part.paymentMethod}`)}</span>
               <span>{formatGhs(part.amountPesewas)}</span>
@@ -783,6 +803,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
           <span>{t("credit.totalToday")}</span>
           <span>{formatGhs(paidTodayPesewas)}</span>
         </div>
+        <StillOwedRow amountPesewas={owedOf(splitParts)} customerName={params.customer?.name} />
         </div>
       )}
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}

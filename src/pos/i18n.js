@@ -380,6 +380,8 @@ const ENGLISH = Object.freeze({
   "credit.payingToday": "Paying today",
   "credit.paidTodayHint": "Paid today",
   "credit.totalToday": "Total today",
+  "credit.stillOwed": "Still owed",
+  "credit.stillOwedName": "Still owed · {name}",
   "credit.method.cash": "Cash",
   "credit.method.momo": "MoMo",
   "credit.method.owe": "Owe",
