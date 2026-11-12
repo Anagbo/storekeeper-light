@@ -12,7 +12,7 @@
   "NEXT17": "If flow=add_debt go to 53. Otherwise (a sale on credit) go to 18.",
   "NEXT53": "Apply the inheritance rule: if the person has no balance, or no due date and no plan, go to 18. Otherwise go to 31 and show the inherited terms. (The prototype uses flow=add_debt_person to decide; the brief's inheritance rule is the real rule.)",
   "MOMO": "Start a MoMo payment from the current screen. Remember the origin screen. Always go to 61 (never block the sale on setup).",
-  "MOMO16": "Done on 16, in this order: (1) parts must sum to the total; (2) if a MoMo part exists, confirm it (Direct: 62; Phone request: 56 then 57, setup via 60 if needed); (3) commit once; (4) go to 30. If the request fails go to 59 and keep the draft on 16. Same order, lock and leave question (decided 11 Nov 2026) on the collect split 27 (also when opened from 19) and on 19's own MoMo choice: Direct on 61 returns unconfirmed; 62 opens only at Received (27) or Save plan (19); money confirmed on 62 is locked if the save then fails; leaving a draft that holds received MoMo asks the leave question. Back from 16 opened from 55 keeps the parts the same way as from 15.",
+  "MOMO16": "Done on 16, in this order: (1) parts must sum to the total; (2) if a MoMo part exists, confirm it (Direct: 62; Phone request: 56 then 57, setup via 60 if needed); (3) commit once; (4) go to 30. If the request fails go to 59 and keep the draft on 16. Same order, lock and leave question (decided 11 Nov 2026) on the collect split 27 (also when opened from 19) and on 19's own MoMo choice: Direct on 61 returns unconfirmed; 62 opens only at Received (27) or Save plan (19); money confirmed on 62 is locked if the save then fails; leaving a draft that holds received MoMo asks the leave question. Back from 16 opened from 55 keeps the parts the same way as from 15. Leave on Back with received MoMo goes: from 16 to an empty 15, from 27 to Home, from 19 to an empty 15 (Home for a manual debt). While 19 holds received MoMo, Next cycle is disabled (choosing it would drop the money) and the payment-recorded panel shows \"Received\" with a green check or \"not confirmed yet\" under each part.",
   "MOMO27": "Received on 27: if a MoMo part exists, run the MoMo request for that part (56) before recording the collection. Otherwise go to 28.",
   "SEND": "Send the request to Paystack. If the charge asks for a code (status send_otp), go to 58. Otherwise go to 57. (The prototype goes to 58 only when Telecel is chosen.)",
   "MOMOOK": "From 62: the merchant confirms the money arrived (recorded 'MoMo · you confirmed'). From the Paystack flow: charge confirmed (recorded 'MoMo · verified'). Go to 30 for a sale (15, 55, 16) or 28 for a collection (25, 26, 27). From 19: continue the plan commit (31, or 16 in flow=split).",
@@ -271,7 +271,8 @@
     "A MoMo row whose money has been received is locked (decided 11 Nov 2026): when the phone request is verified, or the owner has tapped \"Money received\" on 62 for a Direct MoMo, the row cannot be edited or removed. It shows no pencil and no x, the amount in a plain (non-chip) style, and the status line \"Received\" with a green check. Before the money is confirmed a Direct MoMo row can be edited or removed, and its status line reads \"Customer sends to my number · not confirmed yet\". If a later step fails and the draft returns to 16, the locked rows stay locked. Cash is never locked. If a locked MoMo row exists and the owner leaves the draft (Cancel sale on 59, header Home, or another tab), ask first: \"GH₵{amount} MoMo was already received and will not be recorded. Leave anyway?\" with Stay (default) and Leave. Back from 16 (the on-screen Back and the phone back button) behaves like leaving the draft when a locked MoMo row exists: it asks the same question and only goes to 15 if the owner chooses Leave, in which case the whole draft, including the split parts, is discarded. Never go back to 15 with received money still held in a hidden draft. With no locked row, Back goes to 15 and keeps the split parts in 15's route parameters, so tapping Split payment again reopens 16 with the same Cash, MoMo and Owe parts; if the amount on 15 was changed meanwhile (the total no longer matches the parts) the parts are cleared and 16 starts again with the new total. The draft is cleared as before by Done, header Home or another tab. A Direct MoMo pick is NOT confirmed when it is chosen: it returns to 16 as \"not confirmed yet\" and is confirmed on 62 only after Done, as in MOMO16.",
     "Where Done ends (decided 11 Nov 2026): after the sale is saved, if any money was received today (a Cash or MoMo part above zero) go to 30 Sale recorded, which lists each paid part and a line \"{Name} still owes GH₵x\" for the owed part. If nothing was received today (the whole sale is owed, so the only part is Owe) go to 31 Saved as credit, the same as a plain credit sale from 15. Screen 30 must never refuse a saved sale: if its receipt cannot be built it shows \"Sale saved.\" with a Done button that goes Home.",
     "The draft survives Menu > Settings > Back; header Home discards it.",
-    "Editable amounts must look editable (11 Nov 2026): on every row of the draft that can be changed (Cash and MoMo only) the amount is shown as a tappable chip: light grey background, grey 2px border, the amount in bold 21px and a small green pencil icon on its right, at least 48px tall, with the accessible name \"Edit {Cash|MoMo} amount\". The Owe row (decided 11 Nov 2026) shows the same chip look without a pencil and is not tappable, because the Owe amount always equals Left to pay and carries the customer and plan terms set on 18 and 19; to change it the owner removes it with x and adds Owe again. Tapping the chip (or the row) opens the same editor as today. The remove button (x) stays separate at the far right. Under \"Sale total\" one quiet line: \"Tap an amount to change it.\" A row that cannot be edited shows no pencil. At 360px the chip must not clip GH₵12,345.00 or push the remove button out of the row."
+    "Editable amounts must look editable (11 Nov 2026): on every row of the draft that can be changed (Cash and MoMo only) the amount is shown as a tappable chip: light grey background, grey 2px border, the amount in bold 21px and a small green pencil icon on its right, at least 48px tall, with the accessible name \"Edit {Cash|MoMo} amount\". The Owe row (decided 11 Nov 2026) shows the same chip look without a pencil and is not tappable, because the Owe amount always equals Left to pay and carries the customer and plan terms set on 18 and 19; to change it the owner removes it with x and adds Owe again. Tapping the chip (or the row) opens the same editor as today. The remove button (x) stays separate at the far right. Under \"Sale total\" one quiet line: \"Tap an amount to change it.\" A row that cannot be edited shows no pencil. At 360px the chip must not clip GH₵12,345.00 or push the remove button out of the row.",
+    "Row layout on 16 and 27 (decided 12 Nov 2026), the same at every width (360px, 393px and wider): line 1 = icon, short name (Cash, MoMo, Owe), the amount chip and the x; line 2 = the status text using the full card width (at most 2 lines). Never put the status text in a narrow column beside the chip. Status wording: MoMo not confirmed \"Customer sends · not confirmed yet\"; MoMo confirmed \"Customer sent · received ✓\"; Owe \"{Name} · GH₵{amount} · {frequency} · first payment {dd/mm/yyyy}\"; Cash has no status line."
    ]
   },
   "17": {
@@ -474,7 +475,8 @@
    "rules": [
     "Save plan stays disabled until: each time is above 0 and not above the maximum; amount paid today (if shown) is not above the maximum; a method is chosen when amount paid today is above 0; the next payment date is valid.",
     "Amount paid today equal to the full amount owed settles the debt: record the debt and the payment, save NO plan, balance becomes 0. (Decided by the owner, matches the live app.)",
-    "In flow=split the payment section is hidden because the cash and MoMo parts on 16 already cover today. (Decided by the owner, matches the live app.)"
+    "In flow=split the payment section is hidden because the cash and MoMo parts on 16 already cover today. (Decided by the owner, matches the live app.)",
+    "Wording before and after the money is confirmed (decided 12 Nov 2026): in the draft panel on 19 (and after a failed save) use \"Paying today\" as the heading, \"Paid today\" for the helper text under Amount paid today, and \"Total today\" for the total. A MoMo row that was confirmed on 62 shows \"Received ✓\" in its own status line. The words \"Payment received today\" and \"Total received\" are only used on the result screens (31, 28, 30) after the money has arrived."
    ]
   },
   "20": {
@@ -1042,7 +1044,7 @@
      "to_rule": "Ask how much first (prefilled with Left to pay), then 61 with that amount, same as 16. Returns to 27 with the MoMo part."
     },
     {
-     "label": "Received",
+     "label": "Done",
      "role": null,
      "disabled_initially": true,
      "type": "navigate",
@@ -1055,6 +1057,10 @@
    "bottom_bar": false,
    "decisions": [
     "MoMo opens 61 (not a plain selection), so the chosen MoMo method is recorded."
+   ],
+   "rules": [
+    "Split screens use one ending word (decided 12 Nov 2026): the button on 27 is \"Done\", not \"Received\", because nothing is received until the confirm step. Done continues to 62 for an unconfirmed Direct MoMo part and then saves (28), or, when 27 was opened from 19, returns the parts to 19 and saves nothing.",
+    "Row layout on 27 (same component as 16) (decided 12 Nov 2026), the same at every width (360px, 393px and wider): line 1 = icon, short name (Cash, MoMo, Owe), the amount chip and the x; line 2 = the status text using the full card width (at most 2 lines). Never put the status text in a narrow column beside the chip. Status wording: MoMo not confirmed \"Customer sends · not confirmed yet\"; MoMo confirmed \"Customer sent · received ✓\"; Owe \"{Name} · GH₵{amount} · {frequency} · first payment {dd/mm/yyyy}\"; Cash has no status line."
    ]
   },
   "28": {
@@ -1152,7 +1158,8 @@
    "inputs": [],
    "bottom_bar": false,
    "rules": [
-    "Under the balance, one line about when it is due. Fixed due date and no plan: \"Due 20/11/2026 · In 5 days\" (or \"Due 03/11/2026 · Late 7 days\"; Due today when equal). Installment plan: \"GH₵10.00 every week · next 14/11/2026\" (already built, kept). No date and no plan: nothing. Date through the shared formatter; the In N days and Late wording is the existing wording."
+    "Under the balance, one line about when it is due. Fixed due date and no plan: \"Due 20/11/2026 · In 5 days\" (or \"Due 03/11/2026 · Late 7 days\"; Due today when equal). Installment plan: \"GH₵10.00 every week · next 14/11/2026\" (already built, kept). No date and no plan: nothing. Date through the shared formatter; the In N days and Late wording is the existing wording.",
+    "Plan card (decided 12 Nov 2026): two full-width lines, never wrapped in two columns: \"GH₵{paid} paid · {left} payments left\", then \"Next payment {dd/mm/yyyy}\"."
    ]
   },
   "30": {
@@ -2209,7 +2216,8 @@
    "rules": [
     "Late state button: \"Send reminder on WhatsApp\" (full width) and \"Last reminder: {n} days ago\" from lastReminderAt.",
     "Extra kept: Open debt entries list with \"Correct this entry\". A correction adds a debt_adjustment entry (old and new balance, reason) and lowers the balance in one transaction; raising is refused (\"Use Add to debt\").",
-    "Under the balance, one line about when it is due. Fixed due date and no plan: \"Due 20/11/2026 · In 5 days\" (or \"Due 03/11/2026 · Late 7 days\"; Due today when equal). Installment plan: \"GH₵10.00 every week · next 14/11/2026\" (already built, kept). No date and no plan: nothing. Date through the shared formatter; the In N days and Late wording is the existing wording."
+    "Under the balance, one line about when it is due. Fixed due date and no plan: \"Due 20/11/2026 · In 5 days\" (or \"Due 03/11/2026 · Late 7 days\"; Due today when equal). Installment plan: \"GH₵10.00 every week · next 14/11/2026\" (already built, kept). No date and no plan: nothing. Date through the shared formatter; the In N days and Late wording is the existing wording.",
+    "Plan card (decided 12 Nov 2026): two full-width lines, never wrapped in two columns: \"GH₵{paid} paid · {left} payments left\", then \"Next payment {dd/mm/yyyy}\"."
    ]
   },
   "44": {
@@ -3679,7 +3687,8 @@
   },
   "back_button": {
    "rule": "Every POS screen with a Back button uses the one shared PosBackButton: label \"‹ Back\", bold (800) 18px, 52px tall, 2px #0F172A border, accessible name \"Back\". Where Back sits in a bottom row beside a main button, both have the same height (56px). Button text is bold as in the prototype. Text must never wrap to a third line on a 360px-wide phone; shorten the label or reduce the side padding instead of letting the button grow."
-  }
+  },
+  "person_names": "Person names (customers and suppliers) are shown with a capital first letter everywhere (Juju, Kofi wholesale): 16 Owe row, 17, 18, 24 chips, 30, 31, 43, buttons such as \"WhatsApp Juju\" and \"See Juju's details\", messages and sheets. Use one shared displayName helper. The stored name is not changed."
  },
  "built_extras_kept": {
   "24": "row tags Collected Debt, Balance correction, Added to debt",
