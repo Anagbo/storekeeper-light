@@ -479,7 +479,8 @@
     "Wording before and after the money is confirmed (decided 12 Nov 2026): in the draft panel on 19 (and after a failed save) use \"Paying today\" as the heading, \"Paid today\" for the helper text under Amount paid today, and \"Total today\" for the total. A MoMo row that was confirmed on 62 shows \"Received ✓\" in its own status line. The words \"Payment received today\" and \"Total received\" are only used on the result screens (31, 28, 30) after the money has arrived.",
     "Owe in the draft panel (decided 12 Nov 2026): the rows above \"Total today\" must add up to it, so Owe is never listed among the payment rows. \"Paying today\" lists only Cash and MoMo, then a divider and \"Total today\" (money paid today). Below the total, a separate pink row with a person icon shows the unpaid part: \"Still owed · {Name}\" with the amount on the right. It is not part of the total. If nothing is owed the pink row is not shown. The same rule applies to any panel with a total line on 27, 28, 30 and 31: a total always equals the sum of the rows above it.",
     "Draft survives Back (decided 12 Nov 2026, reported on the phone): in the sale-on-credit flow (15 → 17 → 34/18 → 19 → 27) everything the owner has typed or chosen is kept when they go Back and return, until the sale is saved (Done or Save plan) or the owner leaves with header Home or another tab. Nothing is lost by going one step back and forward. Kept values live in the route parameters, like 15 and 16. On 19 that means How much each time, How often, First payment (Today or Next cycle), Amount paid today, Next payment date and the chosen method or split parts. Opening Split payment (27) from 19 and coming back with Back keeps the 19 values; opening 27 again reopens it with the same Cash and MoMo parts.",
-    "Still owed row, all flows (clarified 12 Nov 2026 after a phone test): the pink \"Still owed · {Name}\" row under \"Total today\" is shown whenever the Paying today panel is shown and something remains owed after today's payment, in every flow, not only when an Owe part sits in a split draft. Amount = the Owed figure at the top of 19 minus the amount paid today (the customer's balance after this sale and today's payment, the same figure screen 31 shows as \"owes\"). Example: sale GH₵8.00 on credit, GH₵2.00 paid today (Cash 1.00 + MoMo 1.00) shows the rows Cash 1.00, MoMo 1.00, Total today GH₵2.00, then the pink row \"Still owed · Kofi Mensah GH₵6.00\". If today's payment settles the whole balance, the pink row is absent."
+    "Still owed row, all flows (clarified 12 Nov 2026 after a phone test): the pink \"Still owed · {Name}\" row under \"Total today\" is shown whenever the Paying today panel is shown and something remains owed after today's payment, in every flow, not only when an Owe part sits in a split draft. Amount = the Owed figure at the top of 19 minus the amount paid today (the customer's balance after this sale and today's payment, the same figure screen 31 shows as \"owes\"). Example: sale GH₵8.00 on credit, GH₵2.00 paid today (Cash 1.00 + MoMo 1.00) shows the rows Cash 1.00, MoMo 1.00, Total today GH₵2.00, then the pink row \"Still owed · Kofi Mensah GH₵6.00\". If today's payment settles the whole balance, the pink row is absent.",
+    "Paying today panel with one method (decided 12 Nov 2026): the panel is shown whenever Amount paid today is above zero and a method is chosen, also for Cash only or MoMo only (one row, then Total today, then the pink Still owed row). Hidden for Next cycle or when nothing is paid today. This keeps the unpaid balance visible in every flow."
    ]
   },
   "20": {
@@ -1010,7 +1011,10 @@
     }
    ],
    "inputs": [],
-   "bottom_bar": false
+   "bottom_bar": false,
+   "rules": [
+    "Wording (decided 12 Nov 2026): the line that shows the balance after this payment is \"Still owed after this\" (not \"Left to pay\", which means what a split still has to cover on 16 and 27), and 28 says \"{Name} still owes GH₵x\" for the same figure."
+   ]
   },
   "27": {
    "name": "Split payment (collect)",
@@ -1101,7 +1105,10 @@
     }
    ],
    "inputs": [],
-   "bottom_bar": false
+   "bottom_bar": false,
+   "rules": [
+    "Never list a payment part with GH₵0.00 (for example no \"MoMo GH₵0.00\" row after a cash-only payment): only parts above zero are shown."
+   ]
   },
   "29": {
    "name": "Debtor detail (on-time state)",
@@ -1193,7 +1200,11 @@
     }
    ],
    "inputs": [],
-   "bottom_bar": false
+   "bottom_bar": false,
+   "rules": [
+    "The owed part of this sale reads \"{Name} owes GH₵x from this sale\" (not \"still owes\"). When the customer had an earlier balance, add one quiet line \"Total owed GH₵y\" under it, the same figure 31 and Home show. On 24 the chip stays \"{Name} owes GH₵x\" because a transaction row describes only that sale.",
+    "Never list a payment part with GH₵0.00 (for example no \"MoMo GH₵0.00\" row after a cash-only payment): only parts above zero are shown."
+   ]
   },
   "31": {
    "name": "Saved as credit",
@@ -1222,7 +1233,10 @@
     }
    ],
    "inputs": [],
-   "bottom_bar": false
+   "bottom_bar": false,
+   "rules": [
+    "Never list a payment part with GH₵0.00 (for example no \"MoMo GH₵0.00\" row after a cash-only payment): only parts above zero are shown."
+   ]
   },
   "32": {
    "name": "People who owe you (tab: Owed)",
@@ -3699,7 +3713,7 @@
   "back_button": {
    "rule": "Every POS screen with a Back button uses the one shared PosBackButton: label \"‹ Back\", bold (800) 18px, 52px tall, 2px #0F172A border, accessible name \"Back\". Where Back sits in a bottom row beside a main button, both have the same height (56px). Button text is bold as in the prototype. Text must never wrap to a third line on a 360px-wide phone; shorten the label or reduce the side padding instead of letting the button grow."
   },
-  "person_names": "Person names (customers and suppliers) are shown capitalised everywhere (Juju, Kofi Mensah, Kofi Wholesale) through one shared displayName helper, without changing the stored name. Rule: when the stored name is all lower case or all upper case, show it in Title Case (first letter of every word capital, the rest lower case): \"kofi mensah\" and \"KOFI MENSAH\" both show \"Kofi Mensah\". A name typed in mixed case (for example \"Nana Yaa\" or \"Kofi McDonald\") is shown as typed with the first letter capital. Applies to 16 Owe row, 17, 18, 19, 24 chips, 30, 31, 43, 32, Home cards, buttons such as \"WhatsApp Kofi Mensah\" and \"See Kofi Mensah's details\", messages, sheets, and the WhatsApp and receipt text.",
+  "person_names": "Person names (customers and suppliers) are shown capitalised everywhere (Juju, Kofi Mensah, Kofi Wholesale) through one shared displayName helper, without changing the stored name. Rule: when the stored name is all lower case or all upper case, show it in Title Case (first letter of every word capital, the rest lower case): \"kofi mensah\" and \"KOFI MENSAH\" both show \"Kofi Mensah\". A name typed in mixed case (for example \"Nana Yaa\" or \"Kofi McDonald\") is shown as typed with the first letter capital. Applies to 16 Owe row, 17, 18, 19, 24 chips, 30, 31, 43, 32, Home cards, buttons such as \"WhatsApp Kofi Mensah\" and \"See Kofi Mensah's details\", messages, sheets, and the WhatsApp and receipt text. Title Case also capitalises the letter after a hyphen: \"FRIMPOMAA-BOATENG\" shows \"Frimpomaa-Boateng\".",
   "draft_survives_trip_away": "Draft survives a trip away (decided 12 Nov 2026), for every form or multi-step task: when the owner goes from a screen to another screen of the same task (to pick, set up, confirm or review something) and returns with Back or the phone back button, everything typed or chosen on the screen they left is still there. This applies to 15, 16, 17 (search text), 19, 20 (items in the cart), 25/26 (collect amount and method), 27, 34, 35 (chosen businesses and categories, also after 51), 44 and 45 (amount, category, stock total, paid now, chosen or typed supplier, pay-by date), 47 (an unsaved Shop name when going to 63, 64 or 71), 53, 55, 60 and 63 (unsaved choices when going to 60). Kept values live in the route parameters. Cleared only by saving or finishing (Done, Save, Save plan), the header Home, another bottom-bar tab, or Leave in the leave question. Not applicable where Back deliberately cancels a standalone form with no trip away (closing a sheet, Cancel on 54, Back from 41 New item with nothing sent elsewhere): those discard as designed."
  },
  "built_extras_kept": {
