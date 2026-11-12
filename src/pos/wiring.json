@@ -3303,7 +3303,11 @@
    "change_request": "2026-11-07 MoMo choice and plan payments",
    "advice_text": "Wait for the MoMo message. Check the amount and the name, and check your MoMo balance, not only the SMS. Then tap Money received.",
    "rules": [
-    "Balance-check wording: check the MoMo balance, not only the SMS."
+    "Balance-check wording: check the MoMo balance, not only the SMS.",
+    "Redesign 12 Nov 2026 (layout and wording only, no behaviour change). Header: Back and the short title \"Customer sends\" on one line at 340px and up (the Back button never wraps its label).",
+    "Order: (1) a green hero card \"Ask the customer to send\" with the amount at 42px bold (formatGhs); (2) a white card \"Send to my number\" with a compact outlined Copy button (accessible name \"Copy number\", 44px, copy icon) on the same line as the label, the number at 34px bold, a small yellow network chip (MTN, Telecel or AirtelTigo) and the name in bold, and the quiet line \"The customer will see this name when they send.\"; (3) an amber-bordered card \"Before you tap Money received\" with three numbered steps (round green number badges, not tick boxes): \"Wait for the MoMo message.\", \"Check that the amount and the name are right.\", \"Check your MoMo balance went up, not only the SMS.\"; (4) a pinned footer with the full-width green \"Money received\" button (60px, check icon) and, under it, the quiet line \"Will be recorded as MoMo · you confirmed.\"",
+    "The footer is pinned: the body scrolls, the Money received button never moves off screen. Tapping Copy shows \"Copied\" for two seconds on the Copy button itself.",
+    "Wording: never say \"Saved\" on this screen, because nothing is saved until Money received is tapped (the line under the button uses \"Will be recorded as\"). When the amount is only the MoMo part of a larger sale (split), add one quiet line under the amount card: \"MoMo part of a GH₵{total} sale\"."
    ]
   },
   "63": {
