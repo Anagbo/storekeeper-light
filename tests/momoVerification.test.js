@@ -202,7 +202,7 @@ test("K8 and owner wording: 56 says MoMo · you confirmed; 62 asks to check the 
   assert.doesNotMatch(payment, /Not verified/);
   assert.match(payment, /Saved as MoMo · you confirmed\./);
   const direct = momoSource.slice(momoSource.indexOf("export function MoMoDirect"), momoSource.indexOf("export function PaymentSettings"));
-  assert.match(direct, /Check your MoMo balance, not only the SMS\./);
+  assert.match(direct, /Check your MoMo balance went up, not only the SMS\./);
 });
 // momoMethod is stored next to momoVerification: "direct" now, "paystack" reserved for verified parts.
 function assertMomoFields(rows, label) {

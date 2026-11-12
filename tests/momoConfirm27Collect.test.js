@@ -120,7 +120,7 @@ test("27 collect: Direct returns to 27 not confirmed and saves nothing; Done ope
   assert.deepEqual(await counts(), before, "nothing saved");
   await app.tap(/^Done$/);
   assert.equal(app.route, "MoMoDirect");
-  assert.match(shown(app), /send GH₵4\.00/);
+  assert.match(shown(app), /send ?GH₵4\.00/);
   await app.tap("Back");
   assert.equal(app.route, "SplitPayment");
   assert.equal(momoOf(app.params.splitParts).verification, undefined);

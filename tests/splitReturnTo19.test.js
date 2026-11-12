@@ -296,7 +296,7 @@ test("27 from 19 through the MoMo tile (editor, 61, 62) then Cash and Done: back
   await waitFor(() => a.state.current === "MoMoDirect", "62 to open");
   a.rerender();
   assert.equal(a.state.current, "MoMoDirect");
-  assert.match(textOf(a.tree), /send GH₵80\.00 to/);
+  assert.match(textOf(a.tree), /Ask the customer to send ?GH₵80\.00/);
   await waitFor(() => { a.rerender(); return !findButton(a.tree, "Money received").props.disabled; }, "62 to load the receiving number");
   await findButton(a.tree, "Money received").props.onClick();
   await waitFor(() => a.state.current === "SplitPayment", "27 to open again");

@@ -82,7 +82,7 @@ test("after a MoMo pick returns, no pick values stay in the params and the row i
   tapMomoTile(mount());
   assert.equal(app.state.params.pendingMomoAmountPesewas, 800);
   const text62 = await confirmDirectOn62(app);
-  assert.match(text62, /send GH₵8\.00/);
+  assert.match(text62, /send ?GH₵8\.00/);
   assert.equal(app.state.current, POS_ROUTES.SplitPayment);
   for (const key of PICK_KEYS) assert.equal(key in app.state.params, false, `${key} is gone from the params`);
   assert.equal(app.state.params.splitParts.length, 1);

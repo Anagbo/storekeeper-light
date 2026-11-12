@@ -70,7 +70,7 @@ async function splitWithReceivedMomo(app) {
   assert.equal(app.route, "SplitPayment", "18 Save in flow=split returns to 16");
   await app.tap(/^Done$/);
   assert.equal(app.route, "MoMoDirect", "Done opens 62");
-  assert.match(shown(app), /send GH₵2.00/);
+  assert.match(shown(app), /send ?GH₵2.00/);
   // The screens load their own copy of db.js, so the write is failed in IndexedDB itself (shared).
   const store = globalThis.IDBObjectStore.prototype;
   const original = { add: store.add, put: store.put };

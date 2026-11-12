@@ -86,7 +86,7 @@ test("16: Done opens 62; Money received saves the sale once and lands on 30, nev
   await pickDirect(app);
   await app.tap(/^Done$/);
   assert.equal(app.route, "MoMoDirect", "Done opens 62 for the unconfirmed Direct part");
-  assert.match(shown(app), /send GH₵4\.00/);
+  assert.match(shown(app), /send ?GH₵4\.00/);
   assert.equal((await db.transactions.toArray()).length, 0, "nothing saved before Money received");
   await app.tap(/^Money received$/);
   assert.equal(app.route, "SaleRecorded");

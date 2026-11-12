@@ -95,7 +95,7 @@ test("GH₵60: Cash 20, then MoMo opens the editor at GH₵40; 20 goes to 61 and
   typeAndSave(view, "20.00");
   assert.equal(app.state.current, POS_ROUTES.MoMoChoice);
   assert.equal(app.state.params.pendingMomoAmountPesewas, 2000);
-  assert.match(await run61And62(app), /send GH₵20\.00/);
+  assert.match(await run61And62(app), /send ?GH₵20\.00/);
   assert.equal(app.state.current, POS_ROUTES.SplitPayment);
   view = mount();
   assert.match(textOf(view.tree), /MoMoGH₵20.00Customer sent · received ✓/);
@@ -112,7 +112,7 @@ test("GH₵8.00: MoMo asks how much; 4.00 is what 62 asks for; Cash 4.00 complet
   openEditor(view, "MoMo");
   assert.equal(editorInput(view.tree).props.value, "8.00");
   typeAndSave(view, "4.00");
-  assert.match(await run61And62(app), /send GH₵4\.00/);
+  assert.match(await run61And62(app), /send ?GH₵4\.00/);
   view = mount();
   tileOf(view.tree, "Cash").props.onClick();
   view.rerender();

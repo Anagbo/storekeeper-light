@@ -691,7 +691,8 @@ export default function PosApp() {
     <div className="pos-app min-h-screen max-w-full overflow-x-hidden bg-white text-slate-950" style={POS_THEME.cssVariables}>
       <PosHeader
         shopName={shopName}
-        statusLabel={getStatusLabel(sync)}
+        // Wiring 62: never "Saved" on Customer sends (nothing is recorded before Money received).
+        statusLabel={route === POS_ROUTES.MoMoDirect ? "" : getStatusLabel(sync)}
         onHome={() => switchTab(POS_ROUTES.Home)}
         onMenu={openMenu}
         menuActive={route === POS_ROUTES.Menu}

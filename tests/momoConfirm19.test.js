@@ -112,7 +112,7 @@ test("19 MoMo: Direct returns to 19 not confirmed and saves nothing; Save plan o
   assert.deepEqual(await counts(), before);
   await app.tap(/^Save plan$/);
   assert.equal(app.route, "MoMoDirect", "Save plan opens 62");
-  assert.match(shown(app), /send GH₵3\.00/);
+  assert.match(shown(app), /send ?GH₵3\.00/);
   await app.tap("Back");
   assert.equal(app.route, "ALittleAtATime");
   assert.deepEqual(await counts(), before, "Back on 62 saves nothing");
@@ -213,7 +213,7 @@ test("27 from 19: Direct returns to 27 not confirmed; Done returns to 19 with no
   assert.match(shown(app), /not confirmed yet/);
   await app.tap(/^Save plan$/);
   assert.equal(app.route, "MoMoDirect");
-  assert.match(shown(app), /send GH₵2\.00/);
+  assert.match(shown(app), /send ?GH₵2\.00/);
   await app.tap("Back");
   assert.equal(app.route, "ALittleAtATime");
   assert.deepEqual(await counts(), before, "Back on 62 saves nothing");

@@ -87,7 +87,7 @@ test("47 MoMo payments opens 63; saving a number goes back to 47; 62 Money recei
   flushEffects(direct);
   await settled(direct);
   assert.equal(findButton(direct.tree, "Money received").props.disabled, false, "on once a number is saved");
-  assert.match(textOf(direct.tree), /0241234567/);
+  assert.match(textOf(direct.tree), /024 123 4567/);
   assert.doesNotMatch(textOf(direct.tree), /Set your MoMo number in Settings first/);
 });
 

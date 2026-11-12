@@ -88,23 +88,81 @@ export function MoMoDirect({ params = {}, onBack, onConfirm, onPick }) {
     }
   }
   useEffect(() => { getMerchantMomoSettings().then(setSettings).catch((error) => console.error("Could not load receiving settings.", error)); }, []);
+  // Copy shows "Copied" on the button itself for two seconds (wiring 62).
+  const copiedTimer = useRef(null);
+  useEffect(() => () => clearTimeout(copiedTimer.current), []);
   async function copyNumber() {
     if (!settings.number) return;
-    try { await navigator.clipboard.writeText(settings.number); setCopied(true); } catch (error) { console.error("Could not copy MoMo number.", error); }
+    try {
+      await navigator.clipboard.writeText(settings.number);
+      setCopied(true);
+      clearTimeout(copiedTimer.current);
+      copiedTimer.current = setTimeout(() => setCopied(false), 2000);
+    } catch (error) { console.error("Could not copy MoMo number.", error); }
   }
-  return <PosPage className="flex flex-col gap-3">
-    <BackTitle title="Customer sends to me" onBack={onBack} />
-    <p className="text-lg font-bold">Ask the customer to send {formatGhs(paymentAmountPesewas)} to</p>
-    <PosCard><p className="text-[32px] font-extrabold">{settings.number || "—"}</p><p className="text-lg font-semibold">{settings.network || "—"}</p></PosCard>
-    <PosSecondaryButton type="button" onClick={() => void copyNumber()}><Copy size={20} aria-hidden="true" />Copy number</PosSecondaryButton>
-    {copied && <p role="status">Number copied.</p>}
-    <p className="text-base font-semibold">Wait for the MoMo message. Check the amount and the name before you tap. Check your MoMo balance, not only the SMS.</p>
-    {saveError && <p role="alert" className="text-base font-bold text-rose-900">{saveError}</p>}
-    <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => void confirmReceived()} />
+  // A sale split: the amount is only the MoMo part of the sale (wiring 62).
+  const saleTotalPesewas = params.confirmFor === "sale16"
+    ? (Number.isSafeInteger(params.splitTotalPesewas) ? params.splitTotalPesewas : params.amountPesewas)
+    : null;
+  const isSalePart = Number.isSafeInteger(saleTotalPesewas) && saleTotalPesewas > paymentAmountPesewas;
+  // The name customers see when they send: no MoMo account name is stored yet, so the name and its
+  // line show only once one is known (owner question, 12 Nov 2026).
+  const accountName = settings.accountName ?? "";
+  const steps = ["Wait for the MoMo message.", "Check that the amount and the name are right.", "Check your MoMo balance went up, not only the SMS."];
+  // Layout and wording only (redesign 12 Nov 2026). Never "Saved" here: nothing is recorded until
+  // Money received is tapped. The body scrolls; the footer with Money received is pinned.
+  return <PosPage className="flex flex-col gap-3 !pb-40">
+    <div className="flex items-center gap-3"><PosBackButton onClick={onBack} /><h1 className="min-w-0 text-2xl font-extrabold leading-tight">Customer sends</h1></div>
+    <section className="amount-fit-container rounded-[20px] bg-emerald-900 px-[18px] py-3.5 text-white">
+      <p className="text-[17px] font-bold">Ask the customer to send</p>
+      {/* 42px; only an amount too long for a narrow phone shrinks to fit the card. */}
+      <p className="mt-0.5 overflow-hidden whitespace-nowrap text-[42px] font-extrabold leading-[1.1]" style={{ fontSize: heroAmountSize(formatGhs(paymentAmountPesewas)) }}>{formatGhs(paymentAmountPesewas)}</p>
+    </section>
+    {isSalePart && <p className="-mt-1 text-base font-medium text-slate-600">MoMo part of a {formatGhs(saleTotalPesewas)} sale</p>}
+    <section className="flex flex-col gap-1.5 rounded-[18px] border-2 border-slate-300 bg-white px-3.5 py-3">
+      <div className="flex items-center justify-between gap-2">
+        <span className="min-w-0 text-[17px] font-bold text-slate-600">Send to my number</span>
+        <button type="button" aria-label="Copy number" disabled={!settings.number} onClick={() => void copyNumber()} className="flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border-2 border-slate-900 bg-white px-3.5 text-[17px] font-extrabold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:opacity-50">
+          {copied ? <Check size={20} aria-hidden="true" /> : <Copy size={20} aria-hidden="true" />}{copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <p className="whitespace-nowrap text-[34px] font-extrabold leading-tight tracking-[0.5px] text-slate-900">{formatPhoneForReading(settings.number) || "—"}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        {settings.network && <span className="rounded-[10px] bg-amber-200 px-2.5 py-0.5 text-base font-extrabold text-slate-900">{settings.network}</span>}
+        {accountName && <span className="min-w-0 text-[19px] font-bold">{accountName}</span>}
+      </div>
+      {accountName && <p className="text-[15px] text-slate-600">The customer will see this name when they send.</p>}
+    </section>
+    <section className="flex flex-col gap-3 rounded-[18px] border-2 border-amber-500 bg-amber-50 p-3.5">
+      <h2 className="text-lg font-extrabold">Before you tap Money received</h2>
+      <ol className="flex flex-col gap-3">
+        {steps.map((step, index) => <li key={step} className="flex items-start gap-3">
+          <span aria-hidden="true" className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full bg-emerald-900 text-[17px] font-extrabold text-white">{index + 1}</span>
+          <span className="min-w-0 pt-0.5 text-lg font-semibold leading-snug">{step}</span>
+        </li>)}
+      </ol>
+    </section>
     {!settings.number && <p role="status" className="text-base font-bold text-rose-900">Set your MoMo number in Settings first: Menu › Settings › MoMo payments.</p>}
-    <PosPrimaryButton type="button" disabled={saving || !settings.number} onClick={() => void confirmReceived()}><Check size={28} aria-hidden="true" />Money received</PosPrimaryButton>
-    <p className="text-sm font-medium">Saved as MoMo · you confirmed.</p>
+    <div className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t-2 border-slate-300 bg-white px-4 pt-2.5 lg:left-60">
+      <div className="mx-auto flex max-w-3xl flex-col items-center gap-1.5">
+        {saveError && <p role="alert" className="w-full text-base font-bold text-rose-900">{saveError}</p>}
+        <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => void confirmReceived()} />
+        <PosPrimaryButton type="button" disabled={saving || !settings.number} onClick={() => void confirmReceived()} className="h-[60px] min-h-0 rounded-[18px] text-[21px]"><Check size={26} aria-hidden="true" />Money received</PosPrimaryButton>
+        <p className="text-[15px] font-medium text-slate-600">Will be recorded as MoMo · you confirmed.</p>
+      </div>
+    </div>
   </PosPage>;
+}
+
+// The hero amount at 42px, or smaller when its text would not fit the card width (cqi).
+function heroAmountSize(text) {
+  return `min(42px, ${(100 / (text.length * 0.66)).toFixed(1)}cqi)`;
+}
+
+// 0241234567 -> 024 123 4567, for reading out (Copy keeps the digits as stored).
+function formatPhoneForReading(number = "") {
+  const digits = String(number);
+  return /^\d{10}$/.test(digits) ? `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}` : digits;
 }
 
 export function PaymentSettings({ params = {}, onBack, onNavigate, onUpdateParams }) {

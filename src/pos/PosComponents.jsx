@@ -13,7 +13,7 @@ export function PosHeader({ shopName, statusLabel, onHome, onMenu, menuActive = 
           <HomeIcon size={28} aria-hidden="true" />
         </button>
         <p className="min-w-0 flex-1 truncate text-lg font-extrabold text-slate-900">{shopName}</p>
-        <p className="flex shrink-0 items-center gap-1 text-sm font-bold text-emerald-900"><Check size={16} aria-hidden="true" />{statusLabel}</p>
+        {statusLabel && <p className="flex shrink-0 items-center gap-1 text-sm font-bold text-emerald-900"><Check size={16} aria-hidden="true" />{statusLabel}</p>}
         {!hideMenu && (
           <button type="button" onClick={onMenu} aria-label={menuActive ? t("nav.menuClose") : t("nav.menu")} aria-current={menuActive ? "page" : undefined} className="flex min-h-12 items-center gap-1.5 rounded-[14px] border-2 border-slate-900 px-3 text-base font-extrabold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">
             <MenuIcon size={26} aria-hidden="true" /> {t("nav.menu")}
