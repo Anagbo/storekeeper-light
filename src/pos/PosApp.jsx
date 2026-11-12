@@ -477,6 +477,8 @@ export default function PosApp() {
       onOpenBackup={() => navigate(POS_ROUTES.BackupRestore)}
       onOpenMomoSettings={() => navigate(POS_ROUTES.PaymentSettings)}
       onOpenPlan={() => navigate(POS_ROUTES.MyPlan)}
+      params={routeState.params}
+      onUpdateParams={updateCurrentParams}
       subscriptionEnabled={FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE}
       hasActiveSubscription={hasActiveSubscription}
       subscriptionExpiry={subscriptionExpiry}

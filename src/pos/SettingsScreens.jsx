@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CreditCard, Database, Smartphone } from "lucide-react";
 import { getPreference, setPreference } from "../db/preferences.js";
 import { formatDate } from "../lib/formatDate.js";
@@ -57,6 +57,8 @@ export function SettingsProfitTools({
   onOpenBackup,
   onOpenMomoSettings,
   onOpenPlan,
+  params = {},
+  onUpdateParams,
   subscriptionEnabled = false,
   hasActiveSubscription = false,
   subscriptionExpiry = "",
@@ -67,14 +69,20 @@ export function SettingsProfitTools({
   // placeholder. A caller that only passes shopName (the name in the header) starts with that name.
   const startingName = savedShopName ?? shopName;
   const [savedName, setSavedName] = useState(startingName);
-  const [draft, setDraft] = useState(startingName);
+  // draft_survives_trip_away: an unsaved Shop name is also kept in the route params (shopNameDraft), so
+  // 63, 64 or 71 and Back show it again with Save still green. Save, Home or a tab drop it.
+  const [draft, setDraft] = useState(params.shopNameDraft ?? startingName);
+  const shownStartingName = useRef(startingName);
   // One switch hides the Estimated profit card on My money (33). It is on by default.
   const [showProfit, setShowProfit] = useState(true);
   const [momoSetUp, setMomoSetUp] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
 
+  // A new saved name (from the header, or Save) resets the field; mounting again does not.
   useEffect(() => {
+    if (shownStartingName.current === startingName) return;
+    shownStartingName.current = startingName;
     setSavedName(startingName);
     setDraft(startingName);
   }, [startingName]);
@@ -113,6 +121,7 @@ export function SettingsProfitTools({
       onShopNameChange(cleanName);
       setSavedName(cleanName);
       setDraft(cleanName);
+      onUpdateParams?.({ shopNameDraft: undefined });
       setError("");
       setSaved(true);
     } catch (saveError) {
@@ -140,7 +149,7 @@ export function SettingsProfitTools({
         <form onSubmit={saveShopName} className="flex items-end gap-2 px-4 py-3">
           <label className="block min-w-0 flex-1">
             <span className="mb-1 block text-base font-extrabold">{t("settings.shopName")}</span>
-            <input maxLength={60} value={draft} placeholder={t("app.defaultShopName")} onChange={(event) => { setDraft(event.target.value); setSaved(false); }} className="h-12 w-full rounded-xl border-2 border-slate-500 px-3 text-lg placeholder:text-slate-500" />
+            <input maxLength={60} value={draft} placeholder={t("app.defaultShopName")} onChange={(event) => { setDraft(event.target.value); onUpdateParams?.({ shopNameDraft: event.target.value }); setSaved(false); }} className="h-12 w-full rounded-xl border-2 border-slate-500 px-3 text-lg placeholder:text-slate-500" />
           </label>
           {/* Grey while there is nothing to save, green (#03543F) with white bold text once the name changes. */}
           <button
