@@ -5,7 +5,7 @@ import { displayName } from "../lib/displayName.js";
 
 // Row status on 16 and 27 (wiring "Row layout on 16 and 27", 12 Nov 2026): MoMo not confirmed
 // "Customer sends · not confirmed yet", MoMo received "Customer sent · received ✓", Owe
-// "{Name} · GH₵{amount} · {frequency} · first payment {dd/mm/yyyy}". Cash has no status line.
+// "{Name} · GH₵{amount} {every week | every 2 weeks | every month} · first payment {dd/mm/yyyy}". Cash has no status line.
 export function describeSplitPart(part, params = {}) {
   if (part?.paymentMethod === "momo") {
     if (isLockedMomoRow(part)) return t("split.receivedRow");
@@ -19,8 +19,10 @@ export function describeSplitPart(part, params = {}) {
   const plan = params.installmentPlan?.isInstallmentPlan ? params.installmentPlan : null;
   return [
     name,
-    plan && Number.isSafeInteger(plan.installmentAmount) ? formatGhs(plan.installmentAmount) : "",
-    plan ? t(`credit.frequency.${plan.frequency}`) : "",
+    plan ? [
+      Number.isSafeInteger(plan.installmentAmount) ? formatGhs(plan.installmentAmount) : "",
+      t(`split.every.${plan.frequency}`)
+    ].filter(Boolean).join(" ") : "",
     oweWhenLabel(plan, params)
   ].filter(Boolean).join(" · ");
 }

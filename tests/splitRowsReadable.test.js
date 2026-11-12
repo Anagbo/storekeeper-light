@@ -7,7 +7,7 @@ import { loadJsx, render, walk, textOf } from "./helpers/renderJsx.js";
 // must read (the person, the terms, the first payment date), so they keep the same text colour as
 // Cash and MoMo. Only a saving screen (busy) dims every row.
 
-const OWE_DETAIL = "Ama · GH₵1.00 · Every week · First payment 07/03/2099";
+const OWE_DETAIL = "Ama · GH₵1.00 every week · First payment 07/03/2099";
 const parts = [
   { paymentMethod: "cash", amountPesewas: 200 },
   { paymentMethod: "momo", amountPesewas: 400, momoMethod: "paystack", verification: "verified", confirmedPesewas: 400 },

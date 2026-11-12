@@ -99,11 +99,11 @@ test("16/27 status wording for each state", () => {
   assert.equal(describeSplitPart({ paymentMethod: "momo", amountPesewas: 100, momoMethod: "direct" }), "Customer sends · not confirmed yet");
   assert.equal(describeSplitPart({ paymentMethod: "momo", amountPesewas: 100, momoMethod: "direct", verification: "merchant_confirmed" }), "Customer sent · received ✓");
   assert.equal(describeSplitPart({ paymentMethod: "momo", amountPesewas: 100, momoMethod: "paystack", verification: "verified" }), "Customer sent · received ✓");
-  assert.equal(describeSplitPart({ paymentMethod: "owe", amountPesewas: 100 }, OWE_PARAMS), "Juju · GH₵10.00 · Every week · first payment 19/11/2026");
+  assert.equal(describeSplitPart({ paymentMethod: "owe", amountPesewas: 100 }, OWE_PARAMS), "Juju · GH₵10.00 every week · first payment 19/11/2026");
   // A plan that starts today names today as its first payment (19 passes the date it chose).
   assert.equal(
     describeSplitPart({ paymentMethod: "owe", amountPesewas: 100 }, { ...OWE_PARAMS, firstPaymentDate: "2026-11-12" }),
-    "Juju · GH₵10.00 · Every week · first payment 12/11/2026"
+    "Juju · GH₵10.00 every week · first payment 12/11/2026"
   );
 });
 

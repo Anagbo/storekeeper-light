@@ -119,7 +119,7 @@ test("Home, 32 Owed, 17, 18, 31, the contact sheet and 43 show Juju and Junior; 
 
 test("16 and 27: the Owe row names the person with a capital", () => {
   const params = { customer: { name: "junior" }, installmentPlan: { isInstallmentPlan: true, installmentAmount: 500, frequency: "weekly", nextDueDate: "2026-11-19" } };
-  assert.equal(describeSplitPart({ paymentMethod: "owe", amountPesewas: 700 }, params), "Junior · GH₵5.00 · Every week · first payment 19/11/2026");
+  assert.equal(describeSplitPart({ paymentMethod: "owe", amountPesewas: 700 }, params), "Junior · GH₵5.00 every week · first payment 19/11/2026");
   assert.equal(params.customer.name, "junior");
 });
 
