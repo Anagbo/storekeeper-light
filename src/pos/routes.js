@@ -257,10 +257,71 @@ export function backRoute(state, fallback = POS_ROUTES.Home) {
   // Wiring 16 (11 Nov 2026): Back from 16 to 15 (or to 55, MOMO16) keeps the split draft (parts, and the Owe customer
   // and terms) in 15's route params, so Split payment can reopen it. Received MoMo never gets here:
   // Back with a locked row asks first and Leave goes to an empty 15 (PosApp backFromScreen).
-  const params = (previous.current === POS_ROUTES.Sell || previous.current === POS_ROUTES.ReviewAndPay) && isSaleSplitHubScreen(state)
+  let params = (previous.current === POS_ROUTES.Sell || previous.current === POS_ROUTES.ReviewAndPay) && isSaleSplitHubScreen(state)
     ? { ...previous.params, splitDraft: getSplitDraft(state.params) }
     : previous.params;
+  // Wiring 27 (12 Nov 2026): Back from 27 opened from 19 keeps the Cash and MoMo parts in 19's
+  // route params; Split payment on 19 reopens them while Amount paid today is unchanged.
+  if (previous.current === POS_ROUTES.ALittleAtATime && state.current === POS_ROUTES.SplitPayment && state.params?.installmentSplit) {
+    params = { ...params, installmentSplitDraft: getInstallmentSplitDraft(state.params) };
+  }
+  params = keepDraftOnBack(state, params);
   return { current: previous.current, params, history: state.history.slice(0, -1) };
+}
+
+// The parts on 27 opened from 19, with the amount they split. Nothing typed: no draft.
+function getInstallmentSplitDraft(params = {}) {
+  const splitParts = Array.isArray(params.splitParts) ? params.splitParts : [];
+  if (!splitParts.length || !Number.isSafeInteger(params.splitTotalPesewas)) return undefined;
+  return { totalPesewas: params.splitTotalPesewas, splitParts };
+}
+
+// draft_survives_trip_away (decided 12 Nov 2026): what each screen keeps in its route params while
+// the owner types or chooses. Back from the screen hands these to the screen below (keptDrafts), and
+// opening the same screen again in the same task puts them back (navigateState). A fresh stack (Home,
+// a tab, a result screen, Leave) has no keptDrafts, so a new task starts empty.
+export const KEPT_ON_BACK = Object.freeze({
+  [POS_ROUTES.NewPerson]: ["newPersonName", "newPersonPhone", "newPersonGhanaCard", "newPersonAmount"],
+  [POS_ROUTES.WhenWillTheyPay]: ["creditDueChoice"],
+  [POS_ROUTES.ALittleAtATime]: ["installmentAmount", "frequency", "startToday", "nextDueDate", "todayPaymentAmount", "paymentMethod", "momoMethod", "installmentSplitDraft"]
+});
+
+// The same task: the same amount and customer, the same kind of flow. A different customer or
+// amount starts the screen empty, as 16 does when the total changed.
+function draftTaskKey(params = {}) {
+  const customer = params.customer?.nameLower ?? params.customer?.name?.trim().toLowerCase() ?? null;
+  return JSON.stringify([params.amountPesewas ?? null, customer, params.flow ?? null, Boolean(params.manualDebt), params.initialPaymentPesewas ?? null]);
+}
+
+function pickDraft(route, params = {}) {
+  const draft = {};
+  for (const key of KEPT_ON_BACK[route] ?? []) if (params[key] !== undefined) draft[key] = params[key];
+  // 19's own MoMo choice once received is locked and never travels in a kept draft (Back from 19
+  // with it asks first and Leave drops the draft).
+  if (route === POS_ROUTES.ALittleAtATime && draft.paymentMethod === "momo" && isLockedMomoRow({ paymentMethod: "momo", verification: params.verification })) {
+    delete draft.paymentMethod;
+    delete draft.momoMethod;
+  }
+  return draft;
+}
+
+function keepDraftOnBack(state, previousParams = {}) {
+  const leaving = state.params ?? {};
+  const kept = { ...(previousParams.keptDrafts ?? {}), ...(leaving.keptDrafts ?? {}) };
+  if (KEPT_ON_BACK[state.current]) {
+    const draft = pickDraft(state.current, leaving);
+    if (Object.keys(draft).length) kept[state.current] = { key: draftTaskKey(leaving), draft };
+    else delete kept[state.current];
+  }
+  if (!Object.keys(kept).length) return previousParams;
+  return { ...previousParams, keptDrafts: kept };
+}
+
+// Opening a screen again in the same task: its kept draft comes back into its params.
+export function withKeptDraft(route, params = {}) {
+  const kept = params.keptDrafts?.[route];
+  if (!kept || kept.key !== draftTaskKey(params)) return params;
+  return { ...params, ...kept.draft };
 }
 
 // 16's params as a draft 15 can hand back: no MoMo pick leftovers and no one-shot commit flag.
@@ -310,7 +371,9 @@ export function getReceivedMomoOnScreen(entry = {}) {
   if (entry.current === POS_ROUTES.ALittleAtATime) {
     const single = params.paymentMethod === "momo" && isLockedMomoRow({ paymentMethod: "momo", verification: params.verification }) &&
       Number.isSafeInteger(params.momoConfirmedPesewas) ? params.momoConfirmedPesewas : 0;
-    return lockedTotal(getCarriedPaymentParts(params)) + single;
+    // Parts kept from 27 after Back (wiring 27): a received MoMo part there stays locked and asks too.
+    const keptSplit = Array.isArray(params.installmentSplitDraft?.splitParts) ? params.installmentSplitDraft.splitParts : [];
+    return lockedTotal(getCarriedPaymentParts(params)) + single + lockedTotal(keptSplit);
   }
   if (entry.current !== POS_ROUTES.SplitPayment || params.installmentSplit) return 0;
   return lockedTotal(Array.isArray(params.splitParts) ? params.splitParts : []);
@@ -400,7 +463,7 @@ export function navigateState(state, route, params = {}) {
   if (route === POS_ROUTES.Home) return createRouteState(POS_ROUTES.Home);
   if (route === POS_ROUTES.Menu) return openMenuState(state);
   if (RESULT_ROUTES.includes(route)) return createRouteState(route, params);
-  return pushRoute(state, route, params);
+  return pushRoute(state, route, withKeptDraft(route, params));
 }
 
 // Screens whose on-screen Back (or Close) goes to Home rather than one step back.

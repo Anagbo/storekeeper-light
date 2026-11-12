@@ -160,15 +160,18 @@ function WhoOwesYou({ params, onBack, onNavigate }) {
   );
 }
 
-function NewPerson({ params, onBack, onNavigate }) {
+function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
   const amountOwedPesewas = getCreditAmountOwedPesewas(params);
   const isAmountDerivedFromSale = !params.manualDebt &&
     Number.isSafeInteger(params.initialPaymentPesewas) &&
     params.initialPaymentPesewas > 0;
-  const [amount, setAmount] = useState(params.manualDebt ? "" : amountInputValue(amountOwedPesewas));
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [ghanaCardNumber, setGhanaCardNumber] = useState("");
+  // Wiring 34 "Draft survives Back" (12 Nov 2026): what is typed is also kept in the route params
+  // (newPerson*), so Next > 18 > Back (or Back from 19) shows it again. The error box is local
+  // state: it shows only after Next with a problem, never on a returning form.
+  const [amount, setAmount] = useState(params.newPersonAmount ?? (params.manualDebt ? "" : amountInputValue(amountOwedPesewas)));
+  const [name, setName] = useState(params.newPersonName ?? "");
+  const [phone, setPhone] = useState(params.newPersonPhone ?? "");
+  const [ghanaCardNumber, setGhanaCardNumber] = useState(params.newPersonGhanaCard ?? "");
   const [error, setError] = useState("");
   // Someone who already owes under the name typed here: the debt is added to theirs (the writers
   // find it by name), so say so, and carry what they owe so 19 sizes the plan on the whole balance.
@@ -235,12 +238,12 @@ function NewPerson({ params, onBack, onNavigate }) {
       <form onSubmit={continueWithNewCustomer} className="flex flex-1 flex-col gap-3">
         <label className="block">
           <span className="mb-1 block font-extrabold">{params.manualDebt ? "Amount owed later" : t("credit.amountOwed")}</span>
-          <input type="number" min="0.01" step="0.01" inputMode="decimal" value={amount} disabled={isAmountDerivedFromSale} onChange={(event) => setAmount(event.target.value)} className="h-14 w-full rounded-2xl border-[3px] border-rose-900 bg-rose-100 px-4 text-2xl font-extrabold text-rose-950 disabled:cursor-not-allowed disabled:opacity-70" />
+          <input type="number" min="0.01" step="0.01" inputMode="decimal" value={amount} disabled={isAmountDerivedFromSale} onChange={(event) => { setAmount(event.target.value); onUpdateParams?.({ newPersonAmount: event.target.value }); }} className="h-14 w-full rounded-2xl border-[3px] border-rose-900 bg-rose-100 px-4 text-2xl font-extrabold text-rose-950 disabled:cursor-not-allowed disabled:opacity-70" />
           <span className="text-sm text-slate-700">{params.manualDebt ? "You will enter the amount next." : t("credit.fromThisSale")}</span>
         </label>
         <label className="block">
           <span className="mb-1 block font-extrabold">{t("credit.name")}</span>
-          <input autoComplete="name" placeholder={t("credit.namePlaceholder")} value={name} onChange={(event) => setName(event.target.value)} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />
+          <input autoComplete="name" placeholder={t("credit.namePlaceholder")} value={name} onChange={(event) => { setName(event.target.value); onUpdateParams?.({ newPersonName: event.target.value }); }} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />
           <span className="text-sm text-slate-700">{t("credit.nameHint")}</span>
           {existingDebtor && (
             <span role="status" className="mt-1 block rounded-xl border-2 border-amber-700 bg-amber-100 p-2 text-sm font-semibold text-amber-950">
@@ -250,12 +253,12 @@ function NewPerson({ params, onBack, onNavigate }) {
         </label>
         <label className="block">
           <span className="mb-1 block font-extrabold">{t("credit.phone")}</span>
-          <input type="tel" inputMode="tel" autoComplete="tel" placeholder={t("credit.phonePlaceholder")} value={phone} onChange={(event) => { setPhone(event.target.value); setError(""); }} aria-invalid={phoneInvalid} aria-describedby="new-person-phone-hint" className={`h-14 w-full rounded-2xl border-[3px] px-3 text-lg ${phoneInvalid ? "border-rose-900" : "border-slate-500"}`} />
+          <input type="tel" inputMode="tel" autoComplete="tel" placeholder={t("credit.phonePlaceholder")} value={phone} onChange={(event) => { setPhone(event.target.value); onUpdateParams?.({ newPersonPhone: event.target.value }); setError(""); }} aria-invalid={phoneInvalid} aria-describedby="new-person-phone-hint" className={`h-14 w-full rounded-2xl border-[3px] px-3 text-lg ${phoneInvalid ? "border-rose-900" : "border-slate-500"}`} />
           <span id="new-person-phone-hint" className={`text-sm ${phoneInvalid ? "text-rose-900" : "text-slate-700"}`}>{phoneInvalid ? t("contact.invalidPhone") : t("credit.phoneHint")}</span>
         </label>
         <label className="block">
           <span className="mb-1 block font-extrabold">{t("credit.ghanaCard")}</span>
-          <input autoCapitalize="characters" maxLength="15" placeholder={t("credit.ghanaCardPlaceholder")} value={ghanaCardNumber} onChange={(event) => setGhanaCardNumber(formatGhanaCard(event.target.value))} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />
+          <input autoCapitalize="characters" maxLength="15" placeholder={t("credit.ghanaCardPlaceholder")} value={ghanaCardNumber} onChange={(event) => { const formatted = formatGhanaCard(event.target.value); setGhanaCardNumber(formatted); onUpdateParams?.({ newPersonGhanaCard: formatted }); }} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />
           <span className="text-sm text-slate-700">{t("credit.ghanaCardHint")}</span>
         </label>
         {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
@@ -265,7 +268,7 @@ function NewPerson({ params, onBack, onNavigate }) {
   );
 }
 
-function WhenWillTheyPay({ params, onBack, onNavigate, onReturnToSplit, onSaveCredit }) {
+function WhenWillTheyPay({ params, onBack, onNavigate, onUpdateParams, onReturnToSplit, onSaveCredit }) {
   const [dueChoice, setDueChoice] = useState(params.creditDueChoice ?? "week");
   const [saving, setSaving] = useState(false);
   useBackBlock(saving);
@@ -318,7 +321,7 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onReturnToSplit, onSaveCr
     <PosPage className="flex flex-col gap-3">
       <h1 className="text-2xl font-extrabold">{t("credit.whenPay", { name: customerName })}</h1>
       {choices.map((choice) => (
-        <button key={choice.value} type="button" aria-pressed={dueChoice === choice.value} onClick={() => setDueChoice(choice.value)} className={`min-h-[68px] rounded-2xl border-[3px] px-4 text-xl font-extrabold ${dueChoice === choice.value ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>
+        <button key={choice.value} type="button" aria-pressed={dueChoice === choice.value} onClick={() => { setDueChoice(choice.value); onUpdateParams?.({ creditDueChoice: choice.value }); }} className={`min-h-[68px] rounded-2xl border-[3px] px-4 text-xl font-extrabold ${dueChoice === choice.value ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>
           {choice.label}
         </button>
       ))}
@@ -596,10 +599,17 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
       setError(t("credit.paymentTodayRequired"));
       return;
     }
+    // Wiring 27: the parts kept after Back from 27 come back while Amount paid today is unchanged;
+    // a changed amount clears them and 27 starts again with the new amount.
+    const kept = params.installmentSplitDraft;
+    const keptParts = kept?.totalPesewas === todayPaymentPesewas ? kept.splitParts : [];
+    if (kept && !keptParts.length) onUpdateParams?.({ installmentSplitDraft: undefined });
     onNavigate("SplitPayment", {
       ...params,
       paymentMethod: "split",
       installmentSplit: true,
+      installmentSplitDraft: undefined,
+      splitParts: keptParts,
       splitTotalPesewas: todayPaymentPesewas,
       todayPaymentAmount: todayPaymentInput,
       installmentAmount,
@@ -959,8 +969,8 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
 
 export default function CreditScreens({ route, params, onBack, onNavigate, onUpdateParams, onReturnToSplit, onSaveCredit, onSaveCustomerContact, onHome, shopName }) {
   if (route === "WhoOwesYou") return <WhoOwesYou params={params} onBack={onBack} onNavigate={onNavigate} />;
-  if (route === "NewPerson") return <NewPerson params={params} onBack={onBack} onNavigate={onNavigate} />;
-  if (route === "WhenWillTheyPay") return <WhenWillTheyPay params={params} onBack={onBack} onNavigate={onNavigate} onReturnToSplit={onReturnToSplit} onSaveCredit={onSaveCredit} />;
+  if (route === "NewPerson") return <NewPerson params={params} onBack={onBack} onNavigate={onNavigate} onUpdateParams={onUpdateParams} />;
+  if (route === "WhenWillTheyPay") return <WhenWillTheyPay params={params} onBack={onBack} onNavigate={onNavigate} onUpdateParams={onUpdateParams} onReturnToSplit={onReturnToSplit} onSaveCredit={onSaveCredit} />;
   if (route === "ALittleAtATime") return <ALittleAtATime params={params} onBack={onBack} onNavigate={onNavigate} onUpdateParams={onUpdateParams} onReturnToSplit={onReturnToSplit} onSaveCredit={onSaveCredit} />;
   if (route === "CreditSaved") return <CreditSaved params={params} onHome={onHome} onNavigate={onNavigate} onSaveCustomerContact={onSaveCustomerContact} shopName={shopName} />;
   return null;
