@@ -31,6 +31,7 @@ import { getMomoDisplayLabel } from "./momoMapping.js";
 import { secondsUntil } from "../lib/countdown.js";
 import { getDebtorItemDescription } from "../utils/debtorItemDescription.js";
 import { useBackBlock, useBackHandler } from "./browserBack.js";
+import { displayName } from "../lib/displayName.js";
 
 const PAYMENT_METHODS = [
   { value: "cash", label: "collect.cash", icon: Banknote },
@@ -190,7 +191,7 @@ function CollectionSheet({ debt, onClose, onNavigate, onRecordCollection }) {
         <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-slate-500" aria-hidden="true" />
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 id="collect-title" className="text-2xl font-extrabold">{t("collect.from", { name: debt.customerName })}</h1>
+            <h1 id="collect-title" className="text-2xl font-extrabold">{t("collect.from", { name: displayName(debt.customerName) })}</h1>
             <p className="mt-1 text-base font-semibold">{t("collect.owes")} <strong className="text-rose-900">{formatGhs(debt.amountPesewas)}</strong></p>
             <div className="mt-1"><PosStatusTag tone={getDebtDueLabel(debt.isInstallmentPlan ? debt.nextDueDate : debt.dueDate).startsWith("Late ") ? "red" : "amber"}>
               {getDebtDueLabel(debt.isInstallmentPlan ? debt.nextDueDate : debt.dueDate)}
@@ -241,7 +242,7 @@ function CollectionSheet({ debt, onClose, onNavigate, onRecordCollection }) {
           <Check size={28} aria-hidden="true" /> {busy ? t("collect.saving") : t("collect.received")}
         </PosPrimaryButton>
         <button type="button" onClick={() => onNavigate("DebtorDetail", { debtId: debt.id, customerName: debt.customerName })} className="mt-2 min-h-12 w-full text-center text-lg font-extrabold text-emerald-900 underline">
-          {t("collect.seeDetails", { name: debt.customerName })}
+          {t("collect.seeDetails", { name: displayName(debt.customerName) })}
         </button>
       </section>
     </div>
@@ -353,7 +354,7 @@ export function CollectSplitPayment({ params, onBack, onNavigate, onUpdateParams
   return (
     <SplitPayment
       totalPesewas={totalPesewas}
-      totalLabel={t("split.collectPays", { name: debt.customerName })}
+      totalLabel={t("split.collectPays", { name: displayName(debt.customerName) })}
       doneLabel={t("split.done")}
       busy={busy}
       error={error}
@@ -411,10 +412,10 @@ function CollectPayPartScreen({ params, onBack, onNavigate, onUpdateParams, onRe
         <>
           <div className="flex items-center gap-2">
             <PosBackButton onClick={onBack} />
-            <h1 className="text-2xl font-extrabold">{t("collect.collectFrom", { name: debt.customerName })}</h1>
+            <h1 className="text-2xl font-extrabold">{t("collect.collectFrom", { name: displayName(debt.customerName) })}</h1>
           </div>
           <section className="rounded-[20px] border-2 border-slate-500 bg-white px-4 py-2 text-right">
-            <p className="text-[17px] font-bold text-slate-800">{t("collect.namePays", { name: debt.customerName })}</p>
+            <p className="text-[17px] font-bold text-slate-800">{t("collect.namePays", { name: displayName(debt.customerName) })}</p>
             <div className="flex items-center justify-end gap-2">
               <span className="text-lg font-bold text-slate-700">GH₵</span>
               <input
@@ -540,7 +541,7 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
         </div>
         <h1 className="text-xl font-bold">{undone ? t("collect.paymentUndone") : t("collect.paymentReceived")}</h1>
         <p className="amount-fit mx-auto font-extrabold">{formatGhs(result.amountPesewas)}</p>
-        <p className="text-lg text-slate-800">{t("collect.fromLower", { name: result.customerName })}</p>
+        <p className="text-lg text-slate-800">{t("collect.fromLower", { name: displayName(result.customerName) })}</p>
       </section>
 
       <section className="flex flex-col gap-2 rounded-[18px] border-2 border-slate-500 bg-white px-4 py-3 text-lg">
@@ -548,7 +549,7 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
         <div className="flex justify-between"><span>{result.momoVerification ? getMomoDisplayLabel(result) : t("collect.momo")}</span><strong>{formatGhs(totalMomo)}</strong></div>
         <div className="border-t-2 border-dashed border-slate-400 pt-2">
           <div className="flex justify-between gap-2">
-            <span>{t("collect.customerStillOwes", { name: result.customerName })}</span>
+            <span>{t("collect.customerStillOwes", { name: displayName(result.customerName) })}</span>
             <strong className="text-rose-900">{formatGhs(result.remainingPesewas)}</strong>
           </div>
         </div>
@@ -583,7 +584,7 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
         <Clock3 size={16} className="mr-1 inline" aria-hidden="true" />{t("collect.undoWindow", { seconds: Math.floor(COLLECTION_UNDO_WINDOW_MS / 1000) })}
       </p>
       <button type="button" onClick={() => onNavigate("DebtorDetail", { debtId: result.debtId, customerName: result.customerName })} className="min-h-12 text-center text-lg font-extrabold text-emerald-900 underline">
-        {t("collect.seeDetails", { name: result.customerName })}
+        {t("collect.seeDetails", { name: displayName(result.customerName) })}
       </button>
       <div className="flex-1" />
       <PosPrimaryButton type="button" onClick={onHome} className="h-[68px] min-h-0 rounded-[20px] text-2xl">{t("collect.done")}</PosPrimaryButton>
@@ -804,9 +805,9 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
       {data === undefined ? <p role="status">{t("collect.loading")}</p> : !data ? <CollectionError>{t("collect.notFound")}</CollectionError> : (
         <>
           <section className="flex items-center gap-3 rounded-[20px] border-2 border-slate-500 bg-white px-3 py-3">
-            <span className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full bg-emerald-900 text-2xl font-extrabold text-white">{data.name.slice(0, 1).toUpperCase()}</span>
+            <span className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full bg-emerald-900 text-2xl font-extrabold text-white">{displayName(data.name).slice(0, 1).toUpperCase()}</span>
             <span className="min-w-0 flex-1">
-              <strong className="line-clamp-2 break-words text-[22px] leading-tight">{data.name}</strong>
+              <strong className="line-clamp-2 break-words text-[22px] leading-tight">{displayName(data.name)}</strong>
               {data.ghanaCardNumber && <span className="text-base text-slate-800">{t("collect.customerId", { number: formatGhanaCard(data.ghanaCardNumber) })}</span>}
             </span>
             <button type="button" onClick={() => setContactEditorOpen(true)} className="shrink-0 rounded-xl border-2 border-emerald-900 px-2 py-2 text-sm font-extrabold text-emerald-900">
@@ -814,7 +815,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
             </button>
           </section>
           <section className="amount-fit-container rounded-[20px] bg-rose-200 px-4 py-3">
-            <p className="text-lg font-bold text-rose-950">{t("collect.balanceOwed", { name: data.name })}</p>
+            <p className="text-lg font-bold text-rose-950">{t("collect.balanceOwed", { name: displayName(data.name) })}</p>
             <p className="amount-fit font-extrabold text-rose-950">{formatGhs(data.balancePesewas)}</p>
             {dueLine
               ? <p className="mt-1 font-bold text-rose-950">{dueLine}</p>
@@ -835,11 +836,11 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
             {phone && reminderLink ? (
               <>
                 {!isLate && (
-                  <a href={reminderLink} target="_blank" rel="noopener noreferrer" onClick={markReminderOpened} aria-label={`WhatsApp reminder for ${data.name}`} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
+                  <a href={reminderLink} target="_blank" rel="noopener noreferrer" onClick={markReminderOpened} aria-label={`WhatsApp reminder for ${displayName(data.name)}`} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
                     <WhatsAppIcon /> <span className="truncate">Reminder</span>
                   </a>
                 )}
-                <a href={balanceReceiptLink} target="_blank" rel="noopener noreferrer" aria-label={`Send current balance receipt for ${data.name}`} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
+                <a href={balanceReceiptLink} target="_blank" rel="noopener noreferrer" aria-label={`Send current balance receipt for ${displayName(data.name)}`} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
                   <ReceiptText size={26} aria-hidden="true" /> <span className="truncate">Receipt</span>
                 </a>
                 <a href={`tel:${phone}`} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-slate-500 bg-slate-300 px-2 text-base font-extrabold text-slate-950 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
@@ -996,7 +997,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
             <div className="mb-2 flex items-center justify-between gap-3">
               <div>
                 <h2 id="pos-correction-title" className="text-2xl font-extrabold">Correct balance</h2>
-                <p className="text-base text-slate-800">{data.name} · now owed <strong>{formatGhs(correctionCurrentBalancePesewas)}</strong></p>
+                <p className="text-base text-slate-800">{displayName(data.name)} · now owed <strong>{formatGhs(correctionCurrentBalancePesewas)}</strong></p>
               </div>
               <button type="button" onClick={() => setCorrectionOpen(false)} aria-label="Close balance correction" className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-[14px] border-2 border-slate-900 bg-white text-slate-900">
                 <X size={18} aria-hidden="true" />

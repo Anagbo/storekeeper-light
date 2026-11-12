@@ -1,3 +1,4 @@
+import { displayName } from "../lib/displayName.js";
 import { normalizeWhatsAppPhone } from "./whatsapp.js";
 import { formatGhs } from "../lib/formatGhs.js";
 import { PLAN_ERROR, planError } from "../lib/planErrors.js";
@@ -421,7 +422,8 @@ export function getInstallmentAlertStatus(nextDueDate, frequency, today = localD
 export function createInstallmentReminderLink(phone, customerName, installmentAmountPesewas, alertStatus) {
   const normalizedPhone = normalizeWhatsAppPhone(phone);
   if (!normalizedPhone) return null;
-  const name = typeof customerName === "string" ? customerName.trim() : "";
+  // The customer's name with a capital first letter, as on screen; the stored name is not changed.
+  const name = typeof customerName === "string" ? displayName(customerName) : "";
   if (!name || !Number.isSafeInteger(installmentAmountPesewas) || installmentAmountPesewas <= 0) return null;
 
   const duePhrase = alertStatus?.type === "overdue"

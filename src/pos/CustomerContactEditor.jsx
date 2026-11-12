@@ -4,6 +4,7 @@ import { formatGhanaCard } from "../utils/formatters.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
+import { displayName } from "../lib/displayName.js";
 import { useBackBlock, useBackHandler } from "./browserBack.js";
 
 export default function CustomerContactEditor({ customer, onClose, onSave }) {
@@ -48,7 +49,7 @@ export default function CustomerContactEditor({ customer, onClose, onSave }) {
   return (
     <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/60 p-0 sm:items-center sm:p-4" onMouseDown={(event) => event.target === event.currentTarget && !busy && onClose()}>
       <section role="dialog" aria-modal="true" aria-labelledby="contact-editor-title" className="safe-bottom max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white p-5 shadow-xl sm:rounded-3xl">
-        <h2 id="contact-editor-title" className="text-xl font-extrabold">{t("contact.title", { name: customer.name })}</h2>
+        <h2 id="contact-editor-title" className="text-xl font-extrabold">{t("contact.title", { name: displayName(customer.name) })}</h2>
         <p className="mt-1 text-slate-700">{t("contact.explanation")}</p>
         <form onSubmit={(event) => void submit(event)} className="mt-4 flex flex-col gap-3">
           <label className="block font-bold">

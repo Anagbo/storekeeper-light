@@ -1,3 +1,4 @@
+import { displayName } from "../lib/displayName.js";
 import { FEATURE_FLAGS } from "../config/features.js";
 import { buildCollectionReceiptMessage } from "./collectionReceipt.js";
 import { buildSaleReceiptMessage, getSaleReceiptDetails } from "./saleReceipt.js";
@@ -95,7 +96,7 @@ export function buildPaymentReceipt({
   nextDueDate = ""
 }) {
   const shop = requireName(shopName, "A shop name is required for the receipt.");
-  const customer = requireName(customerName, "A customer name is required for the receipt.");
+  const customer = displayName(requireName(customerName, "A customer name is required for the receipt."));
   const paidPesewas = cashPesewas + momoPesewas;
   if (paidPesewas <= 0) throw new RangeError("The collection has no payment to show.");
   const hasNextPayment = installmentPesewas > 0 && remainingPesewas > 0;
@@ -122,7 +123,7 @@ export function buildCustomerBalanceReceipt({
   nextDueDate = ""
 }) {
   const shop = requireName(shopName, "A shop name is required for the receipt.");
-  const customer = requireName(customerName, "A customer name is required for the receipt.");
+  const customer = displayName(requireName(customerName, "A customer name is required for the receipt."));
   if (!Number.isSafeInteger(balancePesewas) || balancePesewas < 0) {
     throw new RangeError("The customer balance is invalid.");
   }

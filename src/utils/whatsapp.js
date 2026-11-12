@@ -1,3 +1,4 @@
+import { displayName } from "../lib/displayName.js";
 import { formatGhs } from "../lib/formatGhs.js";
 
 const GHANA_MOBILE_PREFIX = /^(?:2[0-9]|5[0-9])/;
@@ -42,7 +43,8 @@ export function generateWhatsAppLink(
   const phone = normalizeWhatsAppPhone(customerPhone);
   if (!phone || !Number.isSafeInteger(debtAmountPesewas) || debtAmountPesewas <= 0) return null;
 
-  const name = typeof customerName === "string" ? customerName.trim() : "";
+  // The customer's name with a capital first letter, as on screen; the stored name is not changed.
+  const name = typeof customerName === "string" ? displayName(customerName) : "";
   const shop = typeof shopName === "string" ? shopName.trim() : "";
   if (!name || !shop) return null;
 

@@ -1,6 +1,7 @@
 import { formatGhs } from "../lib/money.js";
 import { formatDate } from "../lib/formatDate.js";
 import { posText as t } from "./i18n.js";
+import { displayName } from "../lib/displayName.js";
 
 // Row status on 16 and 27 (wiring "Row layout on 16 and 27", 12 Nov 2026): MoMo not confirmed
 // "Customer sends · not confirmed yet", MoMo received "Customer sent · received ✓", Owe
@@ -13,7 +14,7 @@ export function describeSplitPart(part, params = {}) {
     return "";
   }
   if (part?.paymentMethod !== "owe") return "";
-  const name = typeof params.customer?.name === "string" ? params.customer.name.trim() : "";
+  const name = typeof params.customer?.name === "string" ? displayName(params.customer.name) : "";
   if (!name) return "";
   const plan = params.installmentPlan?.isInstallmentPlan ? params.installmentPlan : null;
   return [

@@ -72,7 +72,9 @@ async function sell(app, digits) {
 
 async function chooseCustomer(app, name) {
   assert.equal(app.route, "WhoOwesYou");
-  await app.tap(new RegExp(`^${name.charAt(0).toUpperCase()}${name}`));
+  // The picker shows the initial and the name with a capital first letter ("amos" shows as "Amos").
+  const shown = name.charAt(0).toUpperCase() + name.slice(1);
+  await app.tap(new RegExp(`^${shown.charAt(0)}${shown}`));
   await app.tap(/^Next/);
   assert.equal(app.route, "WhenWillTheyPay");
 }

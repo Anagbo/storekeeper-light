@@ -6,6 +6,7 @@ import { hasSearchText, matchesSearch } from "../lib/searchMatch.js";
 import { db } from "../db/db.js";
 import { isValidGhanaCardNumber, normalizeGhanaCardNumber } from "../lib/ghanaCardNumber.js";
 import { formatDate } from "../lib/formatDate.js";
+import { displayName } from "../lib/displayName.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { formatGhanaCard } from "../utils/formatters.js";
 import { PLAN_ERROR } from "../lib/planErrors.js";
@@ -48,9 +49,9 @@ function CustomerChoice({ customer, selected, onSelect }) {
       className={`flex min-h-[60px] w-full items-center gap-3 rounded-2xl border-[3px] px-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 ${selected ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}
     >
       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-emerald-900 text-lg font-extrabold text-white">
-        {customer.name.charAt(0).toUpperCase()}
+        {displayName(customer.name).charAt(0)}
       </span>
-      <span className="min-w-0 flex-1 truncate text-lg font-extrabold">{customer.name}</span>
+      <span className="min-w-0 flex-1 truncate text-lg font-extrabold">{displayName(customer.name)}</span>
       {customer.totalDebtPesewas > 0 && (
         <span className="amount-fit-container w-24 shrink-0 text-right font-extrabold text-rose-900">
           <span className="amount-fit">{formatGhs(customer.totalDebtPesewas)}</span>
@@ -243,7 +244,7 @@ function NewPerson({ params, onBack, onNavigate }) {
           <span className="text-sm text-slate-700">{t("credit.nameHint")}</span>
           {existingDebtor && (
             <span role="status" className="mt-1 block rounded-xl border-2 border-amber-700 bg-amber-100 p-2 text-sm font-semibold text-amber-950">
-              {t("credit.existingDebtor", { name: existingDebtor.name, amount: formatGhs(existingDebtor.totalDebtPesewas) })}
+              {t("credit.existingDebtor", { name: displayName(existingDebtor.name), amount: formatGhs(existingDebtor.totalDebtPesewas) })}
             </span>
           )}
         </label>
@@ -273,7 +274,8 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onReturnToSplit, onSaveCr
   const savingRef = useRef(false);
   const saveAttempt = useSaveAttempt();
   const largeAmount = useLargeAmountConfirm();
-  const customerName = params.customer?.name ?? "";
+  // Shown with a capital first letter; the stored name is not changed.
+  const customerName = displayName(params.customer?.name);
   const choices = [
     { value: "today", label: t("credit.today") },
     { value: "week", label: t("credit.inOneWeek") },
@@ -832,8 +834,9 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
   }, [savedCustomer]);
   const phone = contact.phone;
   const customerName = result?.customerName ?? params.customer?.name ?? "";
+  const shownName = displayName(customerName);
   const totalDebtPesewas = result?.totalDebtPesewas ?? 0;
-  const whatsappLink = generateWhatsAppLink(phone, customerName, totalDebtPesewas, shopName);
+  const whatsappLink = generateWhatsAppLink(phone, shownName, totalDebtPesewas, shopName);
   const receiptLink = buildCreditReceiptLink(result, phone, shopName);
   function openContactEditor(event) {
     event.preventDefault();
@@ -845,7 +848,7 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
         <div className="mx-auto mb-3 grid h-24 w-24 place-items-center rounded-full bg-emerald-900 text-white"><Check size={56} aria-hidden="true" /></div>
         <h1 className="text-xl font-bold">{t("credit.saved")}</h1>
         <p className="min-w-0 text-2xl font-extrabold leading-tight sm:text-4xl">
-          <span className="block [overflow-wrap:anywhere]">{customerName}</span>
+          <span className="block [overflow-wrap:anywhere]">{shownName}</span>
           <span className="block text-xl sm:text-3xl">{t("credit.owesAmount", { amount: formatGhs(totalDebtPesewas) })}</span>
         </p>
         <p className="text-base text-slate-700 sm:text-lg">{t("credit.thisSale", { amount: formatGhs(result?.amountPesewas ?? params.amountPesewas ?? 0) })}</p>
@@ -901,11 +904,11 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {whatsappLink ? (
           <a href={whatsappLink} target="_blank" rel="noreferrer" className="flex min-h-14 min-w-0 items-center justify-center rounded-2xl border-2 border-emerald-900 px-3 text-center font-extrabold text-emerald-900">
-            {t("credit.whatsapp", { name: customerName })}
+            {t("credit.whatsapp", { name: shownName })}
           </a>
         ) : (
           <button type="button" onClick={openContactEditor} className="flex min-h-14 min-w-0 items-center justify-center rounded-2xl border-2 border-emerald-900 px-3 text-center font-extrabold text-emerald-900">
-            {t("credit.whatsapp", { name: customerName })}
+            {t("credit.whatsapp", { name: shownName })}
           </button>
         )}
         {receiptLink ? (
@@ -918,7 +921,7 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
           </button>
         )}
       </div>
-      {result?.debtId && <PosSecondaryButton type="button" className="w-full" onClick={() => onNavigate("DebtorDetail", { debtId: result.debtId, customerName })}>{t("credit.seeDetails", { name: customerName })}</PosSecondaryButton>}
+      {result?.debtId && <PosSecondaryButton type="button" className="w-full" onClick={() => onNavigate("DebtorDetail", { debtId: result.debtId, customerName })}>{t("credit.seeDetails", { name: shownName })}</PosSecondaryButton>}
       {!whatsappLink && <PosSecondaryButton type="button" className="w-full" onClick={() => setContactEditorOpen(true)}>{t("contact.add")}</PosSecondaryButton>}
       {whatsappLink && <PosSecondaryButton type="button" onClick={() => setContactEditorOpen(true)}>{t("collect.editContact")}</PosSecondaryButton>}
       <PosPrimaryButton type="button" onClick={onHome} className="mt-auto h-[68px] text-2xl">{t("credit.done")}</PosPrimaryButton>

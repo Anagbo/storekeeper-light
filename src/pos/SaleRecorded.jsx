@@ -4,6 +4,7 @@ import { formatDate } from "../lib/formatDate.js";
 import { formatGhs, formatGhsAmount } from "../lib/money.js";
 import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
+import { displayName } from "../lib/displayName.js";
 import { getSaleReceiptDetails } from "./saleReceipt.js";
 import { getSaleReceiptText } from "./receiptTemplates.js";
 import { getMomoDisplayLabel } from "./momoMapping.js";
@@ -126,7 +127,7 @@ export default function SaleRecorded({ transaction, shopName, onDone, onNewSale 
               )}
               <div className={paidPesewas > 0 || isSplit ? "border-t-2 border-dashed border-slate-400 pt-1" : undefined}>
                 <div className="flex justify-between gap-2">
-                  <span>{customerName ? t("collect.customerStillOwes", { name: customerName }) : t("credit.owed")}</span>
+                  <span>{customerName ? t("collect.customerStillOwes", { name: displayName(customerName) }) : t("credit.owed")}</span>
                   <strong className="text-rose-900">{formatGhs(owedPesewas)}</strong>
                 </div>
               </div>

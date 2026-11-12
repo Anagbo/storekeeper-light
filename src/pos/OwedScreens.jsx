@@ -5,6 +5,7 @@ import { db } from "../db/db.js";
 import { formatGhs } from "../lib/money.js";
 import { hasSearchText, squashSearchText } from "../lib/searchMatch.js";
 import { posText } from "./i18n.js";
+import { displayName } from "../lib/displayName.js";
 import { getDebtDueDate, groupUnpaidDebts, isDebtDueSoon, isDebtLate, loadAllUnpaidDebts, loadUnpaidDebtPage, matchesOwedSearch, OWED_PAGE_SIZE } from "./owed.js";
 import SearchField from "./SearchField.jsx";
 import { DueTag } from "./PartyCard.jsx";
@@ -220,7 +221,7 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
               <article key={customer.id} role="listitem" className="flex min-w-0 items-center gap-2 rounded-3xl bg-white p-3">
                 <button type="button" onClick={() => openDetails(customer)} className="min-w-0 flex-1 text-left">
                   <span className="min-w-0 flex-1">
-                    <strong className="block truncate text-xl">{customer.customerName}</strong>
+                    <strong className="block truncate text-xl">{displayName(customer.customerName)}</strong>
                     <span className="block text-base text-slate-900">{formatGhs(customer.balancePesewas)}</span>
                     {dueDate && <DueTag dueDate={dueDate} />}
                   </span>
@@ -228,15 +229,15 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
                 <div className={`grid shrink-0 gap-2 ${whatsappUrl ? "grid-cols-3" : "grid-cols-2"}`}>
                   <PosPrimaryButton type="button" onClick={() => customer.debtIds.length === 1
                     ? onCollect({ id: customer.representativeDebtId, customerId: customer.customerId, customerName: customer.customerName, amountPesewas: customer.balancePesewas, phone: customer.phone })
-                    : openDetails(customer)} aria-label={`Collect from ${customer.customerName}`} className="!h-14 !min-h-0 !w-14 !p-0 max-[380px]:!h-12 max-[380px]:!w-12">
+                    : openDetails(customer)} aria-label={`Collect from ${displayName(customer.customerName)}`} className="!h-14 !min-h-0 !w-14 !p-0 max-[380px]:!h-12 max-[380px]:!w-12">
                     <Banknote size={22} aria-hidden="true" />
                   </PosPrimaryButton>
                   {whatsappUrl ? (
                     <>
-                      <a href={whatsappUrl} aria-label={`WhatsApp ${customer.customerName}`} className="grid h-14 w-14 place-items-center rounded-2xl border-2 border-emerald-900 bg-white text-emerald-900 max-[380px]:h-12 max-[380px]:w-12">
+                      <a href={whatsappUrl} aria-label={`WhatsApp ${displayName(customer.customerName)}`} className="grid h-14 w-14 place-items-center rounded-2xl border-2 border-emerald-900 bg-white text-emerald-900 max-[380px]:h-12 max-[380px]:w-12">
                         <WhatsAppIcon />
                       </a>
-                      <a href={`tel:${customer.phone}`} aria-label={`Call ${customer.customerName}`} className="grid h-14 w-14 place-items-center rounded-2xl border-2 border-slate-300 bg-slate-300 text-slate-900 max-[380px]:h-12 max-[380px]:w-12">
+                      <a href={`tel:${customer.phone}`} aria-label={`Call ${displayName(customer.customerName)}`} className="grid h-14 w-14 place-items-center rounded-2xl border-2 border-slate-300 bg-slate-300 text-slate-900 max-[380px]:h-12 max-[380px]:w-12">
                         <Phone size={25} aria-hidden="true" />
                       </a>
                     </>
@@ -244,7 +245,7 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
                     <button
                       type="button"
                       onClick={() => openDetails(customer, true)}
-                      aria-label={`Add phone for ${customer.customerName}`}
+                      aria-label={`Add phone for ${displayName(customer.customerName)}`}
                       className="grid h-14 w-14 place-items-center rounded-2xl border-2 border-emerald-900 bg-white text-emerald-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 max-[380px]:h-12 max-[380px]:w-12"
                     >
                       <UserRoundPen size={24} aria-hidden="true" />

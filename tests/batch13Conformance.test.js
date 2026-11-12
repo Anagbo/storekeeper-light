@@ -237,7 +237,7 @@ test("23: the close button is named Close menu", async () => {
 
 test("32: each WhatsApp button is named WhatsApp {name}", () => {
   const source = read("src/pos/OwedScreens.jsx");
-  assert.match(source, /aria-label=\{`WhatsApp \$\{customer\.customerName\}`\}/);
+  assert.match(source, /aria-label=\{`WhatsApp \$\{displayName\(customer\.customerName\)\}`\}/);
   assert.doesNotMatch(source, /WhatsApp reminder for/);
 });
 

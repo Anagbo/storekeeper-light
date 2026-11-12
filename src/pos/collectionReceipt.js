@@ -1,3 +1,4 @@
+import { displayName } from "../lib/displayName.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { formatDate } from "../lib/formatDate.js";
 import { formatGhs } from "../lib/formatGhs.js";
@@ -23,7 +24,7 @@ export function buildCollectionReceiptMessage(result, shopName) {
   if (!result || !Array.isArray(result.parts) || result.parts.length === 0) {
     throw new TypeError("A recorded collection is required to build its receipt.");
   }
-  const customerName = result.customerName?.trim();
+  const customerName = displayName(result.customerName);
   const normalizedShopName = shopName?.trim();
   const createdAt = new Date(result.createdAt);
   if (!customerName || !normalizedShopName || !Number.isFinite(createdAt.getTime())) {

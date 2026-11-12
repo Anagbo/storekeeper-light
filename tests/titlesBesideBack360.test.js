@@ -45,7 +45,7 @@ test("40 Edit item: the title is limited to two lines and the full name stays in
 
 test("29 Debtor detail: the name in the header card is limited to two lines, not cut to one", () => {
   const source = readFileSync(new URL("../src/pos/DebtCollection.jsx", import.meta.url), "utf8");
-  const line = source.split("\n").find((row) => row.includes("{data.name}</strong>"));
+  const line = source.split("\n").find((row) => row.includes("{displayName(data.name)}</strong>"));
   assert.ok(line, "name element");
   assert.match(line, /line-clamp-2/);
   assert.match(line, /break-words/);

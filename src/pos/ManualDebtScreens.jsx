@@ -8,6 +8,7 @@ import { isValidInstallmentPlanForBalance, localDateString } from "../utils/inst
 import { PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
 import { getDebtDueLabel } from "./money.js";
 import { posText as t } from "./i18n.js";
+import { displayName } from "../lib/displayName.js";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
@@ -118,8 +119,8 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, o
         <h1 className="min-w-0 text-2xl font-extrabold">How much do they owe?</h1>
       </div>
       <div className="flex min-h-12 items-center gap-3 rounded-2xl border-2 border-emerald-900 bg-green-100 px-3">
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-900 font-extrabold text-white">{params.customer?.name?.slice(0, 1).toUpperCase()}</span>
-        <strong className="truncate text-lg">{params.customer?.name}</strong>
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-900 font-extrabold text-white">{displayName(params.customer?.name).slice(0, 1)}</span>
+        <strong className="truncate text-lg">{displayName(params.customer?.name)}</strong>
       </div>
       <div className="rounded-2xl border-2 border-slate-500 bg-white px-4 py-2 text-right">
         <span className="block text-base font-bold text-slate-700">Amount owed</span>
@@ -233,8 +234,8 @@ export function ManualDebtSaved({ params, onDone, onNavigate, shopName }) {
       <div className="pt-2 text-center">
         <div className="mx-auto mb-4 grid h-24 w-24 place-items-center rounded-full bg-emerald-900 text-white"><Check size={56} aria-hidden="true" /></div>
         <h1 className="text-2xl font-extrabold">Saved as credit</h1>
-        <p className="mt-2 text-xl font-bold">{params.customer?.name}</p>
-        <p className="mt-2 text-3xl font-extrabold text-rose-900 sm:text-4xl">{params.customer?.name} owes {formatGhs(balance)}</p>
+        <p className="mt-2 text-xl font-bold">{displayName(params.customer?.name)}</p>
+        <p className="mt-2 text-3xl font-extrabold text-rose-900 sm:text-4xl">{displayName(params.customer?.name)} owes {formatGhs(balance)}</p>
       </div>
       <div className="rounded-2xl border-2 border-slate-400 bg-white p-4 text-left">
         <div className="flex justify-between gap-3 text-lg"><span>Before</span><strong>{formatGhs(previousDebt)}</strong></div>
@@ -274,7 +275,7 @@ export function ManualDebtSaved({ params, onDone, onNavigate, shopName }) {
         </div>
       )}
       <div className="grid grid-cols-2 gap-2">
-        <a href={whatsappLink} target="_blank" rel="noreferrer" className="flex min-h-14 items-center justify-center rounded-2xl border-2 border-emerald-900 px-2 text-center font-extrabold text-emerald-900">WhatsApp {params.customer?.name}</a>
+        <a href={whatsappLink} target="_blank" rel="noreferrer" className="flex min-h-14 items-center justify-center rounded-2xl border-2 border-emerald-900 px-2 text-center font-extrabold text-emerald-900">WhatsApp {displayName(params.customer?.name)}</a>
         <PosSecondaryButton type="button" onClick={() => onNavigate("DebtorDetail", { customerId: result?.customer?.id ?? params.customer?.id, customerName: params.customer?.name, debtId: result?.debt?.id })}>See details ›</PosSecondaryButton>
       </div>
       <div className="mt-auto grid gap-2">
