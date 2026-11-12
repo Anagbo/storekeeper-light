@@ -81,7 +81,7 @@ test("an installment plan keeps its own line and gets no fixed-date line (on tim
   const onTime = await detail({ ...plan, nextDueDate: dateOffset(5), dueDate: "" });
   assert.deepEqual(dueLines(onTime.tree), []);
   assert.match(textOf(onTime.tree), /GH₵10\.00 every week/);
-  assert.match(textOf(onTime.tree), new RegExp(`Next: ${formatDate(dateOffset(5)).replaceAll("/", "\\/")}`));
+  assert.match(textOf(onTime.tree), new RegExp(`Next payment ${formatDate(dateOffset(5)).replaceAll("/", "\\/")}`));
   assert.match(textOf(onTime.tree), /In 5 days/);
 
   const late = await detail({ ...plan, nextDueDate: dateOffset(-3), dueDate: "" });

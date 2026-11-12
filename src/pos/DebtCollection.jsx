@@ -32,6 +32,7 @@ import { secondsUntil } from "../lib/countdown.js";
 import { getDebtorItemDescription } from "../utils/debtorItemDescription.js";
 import { useBackBlock, useBackHandler } from "./browserBack.js";
 import { displayName } from "../lib/displayName.js";
+import { DueTag } from "./PartyCard.jsx";
 
 const PAYMENT_METHODS = [
   { value: "cash", label: "collect.cash", icon: Banknote },
@@ -862,7 +863,8 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
             <section className="flex flex-col gap-1.5 rounded-[18px] border-2 border-emerald-900 bg-green-100 px-3.5 py-2.5">
               <div className="flex items-center justify-between gap-2">
                 <strong className="text-lg">{t("collect.installmentTitle")}</strong>
-                <span className={`rounded-[10px] border-2 px-2 py-0.5 text-sm font-extrabold ${dueLabel?.startsWith("Late ") ? "border-rose-900 bg-rose-100 text-rose-950" : "border-emerald-900 bg-green-100 text-emerald-900"}`}>{dueLabel}</span>
+                {/* The shared due tag colours: grey more than 3 days, amber 3 days or less or today, red late. */}
+                <DueTag dueDate={dueDate} />
               </div>
               <p>{formatGhs(data.debt.installmentAmount)} {installmentFrequency}</p>
               <div
@@ -875,12 +877,13 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               >
                 <span className="block h-full bg-emerald-900" style={{ width: `${installmentProgress}%` }} />
               </div>
-              <div className="flex justify-between gap-2 text-sm font-extrabold">
-                <span>{t(planProgress.left === 1 ? "collect.installmentPaidOne" : "collect.installmentPaid", {
+              {/* Wiring 29/43 plan card (12 Nov 2026): two full-width lines, never two wrapped columns. */}
+              <div data-plan-lines="" className="flex flex-col gap-0.5 text-sm font-extrabold">
+                <p data-plan-line="paid" className="w-full">{t(planProgress.left === 1 ? "collect.installmentPaidOne" : "collect.installmentPaid", {
                   paid: formatGhs(data?.planPaidPesewas ?? 0),
                   left: planProgress.left
-                })}</span>
-                <span>{t("collect.nextLabel", { date: nextDueDate })}</span>
+                })}</p>
+                <p data-plan-line="next" className="w-full">{t("collect.nextPaymentLine", { date: nextDueDate })}</p>
               </div>
             </section>
           )}

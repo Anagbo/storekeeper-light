@@ -582,6 +582,7 @@ const ENGLISH = Object.freeze({
   "collect.creditAdded": "Added to debt",
   "collect.paid": "Paid",
   "collect.nextLabel": "Next: {date}",
+  "collect.nextPaymentLine": "Next payment {date}",
   "collect.installmentFrequency.weekly": "every week",
   "collect.installmentFrequency.bi-weekly": "every 2 weeks",
   "collect.installmentFrequency.monthly": "every month",
