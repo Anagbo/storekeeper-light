@@ -127,8 +127,8 @@ for (const how of ["cash", "momo", "split"]) {
       assert.equal(paid19?.pesewas, 1500, "19 pink row");
       assert.equal(paid19.text, "Still owed · KofiGH₵15.00");
     }
-    // Cash or MoMo alone: 19 shows the Cash / MoMo choice, no Paying today panel, so no pink row.
-    if (how !== "split") assert.equal(stillOwedLine(app), null);
+    // Cash or MoMo alone: 19 shows the one-row Paying today panel (12 Nov 2026) with the pink row.
+    if (how !== "split") assert.equal(stillOwedLine(app)?.pesewas, 1500, "19 pink row, single method");
     await app.tap(/^Save plan$/);
     if (app.route === "MoMoDirect") await app.tap("Money received");
     assert.equal(app.route, "CreditSaved");
@@ -158,7 +158,7 @@ test("(b) split from 16 with an Owe part: 18, Home 22, 32 and 43 say GH₵15.00;
   assert.equal(stillOwedLine(app), null, "16 has no Still owed line");
   await app.tap(/^Done$/);
   assert.equal(app.route, "SaleRecorded");
-  assert.equal(amountAfter(app, /Kofi still owes ?(GH₵[\d,]+\.\d{2})/, "30"), 500);
+  assert.equal(amountAfter(app, /Kofi owes (GH₵[\d,]+\.\d{2}) from this sale/, "30"), 500);
   const after = await balanceScreens(app);
   assert.deepEqual(after, { home22: 1500, list32: 1500, detail43: 1500, chip24: 500 });
 });
@@ -171,7 +171,7 @@ test("(c) collect part of a debt on 25/26/27: 26 Left to pay, 27 Still owed line
   assert.equal(stillOwedLine(app), null, "25 shows no payment total");
   await app.tap(/^Pay part$/);
   await app.type("Amount to collect", "4");
-  assert.equal(amountAfter(app, /Left to pay: (GH₵[\d,]+\.\d{2})/, "26"), 600);
+  assert.equal(amountAfter(app, /Still owed after this: (GH₵[\d,]+\.\d{2})/, "26"), 600);
   await app.tap(/Split payment$/);
   assert.equal(app.route, "SplitPayment");
   const line27 = stillOwedLine(app);

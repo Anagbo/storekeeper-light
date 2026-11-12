@@ -565,8 +565,8 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
       </section>
 
       <section className="flex flex-col gap-2 rounded-[18px] border-2 border-slate-500 bg-white px-4 py-3 text-lg">
-        <div className="flex justify-between"><span>{t("collect.cash")}</span><strong>{formatGhs(totalCash)}</strong></div>
-        <div className="flex justify-between"><span>{result.momoVerification ? getMomoDisplayLabel(result) : t("collect.momo")}</span><strong>{formatGhs(totalMomo)}</strong></div>
+        {totalCash > 0 && <div className="flex justify-between"><span>{t("collect.cash")}</span><strong>{formatGhs(totalCash)}</strong></div>}
+        {totalMomo > 0 && <div className="flex justify-between"><span>{result.momoVerification ? getMomoDisplayLabel(result) : t("collect.momo")}</span><strong>{formatGhs(totalMomo)}</strong></div>}
         <div className="border-t-2 border-dashed border-slate-400 pt-2">
           <div className="flex justify-between gap-2">
             <span>{t("collect.customerStillOwes", { name: displayName(result.customerName) })}</span>

@@ -123,7 +123,7 @@ test("16 and 27: the Owe row names the person with a capital", () => {
   assert.equal(params.customer.name, "junior");
 });
 
-test("30: \"Junior still owes\"", async () => {
+test("30: \"Junior owes GH₵5.00 from this sale\"", async () => {
   const { default: SaleRecorded } = await loadJsx("src/pos/SaleRecorded.jsx");
   const transaction = {
     id: "t1", amountPesewas: 800, total_amount: 800, payment_method: "momo", cashReceivedPesewas: 0, momoReceivedPesewas: 300,
@@ -131,7 +131,7 @@ test("30: \"Junior still owes\"", async () => {
     items_json: JSON.stringify([{ name: "Sale", quantity: 1, total_amount: 800 }]), createdAt: Date.now(), timestamp: Date.now()
   };
   const text = textOf(render({ type: SaleRecorded, props: { transaction, shopName: "Shop", onDone() {}, onNewSale() {} } }).tree);
-  assert.match(text, /Junior still owes/);
+  assert.match(text, /Junior owes GH₵5.00 from this sale/);
   assert.doesNotMatch(text, /\bjunior\b/);
   assert.equal(transaction.customer_name, "junior");
 });

@@ -64,6 +64,6 @@ test("sell result renders split entries like the collection result", () => {
   const source = readFileSync(new URL("../src/pos/SaleRecorded.jsx", import.meta.url), "utf8");
   assert.match(source, /t\("saleRecorded\.method\.cash"\)/);
   assert.match(source, /t\("saleRecorded\.method\.momo"\)/);
-  assert.match(source, /t\("collect\.customerStillOwes", \{ name: displayName\(customerName\) \}\)/);
+  assert.match(source, /t\("saleRecorded\.owesFromSale", \{ name: displayName\(customerName\)/);
   assert.match(source, /border-t-2 border-dashed border-slate-400/);
 });

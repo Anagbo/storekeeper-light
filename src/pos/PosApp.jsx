@@ -575,6 +575,7 @@ export default function PosApp() {
     />
   ) : route === POS_ROUTES.SaleRecorded ? (
     <SaleRecorded
+      creditResult={routeState.params.creditResult}
       transaction={routeState.params.transaction}
       shopName={shopName}
       onDone={() => switchTab(POS_ROUTES.Home)}

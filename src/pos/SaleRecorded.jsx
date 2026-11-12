@@ -45,7 +45,7 @@ function SaleSaved({ onDone }) {
   );
 }
 
-export default function SaleRecorded({ transaction, shopName, onDone, onNewSale }) {
+export default function SaleRecorded({ transaction, creditResult, shopName, onDone, onNewSale }) {
   const [shareStatus, setShareStatus] = useState("");
   const receipt = useMemo(() => readReceipt(transaction, shopName), [transaction, shopName]);
   if (!receipt) return <SaleSaved onDone={onDone} />;
@@ -61,6 +61,8 @@ export default function SaleRecorded({ transaction, shopName, onDone, onNewSale 
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(receiptText)}`;
   const owedPesewas = transaction?.creditExtendedPesewas ?? 0;
   const paidPesewas = details.cashReceivedPesewas + details.momoReceivedPesewas;
+  // Wiring 30: with an earlier balance one quiet line shows the customer's total (the figure 31 and Home show).
+  const earlierBalance = creditResult?.previousDebtPesewas > 0 && Number.isSafeInteger(creditResult?.totalDebtPesewas);
   const isSplit = details.paymentMethod === "split";
   const customerName = transaction?.customer_name ?? transaction?.customerName ?? "";
 
@@ -113,24 +115,30 @@ export default function SaleRecorded({ transaction, shopName, onDone, onNewSale 
               A zero part is left out unless the sale is a Cash + MoMo split. */}
           {isSplit || owedPesewas > 0 ? (
             <div className="flex flex-col gap-1 text-lg">
-              {(isSplit || details.cashReceivedPesewas > 0) && (
+              {details.cashReceivedPesewas > 0 && (
                 <div className="flex justify-between gap-2">
                   <span>{t("saleRecorded.method.cash")}</span>
                   <strong>{formatGhs(details.cashReceivedPesewas)}</strong>
                 </div>
               )}
-              {(isSplit || details.momoReceivedPesewas > 0) && (
+              {details.momoReceivedPesewas > 0 && (
                 <div className="flex justify-between gap-2">
                   <span>{momoLabel}</span>
                   <strong>{formatGhs(details.momoReceivedPesewas)}</strong>
                 </div>
               )}
-              <div className={paidPesewas > 0 || isSplit ? "border-t-2 border-dashed border-slate-400 pt-1" : undefined}>
-                <div className="flex justify-between gap-2">
-                  <span>{customerName ? t("collect.customerStillOwes", { name: displayName(customerName) }) : t("credit.owed")}</span>
-                  <strong className="text-rose-900">{formatGhs(owedPesewas)}</strong>
+              {owedPesewas > 0 && (
+                <div className={paidPesewas > 0 || isSplit ? "border-t-2 border-dashed border-slate-400 pt-1" : undefined}>
+                  <p className="font-bold text-rose-900 [overflow-wrap:anywhere]">
+                    {customerName
+                      ? t("saleRecorded.owesFromSale", { name: displayName(customerName), amount: formatGhs(owedPesewas) })
+                      : t("saleRecorded.owesFromSaleNoName", { amount: formatGhs(owedPesewas) })}
+                  </p>
+                  {earlierBalance && (
+                    <p data-total-owed="" className="text-base text-slate-700">{t("saleRecorded.totalOwed", { amount: formatGhs(creditResult.totalDebtPesewas) })}</p>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
             ) : (
               <div className="flex justify-between gap-2 text-lg">

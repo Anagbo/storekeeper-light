@@ -245,7 +245,7 @@ test("Next cycle after a recorded split discards the parts, hides the panel, rec
   assert.deepEqual(result.plans.map((plan) => [plan.each, plan.left]), [[4000, 9]]);
 });
 
-test("Today again after Next cycle starts clean: no recorded panel, a payment must be entered again", async () => {
+test("Today again after Next cycle starts clean: the split parts are gone; the typed amount shows the one-row Cash panel", async () => {
   const { a } = await openNineteen({ existing: 24820, each: "40" });
   choose(a, "Today");
   typeToday(a, "200");
@@ -254,7 +254,9 @@ test("Today again after Next cycle starts clean: no recorded panel, a payment mu
   chooseNextCycle(a);
   choose(a, "Today");
   const again = screen19(a);
-  assert.equal(again.recordedPanel, false);
+  assert.equal(a.state.params.firstPaymentParts, undefined, "no recorded split parts");
+  assert.equal(a.state.params.splitParts, undefined);
+  assert.equal(again.recordedPanel, true, "Amount paid today 200 and Cash chosen: single-method panel (12 Nov 2026)");
   assert.equal(again.todayPressed, true);
   assert.equal(again.owed, "328.20");
 });

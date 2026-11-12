@@ -451,6 +451,13 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
   const validTodayPayment = Number.isSafeInteger(todayPaymentPesewas) &&
     todayPaymentPesewas > 0 &&
     todayPaymentPesewas <= maxCreditPesewas;
+  // Wiring 19 (12 Nov 2026): the Paying today panel is also shown for a single method (Cash only or
+  // MoMo only: one row) whenever Amount paid today is above zero and a method is chosen. Hidden for
+  // Next cycle, for nothing paid today, and while a split is still to be entered on 27.
+  const singlePreviewParts = startToday && !paymentAlreadyMadeToday && recordedParts.length === 0 &&
+    validTodayPayment && (paymentMethod === "cash" || paymentMethod === "momo")
+    ? [{ paymentMethod, amountPesewas: todayPaymentPesewas }]
+    : [];
   // Save plan stays disabled until the plan is valid (K5): an amount each time, a next
   // payment date from today on, and, when paying today on this screen, a valid amount.
   // The first payment date must be after today (brief 3.9 rule 2); the fixed date on 18 may be today.
@@ -768,6 +775,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
               <StillOwedRow amountPesewas={stillOwedAfterTodayPesewas} customerName={params.customer?.name} />
             </div>
           ) : (
+            <>
             <div className="grid grid-cols-3 gap-2">
               {["cash", "momo", "split"].map((method) => (
                 <button
@@ -790,6 +798,20 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
                 </button>
               ))}
             </div>
+            {singlePreviewParts.length > 0 && (
+              <div data-single-method-panel="" className="mt-3 rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
+                <p className="mb-2 font-extrabold text-emerald-950">{t("credit.payingToday")}</p>
+                <div className="flex flex-col gap-2">
+                  {singlePreviewParts.map((part) => <RecordedPartRow key={part.paymentMethod} part={part} />)}
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 pt-2 font-extrabold text-emerald-950">
+                  <span>{t("credit.totalToday")}</span>
+                  <span>{formatGhs(todayPaymentPesewas)}</span>
+                </div>
+                <StillOwedRow amountPesewas={Math.max(0, maxCreditPesewas - todayPaymentPesewas)} customerName={params.customer?.name} />
+              </div>
+            )}
+            </>
           )}
         </fieldset>
       )}
@@ -897,8 +919,8 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
         <div className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
           <p className="mb-2 font-extrabold text-emerald-950">{t("credit.paymentRecorded")}</p>
           <div className="flex flex-col gap-2">
-            {result.initialPaymentParts && result.initialPaymentParts.length > 0 ? (
-              result.initialPaymentParts.map((part) => (
+            {result.initialPaymentParts && result.initialPaymentParts.some((part) => part.amountPesewas > 0) ? (
+              result.initialPaymentParts.filter((part) => part.amountPesewas > 0).map((part) => (
                 <div key={`${part.paymentMethod}-${part.amountPesewas}`} className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 font-bold text-slate-900">
                   <span className="flex min-w-0 items-center gap-2">
                     {part.paymentMethod === "cash"

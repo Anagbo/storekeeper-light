@@ -46,14 +46,14 @@ test("30 with the recorded sale from the bug: payment_method is null and the scr
   assert.equal(getSaleReceiptDetails(JUJU_SALE).paymentMethod, "owe");
   const text = await show(JUJU_SALE);
   assert.match(text, /Sale recorded/);
-  assert.match(text, /Juju still owesGH₵8\.00/);
+  assert.match(text, /Juju owes GH₵8\.00 from this sale/);
   assert.doesNotMatch(text, /Cash|MoMo/, "no paid part is shown when nothing was paid");
 });
 
 test("30: a credit sale partly paid shows only the paid part and what is still owed", async () => {
   const text = await show({ ...JUJU_SALE, payment_method: "momo", momoReceivedPesewas: 300, creditExtendedPesewas: 500 });
   assert.match(text, /MoMoGH₵3\.00/);
-  assert.match(text, /Juju still owesGH₵5\.00/);
+  assert.match(text, /Juju owes GH₵5\.00 from this sale/);
   assert.doesNotMatch(text, /Cash/);
 });
 
@@ -62,7 +62,8 @@ test("30: a plain cash sale and a Cash + MoMo split look as before", async () =>
   assert.match(await show(cash), /CashGH₵8\.00/);
   assert.doesNotMatch(await show(cash), /owe/i);
   const split = { ...cash, payment_method: "split", cashReceivedPesewas: 500, momoReceivedPesewas: 300 };
-  assert.match(await show(split), /CashGH₵5\.00MoMoGH₵3\.00OwedGH₵0\.00/);
+  assert.match(await show(split), /CashGH₵5.00MoMoGH₵3.00/);
+  assert.doesNotMatch(await show(split), /Owed|owes/, "no GH₵0.00 owed row");
 });
 
 test("the owed method is only for a sale wholly on credit; other missing methods are still refused", () => {
