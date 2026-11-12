@@ -10,6 +10,8 @@ import { textOf, walk } from "./helpers/renderJsx.js";
 
 // 19 "Owe in the draft panel" (12 Nov 2026): the payment rows above "Total today" are Cash and MoMo
 // only and add up to it; what is owed is a separate pink "Still owed · {Name}" row, not in the total.
+// Its amount is the customer's balance after this sale and today's payment (wiring 19 "Still owed
+// row, all flows"): Juju already owes GH₵10.00, so the Owe part is added to that.
 
 globalThis.HTMLElement ??= class {};
 
@@ -76,7 +78,7 @@ function panel(app) {
   };
 }
 
-test("Cash 4.00 + MoMo 3.00 + Owe 1.00: two payment rows, Total today 7.00, a pink Still owed 1.00 outside the total", async () => {
+test("Cash 4.00 + MoMo 3.00 + Owe 1.00: two payment rows, Total today 7.00, a pink Still owed 11.00 (10.00 before + 1.00) outside the total", async () => {
   const app = await openPosApp();
   after(() => app.restoreConsole());
   await to19(app, { cash: "4.00", momo: "3.00" });
@@ -86,8 +88,8 @@ test("Cash 4.00 + MoMo 3.00 + Owe 1.00: two payment rows, Total today 7.00, a pi
   assert.ok(!shown.labels.some((label) => /Owe/.test(label)), "no Owe row among the payment rows");
   assert.equal(shown.totalLabel, "Total today");
   assert.equal(shown.total, 700);
-  assert.equal(shown.owedText, "Still owed · JujuGH₵1.00");
-  assert.equal(shown.owedPesewas, 100);
+  assert.equal(shown.owedText, "Still owed · JujuGH₵11.00");
+  assert.equal(shown.owedPesewas, 1000 + 100);
   assert.match(shown.owedClass, /bg-rose-100/);
   assert.match(shown.owedClass, /text-rose-900/);
 });
@@ -108,7 +110,7 @@ test("saved amounts are unchanged: Cash 4.00 + MoMo 3.00 paid, GH₵1.00 added t
 });
 
 // Property-style: for several splits, the payment rows always sum to the total, and the pink row
-// is present exactly when something is owed (it is never part of the total).
+// is the balance after the sale and today's payment (it is never part of the total).
 for (const [cash, momo, owe] of [["4.00", "3.00", 100], ["5.00", "", 300], ["", "5.00", 300], ["3.00", "2.00", 300], ["7.50", "", 50]]) {
   test(`rows sum to Total today: Cash ${cash || "-"} MoMo ${momo || "-"} owes ${owe}p`, async () => {
     const app = await openPosApp();
@@ -118,11 +120,11 @@ for (const [cash, momo, owe] of [["4.00", "3.00", 100], ["5.00", "", 300], ["", 
     assert.equal(shown.rowAmounts.reduce((sum, amount) => sum + amount, 0), shown.total);
     assert.equal(shown.total, 800 - owe);
     assert.equal(shown.rowAmounts.length, (cash ? 1 : 0) + (momo ? 1 : 0));
-    assert.equal(shown.owedPesewas, owe);
+    assert.equal(shown.owedPesewas, 1000 + owe);
   });
 }
 
-test("with nothing owed the pink row is absent (cash 5.00 + MoMo 3.00)", async () => {
+test("plain credit flow, Cash 1.00 + MoMo 2.00 today: the pink row is Juju's balance after today (10.00 + 8.00 - 3.00)", async () => {
   const app = await openPosApp();
   after(() => app.restoreConsole());
   await app.tap(/^Sell$/);
@@ -148,5 +150,5 @@ test("with nothing owed the pink row is absent (cash 5.00 + MoMo 3.00)", async (
   const shown = panel(app);
   assert.equal(shown.total, 300);
   assert.equal(shown.rowAmounts.reduce((sum, amount) => sum + amount, 0), 300);
-  assert.equal(shown.owedText, null, "no Still owed row when nothing is owed");
+  assert.equal(shown.owedText, "Still owed · JujuGH₵15.00");
 });

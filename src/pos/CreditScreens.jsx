@@ -406,7 +406,6 @@ function StillOwedRow({ amountPesewas, customerName }) {
 }
 
 const paidOnly = (parts) => parts.filter((part) => part.paymentMethod !== "owe");
-const owedOf = (parts) => parts.filter((part) => part.paymentMethod === "owe").reduce((sum, part) => sum + part.amountPesewas, 0);
 
 function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnToSplit, onSaveCredit }) {
   const today = localDateString();
@@ -455,6 +454,11 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
       ? [{ paymentMethod: "momo", amountPesewas: params.momoConfirmedPesewas, momoMethod: params.momoMethod, verification: params.verification }]
       : [];
   const hasReceivedMomo = recordedParts.some(isLockedMomoRow);
+  // Wiring 19 "Still owed row, all flows": the pink row is the customer's balance after this sale and
+  // today's payment (what 31 shows as "owes"). With a payment already made on 16 the Owed figure at
+  // the top is already net of it; a payment taken on 19 is taken off here.
+  const stillOwedAfterTodayPesewas = Math.max(0, maxCreditPesewas -
+    (paymentAlreadyMadeToday ? 0 : getPaidPaymentPesewas(recordedParts)));
   const validTodayPayment = Number.isSafeInteger(todayPaymentPesewas) &&
     todayPaymentPesewas > 0 &&
     todayPaymentPesewas <= maxCreditPesewas;
@@ -772,7 +776,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
                 <span>{t("credit.totalToday")}</span>
                 <span>{formatGhs(getPaidPaymentPesewas(recordedParts))}</span>
               </div>
-              <StillOwedRow amountPesewas={owedOf(recordedParts)} customerName={params.customer?.name} />
+              <StillOwedRow amountPesewas={stillOwedAfterTodayPesewas} customerName={params.customer?.name} />
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-2">
@@ -815,7 +819,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
           <span>{t("credit.totalToday")}</span>
           <span>{formatGhs(paidTodayPesewas)}</span>
         </div>
-        <StillOwedRow amountPesewas={owedOf(splitParts)} customerName={params.customer?.name} />
+        <StillOwedRow amountPesewas={stillOwedAfterTodayPesewas} customerName={params.customer?.name} />
         </div>
       )}
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
