@@ -266,10 +266,10 @@ export function backRoute(state, fallback = POS_ROUTES.Home) {
   if (previous.current === POS_ROUTES.ALittleAtATime && state.current === POS_ROUTES.SplitPayment && state.params?.installmentSplit) {
     params = { ...params, installmentSplitDraft: getInstallmentSplitDraft(state.params) };
   }
-  // Wiring 27 (12 Nov 2026, same fix as 19): Back from 27 opened from 26 (collect split) keeps the
-  // Cash and MoMo parts in 26's route params; Split payment on 26 reopens them while the amount is
-  // unchanged.
-  if (previous.current === POS_ROUTES.CollectPayPart && state.current === POS_ROUTES.SplitPayment && isCollectSplit(state.params ?? {})) {
+  // Wiring 27 (12 Nov 2026, same fix as 19): Back from 27 opened from 26 or from 25 (collect split)
+  // keeps the Cash and MoMo parts in that screen's route params; Split payment there reopens them
+  // while the amount is unchanged.
+  if (isCollectSplitOpener(previous.current) && state.current === POS_ROUTES.SplitPayment && isCollectSplit(state.params ?? {})) {
     params = { ...params, collectSplitDraft: getCollectSplitDraft(state.params) };
   }
   params = keepDraftOnBack(state, params);
@@ -283,7 +283,12 @@ function getInstallmentSplitDraft(params = {}) {
   return { totalPesewas: params.splitTotalPesewas, splitParts };
 }
 
-// The parts on 27 opened from 26, with the amount they split (a MoMo part just picked on 61 is
+// 25 (Collect sheet) and 26 (Pay part) open 27 for a collection split.
+function isCollectSplitOpener(route) {
+  return route === POS_ROUTES.CollectPayment || route === POS_ROUTES.CollectPayPart;
+}
+
+// The parts on 27 opened from 25 or 26, with the amount they split (a MoMo part just picked on 61 is
 // one of them). Nothing added: no draft.
 function getCollectSplitDraft(params = {}) {
   const totalPesewas = toPesewas(params.amount ?? "");
@@ -397,8 +402,8 @@ export function getReceivedMomoOnScreen(entry = {}) {
     const keptSplit = Array.isArray(params.installmentSplitDraft?.splitParts) ? params.installmentSplitDraft.splitParts : [];
     return lockedTotal(getCarriedPaymentParts(params)) + single + lockedTotal(keptSplit);
   }
-  // Parts kept on 26 after Back from 27 (collect split): a received MoMo part there asks too.
-  if (entry.current === POS_ROUTES.CollectPayPart) {
+  // Parts kept on 25 or 26 after Back from 27 (collect split): a received MoMo part there asks too.
+  if (isCollectSplitOpener(entry.current)) {
     return lockedTotal(Array.isArray(params.collectSplitDraft?.splitParts) ? params.collectSplitDraft.splitParts : []);
   }
   if (entry.current !== POS_ROUTES.SplitPayment || params.installmentSplit) return 0;

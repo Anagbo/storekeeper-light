@@ -8,10 +8,17 @@ import { getMomoAmountPesewas } from "./paymentAmount.js";
 import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, PosBackButton } from "./PosComponents.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
-import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
 import { useBackBlock } from "./browserBack.js";
 
 const NETWORKS = ["MTN", "Telecel", "AirtelTigo"];
+
+// 62's "MoMo part of a GH₵{total} …" line: what the full amount is on the screen that asked.
+const SPLIT_PART_OF = Object.freeze({ sale16: "sale", collect27: "payment", plan19: "payment" });
+
+// 62 after a failed Money received (wiring 62, 12 Nov 2026): the same words whether the save
+// certainly failed or its result is unknown. Money received again reuses the attempt key while the
+// result is unknown, so it cannot record twice.
+const SAVE_FAILED_62 = "We could not confirm that this was saved. Check Today's transactions first. Tap Money received again only if the payment is not there.";
 
 function BackTitle({ title, onBack }) {
   return <div className="flex items-center gap-3"><PosBackButton onClick={onBack} /><h1 className="text-2xl font-extrabold">{title}</h1></div>;
@@ -84,7 +91,9 @@ export function MoMoDirect({ params = {}, onBack, onConfirm, onPick }) {
       // Release the guard only on failure; on success this screen is replaced.
       savingRef.current = false;
       setSaving(false);
-      setSaveError(isSaveOutcomeUnknown(saveFailure) ? "" : "Could not save the payment. Check it was not saved, then try again.");
+      // Certainly not saved, or result unknown: the same words (wiring 62). An unknown result keeps
+      // the attempt key, so Money received again returns the first save instead of a second one.
+      setSaveError(SAVE_FAILED_62);
     }
   }
   useEffect(() => { getMerchantMomoSettings().then(setSettings).catch((error) => console.error("Could not load receiving settings.", error)); }, []);
@@ -100,11 +109,13 @@ export function MoMoDirect({ params = {}, onBack, onConfirm, onPick }) {
       copiedTimer.current = setTimeout(() => setCopied(false), 2000);
     } catch (error) { console.error("Could not copy MoMo number.", error); }
   }
-  // A sale split: the amount is only the MoMo part of the sale (wiring 62).
-  const saleTotalPesewas = params.confirmFor === "sale16"
-    ? (Number.isSafeInteger(params.splitTotalPesewas) ? params.splitTotalPesewas : params.amountPesewas)
-    : null;
-  const isSalePart = Number.isSafeInteger(saleTotalPesewas) && saleTotalPesewas > paymentAmountPesewas;
+  // A split: the amount is only the MoMo part (wiring 62). The line names the full payment on the
+  // screen that asked: a sale on 16, a payment on 27 from 25/26 (collection) or from 19 (plan).
+  const partOf = SPLIT_PART_OF[params.confirmFor];
+  const splitTotalPesewas = !partOf ? null
+    : Number.isSafeInteger(params.splitTotalPesewas) ? params.splitTotalPesewas
+      : params.confirmFor === "sale16" ? params.amountPesewas : null;
+  const isSplitPart = Number.isSafeInteger(splitTotalPesewas) && splitTotalPesewas > paymentAmountPesewas;
   // The name customers see when they send: no MoMo account name is stored yet, so the name and its
   // line show only once one is known (owner question, 12 Nov 2026).
   const accountName = settings.accountName ?? "";
@@ -118,7 +129,7 @@ export function MoMoDirect({ params = {}, onBack, onConfirm, onPick }) {
       {/* 42px; only an amount too long for a narrow phone shrinks to fit the card. */}
       <p className="mt-0.5 overflow-hidden whitespace-nowrap text-[42px] font-extrabold leading-[1.1]" style={{ fontSize: heroAmountSize(formatGhs(paymentAmountPesewas)) }}>{formatGhs(paymentAmountPesewas)}</p>
     </section>
-    {isSalePart && <p className="-mt-1 text-base font-medium text-slate-600">MoMo part of a {formatGhs(saleTotalPesewas)} sale</p>}
+    {isSplitPart && <p className="-mt-1 text-base font-medium text-slate-600">MoMo part of a {formatGhs(splitTotalPesewas)} {partOf}</p>}
     <section className="flex flex-col gap-1.5 rounded-[18px] border-2 border-slate-300 bg-white px-3.5 py-3">
       <div className="flex items-center justify-between gap-2">
         <span className="min-w-0 text-[17px] font-bold text-slate-600">Send to my number</span>
@@ -146,7 +157,8 @@ export function MoMoDirect({ params = {}, onBack, onConfirm, onPick }) {
     <div className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t-2 border-slate-300 bg-white px-4 pt-2.5 lg:left-60">
       <div className="mx-auto flex max-w-3xl flex-col items-center gap-1.5">
         {saveError && <p role="alert" className="w-full text-base font-bold text-rose-900">{saveError}</p>}
-        <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => void confirmReceived()} />
+        {/* Only "Still saving…" here: after a failure the text above says to tap Money received again. */}
+        {saveAttempt.checking && <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => void confirmReceived()} />}
         <PosPrimaryButton type="button" disabled={saving || !settings.number} onClick={() => void confirmReceived()} className="h-[60px] min-h-0 rounded-[18px] text-[21px]"><Check size={26} aria-hidden="true" />Money received</PosPrimaryButton>
         <p className="text-[15px] font-medium text-slate-600">Will be recorded as MoMo · you confirmed.</p>
       </div>

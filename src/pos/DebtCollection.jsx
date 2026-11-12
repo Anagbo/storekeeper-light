@@ -232,11 +232,19 @@ function CollectionSheet({ debt, params = {}, onClose, onNavigate, onUpdateParam
               }
             }}
             splitDisabled={busy || amountPesewas <= 0}
-            onSplit={() => onNavigate("SplitPayment", {
-              debtId: debt.id,
-              customerName: debt.customerName,
-              amount: (amountPesewas / 100).toFixed(2)
-            })}
+            onSplit={() => {
+              // Wiring 27 (12 Nov 2026, as from 26): the parts kept after Back from 27 come back while
+              // the amount (Due now / Pay all) is unchanged; a changed amount clears them.
+              const kept = params.collectSplitDraft;
+              const keptParts = kept?.totalPesewas === amountPesewas ? kept.splitParts : [];
+              if (kept && !keptParts.length) onUpdateParams?.({ collectSplitDraft: undefined });
+              onNavigate("SplitPayment", {
+                debtId: debt.id,
+                customerName: debt.customerName,
+                amount: (amountPesewas / 100).toFixed(2),
+                splitParts: keptParts
+              });
+            }}
           />
         </div>
         <CollectionError>{error}</CollectionError>
