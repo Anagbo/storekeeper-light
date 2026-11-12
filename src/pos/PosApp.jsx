@@ -641,9 +641,9 @@ export default function PosApp() {
       shopName={shopName}
     />
   ) : route === POS_ROUTES.SpentMoney ? (
-    <SpentMoney onBack={navigateBack} onNavigate={navigate} onSave={saveExpense} />
+    <SpentMoney params={routeState.params} onBack={navigateBack} onNavigate={navigate} onUpdateParams={updateCurrentParams} onSave={saveExpense} />
   ) : route === POS_ROUTES.StockOnCredit ? (
-    <StockOnCredit params={routeState.params} onBack={navigateBack} onSaveExpense={saveStockExpense} />
+    <StockOnCredit params={routeState.params} onBack={navigateBack} onUpdateParams={updateCurrentParams} onSaveExpense={saveStockExpense} />
   ) : route === POS_ROUTES.YouOweSuppliers ? (
     <YouOweSuppliers onBack={navigateBack} onPay={paySupplier} />
   ) : [

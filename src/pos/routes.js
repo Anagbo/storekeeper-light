@@ -283,6 +283,7 @@ function getInstallmentSplitDraft(params = {}) {
 export const KEPT_ON_BACK = Object.freeze({
   [POS_ROUTES.NewPerson]: ["newPersonName", "newPersonPhone", "newPersonGhanaCard", "newPersonAmount"],
   [POS_ROUTES.WhenWillTheyPay]: ["creditDueChoice"],
+  [POS_ROUTES.StockOnCredit]: ["stockPaidNow", "stockSupplierId", "stockNewSupplier", "stockSupplierName", "stockSupplierPhone", "stockPayBy"],
   [POS_ROUTES.ALittleAtATime]: ["installmentAmount", "frequency", "startToday", "nextDueDate", "todayPaymentAmount", "paymentMethod", "momoMethod", "installmentSplitDraft"]
 });
 

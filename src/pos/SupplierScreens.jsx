@@ -39,10 +39,12 @@ function AmountInput({ label, value, onChange }) {
   );
 }
 
-export function SpentMoney({ onBack, onNavigate, onSave }) {
-  const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("stock");
-  const [note, setNote] = useState("");
+export function SpentMoney({ params = {}, onBack, onNavigate, onUpdateParams, onSave }) {
+  // draft_survives_trip_away: the amount, category and note are also kept in the route params, so
+  // No > 45 > Back shows them again. Save and Home start empty.
+  const [amount, setAmount] = useState(params.expenseAmount ?? "");
+  const [category, setCategory] = useState(params.expenseCategory ?? "stock");
+  const [note, setNote] = useState(params.expenseNote ?? "");
   const [saving, setSaving] = useState(false);
   useBackBlock(saving);
   const [error, setError] = useState("");
@@ -57,7 +59,8 @@ export function SpentMoney({ onBack, onNavigate, onSave }) {
       setError(t("expense.creditStockOnly"));
       return;
     }
-    onNavigate("StockOnCredit", { amountPesewas, category, note });
+    // 45's own draft kept from a Back comes back while the amount is the same (routes keptDrafts).
+    onNavigate("StockOnCredit", { amountPesewas, category, note, ...(params.keptDrafts && { keptDrafts: params.keptDrafts }) });
   }
 
   async function save() {
@@ -80,12 +83,12 @@ export function SpentMoney({ onBack, onNavigate, onSave }) {
         <PosBackButton onClick={onBack} />
         <h1 className="text-2xl font-extrabold">{t("expense.title")}</h1>
       </div>
-      <AmountInput label={t("expense.amount")} value={amount} onChange={setAmount} />
+      <AmountInput label={t("expense.amount")} value={amount} onChange={(value) => { setAmount(value); onUpdateParams?.({ expenseAmount: value }); }} />
       <fieldset className="space-y-2">
         <legend className="mb-1 text-lg font-extrabold">{t("expense.whatFor")}</legend>
         <div className="grid grid-cols-2 gap-2">
           {SUPPLIER_CATEGORIES.map((option) => (
-            <button key={option} type="button" aria-pressed={category === option} onClick={() => { setCategory(option); setError(""); }} className={`min-h-12 rounded-xl border-2 px-3 text-left font-bold ${category === option ? "border-emerald-900 bg-emerald-100" : "border-slate-500 bg-white"}`}>
+            <button key={option} type="button" aria-pressed={category === option} onClick={() => { setCategory(option); onUpdateParams?.({ expenseCategory: option }); setError(""); }} className={`min-h-12 rounded-xl border-2 px-3 text-left font-bold ${category === option ? "border-emerald-900 bg-emerald-100" : "border-slate-500 bg-white"}`}>
               {t(CATEGORY_LABELS[option])}
             </button>
           ))}
@@ -93,7 +96,7 @@ export function SpentMoney({ onBack, onNavigate, onSave }) {
       </fieldset>
       <label className="block space-y-1">
         <span className="text-base font-bold">{t("expense.note")}</span>
-        <input value={note} onChange={(event) => setNote(event.target.value)} className="min-h-12 w-full rounded-xl border-2 border-slate-500 px-3" />
+        <input value={note} onChange={(event) => { setNote(event.target.value); onUpdateParams?.({ expenseNote: event.target.value }); }} className="min-h-12 w-full rounded-xl border-2 border-slate-500 px-3" />
       </label>
       <fieldset>
         <legend className="mb-1 text-lg font-extrabold">{t("expense.paidAllNow")}</legend>
@@ -126,20 +129,22 @@ function SupplierRadio({ checked, onSelect, children, dashed = false, ...rest })
   );
 }
 
-export function StockOnCredit({ params, onBack, onSaveExpense }) {
+export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense }) {
   // 45: the most recently used suppliers come first (undefined while loading).
   const suppliers = useLiveQuery(async () => {
     const [records, linked] = await Promise.all([db.suppliers.toArray(), db.transactions.where("supplierId").above("").toArray()]);
     return orderSuppliersByRecentUse(records, linked);
   }, [], undefined);
   const amountPesewas = Number.isSafeInteger(params?.amountPesewas) ? params.amountPesewas : 0;
-  const [paidAmount, setPaidAmount] = useState("0");
-  const [supplierId, setSupplierId] = useState("");
-  const [newSupplier, setNewSupplier] = useState(false);
+  // draft_survives_trip_away: Paid now, the supplier (chosen or typed) and the pay-by date are also
+  // kept in the route params (stock*), and Back to 44 and No again brings them back.
+  const [paidAmount, setPaidAmount] = useState(params?.stockPaidNow ?? "0");
+  const [supplierId, setSupplierId] = useState(params?.stockSupplierId ?? "");
+  const [newSupplier, setNewSupplier] = useState(params?.stockNewSupplier === true);
   const [showAll, setShowAll] = useState(false);
-  const [supplierName, setSupplierName] = useState("");
-  const [supplierPhone, setSupplierPhone] = useState("");
-  const [payBy, setPayBy] = useState("");
+  const [supplierName, setSupplierName] = useState(params?.stockSupplierName ?? "");
+  const [supplierPhone, setSupplierPhone] = useState(params?.stockSupplierPhone ?? "");
+  const [payBy, setPayBy] = useState(params?.stockPayBy ?? "");
   const [saving, setSaving] = useState(false);
   useBackBlock(saving);
   const [error, setError] = useState("");
@@ -156,6 +161,7 @@ export function StockOnCredit({ params, onBack, onSaveExpense }) {
     // The new supplier fields are hidden, but what was typed in them is kept until Save.
     setNewSupplier(false);
     setSupplierId(id);
+    onUpdateParams?.({ stockNewSupplier: false, stockSupplierId: id });
     setError("");
   }
 
@@ -204,7 +210,7 @@ export function StockOnCredit({ params, onBack, onSaveExpense }) {
       <section data-card="paid-now" className={card}>
         <label className="block">
           <span className="mb-1.5 block text-base font-extrabold">{t("expense.paidNow")}</span>
-          <input type="text" inputMode="decimal" autoComplete="off" value={paidAmount} onChange={(event) => setPaidAmount(event.target.value)} placeholder="0.00" className="h-14 w-full min-w-0 rounded-[14px] border-2 border-slate-500 bg-white px-3.5 text-right text-2xl font-extrabold" />
+          <input type="text" inputMode="decimal" autoComplete="off" value={paidAmount} onChange={(event) => { setPaidAmount(event.target.value); onUpdateParams?.({ stockPaidNow: event.target.value }); }} placeholder="0.00" className="h-14 w-full min-w-0 rounded-[14px] border-2 border-slate-500 bg-white px-3.5 text-right text-2xl font-extrabold" />
         </label>
       </section>
       {!validPaidAmount && <p role="alert" className="rounded-xl bg-rose-100 p-3 font-semibold text-rose-950">{t("expense.paidAmountTooHigh")}</p>}
@@ -229,20 +235,20 @@ export function StockOnCredit({ params, onBack, onSaveExpense }) {
                   {t("expense.showAllSuppliers", { count: listed.length })}
                 </button>
               )}
-              <SupplierRadio dashed checked={isNew} data-supplier-id="new" onSelect={() => { setNewSupplier(true); setError(""); }}>
+              <SupplierRadio dashed checked={isNew} data-supplier-id="new" onSelect={() => { setNewSupplier(true); onUpdateParams?.({ stockNewSupplier: true }); setError(""); }}>
                 <Plus size={24} aria-hidden="true" className="shrink-0" />
                 <b className="min-w-0 flex-1 text-lg">{t("expense.newSupplierRow")}</b>
               </SupplierRadio>
             </div>
             {isNew && (
               <div data-new-supplier-fields="" className="flex flex-col gap-2.5 pt-1">
-                <label className="block"><span className="mb-1.5 block text-[15px] font-bold text-slate-600">{t("expense.supplierName")}</span><input value={supplierName} onChange={(event) => setSupplierName(event.target.value)} className={field} /></label>
-                <label className="block"><span className="mb-1.5 block text-[15px] font-bold text-slate-600">{t("expense.supplierPhone")}</span><input type="tel" inputMode="tel" value={supplierPhone} onChange={(event) => setSupplierPhone(event.target.value)} className={field} /></label>
+                <label className="block"><span className="mb-1.5 block text-[15px] font-bold text-slate-600">{t("expense.supplierName")}</span><input value={supplierName} onChange={(event) => { setSupplierName(event.target.value); onUpdateParams?.({ stockSupplierName: event.target.value }); }} className={field} /></label>
+                <label className="block"><span className="mb-1.5 block text-[15px] font-bold text-slate-600">{t("expense.supplierPhone")}</span><input type="tel" inputMode="tel" value={supplierPhone} onChange={(event) => { setSupplierPhone(event.target.value); onUpdateParams?.({ stockSupplierPhone: event.target.value }); }} className={field} /></label>
               </div>
             )}
           </section>
           <section data-card="pay-by" className={card}>
-            <label className="block"><span className="mb-1.5 block text-base font-extrabold">{t("expense.payBy")}</span><input type="date" value={payBy} onChange={(event) => setPayBy(event.target.value)} className={field} /></label>
+            <label className="block"><span className="mb-1.5 block text-base font-extrabold">{t("expense.payBy")}</span><input type="date" value={payBy} onChange={(event) => { setPayBy(event.target.value); onUpdateParams?.({ stockPayBy: event.target.value }); }} className={field} /></label>
           </section>
         </>
       )}
