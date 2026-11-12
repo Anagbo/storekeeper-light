@@ -35,7 +35,8 @@ function installWindow() {
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 2));
 
-export async function openPosApp() {
+// Phone request is on by default here so 61 still asks when the owner has to choose; pass { env: {} } for it off.
+export async function openPosApp({ env = { VITE_ENABLE_MOMO_PHONE_REQUEST: "true" } } = {}) {
   installWindow();
   const errors = [];
   const warnings = [];
@@ -43,7 +44,7 @@ export async function openPosApp() {
   const originalWarn = console.warn;
   console.error = (...args) => { errors.push(args); };
   console.warn = (...args) => { warnings.push(args); };
-  const { default: PosApp } = await loadJsx("src/pos/PosApp.jsx");
+  const { default: PosApp } = await loadJsx("src/pos/PosApp.jsx", env);
   const view = render({ type: PosApp, props: {} }, { unmount: true });
 
   const app = {

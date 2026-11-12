@@ -51,7 +51,8 @@ import BackupRestore from "./BackupRestore.jsx";
 import { SettingsProfitTools } from "./SettingsScreens.jsx";
 import PeopleWhoOweYou from "./OwedScreens.jsx";
 import { ManualDebtAmount, ManualDebtSaved } from "./ManualDebtScreens.jsx";
-import { MoMoChoice, MoMoCode, MoMoDirect, MoMoNotCompleted, MoMoPayment, MoMoSetup, MoMoWaiting, PaymentSettings } from "./MoMoScreens.jsx";
+import { PHONE_REQUEST_ENABLED, getMerchantMomoSettings } from "./momoConfig.js";
+import { MoMoChoice,MoMoCode, MoMoDirect, MoMoNotCompleted, MoMoPayment, MoMoSetup, MoMoWaiting, PaymentSettings } from "./MoMoScreens.jsx";
 import { MyPlan, PlanPayCash, PlanPayMethod, PlanPayMoMo, PlanPayPhone, PlanPaymentResult } from "./PlanScreens.jsx";
 
 const CollectPayment = lazy(() => import("./DebtCollection.jsx").then((module) => ({ default: module.CollectPayment })));
@@ -98,6 +99,9 @@ const CONFIRM_RETURNS = {
 
 export default function PosApp() {
   const [routeState, setRouteState] = useState(() => createRouteState());
+  // Bumped when a MoMo pick is applied on the asking screen without opening 61: the screen starts again,
+  // as it did when it came back from 61, so it shows the new part.
+  const [pickRemount, setPickRemount] = useState(0);
   // The in-app stack, read synchronously by the phone's back button (two quick presses in a row).
   const routeRef = useRef(routeState);
   const browserBackRef = useRef(null);
@@ -191,6 +195,24 @@ export default function PosApp() {
     // Home (Cancel sale on 59, Menu > Home) leaves the draft.
     if (route === POS_ROUTES.Home) {
       leaveDraft(() => { commit((current) => navigateState(current, route, params)); setNotice(""); });
+      return;
+    }
+    // A MoMo pick from 16, 27 or 19 that needs no question (saved "Always: customer sends", or Phone
+    // request is not on) never opens 61: Direct is applied on the screen that asked, so nothing flashes
+    // and no history entry is added.
+    if (route === POS_ROUTES.MoMoChoice && params.pickOnly && params.confirmAtDone && params.returnRoute) {
+      const asker = routeRef.current;
+      void getMerchantMomoSettings().then((settings) => settings, () => null).then((settings) => {
+        const skipsAsking = settings && (settings.defaultMethod === "direct" || !PHONE_REQUEST_ENABLED);
+        if (routeRef.current.current !== asker.current) return;
+        if (skipsAsking) {
+          commit((current) => returnFromMomoPickState(current, { ...params, momoMethod: "direct" }));
+          setPickRemount((count) => count + 1);
+        } else {
+          commit((current) => navigateState(current, route, params));
+        }
+        setNotice("");
+      });
       return;
     }
     // Home resets, a result screen (sale saved…) starts a fresh stack, anything else is pushed.
@@ -675,7 +697,7 @@ export default function PosApp() {
       <div className="flex min-h-[calc(100vh-4rem)]">
         {!isSetupFlow && <PosSideNav current={route} onNavigate={switchTab} />}
         <div className="min-w-0 flex-1">
-          <PosErrorBoundary key={route}>
+          <PosErrorBoundary key={`${route}:${pickRemount}`}>
             <Suspense fallback={<PosPage><p role="status">{t("app.loadingScreen")}</p></PosPage>}>
                   {setupReady ? content : <PosPage><p role="status">{t("app.loadingScreen")}</p></PosPage>}
             </Suspense>
