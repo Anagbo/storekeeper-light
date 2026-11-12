@@ -22,10 +22,21 @@ export default function InstallmentSplitPayment({ params = {}, onBack, onReturnT
     return null;
   }
 
+  // Audit item 4: 27 shows the amount paid today but not the balance. The line shows the Owed figure
+  // of 19 (balance after the sale, less anything paid before 19) minus this payment, the same figure
+  // as the pink row on 19 and "owes" on 31.
+  const currentDebtPesewas = params.customer?.totalDebtPesewas ?? 0;
+  const paidBefore19Pesewas = Number.isSafeInteger(params.initialPaymentPesewas) ? params.initialPaymentPesewas : 0;
+  const owedOn19Pesewas = currentDebtPesewas + (params.amountPesewas ?? 0) - paidBefore19Pesewas;
+  const stillOwed = Number.isSafeInteger(owedOn19Pesewas) && params.flow !== "split"
+    ? { amountPesewas: Math.max(0, owedOn19Pesewas - totalPesewas), customerName: params.customer?.name }
+    : null;
+
   return (
     <SplitPayment
       totalPesewas={totalPesewas}
       totalLabel={t("credit.amountPaidToday")}
+      stillOwed={stillOwed}
       doneLabel={t("split.done")}
       onPartsChange={(parts) => onUpdateParams?.({ splitParts: parts })}
       onBack={onBack}

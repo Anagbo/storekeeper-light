@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Banknote, Check, Plus, Smartphone, UserRound, UserRoundPlus } from "lucide-react";
+import { Banknote, Check, Plus, Smartphone, UserRoundPlus } from "lucide-react";
 import SearchField from "./SearchField.jsx";
 import { hasSearchText, matchesSearch } from "../lib/searchMatch.js";
 import { db } from "../db/db.js";
@@ -22,6 +22,7 @@ import { posText as t } from "./i18n.js";
 import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
 import { useLargeAmountConfirm } from "./LargeAmountConfirm.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
+import StillOwedRow from "./StillOwedRow.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { getCarriedPaymentParts, getMomoPickParams, getPaidPaymentPesewas } from "./paymentAmount.js";
 import { useBackBlock } from "./browserBack.js";
@@ -390,20 +391,8 @@ function RecordedPartRow({ part }) {
 }
 
 // 19 "Owe in the draft panel" (12 Nov 2026): the rows above "Total today" are only the paid parts
-// (Cash, MoMo) and add up to it. What is still owed is a separate pink row below the total.
-function StillOwedRow({ amountPesewas, customerName }) {
-  if (!(amountPesewas > 0)) return null;
-  const name = displayName(customerName ?? "");
-  return (
-    <div data-still-owed="" className="mt-2 flex min-w-0 items-center justify-between gap-3 rounded-xl bg-rose-100 px-3 py-2 font-extrabold text-rose-900">
-      <span className="flex min-w-0 items-center gap-2">
-        <UserRound size={18} className="shrink-0" aria-hidden="true" />
-        <span className="min-w-0 [overflow-wrap:anywhere]">{name ? t("credit.stillOwedName", { name }) : t("credit.stillOwed")}</span>
-      </span>
-      <span className="shrink-0 whitespace-nowrap">{formatGhs(amountPesewas)}</span>
-    </div>
-  );
-}
+// (Cash, MoMo) and add up to it. What is still owed is a separate pink row below the total
+// (StillOwedRow, shared with 27).
 
 const paidOnly = (parts) => parts.filter((part) => part.paymentMethod !== "owe");
 

@@ -366,6 +366,8 @@ export function CollectSplitPayment({ params, onBack, onNavigate, onUpdateParams
     <SplitPayment
       totalPesewas={totalPesewas}
       totalLabel={t("split.collectPays", { name: displayName(debt.customerName) })}
+      // Audit item 4: 27 shows what Kofi pays but not the balance; this line shows it (= 26 Left to pay, 28).
+      stillOwed={{ amountPesewas: Math.max(0, debt.amountPesewas - totalPesewas), customerName: debt.customerName }}
       doneLabel={t("split.done")}
       busy={busy}
       error={error}

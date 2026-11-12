@@ -5,6 +5,7 @@ import { formatPesewasText, parseAmountToPesewas } from "../lib/parsePesewas.js"
 import { posText as t } from "./i18n.js";
 import { PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
 import { useLargeAmountConfirm } from "./LargeAmountConfirm.jsx";
+import StillOwedRow from "./StillOwedRow.jsx";
 import { addRemainingToPart, isLockedMomoRow, removePart, setPartAmount } from "./splitTender.js";
 
 const METHOD_ICONS = { cash: Banknote, momo: Smartphone, owe: UserRound };
@@ -25,6 +26,8 @@ export default function SplitPayment({
   busy = false,
   error = "",
   notice = null,
+  // 27 opened from 26 or 19: { amountPesewas, customerName } of the balance after this payment.
+  stillOwed = null,
   onPartsChange,
   onBack,
   onDone,
@@ -164,6 +167,7 @@ export default function SplitPayment({
         <span className="text-xl font-extrabold">{t("split.leftToPay")}</span>
         <strong className="text-3xl">{formatGhs(leftPesewas)}</strong>
       </div>
+      {stillOwed && <StillOwedRow amountPesewas={stillOwed.amountPesewas} customerName={stillOwed.customerName} />}
       {leftPesewas > 0 && !draft && (
         <>
           <p className="text-xl font-extrabold">{t("split.addTheRest")}</p>
