@@ -109,7 +109,7 @@ async function collectionsSaved() {
   return { count: new Set(rows.map((row) => row.collectionId)).size, pesewas: rows.reduce((sum, row) => sum + row.amountPesewas, 0) };
 }
 
-test("27 collect: Direct returns to 27 not confirmed and saves nothing; Received opens 62; Back saves nothing; Money received saves once and lands on 28", async () => {
+test("27 collect: Direct returns to 27 not confirmed and saves nothing; Done opens 62; Back saves nothing; Money received saves once and lands on 28", async () => {
   const app = await open();
   const before = await counts();
   await collectSplitWithDirect(app);
@@ -118,14 +118,14 @@ test("27 collect: Direct returns to 27 not confirmed and saves nothing; Received
   assert.ok(labels(app.view.tree).includes("Edit MoMo amount"));
   assert.match(shown(app), /Customer sends · not confirmed yet/);
   assert.deepEqual(await counts(), before, "nothing saved");
-  await app.tap(/^Received$/);
+  await app.tap(/^Done$/);
   assert.equal(app.route, "MoMoDirect");
   assert.match(shown(app), /send GH₵4\.00/);
   await app.tap("Back");
   assert.equal(app.route, "SplitPayment");
   assert.equal(momoOf(app.params.splitParts).verification, undefined);
   assert.deepEqual(await counts(), before, "Back on 62 saves nothing");
-  await app.tap(/^Received$/);
+  await app.tap(/^Done$/);
   await app.tap(/^Money received$/);
   assert.equal(app.route, "PaymentReceived");
   assert.deepEqual(await collectionsSaved(), { count: 1, pesewas: 1000 }, "saved once");
@@ -135,10 +135,10 @@ test("27 collect: Direct returns to 27 not confirmed and saves nothing; Received
   assert.equal(app.state.history.length, 0);
 });
 
-test("27 collect: a save that fails after Money received stays on 27 with the MoMo part locked; leaving asks; Received then saves once without 62", async () => {
+test("27 collect: a save that fails after Money received stays on 27 with the MoMo part locked; leaving asks; Done then saves once without 62", async () => {
   const app = await open();
   await collectSplitWithDirect(app);
-  await app.tap(/^Received$/);
+  await app.tap(/^Done$/);
   assert.equal(app.route, "MoMoDirect");
   await failingWrites(() => app.tap(/^Money received$/));
   assert.equal(app.route, "SplitPayment");
@@ -159,7 +159,7 @@ test("27 collect: a save that fails after Money received stays on 27 with the Mo
     assert.equal(app.route, "SplitPayment");
     assert.equal(momoOf(app.params.splitParts).verification, "merchant_confirmed");
   }
-  await app.tap(/^Received$/);
+  await app.tap(/^Done$/);
   assert.equal(app.route, "PaymentReceived", "already confirmed: no 62");
   assert.deepEqual(await collectionsSaved(), { count: 1, pesewas: 1000 });
 });
@@ -172,7 +172,7 @@ test("27 collect: Leave with received MoMo discards the draft (Home, nothing beh
   assert.equal(app.route, "Home");
 
   await collectSplitWithDirect(app);
-  await app.tap(/^Received$/);
+  await app.tap(/^Done$/);
   await failingWrites(() => app.tap(/^Money received$/));
   await app.tap("Back");
   await app.tap("Leave");

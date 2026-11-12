@@ -359,7 +359,7 @@ function getMomoChoiceFields(paymentMethod, params) {
   };
 }
 
-// A part of today's payment on 19, with its status: "Received" (green check) once the MoMo money is
+// A part of today's payment on 19, with its status: "Received ✓" (green) once the MoMo money is
 // confirmed, "Customer sends · not confirmed yet" before.
 function RecordedPartRow({ part }) {
   const locked = isLockedMomoRow(part);
@@ -373,7 +373,7 @@ function RecordedPartRow({ part }) {
         <span className="min-w-0">
           <span className="block truncate">{t(`credit.method.${part.paymentMethod}`)}</span>
           {status && (locked
-            ? <span data-row-status="" className="flex items-center gap-1 text-sm font-bold text-emerald-900"><Check size={16} strokeWidth={3} className="shrink-0" aria-hidden="true" />{status}</span>
+            ? <span data-row-status="" className="block text-sm font-bold text-emerald-900">{status}</span>
             : <span data-row-status="" className="block text-sm font-semibold text-slate-700 [overflow-wrap:anywhere]">{status}</span>)}
         </span>
       </span>
@@ -709,7 +709,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
           </span>
           <span id="today-payment-limit" className="mt-1 block text-sm font-semibold text-slate-700">
             {recordedParts.length > 0
-              ? t("credit.paymentRecorded")
+              ? t("credit.paidTodayHint")
               : t("credit.paymentTodayMaximum", { amount: formatGhs(maxCreditPesewas) })}
           </span>
           {todayPaymentSubmitAttempted && !validTodayPayment && (
@@ -731,12 +731,12 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
           <legend className="mb-1 text-base font-extrabold">{t("credit.firstPaymentMethod")}</legend>
           {recordedParts.length > 0 ? (
             <div className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
-              <p className="mb-2 font-extrabold text-emerald-950">{t("credit.paymentRecorded")}</p>
+              <p className="mb-2 font-extrabold text-emerald-950">{t("credit.payingToday")}</p>
               <div className="flex flex-col gap-2">
                 {recordedParts.map((part) => <RecordedPartRow key={`${part.paymentMethod}-${part.amountPesewas}`} part={part} />)}
               </div>
               <div className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 pt-2 font-extrabold text-emerald-950">
-                <span>{t("credit.paymentRecordedTotal")}</span>
+                <span>{t("credit.totalToday")}</span>
                 <span>{formatGhs(recordedParts.reduce((total, part) => total + part.amountPesewas, 0))}</span>
               </div>
             </div>
@@ -768,7 +768,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
       )}
       {paymentAlreadyMadeToday && paidTodayPesewas > 0 && splitParts.length > 0 && (
         <div className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
-        <p className="mb-2 font-extrabold text-emerald-950">{t("credit.paymentRecorded")}</p>
+        <p className="mb-2 font-extrabold text-emerald-950">{t("credit.payingToday")}</p>
         <div className="flex flex-col gap-2">
           {splitParts.map((part) => (
             <div key={`${part.paymentMethod}-${part.amountPesewas}`} className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 font-bold">
@@ -778,7 +778,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
           ))}
         </div>
         <div className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 pt-2 font-extrabold text-emerald-950">
-          <span>{t("credit.paymentRecordedTotal")}</span>
+          <span>{t("credit.totalToday")}</span>
           <span>{formatGhs(paidTodayPesewas)}</span>
         </div>
         </div>

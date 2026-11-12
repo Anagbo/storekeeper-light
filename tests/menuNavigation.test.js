@@ -140,11 +140,11 @@ test("19 > Menu > Settings > Back > Close menu > 19: the split draft is intact",
   const v19 = render({ type: CreditScreens, props: { route: "ALittleAtATime", params: app.state.params, onBack: app.back, onNavigate: app.navigate, onReturnToSplit() {}, onSaveCredit() {} } });
   [...walk(v19.tree)].find((node) => node.props?.["aria-label"] === "Split payment").props.onClick();
   assert.equal(app.state.current, POS_ROUTES.SplitPayment);
-  // 27 from 19: Cash for the whole amount paid today, then Received returns to the existing 19.
+  // 27 from 19: Cash for the whole amount paid today, then Done returns to the existing 19.
   const v27 = render({ type: InstallmentSplitPayment, props: { params: app.state.params, onBack: app.back, onNavigate: app.navigate, onReturnTo: app.returnTo, onUpdateParams: app.updateParams } });
   tile(v27.tree, "Cash").props.onClick();
   v27.rerender();
-  findButton(v27.tree, "Received").props.onClick();
+  findButton(v27.tree, "Done").props.onClick();
   assert.equal(app.state.current, "ALittleAtATime");
   assert.deepEqual(app.state.params.firstPaymentParts, [{ paymentMethod: "cash", amountPesewas: 2000 }]);
   const before = snapshot(app.state);
@@ -158,7 +158,7 @@ test("19 > Menu > Settings > Back > Close menu > 19: the split draft is intact",
   assert.equal(snapshot(app.state), before, "19 and its params are exactly as they were");
   const again = render({ type: CreditScreens, props: { route: "ALittleAtATime", params: app.state.params, onBack: app.back, onNavigate: app.navigate, onReturnToSplit() {}, onSaveCredit() {} } });
   const text = textOf(again.tree);
-  assert.match(text, /Payment received today/);
+  assert.match(text, /Paying today/);
   assert.match(text, /CashGH₵20\.00/);
 });
 

@@ -354,7 +354,7 @@ export function CollectSplitPayment({ params, onBack, onNavigate, onUpdateParams
     <SplitPayment
       totalPesewas={totalPesewas}
       totalLabel={t("split.collectPays", { name: debt.customerName })}
-      doneLabel={t("collect.received")}
+      doneLabel={t("split.done")}
       busy={busy}
       error={error}
       onPartsChange={(parts) => onUpdateParams?.({ splitParts: parts })}

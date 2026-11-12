@@ -200,15 +200,15 @@ async function split27From19(app) {
   await app.tap(/^Customer sends to my number/);
 }
 
-test("27 from 19: Direct returns to 27 not confirmed; Received returns to 19 with nothing saved; Save plan opens 62; Money received saves once and lands on 31", async () => {
+test("27 from 19: Direct returns to 27 not confirmed; Done returns to 19 with nothing saved; Save plan opens 62; Money received saves once and lands on 31", async () => {
   const app = await open();
   const before = await counts();
   await split27From19(app);
   assert.equal(app.route, "SplitPayment", "Direct returns to 27");
   assert.equal(momoOf(app.params.splitParts).verification, undefined);
   assert.match(shown(app), /not confirmed yet/);
-  await app.tap(/^Received$/);
-  assert.equal(app.route, "ALittleAtATime", "Received returns to 19, no 62 yet");
+  await app.tap(/^Done$/);
+  assert.equal(app.route, "ALittleAtATime", "Done returns to 19, no 62 yet");
   assert.deepEqual(await counts(), before);
   assert.match(shown(app), /not confirmed yet/);
   await app.tap(/^Save plan$/);
@@ -229,7 +229,7 @@ test("27 from 19: Direct returns to 27 not confirmed; Received returns to 19 wit
 test("27 from 19: a failed save stays on 19 with the MoMo part locked (Received) and the leave question; Save plan then saves once", async () => {
   const app = await open();
   await split27From19(app);
-  await app.tap(/^Received$/);
+  await app.tap(/^Done$/);
   await app.tap(/^Save plan$/);
   await failingWrites(() => app.tap(/^Money received$/));
   assert.equal(app.route, "ALittleAtATime");
@@ -248,7 +248,7 @@ test("27 from 19: a failed save stays on 19 with the MoMo part locked (Received)
 test("19: Next cycle stays available while the MoMo part back from 27 is not confirmed yet (only received MoMo locks it)", async () => {
   const app = await open();
   await split27From19(app);
-  await app.tap(/^Received$/);
+  await app.tap(/^Done$/);
   const nextCycle = () => nodes(app.view.tree).find((node) => node.type === "button" && /^Next cycle/.test(textOf(node).trim()));
   assert.equal(Boolean(nextCycle().props.disabled), false, "not confirmed yet: Next cycle still drops the parts");
 });

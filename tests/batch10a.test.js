@@ -51,9 +51,9 @@ test("K3: 16 passes the row detail to the shared split screen, which shows it un
   assert.match(split, /const detail = partDetail\(part\);/);
 });
 
-test("K6: the Split button on 19 is named Split payment; 27 opened from 19 says Received", () => {
+test("K6: the Split button on 19 is named Split payment; 27 opened from 19 says Done (12 Nov 2026)", () => {
   assert.match(read("CreditScreens.jsx"), /aria-label=\{method === "split" \? t\("split\.title"\) : undefined\}/);
-  assert.match(read("InstallmentSplitPayment.jsx"), /doneLabel=\{t\("collect\.received"\)\}/);
+  assert.match(read("InstallmentSplitPayment.jsx"), /doneLabel=\{t\("split\.done"\)\}/);
 });
 
 test("K12: an Always: customer sends setting on 63 skips 61 straight to 62", () => {

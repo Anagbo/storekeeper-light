@@ -98,7 +98,7 @@ function screen19(a) {
     todaySelectedStyle: /green-200/.test(today.props.className),
     nextPressed: next.props["aria-pressed"],
     saveOff: Boolean(save.props.disabled),
-    recordedPanel: textOf(tree).includes(posText("credit.paymentRecorded")),
+    recordedPanel: textOf(tree).includes(posText("credit.payingToday")),
     alerts: alerts(tree)
   };
 }
@@ -138,7 +138,7 @@ const cashMoMoNotConfirmed = (cash, momo) => [
   { paymentMethod: "momo", amountPesewas: momo, momoMethod: "direct" }
 ];
 
-// What is on 27 as rows, handed back with Received (the rows were built on 27).
+// What is on 27 as rows, handed back with Done (the rows were built on 27).
 async function receive(a, parts) {
   const split = () => [...walk(a.tree)].find((node) => typeof node.type === "function" && node.type.name === "SplitPayment");
   split().props.onPartsChange(parts);
@@ -199,7 +199,7 @@ for (const row of GRID) {
     assert.equal(back.todayPressed, true);
     assert.equal(back.todaySelectedStyle, true, "Today looks selected");
     assert.equal(back.nextPressed, false);
-    assert.equal(back.recordedPanel, true, "the Payment received today panel shows the parts");
+    assert.equal(back.recordedPanel, true, "the Paying today panel shows the parts");
     assert.equal(back.saveOff, false);
     assert.deepEqual(back.alerts, []);
 
@@ -230,7 +230,7 @@ test("Next cycle after a recorded split discards the parts, hides the panel, rec
   const afterNext = screen19(a);
   assert.equal(afterNext.nextPressed, true);
   assert.equal(afterNext.todayPressed, false);
-  assert.equal(afterNext.recordedPanel, false, "the Payment received today panel is hidden");
+  assert.equal(afterNext.recordedPanel, false, "the Paying today panel is hidden");
   assert.equal(afterNext.owed, "328.20");
   assert.equal(afterNext.saveOff, false);
   assert.equal(a.state.params.firstPaymentParts, undefined, "the recorded parts are discarded");
@@ -272,7 +272,7 @@ test("Cash only on 19 still saves (no split involved)", async () => {
 
 // ---- the MoMo tile on 27 from 19: editor first, then 61 and 62, then back to 19 -----------------------------------------
 
-test("27 from 19 through the MoMo tile (editor, 61, 62) then Cash and Received: back on 19 and the save is right", async () => {
+test("27 from 19 through the MoMo tile (editor, 61, 62) then Cash and Done: back on 19 and the save is right", async () => {
   await setPreference("momoReceivingNumber", "0241234567");
   await setPreference("momoReceivingNetwork", "MTN");
   const { a } = await openNineteen({ existing: 24820, each: "40" });
@@ -305,9 +305,9 @@ test("27 from 19 through the MoMo tile (editor, 61, 62) then Cash and Received: 
   assert.deepEqual(a.state.params.splitParts.map((part) => [part.paymentMethod, part.amountPesewas]), [["momo", 8000]]);
   assert.equal(a.state.params.pendingMomoAmountPesewas, undefined, "the pending MoMo values are removed");
 
-  // 27: Cash takes the rest in one tap, Received returns to 19.
+  // 27: Cash takes the rest in one tap, Done returns to 19.
   button(a.tree, (_props, text) => text === "Cash").props.onClick(); a.rerender();
-  const received = findButton(a.tree, "Received");
+  const received = findButton(a.tree, "Done");
   assert.equal(Boolean(received.props.disabled), false);
   await received.props.onClick();
   await waitFor(() => a.state.current === "ALittleAtATime", "19 to open again");

@@ -26,7 +26,7 @@ export default function InstallmentSplitPayment({ params = {}, onBack, onReturnT
     <SplitPayment
       totalPesewas={totalPesewas}
       totalLabel={t("credit.amountPaidToday")}
-      doneLabel={t("collect.received")}
+      doneLabel={t("split.done")}
       onPartsChange={(parts) => onUpdateParams?.({ splitParts: parts })}
       onBack={onBack}
       onDone={complete}
