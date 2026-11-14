@@ -7,6 +7,9 @@ import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
 import { PosCard, PosPage, PosPrimaryButton, PosBackButton } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
 
+const STEP_CLASS = "grid h-11 w-11 shrink-0 place-items-center rounded-[12px] border-2 border-slate-500 bg-white text-xl font-extrabold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800";
+const BIN_CLASS = "grid h-11 w-11 shrink-0 place-items-center rounded-[12px] border-2 border-slate-500 bg-white text-rose-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800";
+
 function useSellableProducts() {
   return useLiveQuery(async () => {
     try {
@@ -132,67 +135,73 @@ export default function SellWithItems({ params = {}, onBack, onNavigate, onUpdat
       {cart.length > 0 && (
         <section className="space-y-2 rounded-[18px] border-2 border-slate-500 bg-white p-3">
           {cart.map((line) => line.productId === null ? (
-            <div key="other-amount" className="flex min-h-12 items-center gap-0.5 border-b border-slate-200 pb-2 last:border-b-0 last:pb-0 sm:gap-2">
+            <div key="other-amount" className="flex min-h-12 items-center gap-2 border-b border-slate-200 pb-2 last:border-b-0 last:pb-0">
               <span className="min-w-0 flex-1">
                 <strong className="block truncate text-base font-extrabold text-slate-900 sm:text-[19px]">{line.name}</strong>
                 <span className="block text-sm text-slate-700">{line.subtitle}</span>
               </span>
-              <b className="ml-auto min-w-[52px] shrink-0 whitespace-nowrap text-right text-sm font-extrabold tabular-nums text-slate-900 sm:min-w-20 sm:text-[19px]">
-                {formatGhsCompactAmount(line.total_amount)}
+              <b className="ml-auto shrink-0 whitespace-nowrap text-right text-base font-extrabold tabular-nums text-slate-900 sm:text-[19px]">
+                {formatGhs(line.total_amount)}
               </b>
               <button
                 type="button"
                 aria-label={t("sellItems.remove", { name: line.name })}
                 onClick={() => updateCart(cart.filter((item) => item.productId !== null))}
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-[12px] border-2 border-slate-500 bg-white text-rose-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 sm:h-12 sm:w-12"
+                className={BIN_CLASS}
               >
                 <Trash2 size={22} strokeWidth={2.2} aria-hidden="true" />
               </button>
             </div>
           ) : (
-            <div key={line.productId} className="flex min-h-12 items-center gap-0.5 border-b border-slate-200 pb-2 last:border-b-0 last:pb-0 sm:gap-2">
-              <strong className="min-w-0 flex-1 break-words text-base font-extrabold leading-tight text-slate-900 sm:text-[19px]">{line.name}</strong>
-              <button
-                type="button"
-                aria-label={t("sellItems.less", { name: line.name })}
-                disabled={line.quantity === 1}
-                onClick={() => updateCart(cart.map((item) => item.productId === line.productId ? { ...item, quantity: item.quantity - 1 } : item))}
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-[12px] border-2 border-slate-500 bg-white text-xl font-extrabold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-40 sm:h-12 sm:w-12"
-              >
-                −
-              </button>
-              <button
-                type="button"
-                aria-label={t("sellItems.quantity", { name: line.name })}
-                onClick={() => onNavigate("HowManyItem", {
-                  product: { id: line.productId, name: line.name, default_price: line.unitPricePesewas / 100 },
-                  quantity: line.quantity,
-                  saleItems: cart,
-                  mode: "edit"
-                })}
-                className="flex h-10 min-w-8 shrink-0 items-center justify-center border-0 border-b-[3px] border-emerald-900 bg-transparent px-0 text-base font-extrabold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 sm:h-12 sm:min-w-11 sm:px-1 sm:text-[22px]"
-              >
-                {line.quantity}
-              </button>
-              <button
-                type="button"
-                aria-label={t("sellItems.more", { name: line.name })}
-                onClick={() => updateCart(cart.map((item) => item.productId === line.productId ? { ...item, quantity: item.quantity + 1 } : item))}
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-[12px] border-2 border-slate-500 bg-white text-xl font-extrabold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 sm:h-12 sm:w-12"
-              >
-                +
-              </button>
-              <b className="ml-auto min-w-[52px] shrink-0 whitespace-nowrap text-right text-sm font-extrabold tabular-nums text-slate-900 sm:min-w-20 sm:text-[19px]">
-                {formatGhsCompactAmount(line.total_amount)}
-              </b>
-              <button
-                type="button"
-                aria-label={t("sellItems.remove", { name: line.name })}
-                onClick={() => updateCart(cart.filter((item) => item.productId !== line.productId))}
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-[12px] border-2 border-slate-500 bg-white text-rose-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 sm:h-12 sm:w-12"
-              >
-                <Trash2 size={22} strokeWidth={2.2} aria-hidden="true" />
-              </button>
+            <div key={line.productId} className="flex flex-col gap-2 border-b border-slate-200 pb-2 last:border-b-0 last:pb-0 sm:flex-row sm:items-center">
+              <div className="flex items-start justify-between gap-2 sm:contents">
+                <strong className="min-w-0 flex-1 break-words text-base font-extrabold leading-tight text-slate-900 sm:order-1 sm:text-[19px]">{line.name}</strong>
+                <b className="shrink-0 whitespace-nowrap text-right text-base font-extrabold tabular-nums text-slate-900 sm:order-5 sm:ml-auto sm:min-w-20 sm:text-[19px]">
+                  {formatGhs(line.total_amount)}
+                </b>
+              </div>
+              <div className="flex items-center justify-between gap-2 sm:contents">
+                <div className="flex items-center gap-1 sm:contents">
+                  <button
+                    type="button"
+                    aria-label={t("sellItems.less", { name: line.name })}
+                    disabled={line.quantity === 1}
+                    onClick={() => updateCart(cart.map((item) => item.productId === line.productId ? { ...item, quantity: item.quantity - 1 } : item))}
+                    className={STEP_CLASS + " sm:order-2 disabled:cursor-not-allowed disabled:opacity-40"}
+                  >
+                    −
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={t("sellItems.quantity", { name: line.name })}
+                    onClick={() => onNavigate("HowManyItem", {
+                      product: { id: line.productId, name: line.name, default_price: line.unitPricePesewas / 100 },
+                      quantity: line.quantity,
+                      saleItems: cart,
+                      mode: "edit"
+                    })}
+                    className="flex h-11 min-w-11 shrink-0 items-center justify-center border-0 border-b-[3px] border-emerald-900 bg-transparent px-1 text-lg font-extrabold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 sm:order-3 sm:text-[22px]"
+                  >
+                    {line.quantity}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={t("sellItems.more", { name: line.name })}
+                    onClick={() => updateCart(cart.map((item) => item.productId === line.productId ? { ...item, quantity: item.quantity + 1 } : item))}
+                    className={STEP_CLASS + " sm:order-4"}
+                  >
+                    +
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  aria-label={t("sellItems.remove", { name: line.name })}
+                  onClick={() => updateCart(cart.filter((item) => item.productId !== line.productId))}
+                  className={BIN_CLASS + " sm:order-6"}
+                >
+                  <Trash2 size={22} strokeWidth={2.2} aria-hidden="true" />
+                </button>
+              </div>
             </div>
           ))}
         </section>
