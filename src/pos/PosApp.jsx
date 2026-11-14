@@ -701,6 +701,7 @@ export default function PosApp() {
         // Wiring 62: never "Saved" on Customer sends (nothing is recorded before Money received).
         statusLabel={getStatusLabel(sync)}
         hideSaved={route === POS_ROUTES.MoMoDirect}
+        onHome={() => switchTab(POS_ROUTES.Home)}
         onMenu={openMenu}
         menuOpen={menuOpen}
         menuButtonRef={menuButtonRef}

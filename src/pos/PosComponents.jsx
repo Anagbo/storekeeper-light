@@ -25,7 +25,7 @@ export function PosPage({ children, className = "", style }) {
 // Wiring 22/23 (14 Nov 2026): the Menu button is at the left (hamburger + Menu, 48px) where the green
 // home tile was, then the shop name (cut with an ellipsis), then the connection status. It opens the
 // Menu drawer over the page. It stays at every width until the wide sidebar has every Menu destination.
-export function PosHeader({ shopName, statusLabel, hideSaved = false, onMenu, menuOpen = false, menuButtonRef, hideMenu = false }) {
+export function PosHeader({ shopName, statusLabel, hideSaved = false, onHome, onMenu, menuOpen = false, menuButtonRef, hideMenu = false }) {
   const online = useOnline();
   const [explained, setExplained] = useState(false);
   useEffect(() => {
@@ -36,6 +36,11 @@ export function PosHeader({ shopName, statusLabel, hideSaved = false, onMenu, me
   return (
     <header className="sticky top-0 z-30 border-b-[3px] border-slate-900 bg-white px-4 pt-[max(0.5rem,env(safe-area-inset-top))]">
       <div className="mx-auto flex min-h-16 min-w-0 max-w-6xl items-center gap-2 py-2">
+        {hideMenu && (
+          <button type="button" onClick={onHome} aria-label={t("nav.home")} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-900 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">
+            <HomeIcon size={28} aria-hidden="true" />
+          </button>
+        )}
         {!hideMenu && (
           <button ref={menuButtonRef} type="button" onClick={onMenu} aria-label={t("home.openMenu")} aria-haspopup="dialog" aria-expanded={menuOpen} className="flex h-12 shrink-0 items-center gap-1.5 rounded-[14px] border-2 border-slate-900 bg-white px-3 text-base font-extrabold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">
             <MenuIcon size={26} strokeWidth={2.2} aria-hidden="true" /> {t("nav.menu")}
