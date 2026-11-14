@@ -155,7 +155,10 @@ test("customer KOFI MENSAH: 17, 18, 19, 16 Owe row, 31 and its contact sheet sho
   await app.tap(/^Save plan$/);
   assert.equal(app.route, "CreditSaved");
   check(app, "31");
-  assert.match(everythingShown(app), /WhatsApp Kofi Mensah/);
+  assert.doesNotMatch(everythingShown(app), /WhatsApp Kofi Mensah/, "no reminder button on 31 (wiring, 14 Nov 2026)");
+  // The contact sheet (54) is opened from 29/43's header now that 31 has no contact buttons.
+  await app.tap(/See Kofi Mensah’s details/);
+  assert.equal(app.route, "DebtorDetail");
   await app.tap("Edit contact");
   check(app, "54 contact sheet");
   await app.tap("Cancel");

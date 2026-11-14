@@ -98,21 +98,20 @@ test("Home, 32 Owed, 17, 18, 31, the contact sheet and 43 show Juju and Junior; 
   assert.equal(app.route, "CreditSaved");
   const saved = shown(app);
   assert.match(saved, /Juju/);
-  assert.match(saved, /WhatsApp Juju/);
+  assert.doesNotMatch(saved, /WhatsApp Juju/, "no reminder button on 31 (wiring, 14 Nov 2026)");
   assert.match(saved, /See Juju’s details/);
   assertNoLowercaseNames(app, "31");
-  const whatsapp = [...walk(app.view.tree)].find((node) => node.type === "a" && textOf(node).trim() === "WhatsApp Juju");
-  assert.match(decodeURIComponent(whatsapp.props.href), /Hello \*Juju\*/, "WhatsApp text");
-
-  await app.tap("Edit contact");
-  assert.match(shown(app), /Contact details for Juju/);
-  assertNoLowercaseNames(app, "31 Edit contact sheet");
-  await app.tap("Cancel");
 
   await app.tap(/See Juju’s details/);
   assert.equal(app.route, "DebtorDetail");
   assert.match(shown(app), /Juju owes/);
   assertNoLowercaseNames(app, "43");
+
+  // The contact sheet is opened from 43's header now that 31 has no contact buttons.
+  await app.tap("Edit contact");
+  assert.match(shown(app), /Contact details for Juju/);
+  assertNoLowercaseNames(app, "43 Edit contact sheet");
+  await app.tap("Cancel");
 
   assert.deepEqual(await storedNames(), before, "stored names are not changed");
 });

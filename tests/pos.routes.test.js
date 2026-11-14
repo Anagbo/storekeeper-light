@@ -127,16 +127,14 @@ test("credit sale route links and screen copy are available", () => {
   assert.equal(posText("credit.splitCashTooHigh", { amount: "GH₵50.00" }), "Cash must be less than GH₵50.00.");
 });
 
-test("credit saved forwards the contact-save callback to its editor", () => {
+test("credit saved (31) has no reminder or contact editor and reads the saved number for the receipt", () => {
   const source = readFileSync(new URL("../src/pos/CreditScreens.jsx", import.meta.url), "utf8");
-  assert.match(source, /CreditScreens\(\{[^}]*onSaveCustomerContact[^}]*\}/s);
-  assert.match(source, /route === "CreditSaved"[\s\S]*onSaveCustomerContact=\{onSaveCustomerContact\}/);
+  // Wiring "No reminder button on 31" (14 Nov 2026).
+  assert.doesNotMatch(source, /generateWhatsAppLink|CustomerContactEditor|credit\.whatsapp|openContactEditor/);
   assert.match(source, /result\?\.initialPaymentPesewas > 0/);
   assert.match(source, /t\("credit\.paymentRecorded"\)/);
   assert.match(source, /t\("credit\.paymentRecordedTotal"\)/);
-  assert.match(source, /whatsappLink \? \(/);
-  assert.match(source, /receiptText && <SendReceiptButton/);
-  assert.match(source, /onClick=\{openContactEditor\}/);
+  assert.match(source, /<SendReceiptButton/);
   assert.match(source, /useLiveQuery\(async \(\) =>/);
   assert.match(source, /db\.customers\.where\("nameLower"\)/);
 });

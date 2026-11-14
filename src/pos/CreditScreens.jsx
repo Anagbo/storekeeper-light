@@ -11,9 +11,8 @@ import { formatGhs, toPesewas } from "../lib/money.js";
 import { formatGhanaCard } from "../utils/formatters.js";
 import { PLAN_ERROR } from "../lib/planErrors.js";
 import { addDueCycles, dayAfter, getCreditBalanceAfterSale, getNextCycleDate, isValidDateString, localDateString, PAYMENT_FREQUENCIES, prepareInstallmentPlan } from "../utils/installments.js";
-import { generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
+import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { getCreditAmountOwedPesewas } from "./creditAmount.js";
-import CustomerContactEditor from "./CustomerContactEditor.jsx";
 import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
 import { shortSaveName } from "./saveLabel.js";
 import { CopyReceiptButton, ReceiptFailedLine, ReceiptOfflineLine, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
@@ -865,8 +864,10 @@ function buildCreditReceiptText(result, shopName) {
   }
 }
 
-function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopName }) {
-  const [contactEditorOpen, setContactEditorOpen] = useState(false);
+// 31 (wiring "No reminder button on 31", 14 Nov 2026): no WhatsApp reminder and no contact
+// buttons. Reminders live on 29/43, Home's Collect first tile and the Owed list; a number is added
+// through Edit contact on 29/43. The saved number is still read so Send receipt opens that chat.
+function CreditSaved({ params, onHome, onNavigate, shopName }) {
   const result = params.creditResult;
   const savedCustomer = useLiveQuery(async () => {
     const customerId = result?.customerId ?? params.customer?.id;
@@ -875,35 +876,14 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
     if (!customerName.trim()) return null;
     return db.customers.where("nameLower").equals(customerName.trim().toLowerCase()).first();
   }, [result?.customerId, params.customer?.id, result?.customerName, params.customer?.name], null);
-  const [contact, setContact] = useState({
-    customerId: result?.customerId ?? params.customer?.id,
-    name: result?.customerName ?? params.customer?.name ?? "",
-    phone: result?.phone ?? params.customer?.phone ?? "",
-    ghanaCardNumber: params.customer?.ghanaCardNumber ?? ""
-  });
-  useEffect(() => {
-    if (!savedCustomer) return;
-    setContact((current) => ({
-      ...current,
-      customerId: savedCustomer.id ?? current.customerId,
-      name: savedCustomer.name ?? current.name,
-      phone: savedCustomer.phone ?? current.phone,
-      ghanaCardNumber: savedCustomer.ghanaCardNumber ?? current.ghanaCardNumber
-    }));
-  }, [savedCustomer]);
-  const phone = contact.phone;
+  const phone = savedCustomer?.phone ?? result?.phone ?? params.customer?.phone ?? "";
   const customerName = result?.customerName ?? params.customer?.name ?? "";
   const shownName = displayName(customerName);
   const totalDebtPesewas = result?.totalDebtPesewas ?? 0;
-  const whatsappLink = generateWhatsAppLink(phone, shownName, totalDebtPesewas, shopName);
   // Send receipt and Copy receipt show only with VITE_ENABLE_POS_RECEIPTS on (FEATURE_FLAGS.SHOW_POS_RECEIPTS).
   const receiptsOn = isReceiptTemplatesEnabled();
   const receiptText = buildCreditReceiptText(result, shopName);
   const actions = useReceiptActions(receiptText ?? "", normalizeWhatsAppPhone(phone) ?? "");
-  function openContactEditor(event) {
-    event.preventDefault();
-    setContactEditorOpen(true);
-  }
   return (
     <PosPage className="flex flex-col gap-3">
       <div className="pt-2 text-center">
@@ -963,41 +943,25 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
           </div>
         </div>
       )}
-      <div className={`grid grid-cols-1 gap-2 ${receiptsOn ? "sm:grid-cols-2" : ""}`}>
-        {whatsappLink ? (
-          <a href={whatsappLink} target="_blank" rel="noreferrer" className="flex min-h-14 min-w-0 items-center justify-center rounded-2xl border-2 border-emerald-900 px-3 text-center font-extrabold text-emerald-900">
-            {t("credit.whatsapp", { name: shownName })}
-          </a>
-        ) : (
-          <button type="button" onClick={openContactEditor} className="flex min-h-14 min-w-0 items-center justify-center rounded-2xl border-2 border-emerald-900 px-3 text-center font-extrabold text-emerald-900">
-            {t("credit.whatsapp", { name: shownName })}
-          </button>
-        )}
-        {receiptsOn && receiptText && <SendReceiptButton onClick={() => void actions.send()} className="min-h-14" />}
-        {receiptsOn && receiptText && <ReceiptOfflineLine online={actions.online} className="col-span-full" />}
-      </div>
+      {receiptsOn && receiptText && (
+        <div className="flex flex-col gap-2">
+          <SendReceiptButton onClick={() => void actions.send()} className="min-h-14 w-full" />
+          <ReceiptOfflineLine online={actions.online} />
+        </div>
+      )}
       {receiptsOn && receiptText && <CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} />}
       {receiptsOn && <ReceiptFailedLine failed={actions.failed} />}
       {result?.debtId && <PosSecondaryButton type="button" className="w-full" onClick={() => onNavigate("DebtorDetail", { debtId: result.debtId, customerName })}>{t("credit.seeDetails", { name: shownName })}</PosSecondaryButton>}
-      {!whatsappLink && <PosSecondaryButton type="button" className="w-full" onClick={() => setContactEditorOpen(true)}>{t("contact.add")}</PosSecondaryButton>}
-      {whatsappLink && <PosSecondaryButton type="button" onClick={() => setContactEditorOpen(true)}>{t("collect.editContact")}</PosSecondaryButton>}
       <PosPrimaryButton type="button" onClick={onHome} className="mt-auto h-[68px] text-2xl">{t("credit.done")}</PosPrimaryButton>
-      {contactEditorOpen && (
-        <CustomerContactEditor
-          customer={contact}
-          onClose={() => setContactEditorOpen(false)}
-          onSave={async (details) => setContact(await onSaveCustomerContact(details))}
-        />
-      )}
     </PosPage>
   );
 }
 
-export default function CreditScreens({ route, params, onBack, onNavigate, onUpdateParams, onReturnToSplit, onSaveCredit, onSaveCustomerContact, onHome, shopName }) {
+export default function CreditScreens({ route, params, onBack, onNavigate, onUpdateParams, onReturnToSplit, onSaveCredit, onHome, shopName }) {
   if (route === "WhoOwesYou") return <WhoOwesYou params={params} onBack={onBack} onNavigate={onNavigate} onUpdateParams={onUpdateParams} />;
   if (route === "NewPerson") return <NewPerson params={params} onBack={onBack} onNavigate={onNavigate} onUpdateParams={onUpdateParams} />;
   if (route === "WhenWillTheyPay") return <WhenWillTheyPay params={params} onBack={onBack} onNavigate={onNavigate} onUpdateParams={onUpdateParams} onReturnToSplit={onReturnToSplit} onSaveCredit={onSaveCredit} />;
   if (route === "ALittleAtATime") return <ALittleAtATime params={params} onBack={onBack} onNavigate={onNavigate} onUpdateParams={onUpdateParams} onReturnToSplit={onReturnToSplit} onSaveCredit={onSaveCredit} />;
-  if (route === "CreditSaved") return <CreditSaved params={params} onHome={onHome} onNavigate={onNavigate} onSaveCustomerContact={onSaveCustomerContact} shopName={shopName} />;
+  if (route === "CreditSaved") return <CreditSaved params={params} onHome={onHome} onNavigate={onNavigate} shopName={shopName} />;
   return null;
 }
