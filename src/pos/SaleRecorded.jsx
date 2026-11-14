@@ -8,6 +8,7 @@ import { displayName } from "../lib/displayName.js";
 import { getSaleReceiptDetails } from "./saleReceipt.js";
 import { getSaleReceiptText, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
 import { getMomoDisplayLabel } from "./momoMapping.js";
+import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { CopyReceiptButton, ReceiptNotes, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
 
 // The receipt details and text, or null when the record cannot give them. 30 opens only after the
@@ -39,7 +40,8 @@ function SaleSaved({ onDone }) {
 
 export default function SaleRecorded({ transaction, creditResult, shopName, onDone, onNewSale }) {
   const receipt = useMemo(() => readReceipt(transaction, shopName), [transaction, shopName]);
-  const actions = useReceiptActions(receipt?.receiptText ?? "");
+  // A customer with a valid saved number (a sale with a part owed) is messaged directly; else the share sheet.
+  const actions = useReceiptActions(receipt?.receiptText ?? "", normalizeWhatsAppPhone(creditResult?.phone ?? transaction?.customer_phone) ?? "");
   if (!receipt) return <SaleSaved onDone={onDone} />;
   const { details, receiptText } = receipt;
   // Records saved before MoMo verification was stored keep the translated plain label.

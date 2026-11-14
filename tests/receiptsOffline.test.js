@@ -200,9 +200,12 @@ for (const [screen, due] of [["29", "2099-01-01"], ["43", "2000-01-01"]]) {
     const view = await showDetail(ON, due);
     await findButton(view.tree, "Receipt").props.onClick();
     await findButton(view.tree, "Copy receipt").props.onClick();
-    assert.equal(calls.share.length, 1);
-    assert.equal(calls.copy[0], calls.share[0].text);
-    assert.match(calls.share[0].text, /GH₵80\.00/);
+    // The customer has a saved number: the app link opens to that number, the share sheet is not used.
+    assert.deepEqual(calls.share, []);
+    assert.match(calls.location, /^whatsapp:\/\/send\?phone=233241234567&text=/);
+    const sentText = decodeURIComponent(calls.location.split("&text=")[1]);
+    assert.equal(calls.copy[0], sentText);
+    assert.match(sentText, /GH₵80\.00/);
     assert.deepEqual(calls.open, []);
   });
 
@@ -222,3 +225,84 @@ for (const [screen, due] of [["29", "2099-01-01"], ["43", "2000-01-01"]]) {
     assert.doesNotMatch(text, /You are offline/);
   });
 }
+
+// Recipient order for 28, 29/43, 30 and 31.
+const sendWith = async (opts, args) => {
+  const { calls } = setNavigator(opts);
+  const { sendReceipt } = await loadJsx("src/pos/receiptShare.js");
+  const result = await sendReceipt({ text: "Hi & bye", ...args });
+  return { calls, result };
+};
+
+test("recipient: a saved number on a phone opens whatsapp://send?phone=, even with a share sheet", async () => {
+  const { calls, result } = await sendWith({ share: true }, { phone: "+233241234567" });
+  assert.equal(result, "app");
+  assert.equal(calls.location, "whatsapp://send?phone=233241234567&text=Hi%20%26%20bye");
+  assert.deepEqual(calls.share, []);
+});
+
+test("recipient: a saved number on a desktop browser opens wa.me with the number", async () => {
+  const { calls, result } = await sendWith({ share: true, userAgent: DESKTOP_UA }, { phone: "+233241234567" });
+  assert.equal(result, "web");
+  assert.equal(calls.open[0][0], "https://wa.me/233241234567?text=Hi%20%26%20bye");
+  assert.deepEqual(calls.share, []);
+});
+
+test("recipient: no number uses the share sheet; closing it is not an error", async () => {
+  const shared = await sendWith({ share: true }, { phone: "" });
+  assert.equal(shared.result, "share");
+  assert.deepEqual(shared.calls.share, [{ text: "Hi & bye" }]);
+  const { nav } = setNavigator({ share: false });
+  nav.share = async () => { throw Object.assign(new Error("closed"), { name: "AbortError" }); };
+  const { sendReceipt } = await loadJsx("src/pos/receiptShare.js");
+  assert.equal(await sendReceipt({ text: "x", phone: "" }), "cancelled");
+});
+
+test("recipient: no number and no share sheet falls back to the link without a number", async () => {
+  const phoneFallback = await sendWith({ share: false }, { phone: "" });
+  assert.equal(phoneFallback.calls.location, "whatsapp://send?text=Hi%20%26%20bye");
+  const desktop = await sendWith({ share: false, userAgent: DESKTOP_UA }, { phone: "" });
+  assert.equal(desktop.calls.open[0][0], "https://wa.me/?text=Hi%20%26%20bye");
+});
+
+test("recipient: an invalid number is treated as no number", async () => {
+  const { calls, result } = await sendWith({ share: true }, { phone: "abc" });
+  assert.equal(result, "share");
+  assert.equal(calls.location, "");
+});
+
+test("30 a sale with a part owed to a customer with a saved number goes to that number", async () => {
+  const { calls } = setNavigator({ share: true });
+  const { default: SaleRecorded } = await loadJsx("src/pos/SaleRecorded.jsx", ON);
+  const transaction = { ...SALE, amountPesewas: 800, cashReceivedPesewas: 300, momoReceivedPesewas: 0, creditExtendedPesewas: 500, customer_name: "Ama" };
+  const view = render({ type: SaleRecorded, props: { transaction, creditResult: { phone: "0241234567", previousDebtPesewas: 0, totalDebtPesewas: 500 }, shopName: "Shop", onDone() {}, onNewSale() {} } });
+  flushEffects(view);
+  await findButton(view.tree, "Send receipt").props.onClick();
+  assert.match(calls.location, /^whatsapp:\/\/send\?phone=233241234567&text=/);
+  assert.deepEqual(calls.share, []);
+});
+
+test("31 with a saved number goes to that number; without one, the share sheet", async () => {
+  const { default: CreditScreens } = await loadJsx("src/pos/CreditScreens.jsx", ON);
+  setLiveQuery(() => null);
+  try {
+    for (const [phone, viaShare] of [["0241234567", false], ["", true]]) {
+      const { calls } = setNavigator({ share: true });
+      const params = {
+        customer: { id: "c1", name: "Ama", phone },
+        creditResult: {
+          customerId: "c1", customerName: "Ama", phone, debtId: "d1", amountPesewas: 2500, addedDebtPesewas: 2500,
+          previousDebtPesewas: 0, totalDebtPesewas: 2500, initialPaymentPesewas: 0, initialPaymentParts: [],
+          debtAfter: { isInstallmentPlan: false }, saleTransaction: { timestamp: Date.now() }
+        }
+      };
+      const view = render({ type: CreditScreens, props: { route: "CreditSaved", params, onHome() {}, onNavigate() {}, onSaveCustomerContact() {}, shopName: "Shop" } });
+      flushEffects(view);
+      await findButton(view.tree, "Send receipt").props.onClick();
+      assert.equal(calls.share.length, viaShare ? 1 : 0);
+      assert.equal(calls.location.startsWith("whatsapp://send?phone=233241234567&text="), !viaShare);
+    }
+  } finally {
+    setLiveQuery(null);
+  }
+});

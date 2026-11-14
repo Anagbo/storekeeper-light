@@ -17,11 +17,25 @@ export function buildWhatsAppWebLink(text, phone = "") {
   return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
 }
 
-// The phone's share sheet when there is one, else the WhatsApp app link on a phone, else wa.me on
-// a desktop browser. Returns "share", "app", "web" or "cancelled" (the person closed the sheet).
-// A share sheet that fails for any reason other than being closed falls through to the links.
+// Opens WhatsApp with the text: the app link on a phone, wa.me on a desktop browser.
+function openWhatsApp(text, digits) {
+  if (isPhoneBrowser()) {
+    window.location.href = buildWhatsAppAppLink(text, digits);
+    return "app";
+  }
+  window.open(buildWhatsAppWebLink(text, digits), "_blank", "noopener,noreferrer");
+  return "web";
+}
+
+// Recipient order: a customer with a valid saved number gets WhatsApp opened straight to that number
+// (whatsapp://send?phone=... on a phone, wa.me with the number on a desktop browser). Without a number
+// the phone's share sheet opens so the merchant picks the chat; with no share sheet, or one that fails,
+// the same links open without a number. Returns "app", "web", "share" or "cancelled" (a closed share
+// sheet, which is not an error).
 export async function sendReceipt({ text, phone = "", title = "" }) {
   if (typeof text !== "string" || !text) throw new TypeError("A receipt text is required.");
+  const digits = String(phone ?? "").replace(/\D/g, "");
+  if (/^\d{8,15}$/.test(digits)) return openWhatsApp(text, digits);
   if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
     try {
       await navigator.share(title ? { title, text } : { text });
@@ -31,12 +45,7 @@ export async function sendReceipt({ text, phone = "", title = "" }) {
       console.warn("The share sheet could not open; trying WhatsApp directly.", error);
     }
   }
-  if (isPhoneBrowser()) {
-    window.location.href = buildWhatsAppAppLink(text, phone);
-    return "app";
-  }
-  window.open(buildWhatsAppWebLink(text, phone), "_blank", "noopener,noreferrer");
-  return "web";
+  return openWhatsApp(text, "");
 }
 
 // Copies the exact text. Returns true when it was copied.
