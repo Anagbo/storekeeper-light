@@ -64,9 +64,11 @@ export function getMostUrgentCustomerDebt(debts, today = new Date()) {
 
   for (const debt of debts) {
     if (debt.status !== "unpaid") continue;
+    // Wiring 22 "Nobody owes": only a balance above zero counts (a correction to zero stays unpaid).
+    const balance = getDebtBalancePesewas(debt);
+    if (balance <= 0) continue;
     const name = (debt.customerName ?? debt.customer_name ?? "").trim();
     const key = name.toLowerCase() || `unnamed:${debt.id}`;
-    const balance = getDebtBalancePesewas(debt);
     const item = grouped.get(key) ?? {
       customerName: name || t("home.unnamedCustomer"),
       phone: debt.phone ?? debt.customer_phone ?? "",

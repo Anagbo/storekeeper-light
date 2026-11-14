@@ -12,6 +12,12 @@ function getDebtBalance(debt) {
   return debt.amountPesewas ?? debt.total_owed ?? 0;
 }
 
+// Wiring 32 and 22 "Nobody owes": a person is listed only with a balance above zero. A correction to
+// zero leaves the debt unpaid with a zero balance, so status alone is not enough.
+function isOwing(debt) {
+  return debt?.status === "unpaid" && getDebtBalance(debt) > 0;
+}
+
 // Search on 32 (the same rule as 17, src/lib/searchMatch.js): name or phone.
 export function matchesOwedSearch(customer, query) {
   return matchesSearch(query, customer?.customerName, customer?.phone);
@@ -20,7 +26,7 @@ export function matchesOwedSearch(customer, query) {
 // Every open debt, largest balance first (the order of the normal list). Used while the search
 // field has text, so a person on a later page is found. Reads the phone's own database only.
 export async function loadAllUnpaidDebts(database = db) {
-  const debts = await database.debts.where("status").equals("unpaid").toArray();
+  const debts = (await database.debts.where("status").equals("unpaid").toArray()).filter(isOwing);
   return debts.sort((left, right) => getDebtBalance(right) - getDebtBalance(left) ||
     String(right.id).localeCompare(String(left.id)));
 }
@@ -81,13 +87,13 @@ export async function loadUnpaidDebtPage({
   const records = after
     ? await indexedDebts
         .below(["unpaid", after.amountPesewas, after.id])
-        .filter((debt) => debt.status === "unpaid")
+        .filter(isOwing)
         .reverse()
         .limit(pageSize + 1)
         .toArray()
     : await indexedDebts
         .above(["unpaid", 0, 0])
-        .filter((debt) => debt.status === "unpaid")
+        .filter(isOwing)
         .reverse()
         .limit(pageSize + 1)
         .toArray();
@@ -104,6 +110,7 @@ export function groupUnpaidDebts(debts, customers = []) {
   const customersById = new Map(customers.map((customer) => [customer.id, customer]));
   const grouped = new Map();
   for (const debt of debts) {
+    if (getDebtBalance(debt) <= 0) continue;
     const name = getDebtName(debt);
     const normalizedName = name.toLowerCase();
     const key = debt.customerId || normalizedName || `unnamed:${debt.id}`;
