@@ -568,7 +568,8 @@
    "inputs": [],
    "bottom_bar": false,
    "rules": [
-    "Back is kept (built extra)."
+    "Back is kept (built extra).",
+    "Line controls (matches the live app, confirmed from a live screenshot 14 Nov 2026): every line in the sale, item lines and the Other amount line, ends with a remove button after the amount: the trash-can icon with a lid, handle and two bars inside (Lucide trash-2, 22px, stroke 2.2), white, grey border (#64748B) and a dark crimson bin (#8B0836), accessible name \"Remove {item}\". An item line reads: name, Less, quantity, More, amount, bin. Less is greyed and disabled at quantity 1; the bin removes the whole line. At 340px the row must not overflow the card (buttons 40px, name may wrap)."
    ]
   },
   "21": {
@@ -673,12 +674,13 @@
    "rules": [
     "Tapping the debtor name opens 43 (brief line 122).",
     "Built extras kept: People-who-owe link, Add contact.",
-    "Owed card on Home (redesign 11 Nov 2026, layout and wording only): a white card with a 2px light grey border and a thicker red left edge (the same style as the debt tiles on My money), not a pink block. Top: the label \"Owed to you\" (17px, grey), the total in bold dark text (30px, never red or pink), a quiet line \"{n} people · {m} late\" (\"1 person\"; leave out \"· {m} late\" when none is late), and \"See all ›\" in green on the right. The whole top part is one tappable area that opens 32 (accessible name \"Owed to you, see all\"). Under a thin line and the small heading \"Collect first\": the most urgent debtor (same ordering as today) with the name (bold 19px, up to 2 lines, capital first letter), the amount (bold 22px, never clipped, at the right), and the due tag under the name in the same wording and colours as the Owed list (\"Late 1 day\" red, \"Due today\" and \"Due in n days\" amber, grey when far). Then one row of buttons: a green \"Collect\" button with a small cash icon and the word Collect (52px, takes the remaining width, accessible name \"Collect payment from {name}\", opens 25), a square WhatsApp button (52px, green outline) and a square Call button (52px, dark outline) shown only when the person has a valid phone number (never a greyed disabled Call button). Icon-only buttons keep their accessible names."
+    "Owed card on Home (redesign 11 Nov 2026, layout and wording only): a white card with a 2px light grey border and a thicker red left edge (the same style as the debt tiles on My money), not a pink block. Top: the label \"Owed to you\" (17px, grey), the total in bold dark text (30px, never red or pink), a quiet line \"{n} people · {m} late\" (\"1 person\"; leave out \"· {m} late\" when none is late), and \"See all ›\" in green on the right. The whole top part is one tappable area that opens 32 (accessible name \"Owed to you, see all\"). Under a thin line and the small heading \"Collect first\": the most urgent debtor (same ordering as today) with the name (bold 19px, up to 2 lines, capital first letter), the amount (bold 22px, never clipped, at the right), and the due tag under the name in the same wording and colours as the Owed list (\"Late 1 day\" red, \"Due today\" and \"Due in n days\" amber, grey when far). Then one row of buttons: a green \"Collect\" button with a small cash icon and the word Collect (52px, takes the remaining width, accessible name \"Collect payment from {name}\", opens 25), a square WhatsApp button (52px, green outline) and a square Call button (52px, dark outline) shown only when the person has a valid phone number (never a greyed disabled Call button). Icon-only buttons keep their accessible names.",
+    "Header (decided 14 Nov 2026): the Menu button is on the left (hamburger icon + the word Menu, 48px), then the shop name, then the connection status. It opens the Menu drawer (see 23) over this page; the page and any draft stay as they are. The bottom bar is covered by the dimmed layer while the drawer is open."
    ]
   },
   "23": {
-   "name": "Menu",
-   "component": "Menu",
+   "name": "Menu (a drawer over the page)",
+   "component": "MenuDrawer",
    "controls": [
     {
      "label": "Close menu",
@@ -686,14 +688,15 @@
      "disabled_initially": false,
      "type": "navigate",
      "to": "BACK",
-     "to_rule": "Return to the screen the menu was opened from, with its draft intact (not Home). The menu Home button still goes to 22."
+     "to_rule": "Closes the drawer and shows the same page again, exactly as it was (draft intact). Nothing is added to the history. Tapping the dimmed page, the Android Back button and the Escape key do the same."
     },
     {
      "label": "Home",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
-     "to": "22"
+     "to": "22",
+     "to_rule": "Closes the drawer and goes to 22 (header Home rule: discards a draft)."
     },
     {
      "label": "Today’s transactions",
@@ -727,7 +730,11 @@
    "inputs": [],
    "bottom_bar": false,
    "rules": [
-    "Opening Menu → Settings → Back returns to the menu, and Close menu then returns to the original screen. Menu must add only one entry to the history however many times it is shown."
+    "23 is no longer a page. It is a drawer that slides in from the left over the page the owner is on (decided 14 Nov 2026, from the owner's request and a reference design). The page stays visible and untouched behind a dimmed layer (rgba 15,23,42 at 55%).",
+    "The Menu button sits at the LEFT of the header on every screen that had it (Home 22; on 25 the sheet dims it and it is not tappable): hamburger icon plus the word Menu, 48px high, dark border, in the place where the green home tile used to be. Then the shop name (truncates with an ellipsis on a long name), then the connection status on the right.",
+    "Drawer: 320px wide, at most 86% of the screen, full height, white, a soft shadow on the right edge, slides in 200ms (no animation when the phone asks for reduced motion). Top: green home tile, shop name, the date (dd/mm/yyyy with the weekday) and a 48px Close button with an X. Then rows of at least 60px: icon, label (19px bold) and a short line under it: Home, Today’s transactions (Money in, spent, owed), My money (Week and month report), Items (Things you sell), a divider, Settings (the Language row was removed on 10 Nov 2026). The row for the page the owner came from is highlighted in light green with a green bar on the left and green text.",
+    "Opening the drawer is not navigation: it adds nothing to the history and keeps every draft. Choosing a row closes the drawer and goes to that screen. Back from Settings, Items, My money or Today’s transactions returns to the page the drawer was opened from, not to the drawer (this replaces the old rule 'Back returns to the menu'). Focus moves into the drawer when it opens, stays inside it, and returns to the Menu button when it closes. The drawer has role dialog and the accessible name Menu.",
+    "Touch targets 48px or more. At 340px nothing overflows. On tablets and wide screens (768px and up) the side menu or icon rail replaces the drawer and the header Menu button is hidden; the destinations are identical."
    ]
   },
   "24": {
@@ -883,7 +890,8 @@
    "bottom_bar": true,
    "bottom_bar_note": "The bar belongs to Home, which shows behind the Collect sheet (as in the prototype).",
    "rules": [
-    "Installment line (revised 11 Nov 2026, after a real mismatch: \"Payment 3 of 44 · 42 left\" on the sheet against \"2 paid · 42 left\" on the details screen, with only GH₵21.00 paid on a GH₵20.00-a-week plan). Never show \"Payment x of y\" or a paid-installment count, because part payments make those counters wrong. Everything comes from money: payments left = balance divided by the installment, rounded up. On the collect sheet, for \"Due now\" only: \"{left-1} left after this\" (for example 41 when the balance says 42 left now). Hidden for \"Pay all\" and \"Pay part\". On the debtor details plan card (43): \"GH₵{paid so far} paid · {left} payments left\" (\"1 payment left\" when one is left) with the progress bar from money paid divided by the plan total. The same single function feeds every screen."
+    "Installment line (revised 11 Nov 2026, after a real mismatch: \"Payment 3 of 44 · 42 left\" on the sheet against \"2 paid · 42 left\" on the details screen, with only GH₵21.00 paid on a GH₵20.00-a-week plan). Never show \"Payment x of y\" or a paid-installment count, because part payments make those counters wrong. Everything comes from money: payments left = balance divided by the installment, rounded up. On the collect sheet, for \"Due now\" only: \"{left-1} left after this\" (for example 41 when the balance says 42 left now). Hidden for \"Pay all\" and \"Pay part\". On the debtor details plan card (43): \"GH₵{paid so far} paid · {left} payments left\" (\"1 payment left\" when one is left) with the progress bar from money paid divided by the plan total. The same single function feeds every screen.",
+    "Header (decided 14 Nov 2026): the Menu button is at the left, as on 22, but 25 is a sheet over Home with a dimmed page, so the header behind it is not tappable; the drawer opens only from the page itself (22)."
    ]
   },
   "26": {
@@ -3722,7 +3730,7 @@
   "connection_status": "Online and offline status (decided 14 Nov 2026): the app always shows whether the device is online. Online = a bright green dot (#22C55E with a soft green ring). Offline = a crossed-out Wi-Fi icon and the word \"Offline\" in amber-brown (#92400E). Offline is normal for this app, so it is never red and never an error. Colour is never the only signal: the word or icon always changes too. Phone header: the status sits where \"Saved ✓\" is: online shows the green dot then \"Saved ✓\"; offline shows the crossed Wi-Fi icon then \"Offline\"; while a save is running it shows \"Saving…\" as today. Tapping it shows a short message: online \"You are online. Everything is saved on this phone.\"; offline \"You are offline. Everything is still saved on this phone. Sending by WhatsApp will wait until you are back online.\" Wide screens: the bottom of the sidebar shows the dot or icon with \"Online\" or \"Offline\" and under it \"Saved on this device\". The status follows navigator.onLine and the online and offline events and updates without a reload. Accessible name: \"Online. Saved on this phone.\" or \"Offline. Saved on this phone.\" The header must still fit at 340px without cutting the shop name more than today.",
   "wide_layout": {
    "status": "Design approved in draft (14 Nov 2026). Build after the merge. The contract for wide screens is pos-prototype-desktop.html (frames D1 to D15) plus these rules. The phone layout (pos-prototype.html) is unchanged below 768px.",
-   "breakpoints": "Below 768px: phone layout as today (bottom bar, header with Menu). 768px to 1023px (tablet portrait) and any touch tablet up to 1279px wide in landscape: an 84px icon rail on the left (icons only, 60px targets, accessible names) and the wide page types. 1280px and up: a 300px sidebar with icon and label. Content never stretches past 1160px: on wider screens it stays centred with the background around it.",
+   "breakpoints": "Below 768px: phone layout as today (bottom bar, header with the Menu button on the left that opens the Menu drawer). 768px to 1023px (tablet portrait) and any touch tablet up to 1279px wide in landscape: an 84px icon rail on the left (icons only, 60px targets, accessible names) and the wide page types. 1280px and up: a 300px sidebar with icon and label. Content never stretches past 1160px: on wider screens it stays centred with the background around it.",
    "shell": "Sidebar order: shop name with today's date under it (dd/mm/yyyy with the weekday), then Home, Sell, Owed, Today's transactions, My money, Items; at the bottom Settings, then the connection status (rules_global.connection_status). Labels 18px bold on one line, rows 54px, the active row has a light green background AND a green outline (never colour alone). On wide screens the sidebar replaces the bottom bar, the header and the Menu screen (23): every Menu destination is in the sidebar. First-run setup (21, 35, 36, 51, 52) shows no sidebar: a centred column only.",
    "page_types": {
     "dashboard": "Cards in a grid. Used by Home (22) and My money (33). Only one strong green block per screen.",
@@ -3733,7 +3741,7 @@
    "screens": {
     "22 Home": "D1. Row 1: Money left today (Money in and Spent fill the card) and, beside it, Sell (the largest button on the screen) above Spent money. Row 2: Owed to you with a \"Collect first\" list of up to two people (most late first), each with its due tag, amount and the same three buttons as the phone tile (Collect, WhatsApp, and Call only with a valid number); tapping a name opens that person on Owed. Beside it, Today's transactions as a small table (Time, What, Money in, Owed) with See all.",
     "15 Sell": "D2 and D15. Left: the amount (\"Customer pays\") and a keypad that fills the height. Right: How is it paid? as four tiles in a 2x2 grid with full labels (Cash, MoMo, Owe, Split payment; the split icon is cash + phone + person), the Items row with Add items, a quiet \"Last sale\" box (amount, method, time), then Done pinned at the bottom with one line that says why it is disabled. The selected tile has a tick as well as the colour.",
-    "20 and 55 Sell with items": "D9. On wide screens these are one screen: item tiles on the left (search, tap to add, New item, Other amount) and \"This sale\" on the right. The lines use exactly the phone controls of screen 20: an item line has Less, the quantity and More (48px, no remove button; Less at 1 removes the line as on the phone); the Other amount line has the remove button with the bin icon (48px, white, grey border, dark red bin, accessible name \"Remove Other amount\"). Then Total, the four payment tiles and Done. 37 and 38 open as dialogs.",
+    "20 and 55 Sell with items": "D9. On wide screens these are one screen: item tiles on the left (search, tap to add, New item, Other amount) and \"This sale\" on the right. The lines use exactly the phone controls of screen 20: every line (item lines and the Other amount line) ends with the same remove button: the bin icon, white, grey border (#64748B) and a dark crimson bin (#8B0836), accessible name \"Remove {item}\", placed after the amount. An item line is: name, Less, the quantity, More, the amount, the bin. Less is greyed and disabled at quantity 1 (the bin removes the line); this is the live app, and the phone and desktop match it. Then Total, the four payment tiles and Done. 37 and 38 open as dialogs.",
     "32, 29, 43 Owed": "D3. Left: search, the All / Late / Due soon filters, the people list and Load more. Right, the selected person: balance, Edit contact and Correct balance as small secondary buttons, Collect (widest), the WhatsApp reminder button, Call (only with a valid number), the receipt button when the receipts flag is on, the due line or plan card with two full lines, What happened and Add to debt. Add debt sits at the top right of the page. The late state (43) keeps \"Send reminder on WhatsApp\" and \"Last reminder: n days ago\".",
     "24 Today's transactions": "D4. Three summary cards, the filters, then a table: Time, What, Details (payment chips or the spent category), Person, Money in, Spent, Owed. Every amount is in its own column: a part-paid sale shows the money received under Money in AND its unpaid part under Owed (sale of GH₵13.00 with GH₵5.00 owed: +GH₵8.00 and GH₵5.00). An empty cell shows a dash. A \"Total today\" row at the bottom equals the three cards. Rows are not buttons.",
     "33 My money": "D7. Money left this week and the Estimated profit card on the first row; Money in and Money spent with their breakdowns on the second; Owed to you and You owe suppliers on the third. This week / This month sits at the top right.",
@@ -3749,7 +3757,8 @@
    "testing": "Check 768x1024, 1024x768, 1280x800 and 1440x900 in addition to 340, 360 and 393px. No horizontal scroll, no clipped amount (GH₵12,345.00), no wrapped button label.",
    "same_as_phone": "Wide screens change layout only. Every control, label, rule, destination, validation, money calculation and saved record is the one defined for that screen in this file; nothing in wide_layout overrides a screen's own rules. A control that exists on the phone screen must exist on the wide screen with the same label and accessible name, except: (a) Menu (23), the header Home button, the bottom bar and the Done button on Settings are replaced by the sidebar; (b) Back is not shown on Home, Owed, Today's transactions, My money, Items and Settings, because the sidebar reaches them, and is kept on every task column; (c) on Owed the per-row Collect, WhatsApp and Call buttons move to the selected person's detail; (d) 20 and 55 are shown together. Flags behave the same (receipts, subscription, phone request).",
    "icons": "Every payment choice shows its icon with its label on every screen and width: Cash (note), MoMo (phone), Owe (person), Split payment (cash + phone + person where Owe can be part of the split, as on 15, 55 and 16; cash + phone where only Cash and MoMo are possible, as on 19, 26 and 27). A label is never shown without its icon."
-  }
+  },
+  "menu_drawer": "The menu is a left drawer over the current page, never a separate page. Header Menu button at the left (see 23). It adds no history entry and keeps drafts. Back from a destination chosen in the drawer returns to the page the drawer was opened from."
  },
  "built_extras_kept": {
   "24": "row tags Collected Debt, Balance correction, Added to debt",
