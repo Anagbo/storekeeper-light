@@ -1,5 +1,6 @@
 import { displayName } from "../lib/displayName.js";
 import { formatGhs } from "../lib/money.js";
+import { getDebtAdjustmentReasonLabel } from "../utils/customerDebtHistory.js";
 import { posText as t } from "./i18n.js";
 import { getTransactionTimestamp } from "./money.js";
 
@@ -26,6 +27,15 @@ function getOptionalAmount(value, fallback, description) {
 function isDebtPayment(transaction) {
   return transaction.type === "debt_payment" ||
     (transaction.type === "income" && transaction.note?.startsWith("Debt payment"));
+}
+
+// The balance a correction left (stored on the event; older events give it as previous + delta).
+function getAdjustmentNewBalance(transaction) {
+  const stored = transaction.newBalancePesewas ??
+    (Number.isSafeInteger(transaction.previousBalancePesewas) && Number.isSafeInteger(transaction.deltaPesewas)
+      ? transaction.previousBalancePesewas + transaction.deltaPesewas
+      : null);
+  return Number.isSafeInteger(stored) && stored >= 0 ? stored : null;
 }
 
 function getPaymentMethod(transaction) {
@@ -144,7 +154,11 @@ export function createPosTransactionRows(transactions, supplierNames = new Map()
       customerName,
       supplierName,
       category: transaction.category ?? transaction.expenseCategory ?? transaction.note ?? "",
-      adjustmentDeltaPesewas: isAdjustment ? transaction.deltaPesewas : 0
+      adjustmentDeltaPesewas: isAdjustment ? transaction.deltaPesewas : 0,
+      adjustmentNewBalancePesewas: isAdjustment ? getAdjustmentNewBalance(transaction) : null,
+      adjustmentReason: isAdjustment
+        ? transaction.reasonNote?.trim() || getDebtAdjustmentReasonLabel(transaction.reasonCode)
+        : ""
     };
   });
   const groupedRows = [];
@@ -225,7 +239,23 @@ export function describeTransactionRow(row) {
     return { title: t("transactions.row.addedToDebt"), amountPesewas: row.amountPesewas, tone: "credit", chips: name ? [person(name)] : [] };
   }
   if (row.kind === "adjustment") {
-    return { title: t("transactions.row.balanceCorrection"), amountPesewas: Math.abs(row.adjustmentDeltaPesewas), tone: "neutral", chips: name ? [person(name)] : [] };
+    // Wiring 24 (14 Nov 2026): a correction only lowers a balance and moves no money, so the
+    // amount it was lowered by is plain dark text with no sign. The person chip gives the new
+    // balance; a grey chip gives the reason. The accessible name says "lowered by".
+    const lowered = Math.abs(row.adjustmentDeltaPesewas ?? 0);
+    const who = name || t("home.unnamedCustomer");
+    const personLabel = row.adjustmentNewBalancePesewas === null
+      ? who
+      : t("transactions.row.owesNow", { name: who, amount: formatGhs(row.adjustmentNewBalancePesewas) });
+    const title = t("transactions.row.balanceCorrected");
+    const chips = [person(personLabel), ...(row.adjustmentReason ? [{ kind: "reason", label: row.adjustmentReason }] : [])];
+    return {
+      title,
+      amountPesewas: lowered,
+      tone: "neutral",
+      chips,
+      ariaLabel: [`${title}, ${t("transactions.row.loweredBy", { amount: formatGhs(lowered) })}`, ...chips.map(({ label }) => label)].join(". ")
+    };
   }
   return { title: "", amountPesewas: row.amountPesewas, tone: "neutral", chips: [] };
 }
@@ -239,7 +269,8 @@ function categoryLabel(category) {
 export function filterPosTransactionRows(rows, filter) {
   if (filter === "sold") return rows.filter((row) => row.isSale);
   if (filter === "spent") return rows.filter((row) => row.kind === "spent");
-  if (filter === "credit") return rows.filter((row) => row.isCredit);
+  // Credit (wiring 24, 14 Nov 2026): every row that changes what people owe.
+  if (filter === "credit") return rows.filter((row) => row.isCredit || row.kind === "payment" || row.kind === "adjustment");
   if (filter !== "all") throw new TypeError(`Unknown transaction filter: ${filter}`);
   return rows;
 }

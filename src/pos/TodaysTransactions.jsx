@@ -28,6 +28,7 @@ const CHIP_STYLES = {
   payment: "bg-[#CBD5E1] text-[#0F172A]",
   person: "bg-[#FECDD3] text-[#0F172A]",
   category: "bg-[#FDE68A] text-[#0F172A]",
+  reason: "bg-[#CBD5E1] text-[#0F172A]",
   credit: "bg-rose-100 text-rose-950"
 };
 
@@ -46,7 +47,7 @@ function TransactionRow({ row }) {
   const view = describeTransactionRow(row);
   const tone = AMOUNT_TONES[view.tone] ?? AMOUNT_TONES.neutral;
   return (
-    <article role="listitem" data-row-tone={view.tone} className="flex min-w-0 flex-col gap-1.5 rounded-[18px] border-2 border-[#CBD5E1] bg-white px-3.5 py-2.5">
+    <article role="listitem" aria-label={view.ariaLabel ? `${view.ariaLabel}. ${formatTime(row.timestamp)}` : undefined} data-row-tone={view.tone} className="flex min-w-0 flex-col gap-1.5 rounded-[18px] border-2 border-[#CBD5E1] bg-white px-3.5 py-2.5">
       <div className="flex min-w-0 items-baseline justify-between gap-2">
         <b data-row-title="" className="min-w-0 text-lg font-extrabold leading-tight [overflow-wrap:anywhere]">{view.title}</b>
         <b data-row-amount="" className={`shrink-0 whitespace-nowrap text-[22px] font-extrabold leading-tight ${tone.className}`}>{`${tone.sign}${formatGhs(view.amountPesewas)}`}</b>
