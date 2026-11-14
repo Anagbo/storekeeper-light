@@ -150,6 +150,8 @@ export function summarizeFinancialTransactions(transactions) {
     totalSales: 0,
     realCashProfit: 0,
     newCreditExtended: 0,
+    manualDebtAdded: 0,
+    creditGiven: 0,
     accruedProfit: 0
   };
 
@@ -165,6 +167,10 @@ export function summarizeFinancialTransactions(transactions) {
     }
     else if (transaction.type === "supplier_payment") {
       addTotal(totals, "expenses", amount);
+    }
+    else if (transaction.type === "manual_debt") {
+      // "Added to debt": credit given with no sale. Not profit, so it stays out of newCreditExtended.
+      addTotal(totals, "manualDebtAdded", optionalAmount(transaction.creditExtendedPesewas, amount, "Added to debt"));
     }
     else if (isDebtPayment(transaction)) {
       addTotal(totals, "debtPaymentsCollected", amount);
@@ -224,10 +230,13 @@ export function summarizeFinancialTransactions(transactions) {
     }
   }
 
+  // Screen 24 "Given on credit": the owed part of sales plus Added to debt rows. Payments,
+  // corrections and stock bought on credit are not part of it.
+  totals.creditGiven = totals.newCreditExtended + totals.manualDebtAdded;
   totals.cashInflow = totals.cashReceived + totals.momoReceived;
   totals.realCashProfit = totals.cashInflow - totals.expenses;
   totals.accruedProfit = totals.realCashProfit + totals.newCreditExtended;
-  if (![totals.cashInflow, totals.realCashProfit, totals.accruedProfit].every(Number.isSafeInteger)) {
+  if (![totals.cashInflow, totals.realCashProfit, totals.accruedProfit, totals.creditGiven].every(Number.isSafeInteger)) {
     throw new RangeError("A financial report total exceeds the safe integer range.");
   }
   return totals;

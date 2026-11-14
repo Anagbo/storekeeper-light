@@ -40,7 +40,10 @@ test("records manual debt without a sale, item line, payment, or money movement"
   assert.equal(await db.transactions.where("type").equals("manual_debt").count(), 1);
   assert.equal(await db.transactions.where("type").equals("credit_sale").count(), 0);
   assert.equal(await db.payments.count(), 0);
-  assert.deepEqual(summarizeFinancialTransactions(await db.transactions.toArray()), beforeTotals);
+  const afterTotals = summarizeFinancialTransactions(await db.transactions.toArray());
+  // Money and profit totals do not move; only the screen 24 "Given on credit" total does.
+  assert.deepEqual({ ...afterTotals, manualDebtAdded: 0, creditGiven: 0 }, { ...beforeTotals, manualDebtAdded: 0, creditGiven: 0 });
+  assert.equal(afterTotals.creditGiven, beforeTotals.creditGiven + 1250);
   assert.equal(result.debt.amountPesewas, 1250);
   assert.equal(result.customer.totalDebtPesewas, 1250);
 });

@@ -23,6 +23,8 @@ test("aggregates cash sales, recovered debt, expenses, and new credit", () => {
     totalSales: 14500,
     realCashProfit: 7000,
     newCreditExtended: 7000,
+    manualDebtAdded: 0,
+    creditGiven: 7000,
     accruedProfit: 14000
   });
 });

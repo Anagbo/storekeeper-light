@@ -473,7 +473,7 @@ const ENGLISH = Object.freeze({
   "transactions.summary": "Today’s money summary",
   "transactions.moneyIn": "Money in",
   "transactions.spent": "Spent",
-  "transactions.owed": "Owed",
+  "transactions.givenOnCredit": "Given on credit",
   "transactions.filters": "Filter transactions",
   "transactions.filter.all": "All",
   "transactions.filter.sold": "Sold",

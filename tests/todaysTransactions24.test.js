@@ -163,8 +163,8 @@ test("24: names are capitalised and never a plain grey chip", async () => {
 test("24 at 360px: GH₵12,345.00 is never clipped (card, tiles, row amount)", async () => {
   await recordCashSale({ amountPesewas: 1234500, cashReceivedPesewas: 1234500, momoReceivedPesewas: 0, parts: [{ paymentMethod: "cash", amountPesewas: 1234500 }], saleItems: [] });
   const { rows, totals } = await today();
-  const tree = (await mount(rows, { ...totals, expenses: 1234500, newCreditExtended: 1234500 })).tree;
-  for (const name of ["money-in", "spent", "owed"]) {
+  const tree = (await mount(rows, { ...totals, expenses: 1234500, creditGiven: 1234500 })).tree;
+  for (const name of ["money-in", "spent", "given-on-credit"]) {
     const box = all(tree, (n) => n.props["data-summary"] === name)[0];
     const amount = all(box, (n) => n.type === "p" && textOf(n) === "GH₵12,345.00")[0];
     assert.ok(amount, `${name} amount`);
@@ -186,7 +186,7 @@ test("24 header: curly apostrophe everywhere, and \"Today · dd/mm/yyyy\" under 
     assert.match(posText(key), /Today’s transactions/, key);
     assert.doesNotMatch(posText(key), /Today['´]s/, key);
   }
-  const tree = (await mount([], { cashInflow: 0, expenses: 0, newCreditExtended: 0 })).tree;
+  const tree = (await mount([], { cashInflow: 0, expenses: 0, creditGiven: 0 })).tree;
   assert.equal(textOf(all(tree, (n) => n.type === "h1")[0]), "Today’s transactions");
   const dateLine = textOf(all(tree, (n) => n.props["data-today-date"] !== undefined)[0]);
   assert.equal(dateLine, `Today · ${formatDate(getMoneyPeriodRange("day").start)}`);

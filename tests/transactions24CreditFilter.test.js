@@ -55,7 +55,7 @@ test("the reason chip shows the note the merchant typed when there is one", () =
   assert.equal(view.amountPesewas, 500);
 });
 
-test("Money in and Spent tiles equal the sum of the rows; Owed is the owed part of today's sales", () => {
+test("Money in and Spent tiles equal the sum of the rows; Given on credit is the owed part of sales plus Added to debt", () => {
   const totals = summarizeFinancialTransactions(records);
   const views = rows.map((row) => describeTransactionRow(row));
   const sum = (tone) => views.filter((view) => view.tone === tone).reduce((total, view) => total + view.amountPesewas, 0);
@@ -63,6 +63,7 @@ test("Money in and Spent tiles equal the sum of the rows; Owed is the owed part 
   assert.equal(totals.expenses, sum("spent"));
   // Current formula (reported, not changed): credit extended by today's sales only.
   assert.equal(totals.newCreditExtended, 400 + 600);
+  assert.equal(totals.creditGiven, 400 + 600 + 1000, "Given on credit also counts Added to debt");
 });
 
 let screen;

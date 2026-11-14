@@ -125,9 +125,9 @@ export default function TodaysTransactions({ onBack }) {
                 <p className="text-base font-bold">{t("transactions.spent")}</p>
                 <p className="whitespace-nowrap text-[22px] font-extrabold leading-tight">{formatGhs(data.totals.expenses)}</p>
               </div>
-              <div data-summary="owed" className="min-w-0 rounded-[18px] bg-[#FECDD3] px-2 py-2 sm:px-3 text-[#7F1D1D]">
-                <p className="text-base font-bold">{t("transactions.owed")}</p>
-                <p className="whitespace-nowrap text-[22px] font-extrabold leading-tight">{formatGhs(data.totals.newCreditExtended)}</p>
+              <div data-summary="given-on-credit" className="min-w-0 rounded-[18px] bg-[#FECDD3] px-2 py-2 sm:px-3 text-[#7F1D1D]">
+                <p className="text-base font-bold">{t("transactions.givenOnCredit")}</p>
+                <p className="whitespace-nowrap text-[22px] font-extrabold leading-tight">{formatGhs(data.totals.creditGiven)}</p>
               </div>
             </div>
           </section>
