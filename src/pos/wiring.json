@@ -1184,7 +1184,8 @@
    "rules": [
     "Under the balance, one line about when it is due. Fixed due date and no plan: \"Due 20/11/2026 · In 5 days\" (or \"Due 03/11/2026 · Late 7 days\"; Due today when equal). Installment plan: \"GH₵10.00 every week · next 14/11/2026\" (already built, kept). No date and no plan: nothing. Date through the shared formatter; the In N days and Late wording is the existing wording.",
     "Plan card (decided 12 Nov 2026): two full-width lines, never wrapped in two columns: \"GH₵{paid} paid · {left} payments left\", then \"Next payment {dd/mm/yyyy}\".",
-    "Action buttons (from a phone test at 360px, 14 Nov 2026): Collect, WhatsApp and Call are ONE row of three equal columns with the icon above the label, 48px tall or more, at 340px and wider. They never wrap and Call is never alone on a second row. Call is greyed and disabled without a valid phone."
+    "Action buttons (from a phone test at 360px, 14 Nov 2026): Collect, WhatsApp and Call are ONE row of three equal columns with the icon above the label, 48px tall or more, at 340px and wider. They never wrap and Call is never alone on a second row. Call is greyed and disabled without a valid phone.",
+    "No valid phone (decided 14 Nov 2026): WhatsApp stays active and uses the phone's share sheet with the reminder text filled in (the owner picks the chat), exactly like the receipt. Call is greyed and disabled. There is no Add contact button in the action row; adding a number is done through Edit contact in the header."
    ]
   },
   "30": {
@@ -1226,13 +1227,6 @@
    "component": "SavedAsCredit",
    "controls": [
     {
-     "label": "WhatsApp Amoto",
-     "role": null,
-     "disabled_initially": false,
-     "type": "external",
-     "effect": "Open WhatsApp with the existing reminder template (reminders) or the new receipt template (receipts, after approval). The merchant reviews and sends. Nothing is sent automatically."
-    },
-    {
      "label": "See Amoto’s details ›",
      "role": null,
      "disabled_initially": false,
@@ -1251,7 +1245,8 @@
    "bottom_bar": false,
    "rules": [
     "Never list a payment part with GH₵0.00 (for example no \"MoMo GH₵0.00\" row after a cash-only payment): only parts above zero are shown.",
-    "Receipts offline (decided 12 Nov 2026): the sale or collection is already saved before the receipt button is shown, and a receipt never blocks Done or New sale. Send receipt opens WhatsApp through the installed app or the phone's share sheet (not a wa.me web page that fails offline), with the receipt text filled in. When the phone is offline, one quiet line appears directly under the Send receipt button (8px below it, above Copy receipt; it explains what Send receipt does, so it never sits under Copy receipt or further down): \"You are offline. WhatsApp will send it when you are back online.\" A secondary outlined button \"Copy receipt\" copies the same text (shows \"Copied\" for two seconds). Receipt buttons only exist when VITE_ENABLE_POS_RECEIPTS is \"true\". Amounts in the receipt text and in the panel above it always use formatGhs (GH₵5.00), also the Sale line."
+    "Receipts offline (decided 12 Nov 2026): the sale or collection is already saved before the receipt button is shown, and a receipt never blocks Done or New sale. Send receipt opens WhatsApp through the installed app or the phone's share sheet (not a wa.me web page that fails offline), with the receipt text filled in. When the phone is offline, one quiet line appears directly under the Send receipt button (8px below it, above Copy receipt; it explains what Send receipt does, so it never sits under Copy receipt or further down): \"You are offline. WhatsApp will send it when you are back online.\" A secondary outlined button \"Copy receipt\" copies the same text (shows \"Copied\" for two seconds). Receipt buttons only exist when VITE_ENABLE_POS_RECEIPTS is \"true\". Amounts in the receipt text and in the panel above it always use formatGhs (GH₵5.00), also the Sale line.",
+    "No reminder button on 31 (decided 14 Nov 2026): the old 'WhatsApp {Name}' reminder button is removed. This screen appears seconds after the sale and the receipt already tells the customer what they owe; reminders live on the debtor detail page (29/43), the Home Collect first tile and the Owed list. The buttons are, top to bottom: Send receipt, the offline line (offline only), Copy receipt (these three only with the receipts flag on), See {Name}'s details ›, Done."
    ]
   },
   "32": {
@@ -2256,7 +2251,8 @@
     "Extra kept: Open debt entries list with \"Correct this entry\". A correction adds a debt_adjustment entry (old and new balance, reason) and lowers the balance in one transaction; raising is refused (\"Use Add to debt\").",
     "Under the balance, one line about when it is due. Fixed due date and no plan: \"Due 20/11/2026 · In 5 days\" (or \"Due 03/11/2026 · Late 7 days\"; Due today when equal). Installment plan: \"GH₵10.00 every week · next 14/11/2026\" (already built, kept). No date and no plan: nothing. Date through the shared formatter; the In N days and Late wording is the existing wording.",
     "Plan card (decided 12 Nov 2026): two full-width lines, never wrapped in two columns: \"GH₵{paid} paid · {left} payments left\", then \"Next payment {dd/mm/yyyy}\".",
-    "Action buttons (from a phone test at 360px, 14 Nov 2026): the wide WhatsApp reminder button on top, then Collect and Call side by side in one row. Nothing wraps or sits alone at 340px and wider. Call is greyed and disabled without a valid phone."
+    "Action buttons (from a phone test at 360px, 14 Nov 2026): the wide WhatsApp reminder button on top, then Collect and Call side by side in one row. Nothing wraps or sits alone at 340px and wider. Call is greyed and disabled without a valid phone.",
+    "No valid phone (decided 14 Nov 2026): WhatsApp stays active and uses the phone's share sheet with the reminder text filled in (the owner picks the chat), exactly like the receipt. Call is greyed and disabled. There is no Add contact button in the action row; adding a number is done through Edit contact in the header."
    ]
   },
   "44": {
