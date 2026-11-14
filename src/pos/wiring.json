@@ -675,7 +675,8 @@
     "Tapping the debtor name opens 43 (brief line 122).",
     "Built extras kept: People-who-owe link, Add contact.",
     "Owed card on Home (redesign 11 Nov 2026, layout and wording only): a white card with a 2px light grey border and a thicker red left edge (the same style as the debt tiles on My money), not a pink block. Top: the label \"Owed to you\" (17px, grey), the total in bold dark text (30px, never red or pink), a quiet line \"{n} people · {m} late\" (\"1 person\"; leave out \"· {m} late\" when none is late), and \"See all ›\" in green on the right. The whole top part is one tappable area that opens 32 (accessible name \"Owed to you, see all\"). Under a thin line and the small heading \"Collect first\": the most urgent debtor (same ordering as today) with the name (bold 19px, up to 2 lines, capital first letter), the amount (bold 22px, never clipped, at the right), and the due tag under the name in the same wording and colours as the Owed list (\"Late 1 day\" red, \"Due today\" and \"Due in n days\" amber, grey when far). Then one row of buttons: a green \"Collect\" button with a small cash icon and the word Collect (52px, takes the remaining width, accessible name \"Collect payment from {name}\", opens 25), a square WhatsApp button (52px, green outline) and a square Call button (52px, dark outline) shown only when the person has a valid phone number (never a greyed disabled Call button). Icon-only buttons keep their accessible names.",
-    "Header (decided 14 Nov 2026): the Menu button is on the left (hamburger icon + the word Menu, 48px), then the shop name, then the connection status. It opens the Menu drawer (see 23) over this page; the page and any draft stay as they are. The bottom bar is covered by the dimmed layer while the drawer is open."
+    "Header (decided 14 Nov 2026): the Menu button is on the left (hamburger icon + the word Menu, 48px), then the shop name, then the connection status. It opens the Menu drawer (see 23) over this page; the page and any draft stay as they are. The bottom bar is covered by the dimmed layer while the drawer is open.",
+    "Nobody owes (decided 14 Nov 2026 from a phone test where a corrected balance of zero still showed 'Owed to you GHS 0.00' and a Collect button): a person counts as owing only with a balance above zero. When nobody owes, the Owed to you card is not shown at all; Home goes from Spent money straight to the Today's transactions link, and the Owed tab in the bottom bar stays. Collect first, the people count and the total use only people with a balance above zero, so a person whose balance was corrected to zero or paid in full disappears from all three."
    ]
   },
   "23": {
@@ -1180,7 +1181,8 @@
    "bottom_bar": false,
    "rules": [
     "Under the balance, one line about when it is due. Fixed due date and no plan: \"Due 20/11/2026 · In 5 days\" (or \"Due 03/11/2026 · Late 7 days\"; Due today when equal). Installment plan: \"GH₵10.00 every week · next 14/11/2026\" (already built, kept). No date and no plan: nothing. Date through the shared formatter; the In N days and Late wording is the existing wording.",
-    "Plan card (decided 12 Nov 2026): two full-width lines, never wrapped in two columns: \"GH₵{paid} paid · {left} payments left\", then \"Next payment {dd/mm/yyyy}\"."
+    "Plan card (decided 12 Nov 2026): two full-width lines, never wrapped in two columns: \"GH₵{paid} paid · {left} payments left\", then \"Next payment {dd/mm/yyyy}\".",
+    "Action buttons (from a phone test at 360px, 14 Nov 2026): Collect, WhatsApp and Call are ONE row of three equal columns with the icon above the label, 48px tall or more, at 340px and wider. They never wrap and Call is never alone on a second row. Call is greyed and disabled without a valid phone."
    ]
   },
   "30": {
@@ -1452,7 +1454,8 @@
    "rules": [
     "Collect for a person with several debts opens 43 so the merchant chooses the debt.",
     "Extras kept: Load more.",
-    "Search field above the list, same field and wording as on 17 (\"Search by name or phone\"). It filters the list as the merchant types, ignoring case and spaces, and works together with the All, Late and Due soon filters. Clearing it shows the full list again. No search button: the field is always visible. When nobody matches, show the existing empty-list wording (or ask the owner for new text). Search never changes any data and works offline."
+    "Search field above the list, same field and wording as on 17 (\"Search by name or phone\"). It filters the list as the merchant types, ignoring case and spaces, and works together with the All, Late and Due soon filters. Clearing it shows the full list again. No search button: the field is always visible. When nobody matches, show the existing empty-list wording (or ask the owner for new text). Search never changes any data and works offline.",
+    "The list shows only people with a balance above zero. A person corrected to zero or paid in full is not listed. When nobody is left the existing empty-list wording shows."
    ]
   },
   "33": {
@@ -2250,7 +2253,8 @@
     "Late state button: \"Send reminder on WhatsApp\" (full width) and \"Last reminder: {n} days ago\" from lastReminderAt.",
     "Extra kept: Open debt entries list with \"Correct this entry\". A correction adds a debt_adjustment entry (old and new balance, reason) and lowers the balance in one transaction; raising is refused (\"Use Add to debt\").",
     "Under the balance, one line about when it is due. Fixed due date and no plan: \"Due 20/11/2026 · In 5 days\" (or \"Due 03/11/2026 · Late 7 days\"; Due today when equal). Installment plan: \"GH₵10.00 every week · next 14/11/2026\" (already built, kept). No date and no plan: nothing. Date through the shared formatter; the In N days and Late wording is the existing wording.",
-    "Plan card (decided 12 Nov 2026): two full-width lines, never wrapped in two columns: \"GH₵{paid} paid · {left} payments left\", then \"Next payment {dd/mm/yyyy}\"."
+    "Plan card (decided 12 Nov 2026): two full-width lines, never wrapped in two columns: \"GH₵{paid} paid · {left} payments left\", then \"Next payment {dd/mm/yyyy}\".",
+    "Action buttons (from a phone test at 360px, 14 Nov 2026): the wide WhatsApp reminder button on top, then Collect and Call side by side in one row. Nothing wraps or sits alone at 340px and wider. Call is greyed and disabled without a valid phone."
    ]
   },
   "44": {
@@ -3324,6 +3328,14 @@
      "disabled_initially": false,
      "type": "navigate",
      "to": "MOMOOK"
+    },
+    {
+     "label": "Set up MoMo number",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "63",
+     "to_rule": "Shown only when no MoMo number is saved (it replaces the Send to my number card). Opens 63 with the sale or payment draft kept; the Customer sends to my number switch is already on and the number field is focused. After Save, Back returns to 62."
     }
    ],
    "inputs": [],
@@ -3336,7 +3348,8 @@
     "Order: (1) a green hero card \"Ask the customer to send\" with the amount at 42px bold (formatGhs); (2) a white card \"Send to my number\" with a compact outlined Copy button (accessible name \"Copy number\", 44px, copy icon) on the same line as the label, the number at 34px bold, a small yellow network chip (MTN, Telecel or AirtelTigo) and the name in bold, and the quiet line \"The customer will see this name when they send.\"; (3) an amber-bordered card \"Before you tap Money received\" with three numbered steps (round green number badges, not tick boxes): \"Wait for the MoMo message.\", \"Check that the amount and the name are right.\", \"Check your MoMo balance went up, not only the SMS.\"; (4) a pinned footer with the full-width green \"Money received\" button (60px, check icon) and, under it, the quiet line \"Will be recorded as MoMo · you confirmed.\"",
     "The footer is pinned: the body scrolls, the Money received button never moves off screen. Tapping Copy shows \"Copied\" for two seconds on the Copy button itself.",
     "Wording: never say \"Saved\" on this screen, because nothing is saved until Money received is tapped (the line under the button uses \"Will be recorded as\"). When the amount is only the MoMo part of a larger sale (split), add one quiet line under the amount card: \"MoMo part of a GH₵{total} sale\".",
-    "No MoMo number saved (decided 14 Nov 2026 from a phone test): when Direct MoMo is used and no MoMo number is saved, the 'Send to my number' card is replaced by one card 'Your MoMo number is not set up yet' with a large button 'Set up MoMo number' that opens 63. The three numbered steps are hidden and Money received is disabled, because there is no number the customer could have sent money to. After Save on 63, Back returns to 62 with the sale or payment draft intact and the number shown, and Money received is enabled. The same state applies to a MoMo sale, a MoMo collection, a split MoMo part and Save plan. There is never a text path such as 'Menu > Settings > MoMo payments'."
+    "No MoMo number saved (decided 14 Nov 2026 from a phone test): when Direct MoMo is used and no MoMo number is saved, the 'Send to my number' card is replaced by one card 'Your MoMo number is not set up yet' with a large button 'Set up MoMo number' that opens 63. The three numbered steps are hidden and Money received is disabled, because there is no number the customer could have sent money to. After Save on 63, Back returns to 62 with the sale or payment draft intact and the number shown, and Money received is enabled. The same state applies to a MoMo sale, a MoMo collection, a split MoMo part and Save plan. There is never a text path such as 'Menu > Settings > MoMo payments'.",
+    "Times are shown 24-hour HH:mm built by the app, never by the device language (decided 14 Nov 2026)."
    ]
   },
   "63": {
@@ -3741,7 +3754,7 @@
     "dialog": "Every phone sheet and confirmation (25 Collect, 54 Correct balance, the 46 Pay sheet, large-amount confirm, the leave question, restore confirm, delete item 42) is a centred dialog 520px wide over a dark scrim. Escape and a click on the scrim act as Cancel or Close (as Stay in the leave question). Focus stays inside the dialog and returns to the button that opened it."
    },
    "screens": {
-    "22 Home": "D1. Row 1: Money left today (Money in and Spent fill the card) and, beside it, Sell (the largest button on the screen) above Spent money. Row 2: Owed to you with a \"Collect first\" list of up to two people (most late first), each with its due tag, amount and the same three buttons as the phone tile (Collect, WhatsApp, and Call only with a valid number); tapping a name opens that person on Owed. Beside it, Today's transactions as a small table (Time, What, Money in, Owed) with See all.",
+    "22 Home": "D1. Row 1: Money left today (Money in and Spent fill the card) and, beside it, Sell (the largest button on the screen) above Spent money. Row 2: Owed to you with a \"Collect first\" list of up to two people (most late first), each with its due tag, amount and the same three buttons as the phone tile (Collect, WhatsApp, and Call only with a valid number); tapping a name opens that person on Owed. Beside it, Today's transactions as a small table (Time, What, Money in, Owed) with See all. When nobody owes (no person with a balance above zero) the Owed to you card is not shown and Today's transactions takes the full row.",
     "15 Sell": "D2 and D15. Left: the amount (\"Customer pays\") and a keypad that fills the height. Right, top to bottom (decided 14 Nov 2026, the owner's order, because items change the amount and so come before the payment choice): the Items row with Add items; then How is it paid? as four tiles in a 2x2 grid with full labels (Cash, MoMo, Owe, Split payment; the split icon is cash + phone + person); then a quiet \"Last sale\" box (amount, method, time); then Done pinned at the bottom with one line that says why it is disabled. The selected tile has a tick as well as the colour.",
     "20 and 55 Sell with items": "D9. On wide screens these are one screen: item tiles on the left (search, tap to add, New item, Other amount) and \"This sale\" on the right. The lines use exactly the phone controls of screen 20: every line (item lines and the Other amount line) ends with the same remove button: the bin icon, white, grey border (#64748B) and a dark crimson bin (#8B0836), accessible name \"Remove {item}\", placed after the amount. An item line is: name, Less, the quantity, More, the amount, the bin. Less is greyed and disabled at quantity 1 (the bin removes the line); this is the live app, and the phone and desktop match it. Then Total, the four payment tiles and Done. 37 and 38 open as dialogs.",
     "32, 29, 43 Owed": "D3. Left: search, the All / Late / Due soon filters, the people list and Load more. Right, the selected person: balance, Edit contact and Correct balance as small secondary buttons, Collect (widest), the WhatsApp reminder button, Call (only with a valid number), the receipt button when the receipts flag is on, the due line or plan card with two full lines, What happened and Add to debt. Add debt sits at the top right of the page. The late state (43) keeps \"Send reminder on WhatsApp\" and \"Last reminder: n days ago\".",
@@ -3762,7 +3775,8 @@
    "approved_additions": "Approved by the owner on 14 Nov 2026 (build everything, no temporary fix). These four are the ONLY content added on wide screens and each is a read-only view of data the app already stores; none creates a record, a rule or a money calculation. (1) Sell with items is one screen on wide layouts (20 and 55 together); the phone keeps two screens. (2) 'Last sale' box on Sell: the most recent saved sale today, showing its amount (formatGhs), method (Cash, MoMo, Split or On credit) and time; hidden when there is no sale today; not tappable. (3) 'Collect first' on Home: up to two people with the largest late balances, most late first (same order as the phone tile), each with its due tag, amount and Collect, WhatsApp and Call (Call only with a valid number); hidden when nobody owes. (4) Person column in Today's transactions: the customer's name in Title Case (displayName), a dash when there is none. The wide-layout test must assert that each addition reads from the same source as the phone and changes no stored value."
   },
   "menu_drawer": "The menu is a left drawer over the current page, never a separate page. Header Menu button at the left (see 23). It adds no history entry and keeps drafts. Back from a destination chosen in the drawer returns to the page the drawer was opened from.",
-  "header_always_visible": "The header (Menu button or home tile, shop name, connection status) is fixed at the top of the screen on every screen and at every width while the content scrolls beneath it (decided 14 Nov 2026 from a phone test where the Menu button was out of sight on a long Home). It keeps the safe-area inset and the 3px bottom border, sits above content and below the Menu drawer and dialogs, and is never hidden or moved by scrolling or by the virtual keyboard. There is no hide-on-scroll behaviour."
+  "header_always_visible": "The header (Menu button or home tile, shop name, connection status) is fixed at the top of the screen on every screen and at every width while the content scrolls beneath it (decided 14 Nov 2026 from a phone test where the Menu button was out of sight on a long Home). It keeps the safe-area inset and the 3px bottom border, sits above content and below the Menu drawer and dialogs, and is never hidden or moved by scrolling or by the virtual keyboard. There is no hide-on-scroll behaviour.",
+  "times_24h": "Every time of day is written HH:mm in 24-hour form by a hand-built formatter, never by the device locale, like dates are written dd/mm/yyyy (decided 14 Nov 2026 after a locale-dependent receipt time was found)."
  },
  "built_extras_kept": {
   "24": "row tags Collected Debt, Balance correction, Added to debt",
