@@ -695,7 +695,7 @@ export default function PosApp() {
   );
 
   return (
-    <div className="pos-app min-h-screen max-w-full overflow-x-hidden bg-white text-slate-950" style={POS_THEME.cssVariables}>
+    <div className="pos-app min-h-screen max-w-full overflow-x-clip bg-white text-slate-950" style={POS_THEME.cssVariables}>
       <PosHeader
         shopName={shopName}
         // Wiring 62: never "Saved" on Customer sends (nothing is recorded before Money received).

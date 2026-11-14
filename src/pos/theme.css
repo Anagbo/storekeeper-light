@@ -2,7 +2,9 @@
   min-height: 100vh;
   width: 100%;
   max-width: 100vw;
-  overflow-x: hidden;
+  /* clip, not hidden: hidden would make .pos-app a scroll container and the sticky header would
+     stick inside it instead of to the screen (rules_global.header_always_visible). */
+  overflow-x: clip;
   background: var(--pos-background, #fff);
   color: var(--pos-ink, #0f172a);
   font-family: var(--pos-font, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
