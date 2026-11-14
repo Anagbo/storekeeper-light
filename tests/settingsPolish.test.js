@@ -133,9 +133,9 @@ test("47 rows: MoMo payments, My plan and Backup and restore each have a small g
   }
 });
 
-test("47 rows: Backup and restore has the second line Keep a copy of your records; MoMo keeps Not set up", async () => {
+test("47 rows: Backup and restore has the second line Save or restore your records; MoMo keeps Not set up", async () => {
   const { view } = await mountSettings();
-  assert.match(textOf(row(view.tree, "Backup and restore")), /Keep a copy of your records/);
+  assert.match(textOf(row(view.tree, "Backup and restore")), /Save or restore your records/);
   assert.match(textOf(row(view.tree, "MoMo payments")), /Not set up/);
   assert.match(textOf(row(view.tree, "My plan")), /Active until 05\/12\/2026/);
   const plain = await mountSettings({ subscriptionEnabled: false });

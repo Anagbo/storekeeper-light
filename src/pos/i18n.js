@@ -226,7 +226,7 @@ const ENGLISH = Object.freeze({
   "settings.manageSubscription": "View subscription",
   "settings.subscribe": "Subscribe with Mobile Money",
   "settings.backup": "Backup and restore",
-  "settings.backupDetail": "Keep a copy of your records",
+  "settings.backupDetail": "Save or restore your records",
   "settings.groupShop": "Shop",
   "settings.groupPreferences": "Preferences",
   "settings.groupPayments": "Payments and plan",
