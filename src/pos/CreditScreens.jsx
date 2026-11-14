@@ -16,7 +16,7 @@ import { getCreditAmountOwedPesewas } from "./creditAmount.js";
 import CustomerContactEditor from "./CustomerContactEditor.jsx";
 import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
 import { shortSaveName } from "./saveLabel.js";
-import { CopyReceiptButton, ReceiptNotes, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
+import { CopyReceiptButton, ReceiptFailedLine, ReceiptOfflineLine, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
 import { buildCreditSaleReceipt, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
 import { posText as t } from "./i18n.js";
 import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
@@ -974,9 +974,10 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
           </button>
         )}
         {receiptsOn && receiptText && <SendReceiptButton onClick={() => void actions.send()} className="min-h-14" />}
+        {receiptsOn && receiptText && <ReceiptOfflineLine online={actions.online} className="col-span-full" />}
       </div>
       {receiptsOn && receiptText && <CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} />}
-      {receiptsOn && <ReceiptNotes online={actions.online} failed={actions.failed} />}
+      {receiptsOn && <ReceiptFailedLine failed={actions.failed} />}
       {result?.debtId && <PosSecondaryButton type="button" className="w-full" onClick={() => onNavigate("DebtorDetail", { debtId: result.debtId, customerName })}>{t("credit.seeDetails", { name: shownName })}</PosSecondaryButton>}
       {!whatsappLink && <PosSecondaryButton type="button" className="w-full" onClick={() => setContactEditorOpen(true)}>{t("contact.add")}</PosSecondaryButton>}
       {whatsappLink && <PosSecondaryButton type="button" onClick={() => setContactEditorOpen(true)}>{t("collect.editContact")}</PosSecondaryButton>}

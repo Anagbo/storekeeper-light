@@ -64,12 +64,15 @@ export function CopyReceiptButton({ onClick, copied, disabled = false, className
   );
 }
 
-// One quiet line under the buttons, only while the phone is offline.
-export function ReceiptNotes({ online, failed }) {
-  return (
-    <>
-      {!online && <p role="status" className="text-center text-sm font-semibold text-slate-700">{t("receipt.offline")}</p>}
-      {failed && <p role="alert" className="text-center text-sm font-semibold text-slate-700">{failed}</p>}
-    </>
-  );
+// The quiet offline line (wiring "Receipts offline", 14 Nov 2026): it explains Send receipt, so
+// each screen puts it directly under that button (8px, gap-2) and above Copy receipt. Offline only.
+export function ReceiptOfflineLine({ online, className = "" }) {
+  if (online) return null;
+  return <p role="status" data-receipt-offline="" className={`text-center text-sm font-semibold text-slate-700 ${className}`}>{t("receipt.offline")}</p>;
+}
+
+// Shown when Send or Copy could not open; it is about either button, so it sits under Copy receipt.
+export function ReceiptFailedLine({ failed }) {
+  if (!failed) return null;
+  return <p role="alert" className="text-center text-sm font-semibold text-slate-700">{failed}</p>;
 }

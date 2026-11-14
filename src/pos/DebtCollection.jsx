@@ -13,7 +13,7 @@ import { loadCustomerHistory } from "../utils/loadCustomerDebtHistory.js";
 import { getOutstandingDebtPesewas } from "../lib/money.js";
 import { buildWhatsAppReminderText, generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { sendReceipt } from "./receiptShare.js";
-import { CopyReceiptButton, ReceiptNotes, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
+import { CopyReceiptButton, ReceiptFailedLine, ReceiptOfflineLine, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
 import { buildCustomerBalanceReceipt, getCollectionReceiptText, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
 import { normalizeCollectionAmountInput } from "./collectionSplit.js";
 import { getDebtDueLabel, getDebtDueLine } from "./money.js";
@@ -592,9 +592,10 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
         </PosSecondaryButton>
         {/* Without a valid phone, Send receipt opens the share sheet (receiptShare.sendReceipt). Only the Undo window holds it back. */}
         {receiptsOn && <SendReceiptButton onClick={() => void actions.send()} disabled={!receiptReady} label={t("collect.receiptShare")} />}
+        {receiptsOn && receiptReady && <ReceiptOfflineLine online={actions.online} className="col-span-full" />}
       </div>
       {receiptsOn && <CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} disabled={!receiptReady} />}
-      {receiptsOn && receiptReady && <ReceiptNotes online={actions.online} failed={actions.failed} />}
+      {receiptsOn && receiptReady && <ReceiptFailedLine failed={actions.failed} />}
       {receiptsOn && remainingSeconds > 0 && !undone && (
         <p role="status" className="text-center text-sm font-semibold text-slate-700">{t("collect.receiptWait", { seconds: remainingSeconds })}</p>
       )}
@@ -915,11 +916,14 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                   <Phone size={26} aria-hidden="true" /><span>{t("collect.call")}</span>
                 </button>}
           </div>
-          {balanceReceiptButton}
           {balanceReceiptText && (
             <>
+              <div className="flex flex-col gap-2">
+                {balanceReceiptButton}
+                <ReceiptOfflineLine online={balanceActions.online} />
+              </div>
               <CopyReceiptButton onClick={() => void balanceActions.copy()} copied={balanceActions.copied} />
-              <ReceiptNotes online={balanceActions.online} failed={balanceActions.failed} />
+              <ReceiptFailedLine failed={balanceActions.failed} />
             </>
           )}
           {singleDebtMatchesTotal && (

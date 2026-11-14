@@ -9,7 +9,7 @@ import { getSaleReceiptDetails } from "./saleReceipt.js";
 import { getSaleReceiptText, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
 import { getMomoDisplayLabel } from "./momoMapping.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
-import { CopyReceiptButton, ReceiptNotes, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
+import { CopyReceiptButton, ReceiptFailedLine, ReceiptOfflineLine, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
 
 // The receipt details and text, or null when the record cannot give them. 30 opens only after the
 // sale is saved, so a bad record must not hide that: it is logged with the sale id instead.
@@ -131,9 +131,10 @@ export default function SaleRecorded({ transaction, creditResult, shopName, onDo
         <PosSecondaryButton type="button" onClick={onDone} className="h-14 min-h-0 rounded-2xl border-2 border-slate-900 text-[17px]">
           {t("saleRecorded.done")}
         </PosSecondaryButton>
+        {receiptsOn && <ReceiptOfflineLine online={actions.online} className="col-span-full" />}
       </div>
       {receiptsOn && <CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} />}
-      {receiptsOn && <ReceiptNotes online={actions.online} failed={actions.failed} />}
+      {receiptsOn && <ReceiptFailedLine failed={actions.failed} />}
       <PosPrimaryButton type="button" onClick={onNewSale} className="mt-auto h-[68px] text-2xl">
         <Plus size={28} aria-hidden="true" />{t("saleRecorded.newSale")}
       </PosPrimaryButton>
