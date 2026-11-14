@@ -82,7 +82,7 @@ export default function SaleRecorded({ transaction, creditResult, shopName, onDo
         )) : (
           <div className="flex justify-between gap-3 text-lg">
             <span>{t("saleRecorded.sale")}</span>
-            <strong>{formatGhsAmount(details.amountPesewas)}</strong>
+            <strong>{formatGhs(details.amountPesewas)}</strong>
           </div>
         )}
         <div className="border-t-2 border-dashed border-slate-400 pt-2">

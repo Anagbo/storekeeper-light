@@ -37,5 +37,7 @@ test("30: the bare amount is not made by cutting GH₵ out of text", () => {
   const source = readFileSync(new URL("../src/pos/SaleRecorded.jsx", import.meta.url), "utf8");
   assert.doesNotMatch(source, /\.replace\(\s*["']GH₵["']/);
   assert.match(source, /formatGhsAmount\(item\.amountPesewas\)/);
-  assert.match(source, /formatGhsAmount\(details\.amountPesewas\)/);
+  // The Sale line (no item lines) is the exception: wiring 30 "Receipts offline" shows it as GH₵5.00.
+  assert.doesNotMatch(source, /formatGhsAmount\(details\.amountPesewas\)/);
+  assert.match(source, /t\("saleRecorded\.sale"\)[\s\S]{0,120}formatGhs\(details\.amountPesewas\)/);
 });
