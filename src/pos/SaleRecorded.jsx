@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Check, Plus } from "lucide-react";
 import { formatDate } from "../lib/formatDate.js";
-import { formatGhs, formatGhsAmount } from "../lib/money.js";
+import { formatGhs } from "../lib/money.js";
 import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
 import { displayName } from "../lib/displayName.js";
@@ -79,7 +79,7 @@ export default function SaleRecorded({ transaction, creditResult, shopName, onDo
               <span className="block truncate">{item.name} × {item.quantity}</span>
               {item.subtitle && <span className="block text-sm text-slate-700">{item.subtitle}</span>}
             </span>
-            <strong className="shrink-0">{formatGhsAmount(item.amountPesewas)}</strong>
+            <strong className="shrink-0">{formatGhs(item.amountPesewas)}</strong>
           </div>
         )) : (
           <div className="flex justify-between gap-3 text-lg">

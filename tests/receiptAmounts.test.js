@@ -17,12 +17,12 @@ test("30 the Sale line reads GH₵5.00, not 5.00", async () => {
   assert.doesNotMatch(text, /Sale5\.00/);
 });
 
-test("30 item rows stay bare amounts (the earlier decision for the item lines)", async () => {
+test("30 item rows read GH₵ too", async () => {
   const text = await show({ ...base, amountPesewas: 750, cashReceivedPesewas: 750, items_json: JSON.stringify([{ name: "Rice", quantity: 3, total_amount: 750 }]) });
-  assert.match(text, /Rice × 37\.50/);
+  assert.match(text, /Rice × 3GH₵7\.50/);
 });
 
-test("30 with no item lines, no amount on the screen is a bare number", async () => {
+test("30 no amount on the screen is a bare number", async () => {
   const text = await show({ ...base, items_json: "[]" });
   assert.doesNotMatch(text.replace(/GH₵\d[\d,]*\.\d\d/g, ""), /\d+\.\d\d/);
 });
