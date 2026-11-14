@@ -135,7 +135,7 @@ test("credit saved forwards the contact-save callback to its editor", () => {
   assert.match(source, /t\("credit\.paymentRecorded"\)/);
   assert.match(source, /t\("credit\.paymentRecordedTotal"\)/);
   assert.match(source, /whatsappLink \? \(/);
-  assert.match(source, /receiptLink \? \(/);
+  assert.match(source, /receiptText && <SendReceiptButton/);
   assert.match(source, /onClick=\{openContactEditor\}/);
   assert.match(source, /useLiveQuery\(async \(\) =>/);
   assert.match(source, /db\.customers\.where\("nameLower"\)/);

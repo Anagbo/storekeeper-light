@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Banknote, Check, Clock3, Delete, MessageCircle, Phone, Plus, ReceiptText, Smartphone, Undo2, UserRoundPen, X } from "lucide-react";
+import { Banknote, Check, Clock3, Delete, Phone, Plus, ReceiptText, Smartphone, Undo2, UserRoundPen, X } from "lucide-react";
 import { db } from "../db/db.js";
 import { COLLECTION_UNDO_WINDOW_MS, undoDebtCollection } from "../db/debts.js";
 import { correctDebtBalance, recordDebtReminder } from "../db/debtLedger.js";
@@ -12,7 +12,7 @@ import { formatHistoryTimestamp } from "../utils/customerDebtHistory.js";
 import { loadCustomerHistory } from "../utils/loadCustomerDebtHistory.js";
 import { getOutstandingDebtPesewas } from "../lib/money.js";
 import { generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
-import { buildCollectionReceiptLink } from "./collectionReceipt.js";
+import { CopyReceiptButton, ReceiptNotes, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
 import { buildCustomerBalanceReceipt, getCollectionReceiptText, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
 import { normalizeCollectionAmountInput } from "./collectionSplit.js";
 import { getDebtDueLabel, getDebtDueLine } from "./money.js";
@@ -516,7 +516,10 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
   // on (FEATURE_FLAGS.SHOW_POS_RECEIPTS).
   const receiptsOn = isReceiptTemplatesEnabled();
   const receiptMessage = getCollectionReceiptText(result, shopName);
-  const receiptLink = buildCollectionReceiptLink(contact.phone, receiptMessage);
+  const receiptPhone = normalizeWhatsAppPhone(contact.phone);
+  const actions = useReceiptActions(receiptMessage, receiptPhone ?? "");
+  // Undo is open for a while: the receipt is held back until it has passed, so a payment that is undone is never receipted.
+  const receiptReady = remainingSeconds <= 0 && !undone;
 
   useEffect(() => {
     if (!savedCustomer) return;
@@ -583,19 +586,13 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
         <PosSecondaryButton type="button" disabled={busy || remainingSeconds <= 0 || undone} onClick={() => void undo()} className="h-14 min-h-0 rounded-2xl border-rose-900 text-[17px] text-rose-900">
           <Undo2 size={22} aria-hidden="true" /> {t("collect.undo")}
         </PosSecondaryButton>
-        {!receiptsOn ? null : receiptLink && remainingSeconds <= 0 && !undone ? (
-          <a href={receiptLink} target="_blank" rel="noopener noreferrer" className="flex h-14 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-center text-[17px] font-extrabold text-emerald-900">
-            <MessageCircle size={24} aria-hidden="true" /> {t("collect.receiptShare")}
-          </a>
-        ) : (
-          <button type="button" disabled className="flex h-14 items-center justify-center gap-2 rounded-2xl border-2 border-slate-400 bg-slate-100 px-2 text-center text-sm font-bold text-slate-600">
-            <MessageCircle size={24} aria-hidden="true" /> {t("collect.receiptShare")}
-          </button>
-        )}
+        {receiptsOn && <SendReceiptButton onClick={() => void actions.send()} disabled={!receiptPhone || !receiptReady} label={t("collect.receiptShare")} />}
       </div>
-      {!receiptsOn ? null : receiptLink && remainingSeconds > 0 && !undone ? (
+      {receiptsOn && <CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} disabled={!receiptReady} />}
+      {receiptsOn && receiptReady && <ReceiptNotes online={actions.online} failed={actions.failed} />}
+      {!receiptsOn ? null : receiptPhone && remainingSeconds > 0 && !undone ? (
         <p role="status" className="text-center text-sm font-semibold text-slate-700">{t("collect.receiptWait", { seconds: remainingSeconds })}</p>
-      ) : !receiptLink && !undone ? (
+      ) : !receiptPhone && !undone ? (
         <div className="rounded-xl bg-amber-50 p-3 text-center">
           <p role="status" className="text-sm font-semibold text-slate-800">{t("collect.receiptNoPhone")}</p>
           <button type="button" onClick={() => setContactEditorOpen(true)} className="mt-2 min-h-11 font-extrabold text-emerald-900 underline">

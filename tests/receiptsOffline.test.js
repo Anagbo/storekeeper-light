@@ -1,0 +1,181 @@
+import assert from "node:assert/strict";
+import { afterEach, mock, test } from "node:test";
+import { findButton, flushEffects, loadJsx, render, setLiveQuery, textOf } from "./helpers/renderJsx.js";
+
+// Wiring 28, 30, 31 "Receipts offline": Send receipt uses the share sheet or the WhatsApp app link
+// (wa.me only on a desktop browser), Copy receipt copies the exact text, and one quiet line shows
+// only while the phone is offline. Done and New sale never wait on any of it.
+
+const ON = { VITE_ENABLE_POS_RECEIPTS: "true" };
+const PHONE_UA = "Mozilla/5.0 (Linux; Android 13; Phone) Mobile";
+const DESKTOP_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)";
+const OFFLINE_LINE = "You are offline. WhatsApp will send it when you are back online.";
+
+const realNavigator = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+const realWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+afterEach(() => {
+  Object.defineProperty(globalThis, "navigator", realNavigator);
+  if (realWindow) Object.defineProperty(globalThis, "window", realWindow);
+  else delete globalThis.window;
+  mock.timers.reset();
+});
+
+function setNavigator({ share = false, clipboard = false, onLine = true, userAgent = PHONE_UA } = {}) {
+  const calls = { share: [], copy: [], open: [], location: "" };
+  const nav = { onLine, userAgent };
+  if (share) nav.share = async (data) => { calls.share.push(data); };
+  if (clipboard) nav.clipboard = { writeText: async (text) => { calls.copy.push(text); } };
+  Object.defineProperty(globalThis, "navigator", { value: nav, configurable: true });
+  const win = new EventTarget();
+  win.open = (...args) => { calls.open.push(args); };
+  win.location = { set href(value) { calls.location = value; } };
+  Object.defineProperty(globalThis, "window", { value: win, configurable: true });
+  return { calls, nav, win };
+}
+
+const SALE = {
+  id: "sale-1", amountPesewas: 500, payment_method: "cash", cashReceivedPesewas: 500, momoReceivedPesewas: 0,
+  timestamp: Date.now(), items_json: "[]"
+};
+
+async function show30(done = () => {}) {
+  const { default: SaleRecorded } = await loadJsx("src/pos/SaleRecorded.jsx", ON);
+  const view = render({ type: SaleRecorded, props: { transaction: SALE, shopName: "Shop", onDone: done, onNewSale() {} } });
+  flushEffects(view);
+  return view;
+}
+
+test("30 phone with a share sheet: Send receipt shares the receipt text, no wa.me", async () => {
+  const { calls } = setNavigator({ share: true });
+  const view = await show30();
+  await findButton(view.tree, "Send receipt").props.onClick();
+  assert.equal(calls.share.length, 1);
+  assert.match(calls.share[0].text, /^Receipt from Shop/);
+  assert.deepEqual(calls.open, []);
+  assert.equal(calls.location, "");
+});
+
+test("30 phone without a share sheet: opens the whatsapp:// link, not wa.me", async () => {
+  const { calls } = setNavigator({ share: false });
+  const view = await show30();
+  await findButton(view.tree, "Send receipt").props.onClick();
+  assert.match(calls.location, /^whatsapp:\/\/send\?text=Receipt%20from%20Shop/);
+  assert.deepEqual(calls.open, []);
+});
+
+test("30 desktop browser without a share sheet: wa.me is the last fallback", async () => {
+  const { calls } = setNavigator({ share: false, userAgent: DESKTOP_UA });
+  const view = await show30();
+  await findButton(view.tree, "Send receipt").props.onClick();
+  assert.equal(calls.location, "");
+  assert.equal(calls.open.length, 1);
+  assert.match(calls.open[0][0], /^https:\/\/wa\.me\/\?text=Receipt%20from%20Shop/);
+});
+
+test("30 closing the share sheet is not an error", async () => {
+  const { nav } = setNavigator({ share: false });
+  nav.share = async () => { throw Object.assign(new Error("closed"), { name: "AbortError" }); };
+  const view = await show30();
+  await findButton(view.tree, "Send receipt").props.onClick();
+  assert.doesNotMatch(textOf(view.rerender().tree), /could not open/i);
+});
+
+test("30 offline line shows only when offline", async () => {
+  setNavigator({ share: true, onLine: true });
+  assert.doesNotMatch(textOf((await show30()).tree), /You are offline/);
+  setNavigator({ share: true, onLine: false });
+  assert.ok(textOf((await show30()).tree).includes(OFFLINE_LINE));
+});
+
+test("30 the offline line follows the offline and online events without a reload", async () => {
+  const { nav, win } = setNavigator({ share: true, onLine: true });
+  const view = await show30();
+  nav.onLine = false;
+  win.dispatchEvent(new Event("offline"));
+  assert.ok(textOf(view.rerender().tree).includes(OFFLINE_LINE));
+  nav.onLine = true;
+  win.dispatchEvent(new Event("online"));
+  assert.doesNotMatch(textOf(view.rerender().tree), /You are offline/);
+});
+
+test("30 Copy receipt copies the exact receipt text and shows Copied for two seconds", async () => {
+  mock.timers.enable({ apis: ["setTimeout"] });
+  const { calls } = setNavigator({ share: true, clipboard: true });
+  const view = await show30();
+  await findButton(view.tree, "Send receipt").props.onClick();
+  await findButton(view.tree, "Copy receipt").props.onClick();
+  assert.equal(calls.copy.length, 1);
+  assert.equal(calls.copy[0], calls.share[0].text, "the copied text is the sent text");
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.ok(findButton(view.rerender().tree, "Copied"));
+  mock.timers.tick(1999);
+  assert.ok(findButton(view.rerender().tree, "Copied"));
+  mock.timers.tick(1);
+  assert.ok(findButton(view.rerender().tree, "Copy receipt"));
+});
+
+test("30 Done works offline, and New sale is there", async () => {
+  setNavigator({ share: true, onLine: false });
+  let done = 0;
+  const view = await show30(() => { done += 1; });
+  findButton(view.tree, "Done").props.onClick();
+  assert.equal(done, 1);
+  assert.ok(!findButton(view.tree, "Done").props.disabled);
+  assert.ok(findButton(view.tree, "New sale"));
+});
+
+test("30 the receipt text uses GH₵ for every amount", async () => {
+  const { calls } = setNavigator({ share: true });
+  const view = await show30();
+  await findButton(view.tree, "Send receipt").props.onClick();
+  assert.match(calls.share[0].text, /GH₵5\.00/);
+  assert.doesNotMatch(calls.share[0].text.replace(/GH₵\d[\d,]*\.\d\d/g, ""), /\d+\.\d\d/, "no bare amount in the text");
+});
+
+test("28 Send receipt goes to the app link with the customer's number; Copy copies the same text", async () => {
+  const { calls } = setNavigator({ share: false, clipboard: true });
+  const { PaymentReceived } = await loadJsx("src/pos/DebtCollection.jsx", ON);
+  setLiveQuery(() => null);
+  try {
+    const result = {
+      collectionId: "col-1", debtId: "d1", customerId: "c1", customerName: "Ama", phone: "0241234567",
+      amountPesewas: 1250, remainingPesewas: 875, createdAt: Date.now(), undoExpiresAt: Date.now() - 1000,
+      parts: [{ paymentMethod: "cash", amountPesewas: 500 }, { paymentMethod: "momo", amountPesewas: 750 }],
+      debtAfter: { isInstallmentPlan: false }
+    };
+    const view = render({ type: PaymentReceived, props: { params: result, onHome() {}, onNavigate() {}, onSaveCustomerContact() {}, shopName: "Shop" } });
+    flushEffects(view);
+    await findButton(view.tree, "Send receipt").props.onClick();
+    assert.match(calls.location, /^whatsapp:\/\/send\?phone=233241234567&text=/);
+    await findButton(view.tree, "Copy receipt").props.onClick();
+    const sentText = decodeURIComponent(calls.location.split("&text=")[1]);
+    assert.equal(calls.copy[0], sentText);
+    assert.match(sentText, /GH₵12\.50/);
+  } finally {
+    setLiveQuery(null);
+  }
+});
+
+test("31 Send receipt and Copy receipt send and copy the same GH₵ text", async () => {
+  const { calls } = setNavigator({ share: true, clipboard: true });
+  const { default: CreditScreens } = await loadJsx("src/pos/CreditScreens.jsx", ON);
+  setLiveQuery(() => null);
+  try {
+    const params = {
+      customer: { id: "c1", name: "Ama", phone: "" },
+      creditResult: {
+        customerId: "c1", customerName: "Ama", phone: "", debtId: "d1", amountPesewas: 2500, addedDebtPesewas: 2500,
+        previousDebtPesewas: 0, totalDebtPesewas: 2500, initialPaymentPesewas: 0, initialPaymentParts: [],
+        debtAfter: { isInstallmentPlan: false }, saleTransaction: { timestamp: Date.now() }
+      }
+    };
+    const view = render({ type: CreditScreens, props: { route: "CreditSaved", params, onHome() {}, onNavigate() {}, onSaveCustomerContact() {}, shopName: "Shop" } });
+    flushEffects(view);
+    await findButton(view.tree, "Send receipt").props.onClick();
+    await findButton(view.tree, "Copy receipt").props.onClick();
+    assert.equal(calls.copy[0], calls.share[0].text);
+    assert.match(calls.share[0].text, /GH₵25\.00/);
+  } finally {
+    setLiveQuery(null);
+  }
+});

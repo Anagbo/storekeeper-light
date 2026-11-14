@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Check, Plus } from "lucide-react";
 import { formatDate } from "../lib/formatDate.js";
 import { formatGhs, formatGhsAmount } from "../lib/money.js";
@@ -8,15 +8,7 @@ import { displayName } from "../lib/displayName.js";
 import { getSaleReceiptDetails } from "./saleReceipt.js";
 import { getSaleReceiptText, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
 import { getMomoDisplayLabel } from "./momoMapping.js";
-
-function WhatsAppIcon({ size = 26 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
-      <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2z" fill="#25D366" />
-      <path d="M8.5 7.2c.3-.5.8-.5 1.1-.3l1 2c.1.3 0 .6-.2.8l-.6.7c.7 1.3 1.7 2.3 3 3l.8-.6c.2-.2.5-.2.8-.1l1.9 1c.3.2.4.6.2 1-.4 1-1.4 1.6-2.4 1.4-3.2-.7-6-3.4-6.8-6.5-.1-.6.1-1.1.3-1.6z" fill="#fff" />
-    </svg>
-  );
-}
+import { CopyReceiptButton, ReceiptNotes, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
 
 // The receipt details and text, or null when the record cannot give them. 30 opens only after the
 // sale is saved, so a bad record must not hide that: it is logged with the sale id instead.
@@ -46,8 +38,8 @@ function SaleSaved({ onDone }) {
 }
 
 export default function SaleRecorded({ transaction, creditResult, shopName, onDone, onNewSale }) {
-  const [shareStatus, setShareStatus] = useState("");
   const receipt = useMemo(() => readReceipt(transaction, shopName), [transaction, shopName]);
+  const actions = useReceiptActions(receipt?.receiptText ?? "");
   if (!receipt) return <SaleSaved onDone={onDone} />;
   const { details, receiptText } = receipt;
   // Records saved before MoMo verification was stored keep the translated plain label.
@@ -60,31 +52,12 @@ export default function SaleRecorded({ transaction, creditResult, shopName, onDo
 
   // Send receipt shows only with VITE_ENABLE_POS_RECEIPTS on (FEATURE_FLAGS.SHOW_POS_RECEIPTS).
   const receiptsOn = isReceiptTemplatesEnabled();
-  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(receiptText)}`;
   const owedPesewas = transaction?.creditExtendedPesewas ?? 0;
   const paidPesewas = details.cashReceivedPesewas + details.momoReceivedPesewas;
   // Wiring 30: with an earlier balance one quiet line shows the customer's total (the figure 31 and Home show).
   const earlierBalance = creditResult?.previousDebtPesewas > 0 && Number.isSafeInteger(creditResult?.totalDebtPesewas);
   const isSplit = details.paymentMethod === "split";
   const customerName = transaction?.customer_name ?? transaction?.customerName ?? "";
-
-  async function shareReceiptFallback() {
-    try {
-      if (typeof navigator.share === "function") {
-        await navigator.share({ title: t("saleRecorded.title"), text: receiptText });
-        setShareStatus(t("saleRecorded.shared"));
-      } else if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(receiptText);
-        setShareStatus(t("saleRecorded.copied"));
-      } else {
-        setShareStatus(t("saleRecorded.shareUnavailable"));
-      }
-    } catch (shareError) {
-      if (shareError?.name === "AbortError") return;
-      console.error("Could not share the sale receipt.", shareError);
-      setShareStatus(t("saleRecorded.shareFailed"));
-    }
-  }
 
   return (
     <PosPage className="flex flex-col gap-3">
@@ -152,27 +125,13 @@ export default function SaleRecorded({ transaction, creditResult, shopName, onDo
       </PosCard>
 
       <div className={`grid gap-2 ${receiptsOn ? "grid-cols-2" : "grid-cols-1"}`}>
-        {receiptsOn && <a
-          href={whatsappUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => {
-            // Also trigger copy or fallback if opening external link isn't supported
-            if (!whatsappUrl) {
-              e.preventDefault();
-              void shareReceiptFallback();
-            }
-          }}
-          className="flex h-14 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-center text-[17px] font-extrabold text-emerald-900"
-        >
-          <WhatsAppIcon size={26} />
-          <span>{t("saleRecorded.sendReceipt")}</span>
-        </a>}
+        {receiptsOn && <SendReceiptButton onClick={() => void actions.send()} />}
         <PosSecondaryButton type="button" onClick={onDone} className="h-14 min-h-0 rounded-2xl border-2 border-slate-900 text-[17px]">
           {t("saleRecorded.done")}
         </PosSecondaryButton>
       </div>
-      {shareStatus && <p role="status" className="text-center text-sm font-semibold text-slate-700">{shareStatus}</p>}
+      {receiptsOn && <CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} />}
+      {receiptsOn && <ReceiptNotes online={actions.online} failed={actions.failed} />}
       <PosPrimaryButton type="button" onClick={onNewSale} className="mt-auto h-[68px] text-2xl">
         <Plus size={28} aria-hidden="true" />{t("saleRecorded.newSale")}
       </PosPrimaryButton>

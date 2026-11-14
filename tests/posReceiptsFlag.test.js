@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { loadJsx, render, setLiveQuery, textOf, walk } from "./helpers/renderJsx.js";
+import { findButton, loadJsx, render, setLiveQuery, textOf, walk } from "./helpers/renderJsx.js";
 
 // One flag for every POS receipt button: VITE_ENABLE_POS_RECEIPTS (FEATURE_FLAGS.SHOW_POS_RECEIPTS).
 // Off hides every receipt control (30, 31, 28, 29/43); on shows every one of them.
@@ -39,11 +39,11 @@ async function show30(env) {
 }
 
 test("30 flag off: no Send receipt", async () => assertFlag(await show30(OFF), false, "30"));
-test("30 flag on: Send receipt opens WhatsApp", async () => {
+test("30 flag on: Send receipt and Copy receipt", async () => {
   const tree = await show30(ON);
   assertFlag(tree, true, "30");
-  const link = receiptControls(tree).find((node) => node.type === "a");
-  assert.match(link.props.href, /^https:\/\/wa\.me\/\?text=Receipt%20from%20Shop/);
+  assert.ok(findButton(tree, "Send receipt"));
+  assert.ok(findButton(tree, "Copy receipt"));
 });
 
 // 31 Saved as credit
@@ -100,9 +100,10 @@ for (const [label, phone] of [["with a phone", PHONE], ["without a phone", ""]])
   test(`28 flag on ${label}: Send receipt`, async () => assertFlag(await show28(ON, phone), true, "28"));
 }
 
-test("28 flag on with a phone: Send receipt opens WhatsApp for that number", async () => {
-  const link = receiptControls(await show28(ON, PHONE)).find((node) => node.type === "a");
-  assert.match(link.props.href, /^https:\/\/wa\.me\/233241234567\?text=/);
+test("28 flag on with a phone: Send receipt is a button, enabled once Undo has passed", async () => {
+  const send = findButton(await show28(ON, PHONE), "Send receipt");
+  assert.equal(send.type, "button");
+  assert.ok(!send.props.disabled);
 });
 
 // 29 (on time) and 43 (late) Debtor detail: the current-balance Receipt button

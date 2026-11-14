@@ -16,7 +16,7 @@ import { getCreditAmountOwedPesewas } from "./creditAmount.js";
 import CustomerContactEditor from "./CustomerContactEditor.jsx";
 import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
 import { shortSaveName } from "./saveLabel.js";
-import { buildCollectionReceiptLink } from "./collectionReceipt.js";
+import { CopyReceiptButton, ReceiptNotes, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
 import { buildCreditSaleReceipt, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
 import { posText as t } from "./i18n.js";
 import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
@@ -854,10 +854,11 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
   );
 }
 
-function buildCreditReceiptLink(result, phone, shopName) {
+// The credit sale receipt text, or null when the record cannot give one (31 still shows, saved).
+function buildCreditReceiptText(result, shopName) {
   if (!isReceiptTemplatesEnabled() || !result?.saleTransaction) return null;
   try {
-    return buildCollectionReceiptLink(phone, buildCreditSaleReceipt(result, shopName));
+    return buildCreditSaleReceipt(result, shopName);
   } catch (receiptError) {
     console.error("Could not build the credit sale receipt.", receiptError);
     return null;
@@ -895,10 +896,10 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
   const shownName = displayName(customerName);
   const totalDebtPesewas = result?.totalDebtPesewas ?? 0;
   const whatsappLink = generateWhatsAppLink(phone, shownName, totalDebtPesewas, shopName);
-  // Send receipt (the link, or the add-contact button standing in for it) shows only with
-  // VITE_ENABLE_POS_RECEIPTS on (FEATURE_FLAGS.SHOW_POS_RECEIPTS).
+  // Send receipt and Copy receipt show only with VITE_ENABLE_POS_RECEIPTS on (FEATURE_FLAGS.SHOW_POS_RECEIPTS).
   const receiptsOn = isReceiptTemplatesEnabled();
-  const receiptLink = buildCreditReceiptLink(result, phone, shopName);
+  const receiptText = buildCreditReceiptText(result, shopName);
+  const actions = useReceiptActions(receiptText ?? "", normalizeWhatsAppPhone(phone) ?? "");
   function openContactEditor(event) {
     event.preventDefault();
     setContactEditorOpen(true);
@@ -972,16 +973,10 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
             {t("credit.whatsapp", { name: shownName })}
           </button>
         )}
-        {receiptsOn && (receiptLink ? (
-          <a href={receiptLink} target="_blank" rel="noopener noreferrer" className="flex min-h-14 min-w-0 items-center justify-center rounded-2xl border-2 border-emerald-900 px-3 text-center font-extrabold text-emerald-900">
-            {t("collect.receiptShare")}
-          </a>
-        ) : (
-          <button type="button" onClick={openContactEditor} className="flex min-h-14 min-w-0 items-center justify-center rounded-2xl border-2 border-emerald-900 px-3 text-center font-extrabold text-emerald-900">
-            {t("collect.receiptShare")}
-          </button>
-        ))}
+        {receiptsOn && receiptText && <SendReceiptButton onClick={() => void actions.send()} className="min-h-14" />}
       </div>
+      {receiptsOn && receiptText && <CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} />}
+      {receiptsOn && <ReceiptNotes online={actions.online} failed={actions.failed} />}
       {result?.debtId && <PosSecondaryButton type="button" className="w-full" onClick={() => onNavigate("DebtorDetail", { debtId: result.debtId, customerName })}>{t("credit.seeDetails", { name: shownName })}</PosSecondaryButton>}
       {!whatsappLink && <PosSecondaryButton type="button" className="w-full" onClick={() => setContactEditorOpen(true)}>{t("contact.add")}</PosSecondaryButton>}
       {whatsappLink && <PosSecondaryButton type="button" onClick={() => setContactEditorOpen(true)}>{t("collect.editContact")}</PosSecondaryButton>}

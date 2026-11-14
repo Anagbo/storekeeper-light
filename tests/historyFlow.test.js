@@ -89,7 +89,7 @@ test("E4: if the pick target is not in history, the MoMo screens are dropped so 
 
 test("K4: 18 and 19 return to the existing 16 in a split; they no longer push a new one", () => {
   const whenWillTheyPay = slice(creditSource, "function WhenWillTheyPay", "function ALittleAtATime");
-  const aLittle = slice(creditSource, "function ALittleAtATime", "function buildCreditReceiptLink");
+  const aLittle = slice(creditSource, "function ALittleAtATime", "function buildCreditReceiptText");
   for (const screen of [whenWillTheyPay, aLittle]) {
     assert.match(screen, /onReturnToSplit\(/);
     assert.doesNotMatch(screen, /if \(params\.flow === "split"\) \{\s*onNavigate\("SplitPayment"/);
@@ -103,13 +103,13 @@ test("E3: 27 opened from 19 returns with returnTo, not onReplace", () => {
 });
 
 test("K5/E2: on 19 the payment section is hidden whenever flow=split, and the parts from 16 pass through unchanged", () => {
-  const aLittle = slice(creditSource, "function ALittleAtATime", "function buildCreditReceiptLink");
+  const aLittle = slice(creditSource, "function ALittleAtATime", "function buildCreditReceiptText");
   assert.match(aLittle, /const paymentAlreadyMadeToday = params\.paymentAlreadyMadeToday === true \|\|\s*params\.flow === "split";/);
   assert.match(aLittle, /\{paymentAlreadyMadeToday && paidTodayPesewas > 0 && splitParts\.length > 0 && \(/);
 });
 
 test("K5: Save plan on 19 is disabled until the plan is valid", () => {
-  const aLittle = slice(creditSource, "function ALittleAtATime", "function buildCreditReceiptLink");
+  const aLittle = slice(creditSource, "function ALittleAtATime", "function buildCreditReceiptText");
   assert.match(aLittle, /const planReady = /);
   // The first payment date must be after today (cleanup: today is refused on 19, not on 18).
   assert.match(aLittle, /const dateValid = isValidDateString\(nextDueDate\) && nextDueDate > today;/);
