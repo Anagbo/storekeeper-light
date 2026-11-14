@@ -171,8 +171,8 @@ test("71: BackupRestore is a declared route with links, and Back returns to Sett
   assert.equal(POS_ROUTES.BackupRestore, "BackupRestore");
   assert.ok(POS_LINKS.some((link) => link.from === "SettingsProfitTools" && link.to === "BackupRestore"));
   assert.ok(POS_LINKS.some((link) => link.from === "BackupRestore" && link.to === "SettingsProfitTools"));
-  const menu = pushRoute(createRouteState(POS_ROUTES.Home, {}), POS_ROUTES.Menu, {});
-  const settings = pushRoute(menu, POS_ROUTES.SettingsProfitTools, {});
+  // Settings is opened from the Menu drawer over Home: the drawer adds nothing to the history.
+  const settings = pushRoute(createRouteState(POS_ROUTES.Home, {}), POS_ROUTES.SettingsProfitTools, {});
   const backup = pushRoute(settings, POS_ROUTES.BackupRestore, {});
   assert.equal(backup.current, POS_ROUTES.BackupRestore);
   assert.equal(backRoute(backup).current, POS_ROUTES.SettingsProfitTools);

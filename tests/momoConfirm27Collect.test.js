@@ -70,11 +70,8 @@ async function failingWrites(run) {
   }
 }
 
-async function headerHome(app) {
-  const button = nodes(app.view.tree).find((node) => node.type === "button" && node.props["aria-label"] === "Home");
-  await button.props.onClick();
-  return app.settle();
-}
+// Home as the owner reaches it now: Menu > Home (the header Home tile is gone, wiring 23).
+const headerHome = (app) => app.goHome();
 
 // ---- 27 collect split ---------------------------------------------------------------------
 

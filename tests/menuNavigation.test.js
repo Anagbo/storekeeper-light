@@ -1,249 +1,361 @@
 import "fake-indexeddb/auto";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { after, test } from "node:test";
+import { after, beforeEach, test } from "node:test";
 import { db } from "../src/db/db.js";
-import { POS_LINKS, POS_ROUTES, backRoute, createRouteState, popToRoute, pushRoute, replaceRoute } from "../src/pos/routes.js";
-import { findButton, loadJsx, render, setLiveQuery, textOf, walk } from "./helpers/renderJsx.js";
+import { setPreference } from "../src/db/preferences.js";
+import { resetBrowserBack } from "../src/pos/browserBack.js";
+import { POS_ROUTES } from "../src/pos/routes.js";
+import { openPosApp } from "./helpers/posAppHarness.js";
+import { flushEffects, loadJsx, render, textOf, walk } from "./helpers/renderJsx.js";
 
-// 23 Close menu goes BACK to the screen the menu was opened from, draft intact (not Home). Menu adds
-// one history entry however often it is shown; Menu > Settings > Back returns to the menu; 47 Done
-// returns like Back. (Close menu used to call navigate("Home"), which wiped the history and the draft.)
+// Wiring 23 and rules_global.menu_drawer (14 Nov 2026): the Menu is a left drawer over the current
+// page, never a page. Opening it adds no history entry and keeps every draft. Close (X), a tap on the
+// dimmed page, Escape and the phone's Back close it. A row closes it and goes to that screen; Back
+// from Settings, Items, My money or Today's transactions returns to the page it was opened on.
+// Focus moves in, stays in, and returns to the Menu button. role dialog, aria-modal, name Menu.
+// Driven through the real PosApp (posAppHarness) and the real MenuDrawer.
+
+const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+
+globalThis.localStorage ??= (() => {
+  const store = new Map();
+  return { getItem: (key) => store.get(key) ?? null, setItem: (key, value) => store.set(key, String(value)), removeItem: (key) => store.delete(key), clear: () => store.clear() };
+})();
+
+// A document that keeps its keydown listeners, so Escape and Tab reach the drawer.
+const keyListeners = new Set();
+globalThis.document = {
+  visibilityState: "visible",
+  activeElement: null,
+  addEventListener(type, listener) { if (type === "keydown") keyListeners.add(listener); },
+  removeEventListener(type, listener) { if (type === "keydown") keyListeners.delete(listener); }
+};
+function press(key, shiftKey = false) {
+  const event = { key, shiftKey, defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } };
+  for (const listener of [...keyListeners]) listener(event);
+  return event;
+}
+
 after(async () => {
-  setLiveQuery(null);
   db.close();
   await db.delete();
 });
 
-const appSource = readFileSync(new URL("../src/pos/PosApp.jsx", import.meta.url), "utf8");
+beforeEach(async () => {
+  resetBrowserBack();
+  keyListeners.clear();
+  localStorage.clear();
+  localStorage.setItem("storekeeper-shop-name", "Ama Stores");
+  await setPreference("posSetupCompleted", true);
+});
 
-// A stand-in for PosApp: the same route functions, the same callbacks. The new menu functions are
-// loaded when the app is made so a missing export fails one test, not the whole file.
-async function makeApp(route, params = {}) {
-  const routes = await import("../src/pos/routes.js");
-  const app = { state: createRouteState(route, params) };
-  app.navigate = (to, nextParams = {}) => {
-    if (to === POS_ROUTES.Menu) { app.state = routes.openMenuState(app.state); return; }
-    app.state = pushRoute(app.state, to, nextParams);
-  };
-  app.back = () => { app.state = backRoute(app.state); };
-  app.openMenu = () => { app.state = routes.openMenuState(app.state); };
-  app.closeMenu = () => { app.state = routes.closeMenuState(app.state); };
-  app.updateParams = (next) => { app.state = replaceRoute(app.state, app.state.current, { ...app.state.params, ...next }); };
-  app.returnTo = (to, nextParams = {}) => { app.state = popToRoute(app.state, to, nextParams) ?? pushRoute(app.state, to, nextParams); };
-  app.menuEntries = () => [...app.state.history, { current: app.state.current }].filter((entry) => entry.current === POS_ROUTES.Menu).length;
+async function open() {
+  const app = await openPosApp();
+  after(() => app.restoreConsole());
   return app;
 }
-const snapshot = (state) => JSON.stringify({ current: state.current, params: state.params, history: state.history });
-const tile = (tree, label) => [...walk(tree)].filter((node) => node.type === "button" && textOf(node) === label).at(-1);
 
-// ---- the route functions ---------------------------------------------------------------------------
+const snapshot = (app) => JSON.stringify({ current: app.state.current, params: app.state.params, history: app.state.history });
+const drawerRoot = (app) => [...walk(app.view.tree)].find((node) => node.props?.["data-menu-drawer"] !== undefined);
+const scrim = (app) => [...walk(drawerRoot(app))].find((node) => node.type === "div" && node.props?.["aria-hidden"] === "true" && typeof node.props.onClick === "function");
+const browserEntries = () => window.history.entries.length;
 
-test("opening the menu adds one entry; Close menu returns to the screen it was opened from, params untouched", async () => {
-  const origin = { amountPesewas: 6000, splitParts: [{ paymentMethod: "cash", amountPesewas: 2000 }] };
-  const app = await makeApp(POS_ROUTES.SplitPayment, origin);
-  const before = snapshot(app.state);
-  app.openMenu();
-  assert.equal(app.state.current, POS_ROUTES.Menu);
-  assert.equal(app.state.history.length, 1);
-  app.closeMenu();
-  assert.equal(snapshot(app.state), before, "exactly the screen and params it left");
+// 15 with a typed amount: the draft the drawer must never touch.
+async function sellDraft(app) {
+  await app.tap(/^Sell$/);
+  await app.keys(["1", "2", "5"]);
+  assert.equal(app.route, "Sell");
+  assert.match(app.text(), /125/);
+}
+
+// ---- the header ---------------------------------------------------------------------------------
+
+test("22 header: the Menu button is first (hamburger + Menu, 48px), then the shop name (ellipsis), then the status; no green home tile", async () => {
+  const { PosHeader } = await loadJsx("src/pos/PosComponents.jsx");
+  const view = render({ type: PosHeader, props: { shopName: "Ama Stores", statusLabel: "", onMenu() {} } });
+  const row = [...walk(view.tree)].find((node) => node.type === "div" && /min-h-16/.test(node.props?.className ?? ""));
+  const parts = [row.props.children].flat(Infinity).filter((child) => child && typeof child === "object");
+  assert.equal(parts[0].type, "button");
+  assert.equal(parts[0].props["aria-label"], "Open menu");
+  assert.equal(parts[0].props["aria-haspopup"], "dialog");
+  assert.match(textOf(parts[0]), /Menu/);
+  assert.match(parts[0].props.className, /\bh-12\b/, "48px");
+  assert.match(parts[0].props.className, /\bshrink-0\b/);
+  assert.equal(parts[1].type, "p");
+  assert.equal(textOf(parts[1]), "Ama Stores");
+  for (const cls of ["truncate", "min-w-0", "flex-1"]) assert.match(parts[1].props.className, new RegExp(`\\b${cls}\\b`), `shop name ${cls}`);
+  assert.match(parts[2].props["aria-label"], /Saved on this phone/, "then the connection status");
+  assert.ok(![...walk(view.tree)].some((node) => node.type === "button" && node.props?.["aria-label"] === "Home"), "no header Home tile");
+  assert.ok(![...walk(view.tree)].some((node) => /bg-emerald-900/.test(node.props?.className ?? "")), "no green tile");
 });
 
-test("Menu > Settings > Back returns to the menu, and Close menu then returns to the original screen", async () => {
-  const app = await makeApp(POS_ROUTES.SplitPayment, { amountPesewas: 800, splitParts: [{ paymentMethod: "cash", amountPesewas: 300 }] });
-  const before = snapshot(app.state);
-  app.openMenu();
-  app.navigate(POS_ROUTES.SettingsProfitTools);
-  app.back();
-  assert.equal(app.state.current, POS_ROUTES.Menu);
-  app.closeMenu();
-  assert.equal(snapshot(app.state), before);
+test("the Menu button is not hidden on wide screens yet (the wide sidebar with Settings and Items comes after the merge)", async () => {
+  const { PosHeader } = await loadJsx("src/pos/PosComponents.jsx");
+  const view = render({ type: PosHeader, props: { shopName: "Shop", statusLabel: "", onMenu() {} } });
+  const menu = [...walk(view.tree)].find((node) => node.props?.["aria-label"] === "Open menu");
+  assert.doesNotMatch(menu.props.className, /(md|lg):hidden/);
 });
 
-test("the menu adds only one history entry however often it is shown", async () => {
-  const app = await makeApp(POS_ROUTES.SplitPayment, { amountPesewas: 800 });
-  const before = snapshot(app.state);
-  app.openMenu();
-  app.navigate(POS_ROUTES.SettingsProfitTools);
-  app.openMenu();                                  // the header Menu button on Settings
-  assert.equal(app.menuEntries(), 1);
-  assert.equal(app.state.current, POS_ROUTES.Menu);
-  app.navigate(POS_ROUTES.MyItems);
-  app.openMenu();                                  // and on My items
-  assert.equal(app.menuEntries(), 1);
-  app.navigate(POS_ROUTES.MyMoney);
-  app.navigate(POS_ROUTES.Menu);                   // any navigate to Menu is the same
-  assert.equal(app.menuEntries(), 1);
-  assert.equal(app.state.history.length, 1, "only the original screen is below the menu");
-  app.closeMenu();
-  assert.equal(snapshot(app.state), before);
+test("25: the header behind the Collect sheet is covered by the sheet (z-50 over the header's z-30)", () => {
+  assert.match(read("src/pos/DebtCollection.jsx"), /fixed inset-0 z-50/);
+  assert.match(read("src/pos/PosComponents.jsx"), /<header className="sticky top-0 z-30/);
 });
 
-test("the header Menu button while the menu is open closes it, back to the original screen (not Home)", async () => {
-  const app = await makeApp(POS_ROUTES.ReviewAndPay, { saleItems: [] });
-  const before = snapshot(app.state);
-  app.openMenu();
-  app.openMenu();
-  assert.equal(snapshot(app.state), before);
+// ---- the drawer itself --------------------------------------------------------------------------
+
+test("23: a dialog named Menu, 320px at most 86%, dimmed page, slide-in 200ms and none with reduced motion", async () => {
+  const app = await open();
+  await app.tap("Open menu");
+  const dialog = app.drawer();
+  assert.ok(dialog, "the drawer opened");
+  assert.equal(dialog.props["aria-modal"], "true");
+  for (const cls of ["w-[320px]", "max-w-[86%]", "left-0", "inset-y-0", "bg-white", "pos-drawer"]) assert.ok(dialog.props.className.split(" ").includes(cls), cls);
+  assert.equal(scrim(app).props.style.backgroundColor, "rgba(15, 23, 42, 0.55)");
+  assert.match(drawerRoot(app).props.className, /fixed inset-0 z-40/, "over the page, the header (z-30) and the bottom bar (z-30)");
+  const css = read("src/styles.css");
+  assert.match(css, /\.pos-drawer \{\s*animation: pos-drawer-in 200ms ease-out;/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\.pos-drawer \{\s*animation: none;/);
 });
 
-test("Close menu with nothing to return to goes to Home", async () => {
-  const routes = await import("../src/pos/routes.js");
-  assert.equal(routes.closeMenuState(createRouteState(POS_ROUTES.Menu)).current, POS_ROUTES.Home);
+test("23 top: home tile, shop name (ellipsis), the date dd/mm/yyyy with the weekday, a 48px Close button", async () => {
+  const { default: MenuDrawer } = await loadJsx("src/pos/MenuDrawer.jsx");
+  const view = render({ type: MenuDrawer, props: { current: "Home", shopName: "Ama Stores", onClose() {}, onChoose() {}, now: new Date(2026, 10, 12, 9, 0).getTime() } });
+  const text = textOf(view.tree);
+  assert.match(text, /Ama Stores/);
+  assert.match(text, /Thursday 12\/11\/2026/);
+  const close = [...walk(view.tree)].find((node) => node.props?.["aria-label"] === "Close menu");
+  assert.match(close.props.className, /\bh-12\b/);
+  assert.match(close.props.className, /\bw-12\b/);
+  const name = [...walk(view.tree)].find((node) => node.type === "span" && textOf(node) === "Ama Stores");
+  assert.match(name.props.className, /\btruncate\b/);
 });
 
-test("closeMenuState does nothing when the menu is not showing", async () => {
-  const routes = await import("../src/pos/routes.js");
-  const state = pushRoute(createRouteState(POS_ROUTES.Sell), POS_ROUTES.SettingsProfitTools, {});
-  assert.equal(routes.closeMenuState(state), state);
+test("23 rows: Home, Today’s transactions, My money, Items, a divider, Settings; at least 60px; no Language row", async () => {
+  const app = await open();
+  await app.tap("Open menu");
+  const dialog = app.drawer();
+  const buttons = [...walk(dialog)].filter((node) => node.type === "button" && node.props?.["aria-label"] !== "Close menu");
+  assert.deepEqual(buttons.map(textOf), ["Home", "Today’s transactions" + "Money in, spent, owed", "My money" + "Week and month report", "Items" + "Things you sell", "Settings"]);
+  for (const button of buttons) assert.match(button.props.className, /min-h-\[60px\]/);
+  assert.doesNotMatch(textOf(dialog), /Language/);
+  const divider = [...walk(dialog)].find((node) => node.type === "div" && /h-px/.test(node.props?.className ?? ""));
+  assert.ok(divider, "a divider");
+  const order = [...walk(dialog)].filter((node) => node === divider || buttons.includes(node));
+  assert.equal(order.indexOf(divider), 4, "the divider sits just before Settings");
 });
 
-// ---- Close menu from each screen -------------------------------------------------------------------
+test("23: the row for the current page is highlighted green (Home on 22, Settings on 47); nothing on 15", async () => {
+  const app = await open();
+  await app.tap("Open menu");
+  const highlighted = () => [...walk(app.drawer())].filter((node) => node.type === "button" && node.props?.["aria-current"] === "page");
+  assert.deepEqual(highlighted().map(textOf), ["Home"]);
+  assert.match(highlighted()[0].props.className, /border-emerald-900 bg-emerald-100 text-emerald-900/);
+  await app.menu("Settings");
+  await app.tap("Open menu");
+  assert.deepEqual(highlighted().map(textOf), ["Settings"]);
+  await app.tap("Close menu");
+  await app.goHome();
+  await sellDraft(app);
+  await app.tap("Open menu");
+  assert.deepEqual(highlighted(), []);
+});
 
-const SCREENS = [
-  ["19", "ALittleAtATime", { amountPesewas: 6000, customer: { name: "Ama", totalDebtPesewas: 0 }, installmentAmount: "20", frequency: "weekly", startToday: true, todayPaymentAmount: "20", paymentMethod: "split", firstPaymentParts: [{ paymentMethod: "cash", amountPesewas: 2000 }] }],
-  ["16", "SplitPayment", { amountPesewas: 6000, splitParts: [{ paymentMethod: "cash", amountPesewas: 2000 }, { paymentMethod: "momo", amountPesewas: 1000, momoMethod: "direct", verification: "merchant_confirmed", confirmedPesewas: 1000 }] }],
-  ["17", "WhoOwesYou", { amountPesewas: 6000, saleItems: [], customer: { name: "Kofi" } }],
-  ["18", "WhenWillTheyPay", { amountPesewas: 6000, customer: { name: "Ama", totalDebtPesewas: 0 }, creditDueChoice: "twoWeeks" }],
-  ["27", "SplitPayment", { debtId: "d1", amount: "60.00", splitParts: [{ paymentMethod: "cash", amountPesewas: 2000 }] }],
-  ["53", "ManualDebtAmount", { customer: { name: "Ama" }, takenOn: "2026-11-01" }],
-  ["55", "ReviewAndPay", { saleItems: [{ productId: 1, name: "Sugar", quantity: 2, unitPricePesewas: 500 }] }]
-];
+// ---- opening and closing --------------------------------------------------------------------------
 
-for (const [id, route, params] of SCREENS) {
-  test(`Close menu from ${id} (${route}) returns to ${id} with its params intact, through Settings and Back too`, async () => {
-    const app = await makeApp(POS_ROUTES[route], params);
-    const before = snapshot(app.state);
-    app.openMenu();
-    app.closeMenu();
-    assert.equal(snapshot(app.state), before, "straight back");
-    app.openMenu();
-    app.navigate(POS_ROUTES.SettingsProfitTools);
-    app.back();
-    app.closeMenu();
-    assert.equal(snapshot(app.state), before, "via Settings");
-    assert.equal(app.menuEntries(), 0);
+const CLOSERS = {
+  "the X": (app) => app.tap("Close menu"),
+  "a tap on the dimmed page": async (app) => { scrim(app).props.onClick(); return app.settle(); },
+  "Escape": async (app) => { assert.equal(press("Escape").defaultPrevented, true); return app.settle(); },
+  "the phone's Back": (app) => app.phoneBack()
+};
+
+for (const [name, close] of Object.entries(CLOSERS)) {
+  test(`23: open, then close with ${name}: 15 and its draft are exactly as they were, no history entry`, async () => {
+    const app = await open();
+    await sellDraft(app);
+    const before = snapshot(app);
+    const shown = app.text();
+    await app.tap("Open menu");
+    assert.ok(app.drawer(), "open");
+    assert.equal(snapshot(app), before, "opening is not navigation: route, params and history untouched");
+    await close(app);
+    assert.equal(app.drawer(), null, "closed");
+    assert.equal(snapshot(app), before);
+    assert.equal(app.text(), shown, "the page shows the same draft");
+  });
+
+  test(`23: on Home with nothing behind, ${name} closes the drawer and stays in the app`, async () => {
+    const app = await open();
+    await app.tap("Open menu");
+    await close(app);
+    assert.equal(app.drawer(), null);
+    assert.equal(app.route, "Home");
+    assert.deepEqual(app.state.history, []);
   });
 }
 
-// ---- the full paths, through the real screens ----------------------------------------------------------
-
-test("19 > Menu > Settings > Back > Close menu > 19: the split draft is intact", async () => {
-  const { default: CreditScreens } = await loadJsx("src/pos/CreditScreens.jsx");
-  const { default: InstallmentSplitPayment } = await loadJsx("src/pos/InstallmentSplitPayment.jsx");
-  const app = await makeApp("ALittleAtATime", {
-    amountPesewas: 6000, customer: { name: "Ama", totalDebtPesewas: 0 },
-    installmentAmount: "20", frequency: "weekly", startToday: true, todayPaymentAmount: "20"
-  });
-  // 19 > Split payment (27 from 19)
-  const v19 = render({ type: CreditScreens, props: { route: "ALittleAtATime", params: app.state.params, onBack: app.back, onNavigate: app.navigate, onReturnToSplit() {}, onSaveCredit() {} } });
-  [...walk(v19.tree)].find((node) => node.props?.["aria-label"] === "Split payment").props.onClick();
-  assert.equal(app.state.current, POS_ROUTES.SplitPayment);
-  // 27 from 19: Cash for the whole amount paid today, then Done returns to the existing 19.
-  const v27 = render({ type: InstallmentSplitPayment, props: { params: app.state.params, onBack: app.back, onNavigate: app.navigate, onReturnTo: app.returnTo, onUpdateParams: app.updateParams } });
-  tile(v27.tree, "Cash").props.onClick();
-  v27.rerender();
-  findButton(v27.tree, "Done").props.onClick();
-  assert.equal(app.state.current, "ALittleAtATime");
-  assert.deepEqual(app.state.params.firstPaymentParts, [{ paymentMethod: "cash", amountPesewas: 2000 }]);
-  const before = snapshot(app.state);
-  // 19 > Menu > Settings > Back > Close menu
-  app.openMenu();
-  app.navigate(POS_ROUTES.SettingsProfitTools);
-  app.back();
-  assert.equal(app.state.current, POS_ROUTES.Menu);
-  app.closeMenu();
-  assert.equal(app.state.current, "ALittleAtATime");
-  assert.equal(snapshot(app.state), before, "19 and its params are exactly as they were");
-  const again = render({ type: CreditScreens, props: { route: "ALittleAtATime", params: app.state.params, onBack: app.back, onNavigate: app.navigate, onReturnToSplit() {}, onSaveCredit() {} } });
-  const text = textOf(again.tree);
-  assert.match(text, /Paying today/);
-  assert.match(text, /CashGH₵20\.00/);
+test("23: opening and closing many times adds no in-app entry and at most one browser entry", async () => {
+  const app = await open();
+  await sellDraft(app);
+  const before = snapshot(app);
+  const entries = browserEntries();
+  for (let index = 0; index < 5; index += 1) {
+    await app.tap("Open menu");
+    await app.tap("Close menu");
+  }
+  assert.equal(snapshot(app), before);
+  assert.equal(browserEntries(), entries, "no browser entry either");
+  await app.phoneBack();
+  assert.equal(app.route, "Home", "one Back is the page's own Back");
 });
 
-test("16 > Menu > Settings > Back > Close menu > 16: the split draft is intact", async () => {
-  const { default: SaleSplitPayment } = await loadJsx("src/pos/SaleSplitPayment.jsx");
-  const app = await makeApp(POS_ROUTES.SplitPayment, { amountPesewas: 6000 });
-  const mount = () => render({ type: SaleSplitPayment, props: { params: app.state.params, onBack: app.back, onNavigate: app.navigate, onUpdateParams: app.updateParams, onSaveSale: async () => {} } });
-  let view = mount();
-  tile(view.tree, "Cash").props.onClick();
-  view.rerender();
-  [...walk(view.tree)].find((node) => node.type === "button" && textOf(node) === "Cash").props.onClick();
-  view.rerender();
-  [...walk(view.tree)].find((node) => node.type === "input").props.onChange({ target: { value: "20.00" } });
-  view.rerender();
-  findButton(view.tree, "Save").props.onClick();
-  view.rerender();
-  const before = snapshot(app.state);
-  app.openMenu();
-  app.navigate(POS_ROUTES.SettingsProfitTools);
-  app.back();
-  assert.equal(app.state.current, POS_ROUTES.Menu);
-  app.closeMenu();
-  assert.equal(app.state.current, POS_ROUTES.SplitPayment);
-  assert.equal(snapshot(app.state), before);
-  view = mount();
-  assert.match(textOf(view.tree), /CashGH₵20\.00/);
-  assert.match(textOf(view.tree), /Left to payGH₵40\.00/);
+// ---- the rows ------------------------------------------------------------------------------------
+
+const DESTINATIONS = [
+  ["Settings", "SettingsProfitTools"],
+  ["Items", "MyItems"],
+  ["My money", "MyMoney"],
+  ["Today’s transactions", "TodaysTransactions"]
+];
+
+for (const [label, route] of DESTINATIONS) {
+  for (const [how, back] of [["Back", (app) => app.tap(/^‹ Back$|^Back$/)], ["the phone's Back", (app) => app.phoneBack()]]) {
+    test(`15 > Menu > ${label} > ${how} returns to 15 with its draft (not to the drawer, not Home)`, async () => {
+      const app = await open();
+      await sellDraft(app);
+      const before = snapshot(app);
+      const shown = app.text();
+      await app.menu(label);
+      assert.equal(app.drawer(), null, "choosing a row closes the drawer");
+      assert.equal(app.route, route);
+      assert.equal(app.state.history.length, JSON.parse(before).history.length + 1, "one screen pushed on 15");
+      await back(app);
+      assert.equal(app.drawer(), null, "the drawer does not come back");
+      assert.equal(snapshot(app), before);
+      assert.equal(app.text(), shown);
+    });
+  }
+}
+
+test("22 > Menu > Settings > Back returns to Home; Today’s transactions and My money Back from Home go Home (24, 33)", async () => {
+  const app = await open();
+  for (const [label, route] of DESTINATIONS) {
+    await app.menu(label);
+    assert.equal(app.route, route);
+    await app.tap(/^‹ Back$|^Back$/);
+    assert.equal(app.route, "Home", label);
+    assert.deepEqual(app.state.history, []);
+  }
 });
 
-test("16 > Menu > Settings > Done > Close menu > 16: Done goes back to the menu, not Home", async () => {
-  const { SettingsProfitTools } = await loadJsx("src/pos/SettingsScreens.jsx");
-  const app = await makeApp(POS_ROUTES.SplitPayment, { amountPesewas: 6000, splitParts: [{ paymentMethod: "cash", amountPesewas: 2000 }] });
-  const before = snapshot(app.state);
-  app.openMenu();
-  app.navigate(POS_ROUTES.SettingsProfitTools);
-  const settings = render({ type: SettingsProfitTools, props: { shopName: "My shop", onShopNameChange() {}, onBack: app.back, onOpenBackup() {}, onOpenMomoSettings() {}, onOpenPlan() {}, onOpenSubscription() {} } });
-  findButton(settings.tree, "Done").props.onClick();
-  assert.equal(app.state.current, POS_ROUTES.Menu, "Done returns like Back");
-  app.closeMenu();
-  assert.equal(snapshot(app.state), before);
+test("15 > Menu > Home leaves the draft (the header Home rule)", async () => {
+  const app = await open();
+  await sellDraft(app);
+  await app.menu("Home");
+  assert.equal(app.drawer(), null);
+  assert.equal(app.route, "Home");
+  assert.deepEqual(app.state.history, []);
+  await app.tap(/^Sell$/);
+  assert.doesNotMatch(app.text(), /125/, "a new sale starts empty");
 });
 
-// ---- the screens and the app ----------------------------------------------------------------------------
+test("the row for the page already showing only closes the drawer", async () => {
+  const app = await open();
+  await app.menu("Settings");
+  const before = snapshot(app);
+  await app.menu("Settings");
+  assert.equal(app.drawer(), null);
+  assert.equal(snapshot(app), before, "no second Settings pushed");
+  await app.menu("Home");
+  await app.menu("Home");
+  assert.equal(app.route, "Home");
+  assert.deepEqual(app.state.history, []);
+});
 
-test("Menu: Close menu calls onClose (not Home); the Home item still goes to Home", async () => {
-  const { default: Menu } = await loadJsx("src/pos/Menu.jsx");
-  const navigations = [];
+// ---- focus -----------------------------------------------------------------------------------------
+
+function fakeElement(name, log) {
+  return { name, focus() { log.push(name); globalThis.document.activeElement = this; } };
+}
+
+test("23 focus: moves to Close when the drawer opens; Tab and Shift+Tab stay inside; Escape closes", async () => {
+  const { default: MenuDrawer } = await loadJsx("src/pos/MenuDrawer.jsx");
+  const log = [];
   let closes = 0;
-  const view = render({ type: Menu, props: { onNavigate: (...args) => navigations.push(args), onClose: () => { closes += 1; } } });
-  [...walk(view.tree)].find((node) => node.props?.["aria-label"] === "Close menu").props.onClick();
+  const view = render({ type: MenuDrawer, props: { current: "Home", shopName: "Shop", onClose: () => { closes += 1; }, onChoose() {} } });
+  const close = [...walk(view.tree)].find((node) => node.props?.["aria-label"] === "Close menu");
+  const panel = [...walk(view.tree)].find((node) => node.type === "aside");
+  const first = fakeElement("close", log);
+  const last = fakeElement("settings", log);
+  const inside = new Set([first, last]);
+  close.props.ref.current = first;
+  panel.props.ref.current = { querySelectorAll: () => [first, last], contains: (element) => inside.has(element) };
+  flushEffects(view, { tracked: true });
+  assert.deepEqual(log, ["close"], "focus moved into the drawer");
+  globalThis.document.activeElement = last;
+  assert.equal(press("Tab").defaultPrevented, true);
+  assert.equal(globalThis.document.activeElement, first, "Tab on the last goes to the first");
+  assert.equal(press("Tab", true).defaultPrevented, true);
+  assert.equal(globalThis.document.activeElement, last, "Shift+Tab on the first goes to the last");
+  globalThis.document.activeElement = { name: "page behind" };
+  press("Tab");
+  assert.equal(globalThis.document.activeElement, first, "focus that escaped is brought back in");
+  press("Escape");
   assert.equal(closes, 1);
-  assert.deepEqual(navigations, [], "Close menu does not navigate to Home");
-  findButton(view.tree, "Home").props.onClick();
-  assert.deepEqual(navigations, [["Home"]]);
+});
+
+test("23 focus: returns to the header Menu button when the drawer closes", async () => {
+  const app = await open();
+  const log = [];
+  const menuButton = [...walk(app.view.tree)].find((node) => node.props?.["aria-label"] === "Open menu");
+  menuButton.props.ref.current = fakeElement("menu button", log);
+  await app.tap("Open menu");
+  assert.equal(menuButton.props["aria-expanded"], false, "the old render");
+  assert.equal([...walk(app.view.tree)].find((node) => node.props?.["aria-label"] === "Open menu").props["aria-expanded"], true);
+  await app.tap("Close menu");
+  assert.deepEqual(log, ["menu button"]);
+});
+
+// ---- the route table ---------------------------------------------------------------------------------
+
+test("the Menu page is gone from the route table; PosApp draws MenuDrawer, not a Menu page", () => {
+  assert.equal(POS_ROUTES.Menu, undefined);
+  const app = read("src/pos/PosApp.jsx");
+  assert.match(app, /\{menuOpen && <MenuDrawer current=\{route\} shopName=\{shopName\} onClose=\{closeMenu\} onChoose=\{chooseFromMenu\} \/>\}/);
+  assert.doesNotMatch(app, /POS_ROUTES\.Menu\b/);
+  assert.doesNotMatch(app, /from "\.\/Menu\.jsx"/);
+  assert.match(app, /useBackHandler\(menuOpen, /, "the phone's Back closes the drawer");
+  assert.match(app, /<SettingsProfitTools[\s\S]*?onBack=\{navigateBack\}/);
+  assert.match(app, /<TodaysTransactions onBack=\{navigateBack\} \/>/);
+  assert.match(app, /<MyMoney onNavigate=\{navigate\} onBack=\{navigateBack\} \/>/);
+  assert.doesNotMatch(app, /LanguageSettings/, "the Language screen is removed (voice entry was dropped)");
 });
 
 test("47 Done calls the same handler as Back", async () => {
   const { SettingsProfitTools } = await loadJsx("src/pos/SettingsScreens.jsx");
-  for (const [type, props] of [
-    [SettingsProfitTools, { shopName: "My shop", onShopNameChange() {}, onOpenBackup() {}, onOpenMomoSettings() {}, onOpenPlan() {}, onOpenSubscription() {} }]
-  ]) {
-    let backs = 0;
-    const view = render({ type, props: { ...props, onBack: () => { backs += 1; } } });
-    const exact = (label) => [...walk(view.tree)].find((node) => node.type === "button" && textOf(node).replace(/^‹\s*/, "") === label);
-    exact("Done").props.onClick();
-    exact("Back").props.onClick();
-    assert.equal(backs, 2, `${type.name}: Done and Back are the same`);
+  let backs = 0;
+  const view = render({ type: SettingsProfitTools, props: { shopName: "My shop", onShopNameChange() {}, onOpenBackup() {}, onOpenMomoSettings() {}, onOpenPlan() {}, onOpenSubscription() {}, onBack: () => { backs += 1; } } });
+  const exact = (label) => [...walk(view.tree)].find((node) => node.type === "button" && textOf(node).replace(/^‹\s*/, "") === label);
+  exact("Done").props.onClick();
+  exact("Back").props.onClick();
+  assert.equal(backs, 2, "Done and Back are the same");
+});
+
+// ---- 340, 360 and 393px ------------------------------------------------------------------------------
+// node cannot lay out a page; these guard what decides the fit (a real browser render at the three
+// widths is in the item report). Drawer: 320px but never more than 86% (292px at 340). Header: the
+// Menu button and the status do not shrink, the shop name takes what is left and cuts with an ellipsis.
+
+test("340/360/393px: the drawer never exceeds 86% of the screen and its rows wrap instead of overflowing", async () => {
+  const { default: MenuDrawer } = await loadJsx("src/pos/MenuDrawer.jsx");
+  const view = render({ type: MenuDrawer, props: { current: "Home", shopName: "A very long shop name that would never fit on one line", onClose() {}, onChoose() {} } });
+  const panel = [...walk(view.tree)].find((node) => node.type === "aside");
+  for (const width of [340, 360, 393]) assert.ok(Math.min(320, width * 0.86) <= width - 40, `${width}px: a strip of the page stays visible`);
+  assert.match(panel.props.className, /max-w-\[86%\]/);
+  for (const node of [...walk(view.tree)].filter((item) => item.type === "button" && /min-h-\[60px\]/.test(item.props?.className ?? ""))) {
+    assert.match(node.props.className, /\bw-full\b/);
+    const label = [...walk(node)].find((item) => item.type === "span" && /flex-1/.test(item.props?.className ?? ""));
+    assert.match(label.props.className, /\bmin-w-0\b/, "the label can shrink and wrap");
   }
-});
-
-test("PosApp opens and closes the menu through the route functions and gives Menu onClose", () => {
-  assert.match(appSource, /openMenuState/);
-  assert.match(appSource, /closeMenuState/);
-  const open = appSource.slice(appSource.indexOf("function openMenu()"), appSource.indexOf("function closeMenu"));
-  assert.doesNotMatch(open, /switchTab\(POS_ROUTES\.Home\)/, "the header Menu button never goes Home");
-  assert.match(open, /openMenuState/);
-  assert.match(appSource, /<Menu onNavigate=\{navigate\} onClose=\{closeMenu\} \/>/);
-  const nav = appSource.slice(appSource.indexOf("function navigate("), appSource.indexOf("function switchTab"));
-  assert.match(nav, /POS_ROUTES\.Menu/, "navigate to Menu goes through openMenuState too");
-  assert.match(appSource, /<SettingsProfitTools[\s\S]*?onBack=\{navigateBack\}/);
-  assert.doesNotMatch(appSource, /LanguageSettings/, "the Language screen is removed (voice entry was dropped)");
-});
-
-test("the Menu close link in POS_LINKS returns through history (the contract's BACK)", () => {
-  const close = POS_LINKS.find((link) => link.from === "Menu" && link.action === "close");
-  assert.ok(close, "the link exists");
-  assert.equal(close.via, "history");
 });

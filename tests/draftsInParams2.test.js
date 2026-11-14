@@ -1,26 +1,26 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { POS_ROUTES, backRoute, closeMenuState, createRouteState, openMenuState, pushRoute, replaceRoute } from "../src/pos/routes.js";
+import { POS_ROUTES, backRoute, createRouteState, pushRoute, replaceRoute } from "../src/pos/routes.js";
 import { getNextCycleDate, localDateString } from "../src/utils/installments.js";
 import { loadJsx, render, textOf, walk } from "./helpers/renderJsx.js";
 
 // Cleanup batch, commit 3: the rest of the typed drafts live in the route params, the same pattern
 // as 16, 27, 53's amount and note, 55 and 19's amount paid today: the screen writes what the
-// merchant typed or chose with onUpdateParams and reads it back on mount. Menu > Settings > Back >
-// Close menu (and Back from the next screen) then restores them. No new storage.
+// merchant typed or chose with onUpdateParams and reads it back on mount. Menu > Settings > Back
+// (and Back from the next screen) then restores them. No new storage.
 //   19: How much each time, How often, First payment (Today / Next cycle), Next payment date
 //   53: Taken on
 
 function makeApp(route, params) {
   const app = { state: createRouteState(route, params) };
-  app.navigate = (to, next = {}) => { app.state = to === POS_ROUTES.Menu ? openMenuState(app.state) : pushRoute(app.state, to, next); };
+  app.navigate = (to, next = {}) => { app.state = pushRoute(app.state, to, next); };
   app.back = () => { app.state = backRoute(app.state); };
   app.updateParams = (next) => { app.state = replaceRoute(app.state, app.state.current, { ...app.state.params, ...next }); };
+  // Menu > Settings > Back, as the header and the drawer do it: the drawer is not navigation (wiring 23),
+  // so Settings is pushed on this screen and Back returns straight to it.
   app.tripToSettings = () => {
-    app.state = openMenuState(app.state);
     app.navigate(POS_ROUTES.SettingsProfitTools);
     app.back();
-    app.state = closeMenuState(app.state);
   };
   return app;
 }
@@ -41,7 +41,7 @@ async function mount19(app, extra = {}) {
 const base19 = { amountPesewas: 6000, customer: { name: "Ama", totalDebtPesewas: 0 } };
 const FAR = "2099-03-07";
 
-test("19: How much each time survives Menu > Settings > Back > Close menu", async () => {
+test("19: How much each time survives Menu > Settings > Back", async () => {
   const app = makeApp("ALittleAtATime", base19);
   const mount = await mount19(app);
   let view = mount();
@@ -157,7 +157,7 @@ async function mount53(app) {
 const takenOnButton = (tree) => [...walk(tree)].find((node) => node.type === "button" && textOf(node).startsWith("Taken on"));
 const exact = (tree, label) => [...walk(tree)].find((node) => node.type === "button" && textOf(node) === label);
 
-test("53: Taken on survives Menu > Settings > Back > Close menu, with the amount and note", async () => {
+test("53: Taken on survives Menu > Settings > Back, with the amount and note", async () => {
   const app = makeApp(POS_ROUTES.ManualDebtAmount, { customer: { name: "Ama" } });
   const mount = await mount53(app);
   let view = mount();

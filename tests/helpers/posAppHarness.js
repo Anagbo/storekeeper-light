@@ -108,6 +108,33 @@ export async function openPosApp({ env = { VITE_ENABLE_MOMO_PHONE_REQUEST: "true
       for (const digit of digits) await app.tap(digit);
       return app;
     },
+    // The Menu drawer (wiring 23): the dialog named Menu, or null when it is closed.
+    drawer() {
+      return [...walk(view.tree)].find((node) => node.type === "aside" && node.props?.role === "dialog" && node.props?.["aria-label"] === "Menu") ?? null;
+    },
+    // Header Menu button, then a row in the drawer (Home, Today’s transactions, My money, Items, Settings).
+    // Menu > Home is the old header Home: it leaves the draft (asks first when MoMo was received).
+    async menu(row) {
+      await app.tap("Open menu");
+      const drawer = app.drawer();
+      if (!drawer) throw new Error(`The Menu drawer did not open on ${app.route}`);
+      const button = [...walk(drawer)].find((node) => node.type === "button" && textOf(node).startsWith(row));
+      if (!button) throw new Error(`No row "${row}" in the Menu drawer`);
+      await button.props.onClick();
+      return app.settle();
+    },
+    // Home from any screen, as the owner can: Menu > Home where the header has the Menu button (the
+    // header Home tile is gone, wiring 23), otherwise the side menu's Home (wide screens; on 26, 27 for a
+    // collection, 28 and 29 the phone header has neither and the screen's own Back or Done is the way out).
+    async goHome() {
+      const hasMenu = [...walk(view.tree)].some((node) => node.type === "button" && node.props?.["aria-label"] === "Open menu");
+      if (hasMenu) return app.menu("Home");
+      const side = [...walk(view.tree)].find((node) => node.type === "nav" && /hidden w-60/.test(node.props?.className ?? ""));
+      const home = side && [...walk(side)].find((node) => node.type === "button" && textOf(node).trim() === "Home");
+      if (!home) throw new Error(`No way Home on ${app.route}`);
+      await home.props.onClick();
+      return app.settle();
+    },
     // The phone's back button.
     async phoneBack() {
       window.history.back();

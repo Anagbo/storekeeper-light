@@ -14,7 +14,9 @@ const COMPARISON_KEYS = {
 };
 const cardClass = "min-w-0 rounded-[18px] border-2 border-slate-300 bg-white px-3.5 py-3";
 
-export default function MyMoney({ onNavigate }) {
+// Back returns to the screen My money was opened from (Home, or the page under the Menu drawer, wiring
+// 23); with nothing behind it, Home (wiring 33: Back to 22).
+export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home") }) {
   const [period, setPeriod] = useState("week");
   // The day the report is for is fixed when the period is chosen, so the screen does not re-read at midnight.
   const now = useMemo(() => new Date(), [period]);
@@ -26,7 +28,7 @@ export default function MyMoney({ onNavigate }) {
   return (
     <PosPage style={{ paddingTop: 10 }} className="flex flex-col gap-2.5 lg:min-h-0 lg:grid lg:grid-cols-2 lg:content-start lg:items-start lg:gap-5">
       <div className="flex items-center gap-3 lg:col-span-2">
-        <PosBackButton onClick={() => onNavigate("Home")} aria-label={t("money.backHome")} />
+        <PosBackButton onClick={onBack} aria-label={t("money.back")} />
         <h1 className="text-xl font-extrabold sm:text-2xl">{t("money.title")}</h1>
       </div>
 

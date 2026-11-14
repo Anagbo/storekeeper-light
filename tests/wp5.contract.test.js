@@ -26,10 +26,18 @@ const componentAliases = new Map([
   ["CorrectBalance", "DebtorDetail"]
 ]);
 
+// Wiring 23 (14 Nov 2026): the Menu is a drawer over the page, not a route.
+const overlays = new Set(["MenuDrawer"]);
+
 test("every wiring screen has an implemented component and a route", () => {
   for (const screen of Object.values(wiring.screens)) {
     const implementation = componentAliases.get(screen.component) ?? screen.component;
     assert.match(source, new RegExp(`\\b${implementation}\\b`), `missing component ${screen.component}`);
+    if (overlays.has(implementation)) {
+      assert.ok(!routeNames.has(implementation), `${implementation} is an overlay, not a route`);
+      assert.match(source, new RegExp(`export default function ${implementation}\\b`), `${implementation} is a component`);
+      continue;
+    }
     assert.ok(
       routeNames.has(implementation),
       `component ${screen.component} has no route mapping`

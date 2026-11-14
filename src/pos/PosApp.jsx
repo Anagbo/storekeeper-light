@@ -20,15 +20,13 @@ import {
   returnFromMomoPickState,
   returnToMomoOrigin,
   showsBottomBar,
-  closeMenuState,
   navigateState,
-  openMenuState,
   phoneBackState
 } from "./routes.js";
 import { createBrowserBack, useBackHandler } from "./browserBack.js";
 import LeaveDraftDialog from "./LeaveDraftDialog.jsx";
 import Home from "./Home.jsx";
-import Menu from "./Menu.jsx";
+import MenuDrawer from "./MenuDrawer.jsx";
 import MyMoney from "./MyMoney.jsx";
 import TodaysTransactions from "./TodaysTransactions.jsx";
 import { posText as t } from "./i18n.js";
@@ -167,6 +165,17 @@ export default function PosApp() {
   // A back press with the question open is Stay.
   useBackHandler(leaveAsk !== null, () => setLeaveAsk(null));
 
+  // The Menu drawer (wiring 23). The phone's Back closes it, like any open sheet; focus goes back
+  // to the header Menu button when it closes.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef(null);
+  const menuWasOpen = useRef(false);
+  useBackHandler(menuOpen, () => setMenuOpen(false));
+  useEffect(() => {
+    if (menuWasOpen.current && !menuOpen) menuButtonRef.current?.focus?.();
+    menuWasOpen.current = menuOpen;
+  }, [menuOpen]);
+
   // Back (on-screen or the phone's) from 16, 27 or 19 holding received MoMo leaves the draft: only
   // after Leave, and then to a fresh stack, so no received money stays in a hidden draft.
   function backFromScreen(backState) {
@@ -183,11 +192,7 @@ export default function PosApp() {
     if (!Object.values(POS_ROUTES).includes(route)) {
       throw new Error(`Unknown POS route: ${route}`);
     }
-    if (route === POS_ROUTES.Menu) {
-      openMenu();
-      return;
-    }
-    // Home (Cancel sale on 59, Menu > Home) leaves the draft.
+    // Home (Cancel sale on 59, the Menu drawer's Home) leaves the draft.
     if (route === POS_ROUTES.Home) {
       leaveDraft(() => { commit((current) => navigateState(current, route, params)); setNotice(""); });
       return;
@@ -278,16 +283,24 @@ export default function PosApp() {
     switchTab(POS_ROUTES.Home);
   }
 
-  // One history entry however often the menu is shown; opening it while it is open closes it.
+  // Wiring 23: the Menu drawer opens over the current page. It is not navigation: the route state
+  // (history and every draft in it) is not touched, so closing it shows the page exactly as it was.
   function openMenu() {
-    commit((current) => openMenuState(current));
-    setNotice("");
+    setMenuOpen(true);
   }
 
-  // Close menu: back to the screen it was opened from, with its draft (not Home).
+  // Close (X), a tap on the dimmed page, Escape, or the phone's Back (useBackHandler below).
   function closeMenu() {
-    commit((current) => closeMenuState(current));
-    setNotice("");
+    setMenuOpen(false);
+  }
+
+  // A row closes the drawer and goes to that screen, pushed on the page the drawer was opened from,
+  // so Back from it returns there. Home is the header Home rule (it leaves the draft). The row for
+  // the page already showing only closes the drawer.
+  function chooseFromMenu(target) {
+    setMenuOpen(false);
+    if (target === routeRef.current.current) return;
+    navigate(target);
   }
 
   // D11: attemptId comes from the screen (useSaveAttempt) and is passed to every writer.
@@ -445,8 +458,6 @@ export default function PosApp() {
       onNavigate={navigate}
       notice={notice}
     />
-  ) : route === POS_ROUTES.Menu ? (
-    <Menu onNavigate={navigate} onClose={closeMenu} />
   ) : route === POS_ROUTES.HowDoYouWantToSell ? (
     <HowDoYouWantToSell onNavigate={navigate} onCompleteSetup={completePosSetup} />
   ) : route === POS_ROUTES.WhatDoYouSell ? (
@@ -577,9 +588,9 @@ export default function PosApp() {
       onNewSale={() => switchTab(POS_ROUTES.Sell)}
     />
   ) : route === POS_ROUTES.MyMoney ? (
-    <MyMoney onNavigate={navigate} />
+    <MyMoney onNavigate={navigate} onBack={navigateBack} />
   ) : route === POS_ROUTES.TodaysTransactions ? (
-    <TodaysTransactions onBack={() => switchTab(POS_ROUTES.Home)} />
+    <TodaysTransactions onBack={navigateBack} />
   ) : isCollectSheet ? (
     <>
       <Home onNavigate={navigate} notice={notice} />
@@ -690,9 +701,9 @@ export default function PosApp() {
         // Wiring 62: never "Saved" on Customer sends (nothing is recorded before Money received).
         statusLabel={getStatusLabel(sync)}
         hideSaved={route === POS_ROUTES.MoMoDirect}
-        onHome={() => switchTab(POS_ROUTES.Home)}
         onMenu={openMenu}
-        menuActive={route === POS_ROUTES.Menu}
+        menuOpen={menuOpen}
+        menuButtonRef={menuButtonRef}
         hideMenu={isFocusedCollectionScreen || isSetupFlow || route === POS_ROUTES.PeopleWhoOweYou}
       />
       <div className="flex min-h-[calc(100vh-4rem)]">
@@ -706,6 +717,7 @@ export default function PosApp() {
         </div>
       </div>
       {showsBottomBar(route) && <PosBottomNav current={route} onNavigate={switchTab} />}
+      {menuOpen && <MenuDrawer current={route} shopName={shopName} onClose={closeMenu} onChoose={chooseFromMenu} />}
       {leaveAsk && (
         <LeaveDraftDialog
           amountPesewas={leaveAsk.amountPesewas}

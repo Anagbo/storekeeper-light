@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { createRouteState, pushRoute, replaceRoute, backRoute, openMenuState, closeMenuState, returnToMomoOrigin } from "../src/pos/routes.js";
+import { createRouteState, pushRoute, replaceRoute, backRoute, returnToMomoOrigin } from "../src/pos/routes.js";
 import { findButton, flushEffects, loadJsx, render, textOf, walk } from "./helpers/renderJsx.js";
 
 // Wiring 15: the amount, the Cash/MoMo choice and the added items survive a trip to a screen opened
@@ -56,8 +56,8 @@ const trips = {
     findButton(app.view.tree, "MoMo").props.onClick();
     app.state = pushRoute(app.state, "MoMoDirect", { amountPesewas: 12500 });
   },
+  // The Menu drawer is not navigation (wiring 23): its Settings row pushes Settings on 15.
   "Menu > Settings": (app) => {
-    app.state = openMenuState(app.state);
     app.state = pushRoute(app.state, "SettingsProfitTools", {});
   }
 };
@@ -75,15 +75,7 @@ for (const [name, go] of Object.entries(trips)) {
   });
 }
 
-test("15 draft: Menu closed with its Close button returns to the draft", async () => {
-  const app = await session();
-  app.type("40");
-  app.state = openMenuState(app.state);
-  app.state = closeMenuState(app.state);
-  assert.equal(app.state.current, "Sell");
-  app.mount();
-  assert.match(app.shown(), /GH₵40\.00/);
-});
+// Opening and closing the Menu drawer over 15 with a draft: menuNavigation.test.js (the real PosApp).
 
 test("15 draft: a half-typed amount (12.5) and the Cash choice come back exactly", async () => {
   const app = await session();

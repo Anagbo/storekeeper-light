@@ -130,9 +130,7 @@ test("16: header Home and another tab still clear the kept parts", async () => {
   await cash4Momo2(app);
   await app.tap("Back");
   assert.ok(app.params.splitDraft);
-  const home = [...walk(app.view.tree)].find((node) => node.type === "button" && node.props?.["aria-label"] === "Home");
-  await home.props.onClick();
-  await app.settle();
+  await app.menu("Home");
   assert.equal(app.route, "Home");
   await app.tap(/^Sell$/);
   assert.equal(app.params.splitDraft, undefined);

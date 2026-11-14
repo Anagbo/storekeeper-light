@@ -81,8 +81,8 @@ test("collection split MoMo handoff preserves the canonical split total", () => 
   assert.match(source, /onMoMo=\{\(parts, pendingMomoAmountPesewas, extra = \{\}\) => onNavigate\("MoMoChoice", \{\s*\.\.\.params,\s*splitTotalPesewas: totalPesewas,\s*splitParts: parts/s);
 });
 
-test("item management routes connect from Menu through save, delete and starter-list flows", () => {
-  assert.ok(POS_LINKS.some((link) => link.from === "Menu" && link.to === "MyItems"));
+test("item management routes connect from the Menu drawer through save, delete and starter-list flows", () => {
+  assert.ok(POS_LINKS.some((link) => link.via === "drawer" && link.to === "MyItems"));
   assert.ok(POS_LINKS.some((link) => link.from === "MyItems" && link.to === "NewItem"));
   assert.ok(POS_LINKS.some((link) => link.from === "MyItems" && link.to === "EditItem"));
   assert.ok(POS_LINKS.some((link) => link.from === "EditItem" && link.to === "DeleteItem"));

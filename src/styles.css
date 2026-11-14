@@ -58,6 +58,22 @@ button {
   font-size: clamp(0.625rem, 11cqi, 3.75rem);
 }
 
+/* Menu drawer (wiring 23): slides in from the left in 200ms; no animation when reduced motion is asked. */
+@keyframes pos-drawer-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+.pos-drawer {
+  animation: pos-drawer-in 200ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pos-drawer {
+    animation: none;
+  }
+}
+
 @media (max-width: 480px) {
   input[inputmode="decimal"] {
     min-width: 0;

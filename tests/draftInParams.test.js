@@ -3,12 +3,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { after, test } from "node:test";
 import { db } from "../src/db/db.js";
-import { POS_ROUTES, backRoute, closeMenuState, createRouteState, openMenuState, pushRoute, replaceRoute } from "../src/pos/routes.js";
+import { POS_ROUTES, backRoute, createRouteState, pushRoute, replaceRoute } from "../src/pos/routes.js";
 import { loadJsx, render, setLiveQuery, textOf, walk } from "./helpers/renderJsx.js";
 
 // Typed values on 19 (amount paid today and how it is paid), 53 (amount and note) and 55 (the
 // Cash/MoMo/Owe choice) live in the route params, like the split parts on 16 and 27, so Menu >
-// Settings > Back > Close menu restores them. No new storage. Not covered, by decision: the
+// Settings > Back restores them. No new storage. Not covered, by decision: the
 // search text on 17 and taps on 18 that were never carried in the params.
 after(async () => {
   setLiveQuery(null);
@@ -20,15 +20,14 @@ const appSource = readFileSync(new URL("../src/pos/PosApp.jsx", import.meta.url)
 
 function makeApp(route, params) {
   const app = { state: createRouteState(route, params) };
-  app.navigate = (to, next = {}) => { app.state = to === POS_ROUTES.Menu ? openMenuState(app.state) : pushRoute(app.state, to, next); };
+  app.navigate = (to, next = {}) => { app.state = pushRoute(app.state, to, next); };
   app.back = () => { app.state = backRoute(app.state); };
   app.updateParams = (next) => { app.state = replaceRoute(app.state, app.state.current, { ...app.state.params, ...next }); };
-  // Menu > Settings > Back > Close menu, exactly as the header and Menu do it.
+  // Menu > Settings > Back, as the header and the drawer do it: the drawer is not navigation (wiring 23),
+  // so Settings is pushed on this screen and Back returns straight to it.
   app.tripToSettings = () => {
-    app.state = openMenuState(app.state);
     app.navigate(POS_ROUTES.SettingsProfitTools);
     app.back();
-    app.state = closeMenuState(app.state);
   };
   return app;
 }
@@ -47,7 +46,7 @@ async function mount19(app) {
 }
 const params19 = { amountPesewas: 6000, customer: { name: "Ama", totalDebtPesewas: 0 }, installmentAmount: "20", frequency: "weekly", startToday: true };
 
-test("19: the amount paid today survives Menu > Settings > Back > Close menu", async () => {
+test("19: the amount paid today survives Menu > Settings > Back", async () => {
   const app = makeApp("ALittleAtATime", params19);
   const mount = await mount19(app);
   let view = mount();
@@ -89,7 +88,7 @@ async function mount53(app) {
 }
 const noteField = (tree) => [...walk(tree)].find((node) => node.type === "input" && node.props?.placeholder === "What for? (optional)");
 
-test("53: the typed amount and note survive Menu > Settings > Back > Close menu", async () => {
+test("53: the typed amount and note survive Menu > Settings > Back", async () => {
   const app = makeApp(POS_ROUTES.ManualDebtAmount, { customer: { name: "Ama" } });
   const mount = await mount53(app);
   let view = mount();
@@ -145,7 +144,7 @@ async function mount55(app) {
 }
 const cart = [{ productId: 1, name: "Sugar", quantity: 2, unitPricePesewas: 500 }];
 
-test("55: the Cash choice is kept in the route params and restored after Menu > Settings > Back > Close menu", async () => {
+test("55: the Cash choice is kept in the route params and restored after Menu > Settings > Back", async () => {
   const app = makeApp(POS_ROUTES.ReviewAndPay, { saleItems: cart });
   const mount = await mount55(app);
   let view = mount();

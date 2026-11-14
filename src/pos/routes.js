@@ -12,7 +12,6 @@ export const POS_ROUTES = Object.freeze({
   ReviewAndPay: "ReviewAndPay",
   HowDoYouWantToSell: "HowDoYouWantToSell",
   Home: "Home",
-  Menu: "Menu",
   TodaysTransactions: "TodaysTransactions",
   CollectPayment: "CollectPayment",
   CollectPayPart: "CollectPayPart",
@@ -59,21 +58,21 @@ export const POS_ROUTES = Object.freeze({
 export const POS_LINKS = Object.freeze([
   { from: "HowDoYouWantToSell", action: "continue", to: "Home" },
   { from: "HowDoYouWantToSell", action: "withItems", to: "WhatDoYouSell" },
-  { from: "Home", action: "menu", to: "Menu" },
   { from: "Home", action: "sell", to: "Sell" },
   { from: "Home", action: "spentMoney", to: "SpentMoney" },
   { from: "Home", action: "collect", to: "CollectPayment" },
   { from: "Home", action: "transactions", to: "TodaysTransactions" },
   { from: "Home", action: "debtor", to: "DebtorDetail" },
   { from: "Home", action: "owed", to: "PeopleWhoOweYou" },
-  // Close menu goes back to the screen the menu was opened from, draft intact (wiring 23: BACK).
-  { from: "Menu", action: "close", to: "Home", via: "history" },
-  { from: "Menu", action: "home", to: "Home" },
-  { from: "Menu", action: "transactions", to: "TodaysTransactions" },
-  { from: "Menu", action: "myMoney", to: "MyMoney" },
-  { from: "Menu", action: "items", to: "MyItems" },
-  { from: "Menu", action: "settings", to: "SettingsProfitTools" },
-  { from: "TodaysTransactions", action: "back", to: "Home" },
+  // Wiring 23: the Menu is a drawer over the current page (MenuDrawer.jsx), not a route. Its rows
+  // (Home, Today's transactions, My money, Items, Settings) are pushed from that page, so Back from
+  // them returns to it (via: "history"); with nothing behind, Back goes Home (24, 33: Back to 22).
+  // via: "drawer" = a row in the Menu drawer opened over `from` (any page with the header Menu button).
+  { from: "Home", action: "menuTransactions", to: "TodaysTransactions", via: "drawer" },
+  { from: "Home", action: "menuMyMoney", to: "MyMoney", via: "drawer" },
+  { from: "Home", action: "menuItems", to: "MyItems", via: "drawer" },
+  { from: "Home", action: "menuSettings", to: "SettingsProfitTools", via: "drawer" },
+  { from: "TodaysTransactions", action: "back", to: "Home", via: "history" },
   { from: "CollectPayment", action: "close", to: "Home" },
   { from: "CollectPayment", action: "payPart", to: "CollectPayPart" },
   { from: "CollectPayment", action: "received", to: "PaymentReceived" },
@@ -137,7 +136,7 @@ export const POS_LINKS = Object.freeze([
   { from: "ALittleAtATime", action: "saveManualDebt", to: "ManualDebtSaved" },
   { from: "ManualDebtSaved", action: "done", to: "PeopleWhoOweYou" },
   { from: "ManualDebtSaved", action: "details", to: "DebtorDetail" },
-  { from: "MyMoney", action: "back", to: "Home" },
+  { from: "MyMoney", action: "back", to: "Home", via: "history" },
   { from: "MyMoney", action: "owedToYou", to: "PeopleWhoOweYou" },
   { from: "MyMoney", action: "suppliers", to: "YouOweSuppliers" },
   { from: "MyMoney", action: "settings", to: "SettingsProfitTools" },
@@ -159,7 +158,7 @@ export const POS_LINKS = Object.freeze([
   { from: "HowMuchIsItem", action: "save", to: "SellWithItems" },
   { from: "HowManyItem", action: "back", to: "SellWithItems" },
   { from: "HowManyItem", action: "add", to: "SellWithItems" },
-  { from: "MyItems", action: "back", to: "Menu" },
+  { from: "MyItems", action: "back", to: "Home", via: "history" },
   { from: "MyItems", action: "newItem", to: "NewItem" },
   { from: "MyItems", action: "starterList", to: "YourStarterList" },
   { from: "MyItems", action: "editItem", to: "EditItem" },
@@ -175,7 +174,7 @@ export const POS_LINKS = Object.freeze([
   { from: "StockOnCredit", action: "save", to: "Home" },
   { from: "YouOweSuppliers", action: "back", to: "MyMoney" },
   // via: "history" = Back goes to the previous screen; `to` is the usual one.
-  { from: "SettingsProfitTools", action: "back", to: "Menu", via: "history" },
+  { from: "SettingsProfitTools", action: "back", to: "Home", via: "history" },
   { from: "SettingsProfitTools", action: "momoPayments", to: "PaymentSettings" },
   { from: "SettingsProfitTools", action: "myPlan", to: "MyPlan" },
   { from: "SettingsProfitTools", action: "backup", to: "BackupRestore" },
@@ -235,21 +234,6 @@ export const BOTTOM_BAR_ROUTES = [POS_ROUTES.Home, POS_ROUTES.Sell, POS_ROUTES.C
 
 export function showsBottomBar(route) {
   return BOTTOM_BAR_ROUTES.includes(route);
-}
-
-// The menu adds one history entry however often it is shown (wiring 23). Showing it again while
-// it is already below the current screen (for example from Settings) returns to that entry and
-// drops what was opened since; showing it while it is open closes it.
-export function openMenuState(state) {
-  if (state.current === POS_ROUTES.Menu) return closeMenuState(state);
-  return popToRoute(state, POS_ROUTES.Menu) ?? pushRoute(state, POS_ROUTES.Menu, {});
-}
-
-// Close menu: back to the screen the menu was opened from, with its params as they were (not
-// Home, which would drop a draft). Nothing to go back to means Home.
-export function closeMenuState(state) {
-  if (state.current !== POS_ROUTES.Menu) return state;
-  return backRoute(state);
 }
 
 export function backRoute(state, fallback = POS_ROUTES.Home) {
@@ -488,22 +472,21 @@ export function returnFromMomoPickState(state, details = {}) {
 // phone's) can never return into the sale, debt or collection that was just saved.
 export const RESULT_ROUTES = Object.freeze([POS_ROUTES.SaleRecorded, POS_ROUTES.CreditSaved, POS_ROUTES.PaymentReceived, POS_ROUTES.ManualDebtSaved]);
 
-// One in-app navigation (PosApp navigate): Home resets, Menu adds one entry at most, a result screen
-// starts a fresh stack, anything else is pushed.
+// One in-app navigation (PosApp navigate): Home resets, a result screen starts a fresh stack,
+// anything else is pushed. (The Menu drawer is not navigation and never comes here.)
 export function navigateState(state, route, params = {}) {
   if (route === POS_ROUTES.Home) return createRouteState(POS_ROUTES.Home);
-  if (route === POS_ROUTES.Menu) return openMenuState(state);
   if (RESULT_ROUTES.includes(route)) return createRouteState(route, params);
   return pushRoute(state, route, withKeptDraft(route, params, state.params));
 }
 
-// Screens whose on-screen Back (or Close) goes to Home rather than one step back.
-const BACK_TO_HOME = new Set([POS_ROUTES.CollectPayment, POS_ROUTES.TodaysTransactions, POS_ROUTES.PeopleWhoOweYou]);
+// Screens whose on-screen Back (or Close) goes to Home rather than one step back. Today's
+// transactions is not one: opened from the Menu drawer, Back returns to the page it was opened on.
+const BACK_TO_HOME = new Set([POS_ROUTES.CollectPayment, POS_ROUTES.PeopleWhoOweYou]);
 
 // The phone's back button: exactly what the screen's own Back does (the BACK rule). Nothing behind
 // a screen other than Home means Home.
 export function phoneBackState(state) {
   if (BACK_TO_HOME.has(state.current)) return createRouteState(POS_ROUTES.Home);
-  if (state.current === POS_ROUTES.Menu) return closeMenuState(state);
   return backRoute(state);
 }

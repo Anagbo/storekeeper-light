@@ -18,6 +18,17 @@ function fromParts(year, month, day) {
   return `${pad(day)}/${pad(month)}/${String(year).padStart(4, "0")}`;
 }
 
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+// The weekday then the date, "Thursday 12/11/2026" (the Menu drawer and the wide sidebar). The day
+// is the local day of a Date or timestamp; anything formatDate refuses gives "".
+export function formatWeekdayDate(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  const text = formatDate(date);
+  return text ? `${WEEKDAYS[date.getDay()]} ${text}` : "";
+}
+
 export function formatDate(value) {
   if (typeof value === "string") {
     const match = ISO_DATE.exec(value);

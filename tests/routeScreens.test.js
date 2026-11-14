@@ -94,15 +94,33 @@ test("every route a screen navigates to, or keeps in its params, has a built scr
   assert.deepEqual(problems, []);
 });
 
+// Wiring 23 (14 Nov 2026): the Menu is a drawer over the page (MenuDrawer.jsx), not a route.
+// It counts as built when its file exists and PosApp draws it.
+const OVERLAYS = new Set(["MenuDrawer"]);
+const overlayBuilt = (component) => {
+  try {
+    read(`${component}.jsx`);
+  } catch {
+    return false;
+  }
+  return new RegExp(`<${component}\\b`).test(read("PosApp.jsx"));
+};
+
 test("every screen in the wiring file, and every wiring navigate target, has a built screen", () => {
   const built = builtRoutes();
   const problems = [];
   for (const [id, screen] of Object.entries(wiring.screens)) {
     const route = routeOfComponent(screen.component);
-    if (!built.has(route) && !PLANNED_ALLOWED.includes(route)) problems.push(`screen ${id} ${screen.name} (${route}) has no screen`);
+    if (OVERLAYS.has(screen.component)) {
+      if (!overlayBuilt(screen.component)) problems.push(`screen ${id} ${screen.name} (${screen.component}) is not drawn by PosApp`);
+    } else if (!built.has(route) && !PLANNED_ALLOWED.includes(route)) problems.push(`screen ${id} ${screen.name} (${route}) has no screen`);
     for (const control of screen.controls) {
       const target = wiring.screens[control.to];
       if (control.type !== "navigate" || control.prototype_only || !target) continue;
+      if (OVERLAYS.has(target.component)) {
+        if (!overlayBuilt(target.component)) problems.push(`screen ${id} "${control.label}" opens ${control.to} (${target.component}), which is not drawn`);
+        continue;
+      }
       const targetRoute = routeOfComponent(target.component);
       if (!built.has(targetRoute) && !PLANNED_ALLOWED.includes(targetRoute)) {
         problems.push(`screen ${id} "${control.label}" goes to ${control.to} (${targetRoute}), which has no screen`);

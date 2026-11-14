@@ -90,23 +90,51 @@ for (const [name, steps] of Object.entries(paths)) {
   });
 }
 
-test("Menu > Settings > phone back > phone back (close menu) returns to 15 with its draft", () => {
+// The Menu drawer (wiring 23) is an open sheet for the phone's back button, as PosApp registers it
+// (useBackHandler(menuOpen, ...)); opening it does not touch the route state.
+function openDrawer(sim) {
+  const drawer = { open: true };
+  drawer.close = registerBackHandler(() => { drawer.open = false; drawer.close(); });
+  return drawer;
+}
+
+test("Menu drawer > Settings > phone back returns to 15 with its draft (not to the drawer)", () => {
   const sim = app();
   sim.go("Sell", SELL_DRAFT);
-  sim.go("Menu");
+  const drawer = openDrawer(sim);
+  drawer.close(); // choosing a row closes the drawer, then goes to that screen
   sim.go("SettingsProfitTools");
-  sim.pressBack();
-  assert.equal(sim.state.current, "Menu");
   sim.pressBack();
   assert.equal(sim.state.current, "Sell");
   assert.deepEqual(sim.state.params, SELL_DRAFT);
 });
 
-test("Menu shown many times adds at most one browser entry", () => {
+test("the phone back with the drawer open closes it; the page, its draft and its history stay", () => {
   const sim = app();
   sim.go("Sell", SELL_DRAFT);
-  for (let index = 0; index < 5; index += 1) sim.go("Menu");
-  assert.ok(sim.history.entries.length <= 2, `${sim.history.entries.length} entries`);
+  const before = JSON.stringify(sim.state);
+  for (let index = 0; index < 5; index += 1) {
+    const drawer = openDrawer(sim);
+    assert.equal(JSON.stringify(sim.state), before, "opening adds no in-app history entry");
+    sim.pressBack();
+    assert.equal(drawer.open, false, "back closed the drawer");
+    assert.equal(JSON.stringify(sim.state), before);
+  }
+  assert.ok(sim.history.entries.length <= 2, `at most one browser guard entry (${sim.history.entries.length} entries)`);
+  sim.pressBack();
+  assert.equal(sim.state.current, "Home", "the next back is the page's own back");
+});
+
+test("drawer open on Home with nothing behind: back closes it instead of leaving; the next back leaves", () => {
+  const sim = app();
+  const drawer = openDrawer(sim);
+  sim.pressBack();
+  assert.equal(drawer.open, false);
+  assert.equal(sim.history.left, false);
+  assert.equal(sim.state.current, "Home");
+  assert.deepEqual(sim.state.history, []);
+  sim.pressBack();
+  assert.equal(sim.history.left, true, "one press leaves the app, no stale entry to press through");
 });
 
 test("the browser keeps at most one extra entry however deep the stack is", () => {
@@ -230,9 +258,8 @@ test("drafts on 15, 16, 19, 27, 53 and 55 come back exactly after phone back", (
     const route = key.split(" ")[0];
     const sim = app();
     sim.go(route, params);
-    sim.go("Menu");
+    openDrawer(sim).close(); // the drawer's Settings row
     sim.go("SettingsProfitTools");
-    sim.pressBack();
     sim.pressBack();
     assert.equal(sim.state.current, route, key);
     assert.deepEqual(sim.state.params, params, key);

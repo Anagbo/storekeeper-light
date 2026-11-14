@@ -153,7 +153,7 @@ test("19's own MoMo pick is unchanged: it keeps the method and amount it shows o
 
 // ---- the draft survives a trip to Settings ------------------------------------------------------
 
-test("the draft is restored after Menu > Settings > Back > Back (route params only)", async () => {
+test("the draft is restored after Menu > Settings > Back (route params only)", async () => {
   const app = makeApp(POS_ROUTES.SplitPayment, { amountPesewas: 800 });
   const mount = await sale16(app);
   tapMomoTile(mount(), "4.00");
@@ -161,9 +161,8 @@ test("the draft is restored after Menu > Settings > Back > Back (route params on
   const view = mount();
   tile(view.tree, "Cash").props.onClick();
   view.rerender();
-  app.navigate(POS_ROUTES.Menu);
+  // The Menu drawer is not navigation (wiring 23): its Settings row pushes Settings on 16.
   app.navigate(POS_ROUTES.SettingsProfitTools);
-  app.back();
   app.back();
   assert.equal(app.state.current, POS_ROUTES.SplitPayment);
   const text = textOf(mount().tree);
@@ -178,13 +177,13 @@ test("a draft with only a Cash row is restored too, and removing a row is rememb
   let view = mount();
   tile(view.tree, "Cash").props.onClick();
   view.rerender();
-  app.navigate(POS_ROUTES.Menu);
+  app.navigate(POS_ROUTES.SettingsProfitTools);
   app.back();
   view = mount();
   assert.match(textOf(view.tree), /CashGH₵60\.00/);
   [...walk(view.tree)].find((node) => node.type === "button" && String(node.props?.["aria-label"] ?? "").startsWith("Remove")).props.onClick();
   view.rerender();
-  app.navigate(POS_ROUTES.Menu);
+  app.navigate(POS_ROUTES.SettingsProfitTools);
   app.back();
   assert.match(textOf(mount().tree), /Left to payGH₵60\.00/);
 });

@@ -104,8 +104,9 @@ test("E11: Resend on 57 looks and acts disabled only while it is disabled, and r
 
 test("K16: POS_LINKS describe the real MoMo and split behaviour", () => {
   assert.ok(!hasLink("MoMoWaiting", "cancel", "MoMoPayment"), "57 Cancel no longer goes to 56");
-  assert.ok(!hasLink("SettingsProfitTools", "back", "Home"), "47 Back goes back in history");
-  assert.ok(hasLink("SettingsProfitTools", "back", "Menu"));
+  // 47 Back goes back in history (to the page the Menu drawer was opened on; Home with nothing behind).
+  assert.equal(POS_LINKS.find((link) => link.from === "SettingsProfitTools" && link.action === "back")?.via, "history", "47 Back goes back in history");
+  assert.ok(!POS_LINKS.some((link) => link.to === "Menu" || link.from === "Menu"), "the Menu is a drawer, not a route");
   assert.ok(hasLink("MoMoWaiting", "cancel", "Sell"));
   assert.ok(hasLink("MoMoChoice", "phone", "MoMoSetup"));
   assert.ok(hasLink("MoMoSetup", "save", "MoMoPayment"));

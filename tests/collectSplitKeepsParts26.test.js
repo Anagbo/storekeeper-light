@@ -184,10 +184,7 @@ test("27 from 26: header Home clears the kept parts", async () => {
   await split27(app);
   await app.tap("Back");
   assert.ok(app.params.collectSplitDraft);
-  const home = nodes(app.view.tree).find((node) => node.type === "button" && node.props["aria-label"] === "Home");
-  assert.ok(home, "header Home");
-  await home.props.onClick();
-  await app.settle();
+  await app.goHome();
   assert.equal(app.route, "Home");
   await to26(app);
   await app.keys(["4"]);

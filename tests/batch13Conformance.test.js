@@ -230,8 +230,8 @@ test("36: from My items the button reads Continue · N items, and Show more give
 });
 
 test("23: the close button is named Close menu", async () => {
-  const { default: Menu } = await loadJsx("src/pos/Menu.jsx");
-  const view = render({ type: Menu, props: { onNavigate() {} } });
+  const { default: MenuDrawer } = await loadJsx("src/pos/MenuDrawer.jsx");
+  const view = render({ type: MenuDrawer, props: { current: "Home", shopName: "Shop", onClose() {}, onChoose() {} } });
   assert.ok(findByLabel(view.tree, "Close menu"));
 });
 

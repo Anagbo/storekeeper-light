@@ -86,12 +86,8 @@ async function unconfirmedOn16(app) {
   assert.equal(momoPart(app).verification, undefined);
 }
 
-// The header Home button (the first "Home" in the tree); the side menu has its own.
-async function headerHome(app) {
-  const button = [...walk(app.view.tree)].find((node) => node.type === "button" && node.props?.["aria-label"] === "Home");
-  await button.props.onClick();
-  return app.settle();
-}
+// Home as the owner reaches it now: Menu > Home (the header Home tile is gone, wiring 23).
+const headerHome = (app) => app.goHome();
 
 // 59's Cancel sale calls onNavigate("Home") with PosApp's navigate (Phone request is off, so 59
 // cannot be reached through the screens); 16 is given the same navigate.

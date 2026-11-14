@@ -18,10 +18,19 @@ const routeOfComponent = (component) => ({
   CorrectBalance: "DebtorDetail"
 }[component] ?? component);
 
+// Wiring 23 (14 Nov 2026): the Menu is a drawer over the page, not a route. It has no bar of its own;
+// its dimmed layer covers the page's bar.
+const OVERLAYS = new Set(["MenuDrawer"]);
+
 test("the bar is shown on exactly the screens whose wiring says bottom_bar", () => {
   const byRoute = new Map();
   for (const [id, screen] of Object.entries(wiring.screens)) {
     assert.equal(typeof screen.bottom_bar, "boolean", `screen ${id} has a bottom_bar flag`);
+    if (OVERLAYS.has(screen.component)) {
+      assert.equal(screen.bottom_bar, false, `screen ${id} (an overlay) has no bar`);
+      assert.equal(POS_ROUTES[screen.component], undefined, `screen ${id} (an overlay) is not a route`);
+      continue;
+    }
     const route = routeOfComponent(screen.component);
     assert.ok(POS_ROUTES[route], `screen ${id} (${screen.component}) has a route`);
     assert.equal(showsBottomBar(POS_ROUTES[route]), screen.bottom_bar, `screen ${id} ${screen.name}: bar should be ${screen.bottom_bar}`);
@@ -42,8 +51,10 @@ test("the app draws the bar from that same rule, and keeps the header and the si
   assert.match(app, /showsBottomBar\(route\)/);
   assert.doesNotMatch(app, /!isFocusedCollectionScreen && !isSetupFlow && <PosBottomNav/);
   assert.match(app, /<PosBottomNav/);
-  // Owner decision (option A): the header Home and Menu stay as they are; the side menu stays on wide screens.
-  assert.match(app, /<PosHeader[\s\S]*?onHome=\{\(\) => switchTab\(POS_ROUTES\.Home\)\}[\s\S]*?onMenu=\{openMenu\}/);
+  // Wiring 22/23 (14 Nov 2026): the header keeps the Menu button (it opens the drawer); the green
+  // home tile is gone (Home is a row in the drawer). The side menu stays on wide screens.
+  assert.match(app, /<PosHeader[\s\S]*?onMenu=\{openMenu\}/);
+  assert.doesNotMatch(app.slice(app.indexOf("<PosHeader"), app.indexOf("/>", app.indexOf("<PosHeader"))), /onHome=/);
   assert.match(app, /\{!isSetupFlow && <PosSideNav/);
   const components = read("src/pos/PosComponents.jsx");
   assert.match(components.slice(components.indexOf("export function PosBottomNav")), /lg:hidden/);
