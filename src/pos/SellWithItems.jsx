@@ -137,27 +137,27 @@ export default function SellWithItems({ params = {}, onBack, onNavigate, onUpdat
                 <strong className="block truncate text-base font-extrabold text-slate-900 sm:text-[19px]">{line.name}</strong>
                 <span className="block text-sm text-slate-700">{line.subtitle}</span>
               </span>
-              <b className="ml-auto w-20 shrink-0 text-right text-sm font-extrabold tabular-nums text-slate-900 sm:text-[19px]">
+              <b className="ml-auto min-w-[52px] shrink-0 whitespace-nowrap text-right text-sm font-extrabold tabular-nums text-slate-900 sm:min-w-20 sm:text-[19px]">
                 {formatGhsCompactAmount(line.total_amount)}
               </b>
               <button
                 type="button"
                 aria-label={t("sellItems.remove", { name: line.name })}
                 onClick={() => updateCart(cart.filter((item) => item.productId !== null))}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-[12px] border-2 border-slate-500 bg-white text-rose-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 sm:h-12 sm:w-12"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-[12px] border-2 border-slate-500 bg-white text-rose-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 sm:h-12 sm:w-12"
               >
-                <Trash2 size={20} className="sm:h-[22px] sm:w-[22px]" aria-hidden="true" />
+                <Trash2 size={22} strokeWidth={2.2} aria-hidden="true" />
               </button>
             </div>
           ) : (
             <div key={line.productId} className="flex min-h-12 items-center gap-0.5 border-b border-slate-200 pb-2 last:border-b-0 last:pb-0 sm:gap-2">
-              <strong className="min-w-0 flex-1 truncate text-base font-extrabold text-slate-900 sm:text-[19px]">{line.name}</strong>
+              <strong className="min-w-0 flex-1 break-words text-base font-extrabold leading-tight text-slate-900 sm:text-[19px]">{line.name}</strong>
               <button
                 type="button"
                 aria-label={t("sellItems.less", { name: line.name })}
                 disabled={line.quantity === 1}
                 onClick={() => updateCart(cart.map((item) => item.productId === line.productId ? { ...item, quantity: item.quantity - 1 } : item))}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-[12px] border-2 border-slate-500 bg-white text-xl font-extrabold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-40 sm:h-12 sm:w-12"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-[12px] border-2 border-slate-500 bg-white text-xl font-extrabold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-40 sm:h-12 sm:w-12"
               >
                 −
               </button>
@@ -170,7 +170,7 @@ export default function SellWithItems({ params = {}, onBack, onNavigate, onUpdat
                   saleItems: cart,
                   mode: "edit"
                 })}
-                className="flex h-9 min-w-8 shrink-0 items-center justify-center border-0 border-b-[3px] border-emerald-900 bg-transparent px-0 text-base font-extrabold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 sm:h-12 sm:min-w-11 sm:px-1 sm:text-[22px]"
+                className="flex h-10 min-w-8 shrink-0 items-center justify-center border-0 border-b-[3px] border-emerald-900 bg-transparent px-0 text-base font-extrabold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 sm:h-12 sm:min-w-11 sm:px-1 sm:text-[22px]"
               >
                 {line.quantity}
               </button>
@@ -178,20 +178,20 @@ export default function SellWithItems({ params = {}, onBack, onNavigate, onUpdat
                 type="button"
                 aria-label={t("sellItems.more", { name: line.name })}
                 onClick={() => updateCart(cart.map((item) => item.productId === line.productId ? { ...item, quantity: item.quantity + 1 } : item))}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-[12px] border-2 border-slate-500 bg-white text-xl font-extrabold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 sm:h-12 sm:w-12"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-[12px] border-2 border-slate-500 bg-white text-xl font-extrabold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 sm:h-12 sm:w-12"
               >
                 +
               </button>
-              <b className="ml-auto w-20 shrink-0 text-right text-sm font-extrabold tabular-nums text-slate-900 sm:text-[19px]">
+              <b className="ml-auto min-w-[52px] shrink-0 whitespace-nowrap text-right text-sm font-extrabold tabular-nums text-slate-900 sm:min-w-20 sm:text-[19px]">
                 {formatGhsCompactAmount(line.total_amount)}
               </b>
               <button
                 type="button"
                 aria-label={t("sellItems.remove", { name: line.name })}
                 onClick={() => updateCart(cart.filter((item) => item.productId !== line.productId))}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-[12px] border-2 border-slate-500 bg-white text-rose-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 sm:h-12 sm:w-12"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-[12px] border-2 border-slate-500 bg-white text-rose-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 sm:h-12 sm:w-12"
               >
-                <Trash2 size={20} className="sm:h-[22px] sm:w-[22px]" aria-hidden="true" />
+                <Trash2 size={22} strokeWidth={2.2} aria-hidden="true" />
               </button>
             </div>
           ))}
