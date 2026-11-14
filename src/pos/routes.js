@@ -189,6 +189,8 @@ export const POS_LINKS = Object.freeze([
   { from: "MoMoChoice", action: "phone", to: "MoMoPayment" },
   { from: "MoMoSetup", action: "save", to: "MoMoPayment" },
   { from: "MoMoSetup", action: "saveFromSettings", to: "PaymentSettings", via: "history" },
+  // No MoMo number saved: Set up MoMo number opens 63; its Save (or Back) returns here.
+  { from: "MoMoDirect", action: "setUpNumber", to: "PaymentSettings" },
   { from: "MoMoDirect", action: "confirmed", to: "SaleRecorded" },
   { from: "MoMoDirect", action: "collectionConfirmed", to: "PaymentReceived" },
   // A pick from 16, 27 or 19 returns to the existing screen (returnFromMomoPickState).

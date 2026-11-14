@@ -87,7 +87,10 @@ test("5b: screen 62 Money received stays disabled until a number is set", () => 
   const direct = section("MoMoDirect", "PaymentSettings");
   assert.match(direct, /disabled=\{saving \|\| !settings\.number\}/);
   assert.match(direct, /if \(savingRef\.current \|\| !settings\.number\) return;/);
-  assert.match(direct, /Set your MoMo number in Settings first/);
+  // 14 Nov 2026: no text path to Settings; a set-up card with a button that opens 63 instead.
+  assert.match(direct, /Your MoMo number is not set up yet/);
+  assert.match(direct, /Set up MoMo number/);
+  assert.doesNotMatch(direct, /Set your MoMo number in Settings first|Menu ›/);
 });
 
 test("5b: Settings shows MoMo payments (63) without the subscription flag; My plan (64) stays behind it", () => {

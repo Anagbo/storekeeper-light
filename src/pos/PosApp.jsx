@@ -497,6 +497,7 @@ export default function PosApp() {
     <MoMoDirect
     params={routeState.params}
     onBack={navigateBack}
+    onSetUpNumber={() => navigate(POS_ROUTES.PaymentSettings)}
     onConfirm={(details) => {
       if (details.pickOnly) {
         returnFromMomoPick({ ...details, momoMethod: "direct", verification: "merchant_confirmed" });

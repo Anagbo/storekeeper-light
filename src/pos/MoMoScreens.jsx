@@ -66,8 +66,9 @@ export function MoMoChoice({ params = {}, onBack, onNavigate, onReplace, onPick 
   </PosPage>;
 }
 
-export function MoMoDirect({ params = {}, onBack, onConfirm, onPick }) {
+export function MoMoDirect({ params = {}, onBack, onConfirm, onPick, onSetUpNumber }) {
   const [settings, setSettings] = useState({ number: "", network: "" });
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   useBackBlock(saving);
@@ -96,7 +97,15 @@ export function MoMoDirect({ params = {}, onBack, onConfirm, onPick }) {
       setSaveError(SAVE_FAILED_62);
     }
   }
-  useEffect(() => { getMerchantMomoSettings().then(setSettings).catch((error) => console.error("Could not load receiving settings.", error)); }, []);
+  useEffect(() => {
+    getMerchantMomoSettings()
+      .then((value) => { setSettings(value); setSettingsLoaded(true); })
+      .catch((error) => console.error("Could not load receiving settings.", error));
+  }, []);
+  // Wiring 62 "No MoMo number saved" (14 Nov 2026): there is no number the customer could have sent
+  // to, so the number card becomes "Your MoMo number is not set up yet" with Set up MoMo number (63),
+  // the steps are hidden and Money received stays off. 63's Save goes Back here with the draft intact.
+  const noNumber = settingsLoaded && !settings.number;
   // Copy shows "Copied" on the button itself for two seconds (wiring 62).
   const copiedTimer = useRef(null);
   useEffect(() => () => clearTimeout(copiedTimer.current), []);
@@ -130,6 +139,10 @@ export function MoMoDirect({ params = {}, onBack, onConfirm, onPick }) {
       <p className="mt-0.5 overflow-hidden whitespace-nowrap text-[42px] font-extrabold leading-[1.1]" style={{ fontSize: heroAmountSize(formatGhs(paymentAmountPesewas)) }}>{formatGhs(paymentAmountPesewas)}</p>
     </section>
     {isSplitPart && <p className="-mt-1 text-base font-medium text-slate-600">MoMo part of a {formatGhs(splitTotalPesewas)} {partOf}</p>}
+    {noNumber ? <section data-card="no-momo-number" className="flex flex-col gap-3 rounded-[18px] border-2 border-amber-500 bg-amber-50 px-3.5 py-3">
+      <h2 className="text-lg font-extrabold">Your MoMo number is not set up yet</h2>
+      <PosPrimaryButton type="button" onClick={() => onSetUpNumber?.()} className="h-[60px] min-h-0 rounded-[18px] text-[21px]"><Smartphone size={26} aria-hidden="true" />Set up MoMo number</PosPrimaryButton>
+    </section> : <>
     <section className="flex flex-col gap-1.5 rounded-[18px] border-2 border-slate-300 bg-white px-3.5 py-3">
       <div className="flex items-center justify-between gap-2">
         <span className="min-w-0 text-[17px] font-bold text-slate-600">Send to my number</span>
@@ -153,7 +166,7 @@ export function MoMoDirect({ params = {}, onBack, onConfirm, onPick }) {
         </li>)}
       </ol>
     </section>
-    {!settings.number && <p role="status" className="text-base font-bold text-rose-900">Set your MoMo number in Settings first: Menu › Settings › MoMo payments.</p>}
+    </>}
     <div className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t-2 border-slate-300 bg-white px-4 pt-2.5 lg:left-60">
       <div className="mx-auto flex max-w-3xl flex-col items-center gap-1.5">
         {saveError && <p role="alert" className="w-full text-base font-bold text-rose-900">{saveError}</p>}
