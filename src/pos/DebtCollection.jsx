@@ -705,17 +705,19 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
   const markReminderOpened = () => {
     pendingReminderDebtIds.current = (data?.unpaidDebts ?? []).map((debt) => debt.id);
   };
-  // The current-balance Receipt button shows only with VITE_ENABLE_POS_RECEIPTS on.
-  const balanceReceiptLink = isReceiptTemplatesEnabled() && data && phone
-    ? `https://wa.me/${phone.slice(1)}?text=${encodeURIComponent(buildCustomerBalanceReceipt({
+  // The current-balance Receipt, Copy receipt and offline line show only with VITE_ENABLE_POS_RECEIPTS on
+  // and a valid phone. Send goes through the same share logic as 28, 30 and 31.
+  const balanceReceiptText = isReceiptTemplatesEnabled() && data && phone
+    ? buildCustomerBalanceReceipt({
         shopName,
         customerName: data.name,
         timestamp: Date.now(),
         balancePesewas: data.balancePesewas,
         installmentPesewas: data.debt?.isInstallmentPlan ? data.debt.installmentAmount : 0,
         nextDueDate: data.debt?.nextDueDate
-      }))}`
+      })
     : null;
+  const balanceActions = useReceiptActions(balanceReceiptText ?? "", phone ?? "");
   const dueDate = data?.debt?.isInstallmentPlan ? data.debt.nextDueDate : data?.debt?.dueDate;
   const dueLabel = data?.debt && getDebtDueLabel(dueDate);
   const isLate = Boolean(dueLabel?.startsWith("Late "));
@@ -850,7 +852,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               {lastReminderLabel && <p className="text-center text-base text-slate-800">{lastReminderLabel}</p>}
             </div>
           )}
-          <div className={`grid grid-cols-2 gap-2 sm:gap-3 ${phone && reminderLink ? (balanceReceiptLink ? (isLate ? "sm:grid-cols-3" : "sm:grid-cols-4") : (isLate ? "sm:grid-cols-2" : "sm:grid-cols-3")) : ""}`}>
+          <div className={`grid grid-cols-2 gap-2 sm:gap-3 ${phone && reminderLink ? (balanceReceiptText ? (isLate ? "sm:grid-cols-3" : "sm:grid-cols-4") : (isLate ? "sm:grid-cols-2" : "sm:grid-cols-3")) : ""}`}>
             <button type="button" disabled={data.balancePesewas <= 0 || !data.debt?.id} onClick={() => onCollect(data.debt)} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-emerald-900 px-2 text-base font-extrabold text-white disabled:opacity-50 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
               <Banknote size={26} aria-hidden="true" /> <span className="truncate">{t("collect.collect")}</span>
             </button>
@@ -861,9 +863,9 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                     <WhatsAppIcon /> <span className="truncate">Reminder</span>
                   </a>
                 )}
-                {balanceReceiptLink && <a href={balanceReceiptLink} target="_blank" rel="noopener noreferrer" aria-label={`Send current balance receipt for ${displayName(data.name)}`} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
+                {balanceReceiptText && <button type="button" onClick={() => void balanceActions.send()} aria-label={`Send current balance receipt for ${displayName(data.name)}`} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
                   <ReceiptText size={26} aria-hidden="true" /> <span className="truncate">Receipt</span>
-                </a>}
+                </button>}
                 <a href={`tel:${phone}`} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-slate-500 bg-slate-300 px-2 text-base font-extrabold text-slate-950 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
                   <Phone size={26} aria-hidden="true" /> <span className="truncate">{t("collect.call")}</span>
                 </a>
@@ -874,6 +876,12 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               </button>
             )}
           </div>
+          {balanceReceiptText && phone && reminderLink && (
+            <>
+              <CopyReceiptButton onClick={() => void balanceActions.copy()} copied={balanceActions.copied} />
+              <ReceiptNotes online={balanceActions.online} failed={balanceActions.failed} />
+            </>
+          )}
           {singleDebtMatchesTotal && (
             <button type="button" onClick={() => openCorrection()} disabled={!data.debt?.id || data.balancePesewas <= 0} className="mt-2 h-[54px] w-full rounded-2xl border-2 border-slate-500 bg-white px-4 text-lg font-extrabold text-slate-900 disabled:opacity-50">
               Correct balance

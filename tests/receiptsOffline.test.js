@@ -179,3 +179,46 @@ test("31 Send receipt and Copy receipt send and copy the same GH₵ text", async
     setLiveQuery(null);
   }
 });
+
+// 29 (on time) and 43 (late): the current-balance receipt uses the same logic as 28, 30 and 31.
+async function showDetail(env = ON, due = "2099-01-01") {
+  const { DebtorDetail } = await loadJsx("src/pos/DebtCollection.jsx", env);
+  const debt = { id: "d1", customerId: "c1", customerName: "Ama", amountPesewas: 8000, status: "unpaid", isInstallmentPlan: false, dueDate: due };
+  const data = { name: "Ama", customerId: "c1", phone: "+233241234567", ghanaCardNumber: "", balancePesewas: 8000, debt, unpaidDebts: [debt], unpaidDebtCount: 1, history: [] };
+  setLiveQuery(([debtId]) => (debtId === "d1" ? data : undefined));
+  try {
+    const view = render({ type: DebtorDetail, props: { params: { debtId: "d1", customerName: "Ama" }, onBack() {}, onNavigate() {}, onCollect() {}, shopName: "Shop" } });
+    return view;
+  } finally {
+    setLiveQuery(null);
+  }
+}
+
+for (const [screen, due] of [["29", "2099-01-01"], ["43", "2000-01-01"]]) {
+  test(`${screen} Receipt sends the balance receipt through the shared logic and Copy receipt copies the same GH₵ text`, async () => {
+    const { calls } = setNavigator({ share: true, clipboard: true });
+    const view = await showDetail(ON, due);
+    await findButton(view.tree, "Receipt").props.onClick();
+    await findButton(view.tree, "Copy receipt").props.onClick();
+    assert.equal(calls.share.length, 1);
+    assert.equal(calls.copy[0], calls.share[0].text);
+    assert.match(calls.share[0].text, /GH₵80\.00/);
+    assert.deepEqual(calls.open, []);
+  });
+
+  test(`${screen} the offline line shows only when offline, and Collect still works`, async () => {
+    setNavigator({ share: true, onLine: true });
+    assert.doesNotMatch(textOf((await showDetail(ON, due)).tree), /You are offline/);
+    setNavigator({ share: true, onLine: false });
+    const view = await showDetail(ON, due);
+    assert.ok(textOf(view.tree).includes(OFFLINE_LINE));
+    assert.ok(!findButton(view.tree, "Collect").props.disabled);
+  });
+
+  test(`${screen} flag off: no Receipt, no Copy receipt, no offline line`, async () => {
+    setNavigator({ share: true, onLine: false });
+    const text = textOf((await showDetail({}, due)).tree);
+    assert.doesNotMatch(text, /receipt/i);
+    assert.doesNotMatch(text, /You are offline/);
+  });
+}

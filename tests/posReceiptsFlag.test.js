@@ -141,7 +141,9 @@ for (const [screen, dueDate] of [["29", dayOffset(7)], ["43", dayOffset(-3)]]) {
   test(`${screen} flag on: Receipt button with the current balance`, async () => {
     const tree = await showDetail(ON, dueDate);
     assertFlag(tree, true, screen);
-    const link = receiptControls(tree).find((node) => node.type === "a");
-    assert.match(link.props.href, /^https:\/\/wa\.me\/233241234567\?text=/);
+    const send = findButton(tree, "Receipt");
+    assert.equal(send.type, "button", "no raw link");
+    assert.match(send.props["aria-label"], /Send current balance receipt for Ama/);
+    assert.ok(findButton(tree, "Copy receipt"));
   });
 }
