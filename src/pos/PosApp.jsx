@@ -79,15 +79,10 @@ function getSavedShopName() {
   }
 }
 
+// What the header shows in place of the connection status: only while a sync runs. Online, offline
+// and saved are the header's own job (it follows navigator.onLine).
 function getStatusLabel(sync) {
-  if (sync.status === "offline") return t("app.offline");
-  if (sync.status === "syncing") return t("app.syncing");
-  if (sync.status === "unconfigured") return t("app.saved");
-  if (sync.lastSyncedAt) {
-    const time = sync.lastSyncedAt.toLocaleTimeString("en-GH", { hour: "2-digit", minute: "2-digit" });
-    return t("app.syncedAt", { time });
-  }
-  return t("app.readyToSync");
+  return sync.status === "syncing" ? t("app.syncing") : "";
 }
 
 // Where Money received on 62 returns for each confirm step (MOMO16).
@@ -693,14 +688,15 @@ export default function PosApp() {
       <PosHeader
         shopName={shopName}
         // Wiring 62: never "Saved" on Customer sends (nothing is recorded before Money received).
-        statusLabel={route === POS_ROUTES.MoMoDirect ? "" : getStatusLabel(sync)}
+        statusLabel={getStatusLabel(sync)}
+        hideSaved={route === POS_ROUTES.MoMoDirect}
         onHome={() => switchTab(POS_ROUTES.Home)}
         onMenu={openMenu}
         menuActive={route === POS_ROUTES.Menu}
         hideMenu={isFocusedCollectionScreen || isSetupFlow || route === POS_ROUTES.PeopleWhoOweYou}
       />
       <div className="flex min-h-[calc(100vh-4rem)]">
-        {!isSetupFlow && <PosSideNav current={route} onNavigate={switchTab} />}
+        {!isSetupFlow && <PosSideNav current={route} onNavigate={switchTab} hideSaved={route === POS_ROUTES.MoMoDirect} />}
         <div className="min-w-0 flex-1">
           <PosErrorBoundary key={`${route}:${pickRemount}`} onBack={navigateBack}>
             <Suspense fallback={<PosPage><p role="status">{t("app.loadingScreen")}</p></PosPage>}>
