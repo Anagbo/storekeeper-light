@@ -76,20 +76,20 @@ for (const [label, phone] of [["with a phone", PHONE], ["without a phone", ""]])
 }
 
 // 28 Payment received
-function collectionParams(phone) {
+function collectionParams(phone, undoExpiresAt = Date.now() - 1000) {
   return {
     collectionId: "col-1", debtId: "d1", customerId: "c1", customerName: "Ama", phone,
-    amountPesewas: 1250, remainingPesewas: 875, createdAt: Date.now(), undoExpiresAt: Date.now() - 1000,
+    amountPesewas: 1250, remainingPesewas: 875, createdAt: Date.now(), undoExpiresAt,
     parts: [{ paymentMethod: "cash", amountPesewas: 500 }, { paymentMethod: "momo", amountPesewas: 750 }],
     debtAfter: { isInstallmentPlan: false }
   };
 }
 
-async function show28(env, phone) {
+async function show28(env, phone, undoExpiresAt) {
   const { PaymentReceived } = await loadJsx("src/pos/DebtCollection.jsx", env);
   setLiveQuery(() => null);
   try {
-    return render({ type: PaymentReceived, props: { params: collectionParams(phone), onHome() {}, onNavigate() {}, onSaveCustomerContact() {}, shopName: "Shop" } }).tree;
+    return render({ type: PaymentReceived, props: { params: collectionParams(phone, undoExpiresAt), onHome() {}, onNavigate() {}, onSaveCustomerContact() {}, shopName: "Shop" } }).tree;
   } finally {
     setLiveQuery(null);
   }
@@ -106,15 +106,30 @@ test("28 flag on with a phone: Send receipt is a button, enabled once Undo has p
   assert.ok(!send.props.disabled);
 });
 
-// 29 (on time) and 43 (late) Debtor detail: the current-balance Receipt button
-function debtorData(dueDate) {
-  const debt = { id: "d1", customerId: "c1", customerName: "Ama", amountPesewas: 8000, status: "unpaid", isInstallmentPlan: false, dueDate };
-  return { name: "Ama", customerId: "c1", phone: "+233241234567", ghanaCardNumber: "", balancePesewas: 8000, debt, unpaidDebts: [debt], unpaidDebtCount: 1, history: [] };
+test("28 flag on without a phone: Send receipt and Copy receipt are enabled once Undo has passed", async () => {
+  const tree = await show28(ON, "");
+  assert.ok(!findButton(tree, "Send receipt").props.disabled, "no phone: the share sheet is used");
+  assert.ok(!findButton(tree, "Copy receipt").props.disabled);
+});
+
+for (const [label, phone] of [["with a phone", PHONE], ["without a phone", ""]]) {
+  test(`28 flag on ${label}: Send receipt and Copy receipt are disabled during the Undo window`, async () => {
+    const tree = await show28(ON, phone, Date.now() + 60_000);
+    assert.ok(findButton(tree, "Send receipt").props.disabled);
+    assert.ok(findButton(tree, "Copy receipt").props.disabled);
+    assert.match(textOf(tree), /Share becomes available in/);
+  });
 }
 
-async function showDetail(env, dueDate) {
+// 29 (on time) and 43 (late) Debtor detail: the current-balance Receipt button
+function debtorData(dueDate, phone = "+233241234567") {
+  const debt = { id: "d1", customerId: "c1", customerName: "Ama", amountPesewas: 8000, status: "unpaid", isInstallmentPlan: false, dueDate };
+  return { name: "Ama", customerId: "c1", phone, ghanaCardNumber: "", balancePesewas: 8000, debt, unpaidDebts: [debt], unpaidDebtCount: 1, history: [] };
+}
+
+async function showDetail(env, dueDate, phone) {
   const { DebtorDetail } = await loadJsx("src/pos/DebtCollection.jsx", env);
-  const data = debtorData(dueDate);
+  const data = debtorData(dueDate, phone);
   setLiveQuery(([debtId]) => (debtId === "d1" ? data : undefined));
   try {
     return render({ type: DebtorDetail, props: { params: { debtId: "d1", customerName: "Ama" }, onBack() {}, onNavigate() {}, onCollect() {}, shopName: "Shop" } }).tree;
@@ -145,5 +160,17 @@ for (const [screen, dueDate] of [["29", dayOffset(7)], ["43", dayOffset(-3)]]) {
     assert.equal(send.type, "button", "no raw link");
     assert.match(send.props["aria-label"], /Send current balance receipt for Ama/);
     assert.ok(findButton(tree, "Copy receipt"));
+  });
+  test(`${screen} flag on without a phone: Receipt and Copy receipt still show; no WhatsApp reminder, no Call`, async () => {
+    const tree = await showDetail(ON, dueDate, "");
+    const send = findButton(tree, "Receipt");
+    assert.equal(send.type, "button");
+    assert.match(send.props["aria-label"], /Send current balance receipt for Ama/);
+    assert.ok(findButton(tree, "Copy receipt"));
+    assert.ok(findButton(tree, "Add contact"), "Add contact stays");
+    assert.ok(![...walk(tree)].some((node) => node.type === "a" && /^(tel:|https:\/\/wa\.me)/.test(String(node.props.href))));
+  });
+  test(`${screen} flag off without a phone: no receipt control`, async () => {
+    assertFlag(await showDetail(OFF, dueDate, ""), false, screen);
   });
 }

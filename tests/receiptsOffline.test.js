@@ -180,11 +180,38 @@ test("31 Send receipt and Copy receipt send and copy the same GH₵ text", async
   }
 });
 
+test("28 without a phone: Send receipt opens the share sheet; Copy copies the same text", async () => {
+  const { calls } = setNavigator({ share: true, clipboard: true });
+  const { PaymentReceived } = await loadJsx("src/pos/DebtCollection.jsx", ON);
+  setLiveQuery(() => null);
+  try {
+    const result = {
+      collectionId: "col-1", debtId: "d1", customerId: "c1", customerName: "Ama", phone: "",
+      amountPesewas: 1250, remainingPesewas: 875, createdAt: Date.now(), undoExpiresAt: Date.now() - 1000,
+      parts: [{ paymentMethod: "cash", amountPesewas: 1250 }],
+      debtAfter: { isInstallmentPlan: false }
+    };
+    const view = render({ type: PaymentReceived, props: { params: result, onHome() {}, onNavigate() {}, onSaveCustomerContact() {}, shopName: "Shop" } });
+    flushEffects(view);
+    const send = findButton(view.tree, "Send receipt");
+    assert.ok(!send.props.disabled, "enabled without a phone once Undo has passed");
+    await send.props.onClick();
+    await findButton(view.tree, "Copy receipt").props.onClick();
+    assert.equal(calls.share.length, 1);
+    assert.equal(calls.location, "");
+    assert.deepEqual(calls.open, []);
+    assert.equal(calls.copy[0], calls.share[0].text);
+    assert.match(calls.share[0].text, /GH₵12\.50/);
+  } finally {
+    setLiveQuery(null);
+  }
+});
+
 // 29 (on time) and 43 (late): the current-balance receipt uses the same logic as 28, 30 and 31.
-async function showDetail(env = ON, due = "2099-01-01") {
+async function showDetail(env = ON, due = "2099-01-01", phone = "+233241234567") {
   const { DebtorDetail } = await loadJsx("src/pos/DebtCollection.jsx", env);
   const debt = { id: "d1", customerId: "c1", customerName: "Ama", amountPesewas: 8000, status: "unpaid", isInstallmentPlan: false, dueDate: due };
-  const data = { name: "Ama", customerId: "c1", phone: "+233241234567", ghanaCardNumber: "", balancePesewas: 8000, debt, unpaidDebts: [debt], unpaidDebtCount: 1, history: [] };
+  const data = { name: "Ama", customerId: "c1", phone, ghanaCardNumber: "", balancePesewas: 8000, debt, unpaidDebts: [debt], unpaidDebtCount: 1, history: [] };
   setLiveQuery(([debtId]) => (debtId === "d1" ? data : undefined));
   try {
     const view = render({ type: DebtorDetail, props: { params: { debtId: "d1", customerName: "Ama" }, onBack() {}, onNavigate() {}, onCollect() {}, shopName: "Shop" } });
@@ -207,6 +234,23 @@ for (const [screen, due] of [["29", "2099-01-01"], ["43", "2000-01-01"]]) {
     assert.equal(calls.copy[0], sentText);
     assert.match(sentText, /GH₵80\.00/);
     assert.deepEqual(calls.open, []);
+  });
+
+  test(`${screen} without a phone: Receipt opens the share sheet and Copy receipt copies the same GH₵ text`, async () => {
+    const { calls } = setNavigator({ share: true, clipboard: true });
+    const view = await showDetail(ON, due, "");
+    await findButton(view.tree, "Receipt").props.onClick();
+    await findButton(view.tree, "Copy receipt").props.onClick();
+    assert.equal(calls.share.length, 1);
+    assert.equal(calls.location, "");
+    assert.deepEqual(calls.open, []);
+    assert.equal(calls.copy[0], calls.share[0].text);
+    assert.match(calls.share[0].text, /GH₵80\.00/);
+  });
+
+  test(`${screen} without a phone: the offline line shows when offline`, async () => {
+    setNavigator({ share: true, onLine: false });
+    assert.ok(textOf((await showDetail(ON, due, "")).tree).includes(OFFLINE_LINE));
   });
 
   test(`${screen} the offline line shows only when offline, and Collect still works`, async () => {

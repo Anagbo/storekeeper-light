@@ -586,20 +586,19 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
         <PosSecondaryButton type="button" disabled={busy || remainingSeconds <= 0 || undone} onClick={() => void undo()} className="h-14 min-h-0 rounded-2xl border-rose-900 text-[17px] text-rose-900">
           <Undo2 size={22} aria-hidden="true" /> {t("collect.undo")}
         </PosSecondaryButton>
-        {receiptsOn && <SendReceiptButton onClick={() => void actions.send()} disabled={!receiptPhone || !receiptReady} label={t("collect.receiptShare")} />}
+        {/* Without a valid phone, Send receipt opens the share sheet (receiptShare.sendReceipt). Only the Undo window holds it back. */}
+        {receiptsOn && <SendReceiptButton onClick={() => void actions.send()} disabled={!receiptReady} label={t("collect.receiptShare")} />}
       </div>
       {receiptsOn && <CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} disabled={!receiptReady} />}
       {receiptsOn && receiptReady && <ReceiptNotes online={actions.online} failed={actions.failed} />}
-      {!receiptsOn ? null : receiptPhone && remainingSeconds > 0 && !undone ? (
+      {receiptsOn && remainingSeconds > 0 && !undone && (
         <p role="status" className="text-center text-sm font-semibold text-slate-700">{t("collect.receiptWait", { seconds: remainingSeconds })}</p>
-      ) : !receiptPhone && !undone ? (
-        <div className="rounded-xl bg-amber-50 p-3 text-center">
-          <p role="status" className="text-sm font-semibold text-slate-800">{t("collect.receiptNoPhone")}</p>
-          <button type="button" onClick={() => setContactEditorOpen(true)} className="mt-2 min-h-11 font-extrabold text-emerald-900 underline">
-            {t("collect.addPhoneForReceipt")}
-          </button>
-        </div>
-      ) : null}
+      )}
+      {receiptsOn && !receiptPhone && !undone && (
+        <button type="button" onClick={() => setContactEditorOpen(true)} className="min-h-11 text-center font-extrabold text-emerald-900 underline">
+          {t("collect.addPhoneForReceipt")}
+        </button>
+      )}
       <p className="text-center text-[17px] text-slate-800">
         <Clock3 size={16} className="mr-1 inline" aria-hidden="true" />{t("collect.undoWindow", { seconds: Math.floor(COLLECTION_UNDO_WINDOW_MS / 1000) })}
       </p>
@@ -705,9 +704,10 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
   const markReminderOpened = () => {
     pendingReminderDebtIds.current = (data?.unpaidDebts ?? []).map((debt) => debt.id);
   };
-  // The current-balance Receipt, Copy receipt and offline line show only with VITE_ENABLE_POS_RECEIPTS on
-  // and a valid phone. Send goes through the same share logic as 28, 30 and 31.
-  const balanceReceiptText = isReceiptTemplatesEnabled() && data && phone
+  // The current-balance Receipt, Copy receipt and offline line show only with VITE_ENABLE_POS_RECEIPTS on.
+  // Send goes through the same share logic as 28, 30 and 31: a valid phone opens WhatsApp to that
+  // number, no phone opens the share sheet.
+  const balanceReceiptText = isReceiptTemplatesEnabled() && data
     ? buildCustomerBalanceReceipt({
         shopName,
         customerName: data.name,
@@ -718,6 +718,11 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
       })
     : null;
   const balanceActions = useReceiptActions(balanceReceiptText ?? "", phone ?? "");
+  const balanceReceiptButton = balanceReceiptText && (
+    <button type="button" onClick={() => void balanceActions.send()} aria-label={`Send current balance receipt for ${displayName(data.name)}`} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
+      <ReceiptText size={26} aria-hidden="true" /> <span className="truncate">Receipt</span>
+    </button>
+  );
   const dueDate = data?.debt?.isInstallmentPlan ? data.debt.nextDueDate : data?.debt?.dueDate;
   const dueLabel = data?.debt && getDebtDueLabel(dueDate);
   const isLate = Boolean(dueLabel?.startsWith("Late "));
@@ -852,7 +857,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               {lastReminderLabel && <p className="text-center text-base text-slate-800">{lastReminderLabel}</p>}
             </div>
           )}
-          <div className={`grid grid-cols-2 gap-2 sm:gap-3 ${phone && reminderLink ? (balanceReceiptText ? (isLate ? "sm:grid-cols-3" : "sm:grid-cols-4") : (isLate ? "sm:grid-cols-2" : "sm:grid-cols-3")) : ""}`}>
+          <div className={`grid grid-cols-2 gap-2 sm:gap-3 ${phone && reminderLink ? (balanceReceiptText ? (isLate ? "sm:grid-cols-3" : "sm:grid-cols-4") : (isLate ? "sm:grid-cols-2" : "sm:grid-cols-3")) : (balanceReceiptText ? "sm:grid-cols-3" : "")}`}>
             <button type="button" disabled={data.balancePesewas <= 0 || !data.debt?.id} onClick={() => onCollect(data.debt)} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-emerald-900 px-2 text-base font-extrabold text-white disabled:opacity-50 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
               <Banknote size={26} aria-hidden="true" /> <span className="truncate">{t("collect.collect")}</span>
             </button>
@@ -863,20 +868,21 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                     <WhatsAppIcon /> <span className="truncate">Reminder</span>
                   </a>
                 )}
-                {balanceReceiptText && <button type="button" onClick={() => void balanceActions.send()} aria-label={`Send current balance receipt for ${displayName(data.name)}`} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
-                  <ReceiptText size={26} aria-hidden="true" /> <span className="truncate">Receipt</span>
-                </button>}
+                {balanceReceiptButton}
                 <a href={`tel:${phone}`} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-slate-500 bg-slate-300 px-2 text-base font-extrabold text-slate-950 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
                   <Phone size={26} aria-hidden="true" /> <span className="truncate">{t("collect.call")}</span>
                 </a>
               </>
             ) : (
-              <button type="button" onClick={() => setContactEditorOpen(true)} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[15px]">
-                <UserRoundPen size={25} aria-hidden="true" /> <span className="truncate">{phone ? t("collect.editContact") : t("collect.addContact")}</span>
-              </button>
+              <>
+                <button type="button" onClick={() => setContactEditorOpen(true)} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[15px]">
+                  <UserRoundPen size={25} aria-hidden="true" /> <span className="truncate">{phone ? t("collect.editContact") : t("collect.addContact")}</span>
+                </button>
+                {balanceReceiptButton}
+              </>
             )}
           </div>
-          {balanceReceiptText && phone && reminderLink && (
+          {balanceReceiptText && (
             <>
               <CopyReceiptButton onClick={() => void balanceActions.copy()} copied={balanceActions.copied} />
               <ReceiptNotes online={balanceActions.online} failed={balanceActions.failed} />
