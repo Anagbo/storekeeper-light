@@ -696,6 +696,9 @@ export async function correctDebtBalance({
       customerId: customer.id,
       amountPesewas: newBalancePesewas,
       total_owed: newBalancePesewas,
+      // A correction to zero settles the debt exactly like a full payment (14 Nov 2026), so every
+      // view agrees. New corrections only; older zero-balance unpaid records are left as they are.
+      ...(newBalancePesewas === 0 ? { status: "paid", dueDate: "" } : {}),
       ...installmentUpdates,
       updatedAt: now,
       synced: false,
@@ -705,6 +708,7 @@ export async function correctDebtBalance({
       amountPesewas: previousBalancePesewas,
       total_owed: debt.total_owed ?? previousBalancePesewas,
       status: debt.status,
+      dueDate: debt.dueDate ?? "",
       isInstallmentPlan: debt.isInstallmentPlan ?? false,
       installmentAmount: debt.installmentAmount ?? 0,
       frequency: debt.frequency ?? "",

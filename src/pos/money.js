@@ -64,7 +64,7 @@ export function getMostUrgentCustomerDebt(debts, today = new Date()) {
 
   for (const debt of debts) {
     if (debt.status !== "unpaid") continue;
-    // Wiring 22 "Nobody owes": only a balance above zero counts (a correction to zero stays unpaid).
+    // Wiring 22 "Nobody owes": only a balance above zero counts (older corrections to zero stayed unpaid; new ones are stored as paid).
     const balance = getDebtBalancePesewas(debt);
     if (balance <= 0) continue;
     const name = (debt.customerName ?? debt.customer_name ?? "").trim();
