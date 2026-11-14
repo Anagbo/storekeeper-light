@@ -161,13 +161,14 @@ for (const [screen, dueDate] of [["29", dayOffset(7)], ["43", dayOffset(-3)]]) {
     assert.match(send.props["aria-label"], /Send current balance receipt for Ama/);
     assert.ok(findButton(tree, "Copy receipt"));
   });
-  test(`${screen} flag on without a phone: Receipt and Copy receipt still show; no WhatsApp reminder, no Call`, async () => {
+  test(`${screen} flag on without a phone: Receipt and Copy receipt still show; no wa.me or tel: link (WhatsApp uses the share sheet, Call is disabled)`, async () => {
     const tree = await showDetail(ON, dueDate, "");
     const send = findButton(tree, "Receipt");
     assert.equal(send.type, "button");
     assert.match(send.props["aria-label"], /Send current balance receipt for Ama/);
     assert.ok(findButton(tree, "Copy receipt"));
-    assert.ok(findButton(tree, "Add contact"), "Add contact stays");
+    assert.equal(findButton(tree, "Add contact"), null, "Add contact is not in the action row (Edit contact in the header)");
+    assert.equal(findButton(tree, "Call").props.disabled, true, "Call is greyed and disabled");
     assert.ok(![...walk(tree)].some((node) => node.type === "a" && /^(tel:|https:\/\/wa\.me)/.test(String(node.props.href))));
   });
   test(`${screen} flag off without a phone: no receipt control`, async () => {

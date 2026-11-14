@@ -11,7 +11,8 @@ import { formatGhanaCard } from "../utils/formatters.js";
 import { formatHistoryTimestamp } from "../utils/customerDebtHistory.js";
 import { loadCustomerHistory } from "../utils/loadCustomerDebtHistory.js";
 import { getOutstandingDebtPesewas } from "../lib/money.js";
-import { generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
+import { buildWhatsAppReminderText, generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
+import { sendReceipt } from "./receiptShare.js";
 import { CopyReceiptButton, ReceiptNotes, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
 import { buildCustomerBalanceReceipt, getCollectionReceiptText, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
 import { normalizeCollectionAmountInput } from "./collectionSplit.js";
@@ -38,6 +39,9 @@ const PAYMENT_METHODS = [
   { value: "cash", label: "collect.cash", icon: Banknote },
   { value: "momo", label: "collect.momo", icon: Smartphone }
 ];
+
+// One cell of the 29/43 action row: icon above the label, 64px tall, equal columns, never wrapped.
+const ACTION_BUTTON = "flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-2xl border-2 px-1 py-2 text-base font-extrabold leading-tight whitespace-nowrap sm:h-[72px] sm:text-[17px]";
 
 function WhatsAppIcon({ size = 28 }) {
   return (
@@ -707,6 +711,33 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
   const markReminderOpened = () => {
     pendingReminderDebtIds.current = (data?.unpaidDebts ?? []).map((debt) => debt.id);
   };
+  // 29/43 with no valid phone: WhatsApp stays on and opens the share sheet with the reminder text, the
+  // owner picks the chat (the same share logic as the receipts). A closed share sheet records nothing;
+  // a finished share records the reminder time now.
+  const reminderText = data ? buildWhatsAppReminderText(data.name, data.balancePesewas, shopName) : null;
+  async function shareReminder() {
+    if (!reminderText) return;
+    markReminderOpened();
+    try {
+      const result = await sendReceipt({ text: reminderText, title: t("collect.remindOnWhatsApp") });
+      if (result === "cancelled") pendingReminderDebtIds.current = null;
+      else if (result === "share" && pendingReminderDebtIds.current) {
+        const debtIds = pendingReminderDebtIds.current;
+        pendingReminderDebtIds.current = null;
+        await recordDebtReminder({ debtIds });
+      }
+    } catch (error) {
+      pendingReminderDebtIds.current = null;
+      console.error("Could not open WhatsApp for the reminder.", error);
+    }
+  }
+  // The WhatsApp control: a direct link to the saved number, or the share sheet without one.
+  function reminderControl({ label, ariaLabel, className, children }) {
+    if (phone && reminderLink) {
+      return <a href={reminderLink} target="_blank" rel="noopener noreferrer" onClick={markReminderOpened} aria-label={ariaLabel} className={className}>{children}</a>;
+    }
+    return <button type="button" disabled={!reminderText} onClick={() => void shareReminder()} aria-label={ariaLabel ?? label} className={className}>{children}</button>;
+  }
   // The current-balance Receipt, Copy receipt and offline line show only with VITE_ENABLE_POS_RECEIPTS on.
   // Send goes through the same share logic as 28, 30 and 31: a valid phone opens WhatsApp to that
   // number, no phone opens the share sheet.
@@ -722,7 +753,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
     : null;
   const balanceActions = useReceiptActions(balanceReceiptText ?? "", phone ?? "");
   const balanceReceiptButton = balanceReceiptText && (
-    <button type="button" onClick={() => void balanceActions.send()} aria-label={`Send current balance receipt for ${displayName(data.name)}`} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
+    <button type="button" onClick={() => void balanceActions.send()} aria-label={`Send current balance receipt for ${displayName(data.name)}`} className="flex min-h-14 w-full min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 sm:text-[17px]">
       <ReceiptText size={26} aria-hidden="true" /> <span className="truncate">Receipt</span>
     </button>
   );
@@ -852,39 +883,39 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               ? <p className="mt-1 font-bold text-rose-950">{dueLine}</p>
               : dueLabel?.startsWith("Late ") && <p className="mt-1 font-bold text-rose-950">{dueLabel}</p>}
           </section>
-          {isLate && phone && reminderLink && (
+          {/* 43: the wide WhatsApp reminder on top (with or without a saved number). */}
+          {isLate && reminderText && (
             <div className="flex flex-col gap-1">
-              <a href={reminderLink} target="_blank" rel="noopener noreferrer" onClick={markReminderOpened} className="flex h-16 w-full items-center justify-center gap-2.5 rounded-[18px] border-[3px] border-emerald-900 bg-white px-3 text-lg font-extrabold text-emerald-900">
-                <WhatsAppIcon /> {t("collect.remindOnWhatsApp")}
-              </a>
+              {reminderControl({
+                label: t("collect.remindOnWhatsApp"),
+                className: "flex h-16 w-full items-center justify-center gap-2.5 rounded-[18px] border-[3px] border-emerald-900 bg-white px-3 text-lg font-extrabold text-emerald-900",
+                children: <><WhatsAppIcon /> {t("collect.remindOnWhatsApp")}</>
+              })}
               {lastReminderLabel && <p className="text-center text-base text-slate-800">{lastReminderLabel}</p>}
             </div>
           )}
-          <div className={`grid grid-cols-2 gap-2 sm:gap-3 ${phone && reminderLink ? (balanceReceiptText ? (isLate ? "sm:grid-cols-3" : "sm:grid-cols-4") : (isLate ? "sm:grid-cols-2" : "sm:grid-cols-3")) : (balanceReceiptText ? "sm:grid-cols-3" : "")}`}>
-            <button type="button" disabled={data.balancePesewas <= 0 || !data.debt?.id} onClick={() => onCollect(data.debt)} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-emerald-900 px-2 text-base font-extrabold text-white disabled:opacity-50 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
-              <Banknote size={26} aria-hidden="true" /> <span className="truncate">{t("collect.collect")}</span>
+          {/* Action buttons (wiring 29 and 43): one row that never wraps at 340px and wider, icon above
+              the label, 48px or taller. 29: Collect | WhatsApp | Call. 43: Collect | Call. Call is greyed
+              and disabled without a valid phone. Add contact is not here (Edit contact in the header). */}
+          <div data-row="debtor-actions" className={`grid gap-2 sm:gap-3 ${isLate ? "grid-cols-2" : "grid-cols-3"}`}>
+            <button type="button" disabled={data.balancePesewas <= 0 || !data.debt?.id} onClick={() => onCollect(data.debt)} className={`${ACTION_BUTTON} border-emerald-900 bg-emerald-900 text-white disabled:opacity-50`}>
+              <Banknote size={26} aria-hidden="true" /><span>{t("collect.collect")}</span>
             </button>
-            {phone && reminderLink ? (
-              <>
-                {!isLate && (
-                  <a href={reminderLink} target="_blank" rel="noopener noreferrer" onClick={markReminderOpened} aria-label={`WhatsApp reminder for ${displayName(data.name)}`} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
-                    <WhatsAppIcon /> <span className="truncate">Reminder</span>
-                  </a>
-                )}
-                {balanceReceiptButton}
-                <a href={`tel:${phone}`} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-slate-500 bg-slate-300 px-2 text-base font-extrabold text-slate-950 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[17px]">
-                  <Phone size={26} aria-hidden="true" /> <span className="truncate">{t("collect.call")}</span>
+            {!isLate && reminderControl({
+              label: "Reminder",
+              ariaLabel: `WhatsApp reminder for ${displayName(data.name)}`,
+              className: `${ACTION_BUTTON} border-emerald-900 bg-white text-emerald-900 disabled:opacity-50`,
+              children: <><WhatsAppIcon size={26} /><span>Reminder</span></>
+            })}
+            {phone
+              ? <a href={`tel:${phone}`} className={`${ACTION_BUTTON} border-slate-500 bg-slate-300 text-slate-950`}>
+                  <Phone size={26} aria-hidden="true" /><span>{t("collect.call")}</span>
                 </a>
-              </>
-            ) : (
-              <>
-                <button type="button" onClick={() => setContactEditorOpen(true)} className="flex min-h-16 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 sm:h-[72px] sm:flex-col sm:gap-1 sm:text-[15px]">
-                  <UserRoundPen size={25} aria-hidden="true" /> <span className="truncate">{phone ? t("collect.editContact") : t("collect.addContact")}</span>
-                </button>
-                {balanceReceiptButton}
-              </>
-            )}
+              : <button type="button" disabled aria-disabled="true" className={`${ACTION_BUTTON} cursor-not-allowed border-slate-300 bg-slate-100 text-slate-500`}>
+                  <Phone size={26} aria-hidden="true" /><span>{t("collect.call")}</span>
+                </button>}
           </div>
+          {balanceReceiptButton}
           {balanceReceiptText && (
             <>
               <CopyReceiptButton onClick={() => void balanceActions.copy()} copied={balanceActions.copied} />
