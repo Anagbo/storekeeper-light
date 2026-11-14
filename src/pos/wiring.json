@@ -569,7 +569,7 @@
    "bottom_bar": false,
    "rules": [
     "Back is kept (built extra).",
-    "Line controls (matches the live app, confirmed from a live screenshot 14 Nov 2026): every line in the sale, item lines and the Other amount line, ends with a remove button after the amount: the trash-can icon with a lid, handle and two bars inside (Lucide trash-2, 22px, stroke 2.2), white, grey border (#64748B) and a dark crimson bin (#8B0836), accessible name \"Remove {item}\". An item line reads: name, Less, quantity, More, amount, bin. Less is greyed and disabled at quantity 1; the bin removes the whole line. At 340px the row must not overflow the card (buttons 40px, name may wrap)."
+    "Line controls and amounts (live app reference, 14 Nov 2026; amounts decided the same day): every line in the sale ends with a remove button: bin icon (Lucide trash-2), white, grey border #64748B, crimson bin #8B0836, 44px, accessible name \"Remove {item}\". Every amount is written in full with the cedi sign through formatGhs (GH₵10.00), never a bare number. PHONE: an item line has two rows: row 1 the name (wraps to two lines when long) and the amount on the right; row 2 Less, the quantity and More on the left and the bin on the right. Less is greyed and disabled at quantity 1; the bin removes the whole line. The Other amount line has no stepper and stays one row: title and the line 'From Sell' on the left, the amount, then the bin. Buttons 44px. At 340px nothing overflows or is cut off. WIDE (D9): one row per item: name, Less, quantity, More, the amount, the bin."
    ]
   },
   "21": {
