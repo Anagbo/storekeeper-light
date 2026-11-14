@@ -29,6 +29,21 @@ export function formatWeekdayDate(value) {
   return text ? `${WEEKDAYS[date.getDay()]} ${text}` : "";
 }
 
+// The one place a time of day becomes text for a person: 24-hour HH:mm, 09:30 and 14:05 (wiring
+// times_24h). Built by hand, never with Intl or toLocale*, so every phone language shows the same.
+// Accepted like formatDate: a Date, a timestamp in milliseconds or an ISO date-time; shown as local
+// time. Anything else, including "14:05" and a plain ISO date, gives "".
+export function formatTime(value) {
+  if (typeof value === "string") {
+    if (!ISO_DATE_TIME.test(value)) return "";
+  } else if (!(value instanceof Date) && !(typeof value === "number" && Number.isFinite(value))) {
+    return "";
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export function formatDate(value) {
   if (typeof value === "string") {
     const match = ISO_DATE.exec(value);

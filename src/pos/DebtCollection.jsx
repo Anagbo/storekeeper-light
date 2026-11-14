@@ -5,7 +5,7 @@ import { db } from "../db/db.js";
 import { COLLECTION_UNDO_WINDOW_MS, undoDebtCollection } from "../db/debts.js";
 import { correctDebtBalance, recordDebtReminder } from "../db/debtLedger.js";
 import { formatLastReminder } from "./reminderLabel.js";
-import { formatDate } from "../lib/formatDate.js";
+import { formatDate, formatTime } from "../lib/formatDate.js";
 import { formatGhs, formatGhsAmount, toPesewas } from "../lib/money.js";
 import { formatGhanaCard } from "../utils/formatters.js";
 import { formatHistoryTimestamp } from "../utils/customerDebtHistory.js";
@@ -78,7 +78,7 @@ function formatHistoryRowTimestamp(timestamp) {
   const isToday = date.getFullYear() === today.getFullYear() &&
     date.getMonth() === today.getMonth() &&
     date.getDate() === today.getDate();
-  const time = date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  const time = formatTime(date);
   return isToday ? `Today ${time}` : `${formatDate(date)} ${time}`;
 }
 

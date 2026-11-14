@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Check, Plus } from "lucide-react";
-import { formatDate } from "../lib/formatDate.js";
+import { formatDate, formatTime } from "../lib/formatDate.js";
 import { formatGhs } from "../lib/money.js";
 import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
@@ -47,7 +47,7 @@ export default function SaleRecorded({ transaction, creditResult, shopName, onDo
   // Records saved before MoMo verification was stored keep the translated plain label.
   const momoLabel = transaction?.momoVerification ? getMomoDisplayLabel(transaction) : t("saleRecorded.method.momo");
   const when = new Date(details.timestamp);
-  const time = when.toLocaleTimeString("en-GH", { hour: "2-digit", minute: "2-digit" });
+  const time = formatTime(when);
   const dateLabel = formatDate(when) === formatDate(new Date())
     ? t("saleRecorded.today")
     : formatDate(when);

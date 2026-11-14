@@ -1,6 +1,6 @@
 import { displayName } from "../lib/displayName.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
-import { formatDate } from "../lib/formatDate.js";
+import { formatDate, formatTime } from "../lib/formatDate.js";
 import { formatGhs } from "../lib/formatGhs.js";
 
 // Receipt amounts are checked, then shown through the one formatter ("GH₵268.20").
@@ -43,7 +43,7 @@ export function buildCollectionReceiptMessage(result, shopName) {
   }
 
   const date = formatDate(createdAt);
-  const time = createdAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  const time = formatTime(createdAt);
   const lines = [
     `Payment received by ${normalizedShopName}`,
     `${date}, ${time}`,

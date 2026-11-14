@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { UserRound } from "lucide-react";
 import { db } from "../db/db.js";
-import { formatDate } from "../lib/formatDate.js";
+import { formatDate, formatTime } from "../lib/formatDate.js";
 import {
   formatGhs,
   getFinancialTransactions,
@@ -14,13 +14,6 @@ import { PosBackButton, PosPage } from "./PosComponents.jsx";
 import { createPosTransactionRows, describeTransactionRow, filterPosTransactionRows } from "./transactionFeed.js";
 
 const FILTERS = ["all", "sold", "spent", "credit"];
-
-function formatTransactionTime(timestamp) {
-  return new Date(timestamp).toLocaleTimeString("en-GH", {
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-}
 
 // Amount colours (wiring 24): money in green with +, spent amber-brown with −, credit-only dark red
 // with no sign (nothing was received).
@@ -63,7 +56,7 @@ function TransactionRow({ row }) {
           {view.chips.map((chip) => <Chip key={`${chip.kind}:${chip.label}`} chip={chip} />)}
         </span>
         <time className="shrink-0 whitespace-nowrap text-base font-bold text-slate-800" dateTime={new Date(row.timestamp).toISOString()}>
-          {formatTransactionTime(row.timestamp)}
+          {formatTime(row.timestamp)}
         </time>
       </div>
     </article>

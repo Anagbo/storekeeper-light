@@ -21,7 +21,7 @@ const collection = {
 test("receipt previews split payments and the next installment without including contact details", () => {
   const message = buildCollectionReceiptMessage(collection, "Ama's Store");
 
-  assert.match(message, /^Payment received by Ama's Store\n/);
+  assert.match(message, /^Payment received by Ama's Store\n08\/03\/2026, 14:05\n/, "24-hour time, not the device language");
   assert.match(message, /\nFrom: Ama Owusu\n/);
   assert.match(message, /\nAmount: GH₵12\.50 \(Cash GH₵5\.00, MoMo GH₵7\.50\)\n/);
   assert.match(message, /\nStill owed: GH₵8\.75\n/);

@@ -2,7 +2,7 @@ import { displayName } from "../lib/displayName.js";
 import { FEATURE_FLAGS } from "../config/features.js";
 import { buildCollectionReceiptMessage } from "./collectionReceipt.js";
 import { buildSaleReceiptMessage, getSaleReceiptDetails } from "./saleReceipt.js";
-import { formatDate } from "../lib/formatDate.js";
+import { formatDate, formatTime } from "../lib/formatDate.js";
 import { formatGhs } from "../lib/formatGhs.js";
 
 // Receipts are built only from these fields. Customer phone and Ghana Card numbers are never read.
@@ -19,10 +19,7 @@ function formatDateTime(timestamp) {
   if (!Number.isFinite(timestamp) || !Number.isFinite(when.getTime())) {
     throw new RangeError("The receipt time is invalid.");
   }
-  const hours = when.getHours();
-  const minutes = String(when.getMinutes()).padStart(2, "0");
-  const time = `${hours % 12 || 12}:${minutes} ${hours < 12 ? "AM" : "PM"}`;
-  return `${formatDate(when)}, ${time}`;
+  return `${formatDate(when)}, ${formatTime(when)}`;
 }
 
 function formatDueDate(dateString) {
