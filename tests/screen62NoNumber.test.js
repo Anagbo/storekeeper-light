@@ -139,9 +139,15 @@ function assertNotSetUp(app, flow, where) {
   if (flow.partLine) assert.ok(text.includes(flow.partLine), `${where}: ${flow.partLine}`);
 }
 
+// 63 opened from 62's Set up MoMo number: the switch is already on, the number field is shown and focused.
+function assertReadyForNumber(app, where) {
+  assert.equal(app.route, "PaymentSettings", where);
+  assert.equal(app.button("Customer sends to my number").props["aria-checked"], true, `${where}: the switch is on`);
+  assert.equal(app.input("My MoMo number").props.autoFocus, true, `${where}: the number field is shown and focused`);
+}
+
 async function saveNumberOn63(app) {
-  assert.equal(app.route, "PaymentSettings");
-  await app.tap("Customer sends to my number");
+  assertReadyForNumber(app, "63 from 62");
   await app.type("My MoMo number", "024 123 4567");
   await app.tap(/^Save$/);
   await app.tap(/^Yes, save$/);
@@ -186,10 +192,34 @@ test("62 with no number: Back on 63 without saving returns to 62, still not set 
   await app.settle();
   const draft = structuredClone(app.params);
   await app.tap("Set up MoMo number");
-  assert.equal(app.route, "PaymentSettings");
+  assertReadyForNumber(app, "63 from 62");
   await app.tap("Back");
   assertNotSetUp(app, FLOWS["a MoMo sale (15)"], "after Back from 63");
   assert.deepEqual(app.params, draft);
+  assert.equal(await db.settings.get("momoReceivingNumber"), undefined, "Back stored nothing");
+});
+
+test("62 with no number: a number typed on 63 and left with Back is not saved; 62 is still not set up", async () => {
+  const app = await open();
+  await FLOWS["a MoMo sale (15)"].reach(app);
+  await app.settle();
+  await app.tap("Set up MoMo number");
+  await app.type("My MoMo number", "024 123 4567");
+  await app.tap("Back");
+  assertNotSetUp(app, FLOWS["a MoMo sale (15)"], "after typing and Back");
+  await app.tap("Set up MoMo number");
+  assertReadyForNumber(app, "63 opened again");
+  assert.equal(app.input("My MoMo number").props.value, "", "the unsaved number is not kept");
+});
+
+test("63 opened from Settings (not from 62) with no number: the switch stays off and nothing is focused", async () => {
+  const app = await open();
+  const home = nodes(app.view.tree).find((node) => node.type?.name === "Home");
+  home.props.onNavigate("PaymentSettings", {});
+  await app.settle();
+  assert.equal(app.route, "PaymentSettings");
+  assert.equal(app.button("Customer sends to my number").props["aria-checked"], false);
+  assert.throws(() => app.input("My MoMo number"), /No input/);
 });
 
 test("no screen tells the owner a Menu › Settings path", () => {

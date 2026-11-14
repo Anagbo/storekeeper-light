@@ -192,7 +192,10 @@ function formatPhoneForReading(number = "") {
 
 export function PaymentSettings({ params = {}, onBack, onNavigate, onUpdateParams }) {
   const [settings, setSettings] = useState({ number: "", network: MOMO_CONFIG.defaultNetwork, defaultMethod: "ask" });
-  const [enabled, setEnabled] = useState(false);
+  // Opened from 62 with no MoMo number (wiring 62 "Set up MoMo number"): the Customer sends to my
+  // number switch is already on and the number field is focused. Back without Save changes nothing.
+  const setUpNumber = Boolean(params.setUpNumber);
+  const [enabled, setEnabled] = useState(() => params.momoSettingsDraft?.enabled ?? setUpNumber);
   // The stored choice is only rewritten when the owner taps the radio group. An unavailable "phone"
   // shows as Ask on screen but stays stored when something else (number, network) is saved.
   const [tapChoiceChanged, setTapChoiceChanged] = useState(false);
@@ -212,7 +215,7 @@ export function PaymentSettings({ params = {}, onBack, onNavigate, onUpdateParam
   useEffect(() => { getMerchantMomoSettings().then((value) => {
     const draft = draftRef.current ?? {};
     setSettings({ ...value, ...(draft.network !== undefined && { network: draft.network }), ...(draft.defaultMethod !== undefined && { defaultMethod: draft.defaultMethod }) });
-    setEnabled(draft.enabled ?? Boolean(value.number));
+    setEnabled(draft.enabled ?? (Boolean(value.number) || setUpNumber));
     setNumberInput(draft.numberInput ?? value.number);
     if (draft.tapChoiceChanged) setTapChoiceChanged(true);
   }).catch((loadError) => console.error("Could not load payment settings.", loadError)); }, []);
@@ -256,7 +259,7 @@ export function PaymentSettings({ params = {}, onBack, onNavigate, onUpdateParam
         </button>
       </div>
       {enabled && <>
-        <label className="mt-2 block font-bold">My MoMo number<input aria-label="My MoMo number" value={numberInput} onChange={(event) => { setNumberInput(event.target.value); keepDraft({ numberInput: event.target.value }); setConfirming(false); }} type="tel" inputMode="tel" autoComplete="tel" placeholder="024 123 4567" className="mt-1 h-14 w-full rounded-xl border-[3px] border-slate-500 px-3 text-xl" /></label>
+        <label className="mt-2 block font-bold">My MoMo number<input aria-label="My MoMo number" autoFocus={setUpNumber} value={numberInput} onChange={(event) => { setNumberInput(event.target.value); keepDraft({ numberInput: event.target.value }); setConfirming(false); }} type="tel" inputMode="tel" autoComplete="tel" placeholder="024 123 4567" className="mt-1 h-14 w-full rounded-xl border-[3px] border-slate-500 px-3 text-xl" /></label>
         <fieldset className="mt-2">
           <legend className="mb-2 text-lg font-extrabold">Network</legend>
           <div className="grid grid-cols-3 gap-2">{RECEIVING_NETWORKS.map((item) => <button key={item} type="button" aria-pressed={settings.network === item} onClick={() => { setSettings((current) => ({ ...current, network: item })); keepDraft({ network: item }); setConfirming(false); }} className={`min-h-14 min-w-0 rounded-xl border-[3px] px-1 text-sm font-bold ${settings.network === item ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{item}</button>)}</div>
