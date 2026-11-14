@@ -595,9 +595,12 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
         <p role="status" className="text-center text-sm font-semibold text-slate-700">{t("collect.receiptWait", { seconds: remainingSeconds })}</p>
       )}
       {receiptsOn && !receiptPhone && !undone && (
-        <button type="button" onClick={() => setContactEditorOpen(true)} className="min-h-11 text-center font-extrabold text-emerald-900 underline">
-          {t("collect.addPhoneForReceipt")}
-        </button>
+        <div className="text-center">
+          <button type="button" onClick={() => setContactEditorOpen(true)} className="min-h-11 text-center font-extrabold text-emerald-900 underline">
+            {t("collect.addPhoneForReceipt")}
+          </button>
+          <p className="text-sm font-semibold text-slate-700">{t("collect.addPhoneForReceiptHint")}</p>
+        </div>
       )}
       <p className="text-center text-[17px] text-slate-800">
         <Clock3 size={16} className="mr-1 inline" aria-hidden="true" />{t("collect.undoWindow", { seconds: Math.floor(COLLECTION_UNDO_WINDOW_MS / 1000) })}

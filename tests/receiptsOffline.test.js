@@ -350,3 +350,35 @@ test("31 with a saved number goes to that number; without one, the share sheet",
     setLiveQuery(null);
   }
 });
+
+// 28: "Add a phone number" with a quiet line under it; only with the receipts flag on and no phone.
+async function show28(env, phone) {
+  const { PaymentReceived } = await loadJsx("src/pos/DebtCollection.jsx", env);
+  setLiveQuery(() => null);
+  try {
+    const result = {
+      collectionId: "col-1", debtId: "d1", customerId: "c1", customerName: "Ama", phone,
+      amountPesewas: 1250, remainingPesewas: 875, createdAt: Date.now(), undoExpiresAt: Date.now() - 1000,
+      parts: [{ paymentMethod: "cash", amountPesewas: 1250 }],
+      debtAfter: { isInstallmentPlan: false }
+    };
+    const view = render({ type: PaymentReceived, props: { params: result, onHome() {}, onNavigate() {}, onSaveCustomerContact() {}, shopName: "Shop" } });
+    flushEffects(view);
+    return view;
+  } finally {
+    setLiveQuery(null);
+  }
+}
+
+test("28 without a phone and receipts on: link \"Add a phone number\" with the quiet line under it", async () => {
+  const view = await show28(ON, "");
+  assert.ok(findButton(view.tree, "Add a phone number"), "the reworded link");
+  assert.doesNotMatch(textOf(view.tree), /Add a phone number to send this receipt/);
+  assert.match(textOf(view.tree), /Add a phone number\s*Next time the receipt opens their WhatsApp chat\./);
+});
+
+test("28 with a phone, or with the receipts flag off: no link and no quiet line", async () => {
+  for (const view of [await show28(ON, "+233241234567"), await show28({}, "")]) {
+    assert.doesNotMatch(textOf(view.tree), /Add a phone number|Next time the receipt opens/);
+  }
+});
