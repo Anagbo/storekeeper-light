@@ -20,6 +20,10 @@ test("aggregates cash sales, recovered debt, expenses, and new credit", () => {
     cashReceived: 9000,
     momoReceived: 0,
     expenses: 2000,
+    // Spending by method (wiring 33): this expense has no paidWith, so it is not recorded.
+    spentCash: 0,
+    spentMomo: 0,
+    spentUnrecorded: 2000,
     totalSales: 14500,
     realCashProfit: 7000,
     newCreditExtended: 7000,

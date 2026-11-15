@@ -7,34 +7,57 @@ import { loadMyMoneyReport } from "./myMoneyReport.js";
 import { PosBackButton, PosCard, PosPage } from "./PosComponents.jsx";
 
 // Brief 3.11 / wiring screen 33. One strong green block (Money left); every other card is white
-// with a thin border.
+// with a thin border. Every figure follows the period except Owed to you and You owe suppliers.
+export const MY_MONEY_PERIODS = [["day", "money.today"], ["week", "money.thisWeek"], ["month", "money.thisMonth"]];
+const PERIOD_WORDS = { day: "money.periodToday", week: "money.periodThisWeek", month: "money.periodThisMonth" };
 const COMPARISON_KEYS = {
+  day: { more: "money.moreThanYesterday", less: "money.lessThanYesterday", same: "money.sameAsYesterday" },
   week: { more: "money.moreThanLastWeek", less: "money.lessThanLastWeek", same: "money.sameAsLastWeek" },
   month: { more: "money.moreThanLastMonth", less: "money.lessThanLastMonth", same: "money.sameAsLastMonth" }
 };
 const cardClass = "min-w-0 rounded-[18px] border-2 border-slate-300 bg-white px-3.5 py-3";
 
+// One label and amount on a line; the amount never wraps or shrinks.
+function Row({ label, amountPesewas, ...rest }) {
+  return (
+    <p {...rest} className="flex min-w-0 items-baseline justify-between gap-3 text-base sm:text-lg">
+      <span className="min-w-0">{label}</span>
+      <strong className="shrink-0 whitespace-nowrap">{formatGhs(amountPesewas)}</strong>
+    </p>
+  );
+}
+
+function CardTitle({ children, amountPesewas }) {
+  return (
+    <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-3">
+      <p className="flex items-center gap-1 text-base font-extrabold sm:text-lg">{children}</p>
+      {amountPesewas !== undefined && <p className="whitespace-nowrap text-xl font-extrabold">{formatGhs(amountPesewas)}</p>}
+    </div>
+  );
+}
+
 // Back returns to the screen My money was opened from (Home, or the page under the Menu drawer, wiring
 // 23); with nothing behind it, Home (wiring 33: Back to 22).
 export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home") }) {
-  const [period, setPeriod] = useState("week");
+  const [period, setPeriod] = useState("day");
   // The day the report is for is fixed when the period is chosen, so the screen does not re-read at midnight.
   const now = useMemo(() => new Date(), [period]);
   const report = useLiveQuery(() => loadMyMoneyReport({ period, now }), [period, now.getTime()], null);
-  const periodLabel = period === "week" ? t("money.thisWeek").toLowerCase() : t("money.thisMonth").toLowerCase();
+  const periodWords = t(PERIOD_WORDS[period]);
   const summary = report?.summary;
   const comparison = report?.comparison;
 
   return (
-    <PosPage style={{ paddingTop: 10 }} className="flex flex-col gap-2.5 lg:min-h-0 lg:grid lg:grid-cols-2 lg:content-start lg:items-start lg:gap-5">
-      <div className="flex items-center gap-3 lg:col-span-2">
+    <PosPage style={{ paddingTop: 10 }} className="flex flex-col gap-2.5">
+      <div className="flex items-center gap-3">
         <PosBackButton onClick={onBack} aria-label={t("money.back")} />
         <h1 className="text-xl font-extrabold sm:text-2xl">{t("money.title")}</h1>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 lg:col-span-2 lg:max-w-xl" role="group" aria-label={t("money.choosePeriod")}>
-        {[["week", "money.thisWeek"], ["month", "money.thisMonth"]].map(([value, label]) => (
-          <button key={value} type="button" aria-pressed={period === value} onClick={() => setPeriod(value)} className={`h-11 rounded-[14px] border-2 px-3 text-base font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 sm:h-[52px] sm:text-lg ${period === value ? "border-slate-900 bg-slate-900 text-white" : "border-slate-500 bg-white text-slate-950"}`}>{t(label)}</button>
+      {/* (0) Today / This week / This month: three equal buttons, 16px, one line each at 340px. */}
+      <div data-periods="" className="grid grid-cols-3 gap-1 sm:gap-2" role="group" aria-label={t("money.choosePeriod")}>
+        {MY_MONEY_PERIODS.map(([value, label]) => (
+          <button key={value} type="button" aria-pressed={period === value} onClick={() => setPeriod(value)} className={`h-11 min-w-0 whitespace-nowrap rounded-[14px] border-2 px-0 text-base font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 sm:h-[52px] ${period === value ? "border-slate-900 bg-slate-900 text-white" : "border-slate-500 bg-white text-slate-950"}`}>{t(label)}</button>
         ))}
       </div>
 
@@ -42,8 +65,9 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home") 
         <PosCard><p className="text-base font-semibold">{t("money.loading")}</p></PosCard>
       ) : (
         <>
-          <section className="amount-fit-container rounded-[20px] bg-emerald-900 px-4 py-3 text-white lg:col-span-2 lg:p-6">
-            <p className="text-base font-bold sm:text-lg">{t("money.moneyLeft", { period: periodLabel })}</p>
+          {/* (1) The one strong block. */}
+          <section className="amount-fit-container rounded-[20px] bg-emerald-900 px-4 py-3 text-white">
+            <p className="text-base font-bold sm:text-lg">{t("money.moneyLeft", { period: periodWords })}</p>
             <p className="amount-fit font-extrabold leading-tight">{formatGhs(summary.moneyLeft)}</p>
             {comparison && (
               <p className="text-base leading-snug sm:text-lg">{t(COMPARISON_KEYS[period][comparison.kind], { amount: formatGhs(comparison.amountPesewas) })}</p>
@@ -52,31 +76,46 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home") 
           </section>
 
           {(report.uncounted?.sales > 0 || report.uncounted?.other > 0) && (
-            <div className="flex flex-col gap-0.5 px-1 lg:col-span-2">
+            <div className="flex flex-col gap-0.5 px-1">
               {report.uncounted.sales > 0 && <p className="text-sm text-slate-700 sm:text-base">{report.uncounted.sales === 1 ? t("money.uncountedSale") : t("money.uncountedSales", { n: report.uncounted.sales })}</p>}
               {report.uncounted.other > 0 && <p className="text-sm text-slate-700 sm:text-base">{report.uncounted.other === 1 ? t("money.uncountedRecord") : t("money.uncountedRecords", { n: report.uncounted.other })}</p>}
             </div>
           )}
 
-          <div className="grid min-w-0 grid-cols-2 gap-2 lg:col-span-2 lg:gap-5">
-            <section className={`amount-fit-container flex flex-col gap-0.5 ${cardClass}`}>
-              <p className="text-base font-extrabold sm:text-lg">{t("money.moneyIn")}</p>
-              <p className="amount-fit font-extrabold leading-tight">{formatGhs(summary.moneyIn)}</p>
-              {summary.moneyIn > 0 && (
-                <p className="break-words text-sm leading-snug text-slate-800 sm:text-base">{t("money.cashMomo", { cash: formatGhs(summary.cashIn), momo: formatGhs(summary.momoIn) })}</p>
+          <div data-method-cards="" className="grid min-w-0 gap-2.5">
+            {/* (2) Money in: Cash + MoMo = Money in. Collections are in it; credit is only the quiet line. */}
+            <section data-card="money-in" className={`flex flex-col gap-1 ${cardClass}`}>
+              <CardTitle amountPesewas={summary.moneyIn}>{t("money.moneyIn")}</CardTitle>
+              <Row data-row="cash-in" label={t("money.cash")} amountPesewas={summary.cashIn} />
+              <Row data-row="momo-in" label={t("money.momo")} amountPesewas={summary.momoIn} />
+              {summary.collectedIn > 0 && (
+                <p data-line="collected" className="text-sm leading-snug text-slate-800 sm:text-base">{t("money.includesCollected", { amount: formatGhs(summary.collectedIn) })}</p>
+              )}
+              {summary.givenOnCredit > 0 && (
+                <p data-line="given-on-credit" className="text-sm leading-snug text-slate-600 sm:text-base">{t("money.alsoGivenOnCredit", { amount: formatGhs(summary.givenOnCredit) })}</p>
               )}
             </section>
-            <section className={`amount-fit-container flex flex-col gap-0.5 ${cardClass}`}>
-              <p className="flex items-center gap-1 text-base font-extrabold sm:text-lg"><ArrowUpRight size={18} className="shrink-0" aria-hidden="true" /> {t("money.moneySpent")}</p>
-              <p className="amount-fit font-extrabold leading-tight">{formatGhs(summary.moneySpent)}</p>
-              {summary.moneySpent > 0 && (
-                <p className="break-words text-sm leading-snug text-slate-800 sm:text-base">{t("money.stockOther", { stock: formatGhs(summary.spentStock), other: formatGhs(summary.spentOther) })}</p>
-              )}
+
+            {/* (3) Money spent: Paid in cash + Paid by MoMo + Method not recorded = Money spent. */}
+            <section data-card="money-spent" className={`flex flex-col gap-1 ${cardClass}`}>
+              <CardTitle amountPesewas={summary.moneySpent}><ArrowUpRight size={18} className="shrink-0" aria-hidden="true" /> {t("money.moneySpent")}</CardTitle>
+              <Row data-row="cash-spent" label={t("money.paidInCash")} amountPesewas={summary.spentCash} />
+              <Row data-row="momo-spent" label={t("money.paidByMomo")} amountPesewas={summary.spentMomo} />
+              {summary.spentUnrecorded > 0 && <Row data-row="unrecorded-spent" label={t("money.methodNotRecorded")} amountPesewas={summary.spentUnrecorded} />}
+            </section>
+
+            {/* (4) What you should have left, this period only. */}
+            <section data-card="should-have-left" className={`flex flex-col gap-1 ${cardClass}`}>
+              <CardTitle>{t("money.shouldHaveLeft")}</CardTitle>
+              <Row data-row="cash-left" label={t("money.cash")} amountPesewas={summary.cashShouldHave} />
+              <Row data-row="momo-left" label={t("money.momo")} amountPesewas={summary.momoShouldHave} />
+              <p className="text-sm leading-snug text-slate-700 sm:text-base">{t("money.shouldHaveLeftCaption", { period: periodWords })}</p>
             </section>
           </div>
 
+          {/* (5) The profit card follows the period. */}
           {report.showProfit && (
-            <section className={`amount-fit-container flex flex-col gap-0.5 lg:col-span-2 ${cardClass}`}>
+            <section className={`amount-fit-container flex flex-col gap-0.5 ${cardClass}`}>
               <div className="flex items-center justify-between gap-2">
                 <p className="text-lg font-extrabold">{t("money.estimatedProfit")}</p>
                 <span className="rounded-[10px] border-2 border-slate-500 bg-slate-100 px-2 text-[15px] font-extrabold text-slate-950">{t("money.estimate")}</span>
@@ -89,7 +128,8 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home") 
             </section>
           )}
 
-          <div className="grid min-w-0 grid-cols-2 gap-2 lg:col-span-2 lg:gap-5">
+          {/* (6) Balances right now: they do not change with the period. */}
+          <div className="grid min-w-0 grid-cols-2 gap-2">
             <button type="button" onClick={() => onNavigate("PeopleWhoOweYou")} className="amount-fit-container min-w-0 rounded-[16px] border-2 border-l-[6px] border-slate-300 border-l-rose-900 bg-white px-2.5 py-2 text-left text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 sm:px-3">
               <span className="block text-[15px] font-extrabold leading-snug sm:text-[17px]">{t("money.owedToYou")}</span>
               <span className="amount-fit block font-extrabold leading-tight text-rose-900">{formatGhs(report.debtPesewas)}</span>

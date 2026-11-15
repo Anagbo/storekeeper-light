@@ -174,8 +174,9 @@ test("3.11: a quiet week inside the span counts as zero, and the stock and other
 function reportFor(overrides = {}) {
   return {
     summary: {
-      moneyIn: 22000, cashIn: 18000, momoIn: 4000,
+      moneyIn: 22000, cashIn: 18000, momoIn: 4000, collectedIn: 3000, givenOnCredit: 8000,
       moneySpent: 18000, spentStock: 15000, spentOther: 3000,
+      spentCash: 12000, spentMomo: 4000, spentUnrecorded: 2000, cashShouldHave: 6000, momoShouldHave: 0,
       moneyLeft: 4000, sales: 30000, stockBought: 15000, otherCosts: 3000, profit: 12000
     },
     comparison: { kind: "more", amountPesewas: 2500 },
@@ -198,7 +199,8 @@ async function mountMyMoney(report) {
 test("3.11: the strong block says Money left (never Cash left) with the period", async () => {
   const { view } = await mountMyMoney(reportFor());
   const text = textOf(view.tree);
-  assert.match(text, /Money left this week/);
+  // Wiring 33 (15 Nov 2026): the default period is Today.
+  assert.match(text, /Money left today/);
   assert.doesNotMatch(text, /Cash left/);
   assert.match(text, new RegExp(formatGhs(4000).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.match(text, /Money in minus money spent/);
@@ -216,24 +218,29 @@ test("3.11: no 'Category breakdown unavailable' text, even when a breakdown is m
 test("3.11: Money in and Money spent show their breakdowns through the formatter", async () => {
   const { view } = await mountMyMoney(reportFor());
   const text = textOf(view.tree);
+  // Wiring 33 (15 Nov 2026): Cash and MoMo rows, and Paid in cash / Paid by MoMo / Method not recorded.
   assert.match(text, /Money in/);
-  assert.ok(text.includes(`Cash ${formatGhs(18000)} · MoMo ${formatGhs(4000)}`));
+  assert.ok(text.includes(`Cash${formatGhs(18000)}`));
+  assert.ok(text.includes(`MoMo${formatGhs(4000)}`));
   assert.match(text, /Money spent/);
-  assert.ok(text.includes(`Stock ${formatGhs(15000)} · Other ${formatGhs(3000)}`));
+  assert.ok(text.includes(`Paid in cash${formatGhs(12000)}`));
+  assert.ok(text.includes(`Paid by MoMo${formatGhs(4000)}`));
+  assert.ok(text.includes(`Method not recorded${formatGhs(2000)}`));
   assert.ok(text.includes(formatGhs(22000)));
   assert.ok(text.includes(formatGhs(18000)));
 });
 
 test("3.11: the comparison line is calm and neutral for more and for less", async () => {
+  // Today is the default period, so the line compares with yesterday (This week: tests/myMoneyThreePeriods).
   const more = textOf((await mountMyMoney(reportFor({ comparison: { kind: "more", amountPesewas: 2500 } }))).view.tree);
-  assert.ok(more.includes(`${formatGhs(2500)} more than last week`));
+  assert.ok(more.includes(`${formatGhs(2500)} more than yesterday`));
   const less = textOf((await mountMyMoney(reportFor({ comparison: { kind: "less", amountPesewas: 2500 } }))).view.tree);
-  assert.ok(less.includes(`${formatGhs(2500)} less than last week`));
+  assert.ok(less.includes(`${formatGhs(2500)} less than yesterday`));
   assert.doesNotMatch(less, /\bDown\b|\bUp\b|drop|fell|lost|worse/i);
   const same = textOf((await mountMyMoney(reportFor({ comparison: { kind: "same", amountPesewas: 0 } }))).view.tree);
-  assert.match(same, /Same as last week/);
+  assert.match(same, /Same as yesterday/);
   const none = textOf((await mountMyMoney(reportFor({ comparison: null }))).view.tree);
-  assert.doesNotMatch(none, /last week|last month/);
+  assert.doesNotMatch(none, /yesterday|last week|last month/);
   assert.doesNotMatch(none, /NaN|undefined/);
 });
 
@@ -250,7 +257,15 @@ test("3.11: the comparison line for the month says last month", async () => {
 });
 
 test("3.11: the Estimated profit card shows the tag, the sum and the average of the last 4 weeks", async () => {
-  const text = textOf((await mountMyMoney(reportFor())).view.tree);
+  // The 4-week average shows only for This week (wiring 33, 15 Nov 2026).
+  const { default: MyMoney } = await loadJsx("src/pos/MyMoney.jsx");
+  setLiveQuery(() => reportFor());
+  const view = render({ type: MyMoney, props: { onNavigate() {} } });
+  assert.doesNotMatch(textOf(view.tree), /Average of last/, "not for Today");
+  findButton(view.tree, "This week").props.onClick();
+  view.rerender();
+  setLiveQuery(null);
+  const text = textOf(view.tree);
   assert.match(text, /Estimated profit/);
   assert.match(text, /Estimate/);
   assert.ok(text.includes(formatGhs(12000)));

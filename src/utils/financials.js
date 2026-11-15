@@ -83,6 +83,15 @@ function getPaymentMethod(transaction) {
   return method === "momo" || method === "telecel_cash" ? "momo" : "cash";
 }
 
+// Wiring 33 "Money spent by method": the paidWith stored on 44/45/46. Spending saved before that
+// existed has none and is counted as not recorded (never guessed from payment_method, which was
+// always "cash" on spending). spentCash + spentMomo + spentUnrecorded = expenses.
+function spentField(transaction) {
+  if (transaction.paidWith === "cash") return "spentCash";
+  if (transaction.paidWith === "momo") return "spentMomo";
+  return "spentUnrecorded";
+}
+
 function addTotal(totals, field, amount) {
   const value = totals[field] + amount;
   if (!Number.isSafeInteger(value)) throw new RangeError(`The ${field} total exceeds the safe integer range.`);
@@ -147,6 +156,9 @@ export function summarizeFinancialTransactions(transactions) {
     cashReceived: 0,
     momoReceived: 0,
     expenses: 0,
+    spentCash: 0,
+    spentMomo: 0,
+    spentUnrecorded: 0,
     totalSales: 0,
     realCashProfit: 0,
     newCreditExtended: 0,
@@ -163,10 +175,13 @@ export function summarizeFinancialTransactions(transactions) {
     ) continue;
     const amount = amountInPesewas(transaction);
     if (transaction.type === "expense") {
-      addTotal(totals, "expenses", optionalAmount(transaction.paidAmountPesewas, amount, "Expense payment"));
+      const paid = optionalAmount(transaction.paidAmountPesewas, amount, "Expense payment");
+      addTotal(totals, "expenses", paid);
+      addTotal(totals, spentField(transaction), paid);
     }
     else if (transaction.type === "supplier_payment") {
       addTotal(totals, "expenses", amount);
+      addTotal(totals, spentField(transaction), amount);
     }
     else if (transaction.type === "manual_debt") {
       // "Added to debt": credit given with no sale. Not profit, so it stays out of newCreditExtended.

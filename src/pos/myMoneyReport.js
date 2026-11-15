@@ -1,5 +1,5 @@
 import { db as defaultDb } from "../db/db.js";
-import { getFinancialTransactions, isSaleRecord, splitCountableTransactions, summarizePosMoney } from "../lib/money.js";
+import { getFinancialTransactions, isSaleRecord, splitCountableTransactions, summarizeFinancialTransactions, summarizePosMoney } from "../lib/money.js";
 import { getMoneyPeriodRange, getOutstandingDebtPesewas, getPreviousMoneyPeriodRange } from "./money.js";
 import { getSupplierBalances } from "../utils/suppliers.js";
 
@@ -44,6 +44,8 @@ export function summarizeMyMoney(transactions) {
  */
 export function summarizeMyMoneyChecked(allTransactions) {
   const { countable: transactions, skipped } = splitCountableTransactions(allTransactions);
+  // The one shared core (22, 24 and 33 read the same rows through it).
+  const core = summarizeFinancialTransactions(transactions);
   const totals = summarizePosMoney(transactions);
   const isReversal = (transaction) => transaction.type === "income_reversal";
   const stockOut = summarizePosMoney(transactions.filter((transaction) => isReversal(transaction) ||
@@ -62,7 +64,11 @@ export function summarizeMyMoneyChecked(allTransactions) {
     else otherCosts += amount;
   }
   const profit = totals.sales - stockBought - otherCosts;
-  if (![stockBought, otherCosts, profit].every(Number.isSafeInteger)) {
+  // What you should have left (wiring 33): cash in minus cash spent, MoMo in minus MoMo spent, this
+  // period only. With spending whose method was not recorded: cash + MoMo − that = Money left.
+  const cashShouldHave = core.cashReceived - core.spentCash;
+  const momoShouldHave = core.momoReceived - core.spentMomo;
+  if (![stockBought, otherCosts, profit, cashShouldHave, momoShouldHave].every(Number.isSafeInteger)) {
     throw new RangeError("A My money total exceeds the safe integer range.");
   }
   return {
@@ -70,7 +76,16 @@ export function summarizeMyMoneyChecked(allTransactions) {
       moneyIn: totals.moneyIn,
       cashIn: totals.cashIn,
       momoIn: totals.momoIn,
+      // Money in that came from customers paying what they owed (not a sale).
+      collectedIn: core.debtPaymentsCollected,
+      // The owed part of sales plus Added to debt: the Given on credit figure of 24.
+      givenOnCredit: core.creditGiven,
       moneySpent: totals.moneySpent,
+      spentCash: core.spentCash,
+      spentMomo: core.spentMomo,
+      spentUnrecorded: core.spentUnrecorded,
+      cashShouldHave,
+      momoShouldHave,
       spentStock: stockOut.moneySpent,
       spentOther: otherOut.moneySpent,
       moneyLeft: totals.cashLeft,
@@ -134,7 +149,7 @@ export function buildMyMoneyReport({ currentTransactions, previousTransactions, 
  * weeks, or older). A quiet week inside the span counts as zero.
  */
 /**
- * Everything the My money screen shows for a week or a month, read from the database. `now` is a
+ * Everything the My money screen shows for today, a week or a month, read from the database. `now` is a
  * parameter so the first week of a month, the year start and the days the clock changes can be tested.
  */
 export async function loadMyMoneyReport({ period, now = new Date(), database = defaultDb }) {
