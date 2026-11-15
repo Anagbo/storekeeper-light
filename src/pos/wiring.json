@@ -1567,14 +1567,14 @@
     }
    ],
    "inputs": [
-    "np-amt",
     "e.g. Kofi Mensah",
     "024 000 0000",
     "GHA-000000000-0"
    ],
    "bottom_bar": false,
    "rules": [
-    "Draft survives Back (decided 12 Nov 2026, reported on the phone): in the sale-on-credit flow (15 → 17 → 34/18 → 19 → 27) everything the owner has typed or chosen is kept when they go Back and return, until the sale is saved (Done or Save plan) or the owner leaves with header Home or another tab. Nothing is lost by going one step back and forward. Kept values live in the route parameters, like 15 and 16. On 34 that means the Name, Phone number and Ghana Card number fields and the Amount owed (if the owner edited it). Returning to 34 shows them filled in. The error box \"Enter the customer's name and a valid amount.\" only appears after the owner taps Next with a problem, never on a fresh or returning form."
+    "Draft survives Back (decided 12 Nov 2026, reported on the phone): in the sale-on-credit flow (15 → 17 → 34/18 → 19 → 27) everything the owner has typed or chosen is kept when they go Back and return, until the sale is saved (Done or Save plan) or the owner leaves with header Home or another tab. Nothing is lost by going one step back and forward. Kept values live in the route parameters, like 15 and 16. On 34 that means the Name, Phone number and Ghana Card number fields and the Amount owed (if the owner edited it). Returning to 34 shows them filled in. The error box \"Enter the customer's name and a valid amount.\" only appears after the owner taps Next with a problem, never on a fresh or returning form.",
+    "No amount field on 34 (decided 15 Nov 2026, found on a real phone). 34 has only Name, Phone number and Ghana Card number. In the add-debt flow (Owed > Add debt > 17 > New person > 34, flow=add_debt) nothing about the amount is shown: Next goes to 53, where the amount is entered on the shared keypad (the old pink \"Amount owed later / You will enter the amount next\" box is removed because it looked like an error field and did nothing). In the sale-on-credit flow (15 > 17 > 34 > 18) the amount comes from the sale and is shown as one read-only line, \"Owes from this sale: GH₵x\" (pink background, amount in dark red); it is not a typed field. To change it the owner goes Back to the sale. Name, Phone number and Ghana Card number survive Back from 53 and 18 (draft rule). Tests for both flows: add-debt shows no amount line and Next opens 53; sale flow shows the read-only line with the sale amount and Next opens 18."
    ]
   },
   "35": {
