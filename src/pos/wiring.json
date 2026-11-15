@@ -120,6 +120,13 @@
      "effect": "Selects or edits a value on this screen. No navigation."
     },
     {
+     "label": ".",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Starts pesewas. At most two decimals; a second . is ignored."
+    },
+    {
      "label": "00",
      "role": null,
      "disabled_initially": false,
@@ -822,12 +829,13 @@
     "Money in is money actually received today (cash and MoMo parts of sales, plus collections). Each row's amount must be consistent with it: a sale paid in part shows the money received as its amount (+GH₵4.00) and the title \\\"Sale of GH₵8.00\\\"; the owed part is the pink chip \\\"{Name} owes GH₵4.00\\\". The sum of the green + amounts in the list equals the Money in card (add a test).",
     "Row layout: a white card, 2px #CBD5E1 border, 18px radius. Line 1: title in bold 18px on the left (Sale, Sale of GH₵x, Sold on credit, Spent, Payment collected, Added to debt, Balance correction) and the amount in bold 22px on the right. Line 2: chips on the left (grey payment chips \\\"Cash GH₵x\\\", \\\"MoMo GH₵x\\\"; pink person chip with a small person icon, \\\"{Name} owes GH₵x\\\" for the owed part or just the name for a credit-only sale; amber category chip for Spent) and the time in 16px bold on the right. Chips wrap. Person names are capitalised (Juju, not juju) and a name is never a plain grey chip that looks like a payment.",
     "Amount colours: money in green #03543F with a +, spent amber-brown #92400E with a −, credit-only sale dark red #7F1D1D with no sign (nothing was received).",
-    "Stock bought on credit (decided 11 Nov 2026): a purchase with nothing paid now is titled \"Stock on credit\" (never \"Spent\", because no money went out), its amount is in dark red with no sign, and it has a pink chip \"You owe {Supplier}\". A part-paid purchase is titled \"Stock\", shows the amount paid now with a minus sign in amber-brown, and the pink chip \"You owe {Supplier} GH₵x\" for the rest. A fully paid purchase is a normal Spent row. The Spent tile counts only money actually paid out.",
+    "Stock bought on credit (decided 11 Nov 2026): a purchase with nothing paid now is titled \"Stock on credit\" (never \"Spent\", because no money went out), its amount is in dark red with no sign, and it has a pink chip \"You owe {Supplier} GH₵x\". A part-paid purchase is titled \"Stock\", shows the amount paid now with a minus sign in amber-brown, and the pink chip \"You owe {Supplier} GH₵x\" for the rest. A fully paid purchase is a normal Spent row. The Spent tile counts only money actually paid out.",
     "Rows are not buttons until their detail view is designed: no chevron, no hover, not focusable. Do not make them tappable.",
     "A filter with no rows shows one quiet line, \\\"Nothing here yet today.\\\" Filters All, Sold, Spent and Credit stay as a radio-style row (52px, bold, selected = solid green).",
     "Credit filter (decided 14 Nov 2026 from a phone test where Balance correction rows appeared only under All): Credit shows every row that changes what people owe: credit-only sales, part-paid sales (their owed part), Added to debt, Payment collected and Balance correction. Sold and Spent are unchanged. A correction moves no money, so it is never under Sold or Spent. All shows everything.",
     "Balance correction row (corrections only ever lower a balance; the correction event stores the previous balance, the new balance, the difference and the reason): title 'Balance corrected'; on the right the amount the debt was lowered by, in plain dark text with no plus or minus and no green or red; line 2 has a pink person chip '{Name} owes GH₵y now' (y is the new balance) and a grey chip with the reason; the time is on the right as usual. The accessible name includes 'lowered by GH₵x'. The tiles at the top must equal the sum of the rows (report how the Owed tile is computed).",
-    "Given on credit tile (decided 14 Nov 2026; it was labelled Owed and confused the owner because it is not what people owe now): the label is 'Given on credit' and the amount is the credit given today: the owed part of today's credit and part-paid sales (including installment sales) plus today's Added to debt rows. Payments collected and Balance corrections are not subtracted (they have their own rows) and stock bought on credit is not counted (that is money the owner owes). The tile equals the sum of the owed parts shown in the rows above it. On the wide table the column is called 'On credit'."
+    "Given on credit tile (decided 14 Nov 2026; it was labelled Owed and confused the owner because it is not what people owe now): the label is 'Given on credit' and the amount is the credit given today: the owed part of today's credit and part-paid sales (including installment sales) plus today's Added to debt rows. Payments collected and Balance corrections are not subtracted (they have their own rows) and stock bought on credit is not counted (that is money the owner owes). The tile equals the sum of the owed parts shown in the rows above it. On the wide table the column is called 'On credit'.",
+    "Credit rows look the same (decided 15 Nov 2026): \"Sold on credit\" and \"Stock on credit\" both show the amount in dark red with no plus or minus and a pink chip with a person icon and the amount: \"{Name} owes GH₵x\" and \"You owe {Supplier} GH₵x\". Nothing is shown with a minus sign for money that did not move."
    ],
    "bottom_bar": false
   },
@@ -973,6 +981,13 @@
      "disabled_initially": false,
      "type": "selection_or_edit",
      "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": ".",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Starts pesewas. At most two decimals; a second . is ignored."
     },
     {
      "label": "00",
@@ -1122,7 +1137,8 @@
    "bottom_bar": false,
    "rules": [
     "Never list a payment part with GH₵0.00 (for example no \"MoMo GH₵0.00\" row after a cash-only payment): only parts above zero are shown.",
-    "Receipts offline (decided 12 Nov 2026): the sale or collection is already saved before the receipt button is shown, and a receipt never blocks Done or New sale. Send receipt opens WhatsApp through the installed app or the phone's share sheet (not a wa.me web page that fails offline), with the receipt text filled in. When the phone is offline, one quiet line appears directly under the Send receipt button (8px below it, above Copy receipt; it explains what Send receipt does, so it never sits under Copy receipt or further down): \"You are offline. WhatsApp will send it when you are back online.\" A secondary outlined button \"Copy receipt\" copies the same text (shows \"Copied\" for two seconds). Receipt buttons only exist when VITE_ENABLE_POS_RECEIPTS is \"true\". Amounts in the receipt text and in the panel above it always use formatGhs (GH₵5.00), also the Sale line."
+    "Receipts offline (decided 12 Nov 2026): the sale or collection is already saved before the receipt button is shown, and a receipt never blocks Done or New sale. Send receipt opens WhatsApp through the installed app or the phone's share sheet (not a wa.me web page that fails offline), with the receipt text filled in. When the phone is offline, one quiet line appears directly under the Send receipt button (8px below it, above Copy receipt; it explains what Send receipt does, so it never sits under Copy receipt or further down): \"You are offline. WhatsApp will send it when you are back online.\" A secondary outlined button \"Copy receipt\" copies the same text (shows \"Copied\" for two seconds). Receipt buttons only exist when VITE_ENABLE_POS_RECEIPTS is \"true\". Amounts in the receipt text and in the panel above it always use formatGhs (GH₵5.00), also the Sale line.",
+    "Collection receipt text (decided 15 Nov 2026): \"Receipt from {Shop}\", \"dd/mm/yyyy HH:mm\" (no comma), \"Received from {Name}: GH₵x (Cash|MoMo)\", \"Balance owed now: GH₵y\" (or \"Nothing owed now\" when zero), \"Thank you!\"."
    ]
   },
   "29": {
@@ -1189,7 +1205,9 @@
     "Action buttons (from a phone test at 360px, 14 Nov 2026): Collect, WhatsApp and Call are ONE row of three equal columns with the icon above the label, 48px tall or more, at 340px and wider. They never wrap and Call is never alone on a second row. Call is greyed and disabled without a valid phone.",
     "No valid phone (decided 14 Nov 2026): WhatsApp stays active and uses the phone's share sheet with the reminder text filled in (the owner picks the chat), exactly like the receipt. Call is greyed and disabled. There is no Add contact button in the action row; adding a number is done through Edit contact in the header.",
     "Last reminder line: under the action buttons and above Correct balance, one line \"Last reminder: today 14:05\", \"yesterday 14:05\" or \"dd/mm/yyyy HH:mm\" (formatTime, 24-hour); \"No reminder sent yet\" when none. It is per person. It is recorded when the merchant taps the WhatsApp reminder button and the app hands over to WhatsApp; it works offline and never claims the message was delivered.",
-    "Send another reminder? check: if a reminder to this person was recorded within the last 7 days, tapping the WhatsApp reminder button first opens a bottom sheet: \"You sent {Name} a reminder {today|yesterday|on dd/mm/yyyy} at HH:mm. Sending too many can annoy a customer.\" Buttons: \"Send again\" (strong, primary; opens WhatsApp and records a new reminder) and \"Not now\" (outlined; closes the sheet, nothing recorded). After 7 days or with no reminder the button opens WhatsApp directly. Sending a receipt never counts as a reminder and never triggers the check."
+    "Send another reminder? check: if a reminder to this person was recorded within the last 7 days, tapping the WhatsApp reminder button first opens a bottom sheet: \"You sent {Name} a reminder {today|yesterday|on dd/mm/yyyy} at HH:mm. Sending too many can annoy a customer.\" Buttons: \"Send again\" (strong, primary; opens WhatsApp and records a new reminder) and \"Not now\" (outlined; closes the sheet, nothing recorded). After 7 days or with no reminder the button opens WhatsApp directly. Sending a receipt never counts as a reminder and never triggers the check.",
+    "No open debt entries (decided 15 Nov 2026): when the person has no open debt entries, the \"Open debt entries\" heading and its line are not shown at all. With open entries the list and \"Correct this entry\" stay.",
+    "Collection receipt (decided 15 Nov 2026): Receipt and Copy receipt on this screen cover the person's latest payment only, and the label says so (\"Receipt for GH₵30.00 payment\"). A person who has never paid has no receipt buttons. Receipt text: \"Receipt from {Shop}\", \"dd/mm/yyyy HH:mm\" (no comma), \"Received from {Name}: GH₵x (Cash|MoMo)\", \"Balance owed now: GH₵y\" (or \"Nothing owed now\" when zero), \"Thank you!\"."
    ]
   },
   "30": {
@@ -1510,7 +1528,7 @@
    "inputs": [],
    "bottom_bar": false,
    "rules": [
-    "Layout, top to bottom: (0) period selector Today / This week / This month (three equal buttons, 16px, one line each at 340px, default Today); (1) one strong green block \"Money left today\" / \"Money left this week\" / \"Money left this month\" with one calm line \"GH₵X more than yesterday / last week / last month\" or \"GH₵X less than ...\" (never a green card with a red or alarming drop) and \"Money in minus money spent\"; (2) Money in card (Cash and MoMo rows, the line \"Includes GH₵X paid by customers who owed you.\" when above zero, and the quiet line \"Also given on credit: GH₵X (not money received yet)\" when above zero); (3) Money spent card (Paid in cash, Paid by MoMo); (4) What you should have left card (Cash, MoMo); (5) the profit card; (6) Owed to you and You owe suppliers as two white tiles with a coloured left edge and a clear \"See who ›\" / \"See list ›\" link. The screen scrolls.",
+    "Layout, top to bottom: (0) period selector Today / This week / This month (three equal buttons, 16px, one line each at 340px, default Today); (1) one strong green block \"Money left today\" / \"Money left this week\" / \"Money left this month\" with one calm line \"GH₵X more than yesterday / last week / last month\" or \"GH₵X less than ...\" (never a green card with a red or alarming drop) and \"Money in minus money spent\"; (2) Money in card (Cash and MoMo rows; then, under a thicker line, two rows \"Debts paid\" in dark green text and \"On credit\" in dark crimson text: plain bold labels with no fill and no border, amounts in the same right-hand column and size as Cash and MoMo; each of the two rows is hidden when its amount is zero); (3) Money spent card (Paid in cash, Paid by MoMo); (4) What you should have left card (Cash, MoMo); (5) the profit card; (6) Owed to you and You owe suppliers as two white tiles with a coloured left edge and a clear \"See who ›\" / \"See list ›\" link. The screen scrolls.",
     "The big heading says \"Money left\", not \"Cash left\", because Money in includes MoMo.",
     "Only one strong colour block on the screen. The other cards are white with a thin border.",
     "Profit card (Estimate, version A): Estimated profit = Sales − stock bought − other costs for the selected week or month, from the Spent money categories. Shown with an \"Estimate\" tag, the line \"Sales 300.00 − stock 150.00 − other costs 30.00\", and \"Average of last 4 weeks\" only when there are at least 4 weeks of data. A credit sale counts when it is sold. Shown by default; Settings has one switch to hide it. No nudge card pointing to Settings.",
@@ -1520,11 +1538,12 @@
     "One bad or inconsistent record must never stop the screen loading. A record whose parts do not add up (for example a credit sale whose cash and credit parts do not match the sale amount) is left out of the totals, logged with its id to the console, and the screen shows one quiet line: \"1 sale is not counted because its amounts do not match.\" (plural: \"{n} sales are not counted...\"). The same must hold on every screen that sums money (22 and others), not only 33.",
     "Money in by method: cash and MoMo parts of sales (split sales count each part once) plus debt payments collected, by the method they were paid with. Credit parts are not money received and never count as cash or MoMo. Balance corrections are not money and never count. Total = Cash + MoMo and equals the green block's money in.",
     "Money spent by method: every expense records how it was paid (Cash or MoMo). Spending recorded before this existed has no method: show a row \"Method not recorded\" only when above zero; Paid in cash + Paid by MoMo + Method not recorded = Money spent.",
-    "What you should have left: Cash = cash in minus cash spent; MoMo = MoMo in minus MoMo spent, for the selected period only. It does not include money held before the period. Caption: \"Cash is cash in minus cash spent. It does not count money you had before {today / this week / this month}. Check your MoMo balance too.\" The two figures plus any unrecorded spending explain the green block.",
-    "Credit is shown once, as one quiet line inside Money in: \"Also given on credit: GH₵X (not money received yet)\". X is the owed part of sales plus Added to debt for the period, the same figure as the \"Given on credit\" tile on 24, so the two screens never differ. There is no separate credit card here, so it never competes with Owed to you (the total owed now, not this period).",
+    "What you should have left: Cash = cash in minus cash spent; MoMo = MoMo in minus MoMo spent, for the selected period only. It does not include money held before the period. Caption: \"This period only. Check your MoMo balance.\" The two figures plus any unrecorded spending explain the green block.",
+    "\"On credit\" is shown once, as the last row inside Money in, with the same figure as the \"Given on credit\" tile on 24 (the owed part of sales plus Added to debt for the period), so the two screens never differ. It is not part of the Money in total. There is no separate credit card here, so it never competes with Owed to you (the total owed now, not this period).",
     "Owed to you and You owe suppliers are balances right now and do not change with the period.",
     "Estimated profit follows the period (Today: sales − stock − other costs for today). The line \"Average of last 4 weeks\" shows only for This week and only with at least 4 weeks of data.",
-    "Wide layout (D7): same content. Selector top right with three options; row of three cards: Money in, Money spent, What you should have left."
+    "Wide layout (D7): same content. Selector top right with three options; row of three cards: Money in, Money spent, What you should have left.",
+    "\"Debts paid\" is the debt payments collected in the period. It is already inside Cash and MoMo and is never added again. Cash + MoMo = Money in."
    ]
   },
   "34": {
@@ -1903,6 +1922,13 @@
      "effect": "Selects or edits a value on this screen. No navigation."
     },
     {
+     "label": ".",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Starts pesewas. At most two decimals; a second . is ignored."
+    },
+    {
      "label": "00",
      "role": null,
      "disabled_initially": false,
@@ -2013,6 +2039,13 @@
      "effect": "Selects or edits a value on this screen. No navigation."
     },
     {
+     "label": ".",
+     "role": null,
+     "disabled_initially": true,
+     "type": "selection_or_edit",
+     "effect": "Shown so the last row matches every other pad, but greyed out and disabled: a count has no decimals."
+    },
+    {
      "label": "00",
      "role": null,
      "disabled_initially": false,
@@ -2046,7 +2079,8 @@
    "rules": [
     "Button reads \"Add {quantity}\".",
     "Uses the number pad.",
-    "Extra kept: \"{amount} each\" line."
+    "Extra kept: \"{amount} each\" line.",
+    "Quantity pad (decided 15 Nov 2026): the pad has the same four-key last row as every money pad, but \".\" is shown greyed out and disabled because a count has no decimals. The count fills whole numbers from the left."
    ]
   },
   "39": {
@@ -2273,7 +2307,9 @@
     "Action buttons (from a phone test at 360px, 14 Nov 2026): the wide WhatsApp reminder button on top, then Collect and Call side by side in one row. Nothing wraps or sits alone at 340px and wider. Call is greyed and disabled without a valid phone.",
     "No valid phone (decided 14 Nov 2026): WhatsApp stays active and uses the phone's share sheet with the reminder text filled in (the owner picks the chat), exactly like the receipt. Call is greyed and disabled. There is no Add contact button in the action row; adding a number is done through Edit contact in the header.",
     "Last reminder line: under the action buttons and above Correct balance, one line \"Last reminder: today 14:05\", \"yesterday 14:05\" or \"dd/mm/yyyy HH:mm\" (formatTime, 24-hour); \"No reminder sent yet\" when none. It is per person. It is recorded when the merchant taps the WhatsApp reminder button and the app hands over to WhatsApp; it works offline and never claims the message was delivered.",
-    "Send another reminder? check: if a reminder to this person was recorded within the last 7 days, tapping the WhatsApp reminder button first opens a bottom sheet: \"You sent {Name} a reminder {today|yesterday|on dd/mm/yyyy} at HH:mm. Sending too many can annoy a customer.\" Buttons: \"Send again\" (strong, primary; opens WhatsApp and records a new reminder) and \"Not now\" (outlined; closes the sheet, nothing recorded). After 7 days or with no reminder the button opens WhatsApp directly. Sending a receipt never counts as a reminder and never triggers the check."
+    "Send another reminder? check: if a reminder to this person was recorded within the last 7 days, tapping the WhatsApp reminder button first opens a bottom sheet: \"You sent {Name} a reminder {today|yesterday|on dd/mm/yyyy} at HH:mm. Sending too many can annoy a customer.\" Buttons: \"Send again\" (strong, primary; opens WhatsApp and records a new reminder) and \"Not now\" (outlined; closes the sheet, nothing recorded). After 7 days or with no reminder the button opens WhatsApp directly. Sending a receipt never counts as a reminder and never triggers the check.",
+    "No open debt entries (decided 15 Nov 2026): when the person has no open debt entries, the \"Open debt entries\" heading and its line are not shown at all. With open entries the list and \"Correct this entry\" stay.",
+    "Collection receipt (decided 15 Nov 2026): Receipt and Copy receipt on this screen cover the person's latest payment only, and the label says so (\"Receipt for GH₵30.00 payment\"). A person who has never paid has no receipt buttons. Receipt text: \"Receipt from {Shop}\", \"dd/mm/yyyy HH:mm\" (no comma), \"Received from {Name}: GH₵x (Cash|MoMo)\", \"Balance owed now: GH₵y\" (or \"Nothing owed now\" when zero), \"Thank you!\"."
    ]
   },
   "44": {
@@ -2928,6 +2964,13 @@
      "disabled_initially": false,
      "type": "selection_or_edit",
      "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": ".",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Starts pesewas. At most two decimals; a second . is ignored."
     },
     {
      "label": "00",
@@ -3750,7 +3793,7 @@
   "currency": "Show money as GH₵ followed directly by the amount, for example GH₵268.20. Use the app's existing money formatter everywhere. The letters GHS appear only as the currency parameter of API calls.",
   "bottom_bar_note": "The bottom bar shows only on 15, 22, 25 and 32, as in the prototype. It is hidden on every other screen so a tap on Home or Owed cannot lose a draft mid-flow. On wide screens the side menu may show instead.",
   "date_format": "All dates are shown as dd/mm/yyyy (for example 14/11/2026) through one shared formatter. The prototype month-name dates (2 Oct, 19 Dec) are examples only. Browser date inputs show the device format.",
-  "amount_entry": "Typed amounts are parsed to integer pesewas by integer math from the typed text, never through floating point. Exponent and hex text (1e2, 0x10) are refused. More than two decimals: a third digit of 5 or more rounds the pesewa up.",
+  "amount_entry": "Typed amounts are parsed to integer pesewas by integer math from the typed text, never through floating point. Exponent and hex text (1e2, 0x10) are refused. More than two decimals: a third digit of 5 or more rounds the pesewa up. One shared amount keypad (decided 15 Nov 2026) on Sell 15, Add debt 53, Collect 25, Split 26/27 and any other pad: keys 1 to 9, then a last row of four equal keys \". 0 00 delete\" (delete in the same grey style). Digits fill whole cedis from the left: 8 gives GH₵8.00 and 85 gives GH₵85.00; \".\" starts pesewas with at most two decimals; a second \".\" is ignored; \"00\" is ignored on an empty pad and after \".\"; leading zeros are not shown. Spent money 44 keeps a typed field with the phone number keyboard (decimal key) and follows the same rules. A scan fails if a second keypad implementation exists.",
   "large_amount_confirm": {
    "rule": "A sale above the large-amount limit asks for confirmation before it is saved. The limit is configurable, default GH₵1,000.00 (100000 pesewas, VITE_LARGE_AMOUNT_CONFIRM_PESEWAS). Exactly the limit does not ask; one pesewa above does. An invalid or missing setting uses the default.",
    "applies_to": "The sale total on 15 Done, 55 Review and pay, and 16 Done (split), including credit sales and plans saved from 19.",
@@ -3803,7 +3846,8 @@
     "30, 31, 28 results": "D11. A centred panel: tick, title, amount, the paid parts, the owed row, Send receipt and Copy receipt side by side, then New sale (primary) and Done.",
     "47 Settings": "D13. List with detail. Left: four rows, each with an icon, a title and its status line: Shop (\"Name and preferences\"), MoMo payments (\"Set up\" or \"Not set up\"), My plan (\"Active until dd/mm/yyyy\" with the Active tag; only with the subscription flag), Backup and restore. Right: the selected section shown in place, so 63, 64 and 71 open in the right pane instead of a new screen. Shop is selected first and shows the Shop name field with Save and, under a divider, Preferences with the Show estimated profit switch. An unsaved Shop name survives switching sections (draft_survives_trip_away). Icons and helper texts are the phone's: the Backup and restore row uses the same database icon as the phone Settings row, with the status line \"Save or restore your records\" (one line); the Show estimated profit helper reads \"A good guess, not exact\".",
     "46 You owe suppliers": "D14. The amber total card across the top, then supplier cards two per row.",
-    "16, 27 Split payment": "D5. Task column, same rows as the phone."
+    "16, 27 Split payment": "D5. Task column, same rows as the phone.",
+    "33": "D7. Today / This week / This month sits at the top right (default Today). First row: Money left (today / this week / this month) and the Estimated profit card. Second row: Money in (Cash, MoMo, then the Debts paid and On credit rows), Money spent (Paid in cash, Paid by MoMo) and What you should have left (Cash, MoMo) as three equal cards. Third row: Owed to you and You owe suppliers. Built from 1024px; below that the phone layout."
    },
    "keyboard_and_mouse": "On Sell the amount can be typed on the keyboard (digits, Backspace) and Enter is Done; on a result screen Enter is New sale; Escape closes a dialog. No single-letter shortcuts. Every control has a visible focus ring (3px #0F172A outline with a 2px offset) and a hover state (slightly darker border or background). Tab order follows the reading order.",
    "sizes": "Touch targets stay 48px or taller on every width, because counter tablets are used by touch. Body text 17px or larger; page titles 30px; money in columns uses equal-width digits (tabular-nums) and is right-aligned. Cards keep the phone style: white, 2px #CBD5E1 border, 20px radius.",
