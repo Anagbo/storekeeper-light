@@ -676,7 +676,8 @@
     "Built extras kept: People-who-owe link, Add contact.",
     "Owed card on Home (redesign 11 Nov 2026, layout and wording only): a white card with a 2px light grey border and a thicker red left edge (the same style as the debt tiles on My money), not a pink block. Top: the label \"Owed to you\" (17px, grey), the total in bold dark text (30px, never red or pink), a quiet line \"{n} people · {m} late\" (\"1 person\"; leave out \"· {m} late\" when none is late), and \"See all ›\" in green on the right. The whole top part is one tappable area that opens 32 (accessible name \"Owed to you, see all\"). Under a thin line and the small heading \"Collect first\": the most urgent debtor (same ordering as today) with the name (bold 19px, up to 2 lines, capital first letter), the amount (bold 22px, never clipped, at the right), and the due tag under the name in the same wording and colours as the Owed list (\"Late 1 day\" red, \"Due today\" and \"Due in n days\" amber, grey when far). Then one row of buttons: a green \"Collect\" button with a small cash icon and the word Collect (52px, takes the remaining width, accessible name \"Collect payment from {name}\", opens 25), a square WhatsApp button (52px, green outline) and a square Call button (52px, dark outline) shown only when the person has a valid phone number (never a greyed disabled Call button). Icon-only buttons keep their accessible names.",
     "Header (decided 14 Nov 2026): the Menu button is on the left (hamburger icon + the word Menu, 48px), then the shop name, then the connection status. It opens the Menu drawer (see 23) over this page; the page and any draft stay as they are. The bottom bar is covered by the dimmed layer while the drawer is open.",
-    "Nobody owes (decided 14 Nov 2026 from a phone test where a corrected balance of zero still showed 'Owed to you GHS 0.00' and a Collect button): a person counts as owing only with a balance above zero. When nobody owes, the Owed to you card is not shown at all; Home goes from Spent money straight to the Today's transactions link, and the Owed tab in the bottom bar stays. Collect first, the people count and the total use only people with a balance above zero, so a person whose balance was corrected to zero or paid in full disappears from all three."
+    "Nobody owes (decided 14 Nov 2026 from a phone test where a corrected balance of zero still showed 'Owed to you GHS 0.00' and a Collect button): a person counts as owing only with a balance above zero. When nobody owes, the Owed to you card is not shown at all; Home goes from Spent money straight to the Today's transactions link, and the Owed tab in the bottom bar stays. Collect first, the people count and the total use only people with a balance above zero, so a person whose balance was corrected to zero or paid in full disappears from all three.",
+    "Reminder check (rules_global.reminders): this button runs the shared 7-day check for the person. A reminder recorded in the last 7 days opens the Send another reminder? sheet first (Send again strong, Not now outlined; Back and Escape act as Not now; after Not now the merchant stays on this screen). Otherwise WhatsApp opens directly. Tapping records a reminder event. No Last reminder text is shown on this screen."
    ]
   },
   "23": {
@@ -1186,7 +1187,9 @@
     "Under the balance, one line about when it is due. Fixed due date and no plan: \"Due 20/11/2026 · In 5 days\" (or \"Due 03/11/2026 · Late 7 days\"; Due today when equal). Installment plan: \"GH₵10.00 every week · next 14/11/2026\" (already built, kept). No date and no plan: nothing. Date through the shared formatter; the In N days and Late wording is the existing wording.",
     "Plan card (decided 12 Nov 2026): two full-width lines, never wrapped in two columns: \"GH₵{paid} paid · {left} payments left\", then \"Next payment {dd/mm/yyyy}\".",
     "Action buttons (from a phone test at 360px, 14 Nov 2026): Collect, WhatsApp and Call are ONE row of three equal columns with the icon above the label, 48px tall or more, at 340px and wider. They never wrap and Call is never alone on a second row. Call is greyed and disabled without a valid phone.",
-    "No valid phone (decided 14 Nov 2026): WhatsApp stays active and uses the phone's share sheet with the reminder text filled in (the owner picks the chat), exactly like the receipt. Call is greyed and disabled. There is no Add contact button in the action row; adding a number is done through Edit contact in the header."
+    "No valid phone (decided 14 Nov 2026): WhatsApp stays active and uses the phone's share sheet with the reminder text filled in (the owner picks the chat), exactly like the receipt. Call is greyed and disabled. There is no Add contact button in the action row; adding a number is done through Edit contact in the header.",
+    "Last reminder line: under the action buttons and above Correct balance, one line \"Last reminder: today 14:05\", \"yesterday 14:05\" or \"dd/mm/yyyy HH:mm\" (formatTime, 24-hour); \"No reminder sent yet\" when none. It is per person. It is recorded when the merchant taps the WhatsApp reminder button and the app hands over to WhatsApp; it works offline and never claims the message was delivered.",
+    "Send another reminder? check: if a reminder to this person was recorded within the last 7 days, tapping the WhatsApp reminder button first opens a bottom sheet: \"You sent {Name} a reminder {today|yesterday|on dd/mm/yyyy} at HH:mm. Sending too many can annoy a customer.\" Buttons: \"Send again\" (strong, primary; opens WhatsApp and records a new reminder) and \"Not now\" (outlined; closes the sheet, nothing recorded). After 7 days or with no reminder the button opens WhatsApp directly. Sending a receipt never counts as a reminder and never triggers the check."
    ]
   },
   "30": {
@@ -1453,7 +1456,8 @@
     "Collect for a person with several debts opens 43 so the merchant chooses the debt.",
     "Extras kept: Load more.",
     "Search field above the list, same field and wording as on 17 (\"Search by name or phone\"). It filters the list as the merchant types, ignoring case and spaces, and works together with the All, Late and Due soon filters. Clearing it shows the full list again. No search button: the field is always visible. When nobody matches, show the existing empty-list wording (or ask the owner for new text). Search never changes any data and works offline.",
-    "The list shows only people with a balance above zero. A person corrected to zero or paid in full is not listed. When nobody is left the existing empty-list wording shows."
+    "The list shows only people with a balance above zero. A person corrected to zero or paid in full is not listed. When nobody is left the existing empty-list wording shows.",
+    "Reminder check (rules_global.reminders): this button runs the shared 7-day check for the person. A reminder recorded in the last 7 days opens the Send another reminder? sheet first (Send again strong, Not now outlined; Back and Escape act as Not now; after Not now the merchant stays on this screen). Otherwise WhatsApp opens directly. Tapping records a reminder event. No Last reminder text is shown on this screen."
    ]
   },
   "33": {
@@ -1468,18 +1472,25 @@
      "to": "22"
     },
     {
+     "label": "Today",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Choose the period. One of the three is selected at all times (aria-pressed). Default: Today. Changes every figure on the screen except Owed to you and You owe suppliers."
+    },
+    {
      "label": "This week",
      "role": null,
      "disabled_initially": false,
      "type": "selection_or_edit",
-     "effect": "Selects or edits a value on this screen. No navigation."
+     "effect": "Choose the period. One of the three is selected at all times (aria-pressed). Default: Today. Changes every figure on the screen except Owed to you and You owe suppliers."
     },
     {
      "label": "This month",
      "role": null,
      "disabled_initially": false,
      "type": "selection_or_edit",
-     "effect": "Selects or edits a value on this screen. No navigation."
+     "effect": "Choose the period. One of the three is selected at all times (aria-pressed). Default: Today. Changes every figure on the screen except Owed to you and You owe suppliers."
     },
     {
      "label": "Owed to youGH₵93.00See who ›",
@@ -1499,14 +1510,21 @@
    "inputs": [],
    "bottom_bar": false,
    "rules": [
-    "Layout, top to bottom: (1) one strong green block \"Money left this week\" with one calm line \"GH₵X more than last week\" or \"GH₵X less than last week\" (never a green card with a red or alarming drop) and \"Money in minus money spent\"; (2) Money in and Money spent side by side, each with its breakdown (Cash and MoMo; Stock and Other); show no breakdown line instead of an error when none exists; (3) the profit card; (4) Owed to you and You owe suppliers as two white tiles with a coloured left edge and a clear \"See who ›\" / \"See list ›\" link.",
+    "Layout, top to bottom: (0) period selector Today / This week / This month (three equal buttons, 16px, one line each at 340px, default Today); (1) one strong green block \"Money left today\" / \"Money left this week\" / \"Money left this month\" with one calm line \"GH₵X more than yesterday / last week / last month\" or \"GH₵X less than ...\" (never a green card with a red or alarming drop) and \"Money in minus money spent\"; (2) Money in card (Cash and MoMo rows, the line \"Includes GH₵X paid by customers who owed you.\" when above zero, and the quiet line \"Also sold on credit: GH₵X (not money received yet)\" when above zero); (3) Money spent card (Paid in cash, Paid by MoMo); (4) What you should have left card (Cash, MoMo); (5) the profit card; (6) Owed to you and You owe suppliers as two white tiles with a coloured left edge and a clear \"See who ›\" / \"See list ›\" link. The screen scrolls.",
     "The big heading says \"Money left\", not \"Cash left\", because Money in includes MoMo.",
     "Only one strong colour block on the screen. The other cards are white with a thin border.",
     "Profit card (Estimate, version A): Estimated profit = Sales − stock bought − other costs for the selected week or month, from the Spent money categories. Shown with an \"Estimate\" tag, the line \"Sales 300.00 − stock 150.00 − other costs 30.00\", and \"Average of last 4 weeks\" only when there are at least 4 weeks of data. A credit sale counts when it is sold. Shown by default; Settings has one switch to hide it. No nudge card pointing to Settings.",
     "Item-level profit (version B, \"Based on 8 of 10 items\" and Add costs ›) stays deferred until items have cost prices.",
     "The comparison with last week uses integer pesewas through the shared formatter. A value that cannot be real (for example more than a million cedis) must be checked as a possible unit bug.",
     "Built and kept: no Open Settings or Add costs controls on 33. The profit card is hidden with the one switch in Settings (47); there is no nudge card.",
-    "One bad or inconsistent record must never stop the screen loading. A record whose parts do not add up (for example a credit sale whose cash and credit parts do not match the sale amount) is left out of the totals, logged with its id to the console, and the screen shows one quiet line: \"1 sale is not counted because its amounts do not match.\" (plural: \"{n} sales are not counted...\"). The same must hold on every screen that sums money (22 and others), not only 33."
+    "One bad or inconsistent record must never stop the screen loading. A record whose parts do not add up (for example a credit sale whose cash and credit parts do not match the sale amount) is left out of the totals, logged with its id to the console, and the screen shows one quiet line: \"1 sale is not counted because its amounts do not match.\" (plural: \"{n} sales are not counted...\"). The same must hold on every screen that sums money (22 and others), not only 33.",
+    "Money in by method: cash and MoMo parts of sales (split sales count each part once) plus debt payments collected, by the method they were paid with. Credit parts are not money received and never count as cash or MoMo. Balance corrections are not money and never count. Total = Cash + MoMo and equals the green block's money in.",
+    "Money spent by method: every expense records how it was paid (Cash or MoMo). Spending recorded before this existed has no method: show a row \"Method not recorded\" only when above zero; Paid in cash + Paid by MoMo + Method not recorded = Money spent.",
+    "What you should have left: Cash = cash in minus cash spent; MoMo = MoMo in minus MoMo spent, for the selected period only. It does not include money held before the period. Caption: \"Cash is cash in minus cash spent. It does not count money you had before {today / this week / this month}. Check your MoMo balance too.\" The two figures plus any unrecorded spending explain the green block.",
+    "Credit is shown once, as one quiet line inside Money in. There is no separate credit card here, so it never competes with Owed to you (which is the total owed now, not this period).",
+    "Owed to you and You owe suppliers are balances right now and do not change with the period.",
+    "Estimated profit follows the period (Today: sales − stock − other costs for today). The line \"Average of last 4 weeks\" shows only for This week and only with at least 4 weeks of data.",
+    "Wide layout (D7): same content. Selector top right with three options; row of three cards: Money in, Money spent, What you should have left."
    ]
   },
   "34": {
@@ -2253,7 +2271,9 @@
     "Under the balance, one line about when it is due. Fixed due date and no plan: \"Due 20/11/2026 · In 5 days\" (or \"Due 03/11/2026 · Late 7 days\"; Due today when equal). Installment plan: \"GH₵10.00 every week · next 14/11/2026\" (already built, kept). No date and no plan: nothing. Date through the shared formatter; the In N days and Late wording is the existing wording.",
     "Plan card (decided 12 Nov 2026): two full-width lines, never wrapped in two columns: \"GH₵{paid} paid · {left} payments left\", then \"Next payment {dd/mm/yyyy}\".",
     "Action buttons (from a phone test at 360px, 14 Nov 2026): the wide WhatsApp reminder button on top, then Collect and Call side by side in one row. Nothing wraps or sits alone at 340px and wider. Call is greyed and disabled without a valid phone.",
-    "No valid phone (decided 14 Nov 2026): WhatsApp stays active and uses the phone's share sheet with the reminder text filled in (the owner picks the chat), exactly like the receipt. Call is greyed and disabled. There is no Add contact button in the action row; adding a number is done through Edit contact in the header."
+    "No valid phone (decided 14 Nov 2026): WhatsApp stays active and uses the phone's share sheet with the reminder text filled in (the owner picks the chat), exactly like the receipt. Call is greyed and disabled. There is no Add contact button in the action row; adding a number is done through Edit contact in the header.",
+    "Last reminder line: under the action buttons and above Correct balance, one line \"Last reminder: today 14:05\", \"yesterday 14:05\" or \"dd/mm/yyyy HH:mm\" (formatTime, 24-hour); \"No reminder sent yet\" when none. It is per person. It is recorded when the merchant taps the WhatsApp reminder button and the app hands over to WhatsApp; it works offline and never claims the message was delivered.",
+    "Send another reminder? check: if a reminder to this person was recorded within the last 7 days, tapping the WhatsApp reminder button first opens a bottom sheet: \"You sent {Name} a reminder {today|yesterday|on dd/mm/yyyy} at HH:mm. Sending too many can annoy a customer.\" Buttons: \"Send again\" (strong, primary; opens WhatsApp and records a new reminder) and \"Not now\" (outlined; closes the sheet, nothing recorded). After 7 days or with no reminder the button opens WhatsApp directly. Sending a receipt never counts as a reminder and never triggers the check."
    ]
   },
   "44": {
@@ -2310,6 +2330,20 @@
      "effect": "Selects or edits a value on this screen. No navigation."
     },
     {
+     "label": "Cash",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Choose how the money was paid. Cash is selected by default. Stored with the expense and used by My money (33)."
+    },
+    {
+     "label": "MoMo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Choose how the money was paid. Cash is selected by default. Stored with the expense and used by My money (33)."
+    },
+    {
      "label": "No",
      "role": null,
      "disabled_initially": false,
@@ -2327,7 +2361,11 @@
    "inputs": [
     "Amount"
    ],
-   "bottom_bar": false
+   "bottom_bar": false,
+   "rules": [
+    "\"Paid with\" (Cash or MoMo, default Cash) appears under \"Paid all now?\" and is stored with the expense. When the answer is No, it is not asked here; it is asked when the supplier is paid (the Pay action on 46), which also records Cash or MoMo.",
+    "Spending saved before this existed has no method; 33 shows it as \"Method not recorded\"."
+   ]
   },
   "45": {
    "name": "Stock on credit",
@@ -3771,11 +3809,19 @@
    "testing": "Check 768x1024, 1024x768, 1280x800 and 1440x900 in addition to 340, 360 and 393px. No horizontal scroll, no clipped amount (GH₵12,345.00), no wrapped button label.",
    "same_as_phone": "Wide screens change layout only. Every control, label, rule, destination, validation, money calculation and saved record is the one defined for that screen in this file; nothing in wide_layout overrides a screen's own rules. A control that exists on the phone screen must exist on the wide screen with the same label and accessible name, except: (a) Menu (23), the header Home button, the bottom bar and the Done button on Settings are replaced by the sidebar; (b) Back is not shown on Home, Owed, Today's transactions, My money, Items and Settings, because the sidebar reaches them, and is kept on every task column; (c) on Owed the per-row Collect, WhatsApp and Call buttons move to the selected person's detail; (d) 20 and 55 are shown together. Flags behave the same (receipts, subscription, phone request).",
    "icons": "Every payment choice shows its icon with its label on every screen and width: Cash (note), MoMo (phone), Owe (person), Split payment (cash + phone + person where Owe can be part of the split, as on 15, 55 and 16; cash + phone where only Cash and MoMo are possible, as on 19, 26 and 27). A label is never shown without its icon.",
-   "approved_additions": "Approved by the owner on 14 Nov 2026 (build everything, no temporary fix). These four are the ONLY content added on wide screens and each is a read-only view of data the app already stores; none creates a record, a rule or a money calculation. (1) Sell with items is one screen on wide layouts (20 and 55 together); the phone keeps two screens. (2) 'Last sale' box on Sell: the most recent saved sale today, showing its amount (formatGhs), method (Cash, MoMo, Split or On credit) and time; hidden when there is no sale today; not tappable. (3) 'Collect first' on Home: up to two people with the largest late balances, most late first (same order as the phone tile), each with its due tag, amount and Collect, WhatsApp and Call (Call only with a valid number); hidden when nobody owes. (4) Person column in Today's transactions: the customer's name in Title Case (displayName), a dash when there is none. The wide-layout test must assert that each addition reads from the same source as the phone and changes no stored value."
+   "approved_additions": "Approved by the owner on 14 Nov 2026 (build everything, no temporary fix). These four are the ONLY content added on wide screens and each is a read-only view of data the app already stores; none creates a record, a rule or a money calculation. (1) Sell with items is one screen on wide layouts (20 and 55 together); the phone keeps two screens. (2) 'Last sale' box on Sell: the most recent saved sale today, showing its amount (formatGhs), method (Cash, MoMo, Split or On credit) and time; hidden when there is no sale today; not tappable. (3) 'Collect first' on Home: up to two people with the largest late balances, most late first (same order as the phone tile), each with its due tag, amount and Collect, WhatsApp and Call (Call only with a valid number); hidden when nobody owes. (4) Person column in Today's transactions: the customer's name in Title Case (displayName), a dash when there is none. The wide-layout test must assert that each addition reads from the same source as the phone and changes no stored value. Wide D3 (Owed detail pane): the same 'Last reminder' line sits between the Collect/Reminder/Call row and the Edit contact/Correct balance row; the 7-day sheet opens as a dialog.",
+   "screens_changed": []
   },
   "menu_drawer": "The menu is a left drawer over the current page, never a separate page. Header Menu button at the left (see 23). It adds no history entry and keeps drafts. Back from a destination chosen in the drawer returns to the page the drawer was opened from.",
   "header_always_visible": "The header (Menu button or home tile, shop name, connection status) is fixed at the top of the screen on every screen and at every width while the content scrolls beneath it (decided 14 Nov 2026 from a phone test where the Menu button was out of sight on a long Home). It keeps the safe-area inset and the 3px bottom border, sits above content and below the Menu drawer and dialogs, and is never hidden or moved by scrolling or by the virtual keyboard. There is no hide-on-scroll behaviour.",
-  "times_24h": "Every time of day is written HH:mm in 24-hour form by a hand-built formatter, never by the device locale, like dates are written dd/mm/yyyy (decided 14 Nov 2026 after a locale-dependent receipt time was found)."
+  "times_24h": "Every time of day is written HH:mm in 24-hour form by a hand-built formatter, never by the device locale, like dates are written dd/mm/yyyy (decided 14 Nov 2026 after a locale-dependent receipt time was found).",
+  "reminders": {
+   "status": "Design approved 15 Nov 2026. Build after the merge.",
+   "data": "A new local 'reminder sent' event: person, time, channel. Stored on the device, included in backup and restore. Appended only, never edited.",
+   "scope": "Per person, not per screen. Every reminder button (Home Collect first tile 22, Owed list rows 32, debtor detail 29/43 and wide D3) goes through ONE shared check and ONE shared record. Receipts do not count. The Last reminder line is shown only on debtor detail 29/43 and the wide detail pane D3; the Home tile and Owed rows stay clean.",
+   "check": "Within 7 days of the last reminder the Send another reminder? sheet appears; Send again is the strong button.",
+   "wording": "today HH:mm, yesterday HH:mm, else dd/mm/yyyy HH:mm; 'No reminder sent yet' when none. Never says delivered."
+  }
  },
  "built_extras_kept": {
   "24": "row tags Collected Debt, Balance correction, Added to debt",
