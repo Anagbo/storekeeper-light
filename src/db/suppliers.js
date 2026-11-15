@@ -5,6 +5,14 @@ import { getSupplierBalances, validateSupplierExpense } from "../utils/suppliers
 import { isValidDateString } from "../utils/installments.js";
 
 const CATEGORIES = new Set(["stock", "transport", "rent", "utilities", "other"]);
+// Wiring 44/45/46 "Paid with": how the money that left was paid. Stored as paidWith on the expense
+// (for the part paid now) and on a supplier payment. Records saved before this have no paidWith;
+// My money (33) shows them as "Method not recorded". payment_method stays as it always was.
+export const PAID_WITH = new Set(["cash", "momo"]);
+
+function checkPaidWith(paidWith) {
+  if (paidWith !== undefined && !PAID_WITH.has(paidWith)) throw new TypeError("Choose Cash or MoMo.");
+}
 
 export async function recordExpense({
   amountPesewas,
@@ -14,8 +22,10 @@ export async function recordExpense({
   supplierId,
   payBy = "",
   newSupplier,
+  paidWith,
   now = Date.now()
 }) {
+  checkPaidWith(paidWith);
   validateSupplierExpense({
     amountPesewas,
     paidAmountPesewas,
@@ -60,6 +70,8 @@ export async function recordExpense({
       paidAmountPesewas,
       owedAmountPesewas,
       ...(owedAmountPesewas > 0 && { supplierId: linkedSupplierId, payBy }),
+      // Only money that left now has a method; nothing paid now (all owed) has none.
+      ...(paidAmountPesewas > 0 && paidWith && { paidWith }),
       note: note.trim(),
       payment_method: "cash",
       customer_name: "",
@@ -76,7 +88,8 @@ export async function recordExpense({
   });
 }
 
-export async function recordSupplierPayment({ supplierId, amountPesewas, now = Date.now() }) {
+export async function recordSupplierPayment({ supplierId, amountPesewas, paidWith, now = Date.now() }) {
+  checkPaidWith(paidWith);
   if (!supplierId) throw new TypeError("Choose a supplier.");
   if (!Number.isSafeInteger(amountPesewas) || amountPesewas <= 0) {
     throw new TypeError("Enter a positive supplier payment.");
@@ -98,6 +111,7 @@ export async function recordSupplierPayment({ supplierId, amountPesewas, now = D
       amountPesewas,
       total_amount: amountPesewas,
       payment_method: "cash",
+      ...(paidWith && { paidWith }),
       customer_name: "",
       customer_phone: "",
       items_json: "[]",

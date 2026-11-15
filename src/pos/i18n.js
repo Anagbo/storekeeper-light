@@ -72,6 +72,7 @@ const ENGLISH = Object.freeze({
   "expense.stockTotal": "Stock total",
   "expense.stillOwed": "Still owed",
   "expense.paidNow": "Paid now",
+  "expense.paidWith": "Paid with",
   "expense.paidAmountTooHigh": "The amount paid cannot be more than the stock total.",
   "expense.supplier": "Supplier",
   "expense.chooseSupplier": "Choose supplier",

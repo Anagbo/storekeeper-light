@@ -50,6 +50,10 @@ function validateRecordValues(tableName, record) {
   if (tableName === "transactions" && record.type !== undefined && !TRANSACTION_TYPES.has(record.type)) {
     throw new TypeError("The backup contains an unknown transaction type.");
   }
+  // Paid with on spending (wiring 44/45/46): absent on older records, otherwise Cash or MoMo.
+  if (tableName === "transactions" && record.paidWith !== undefined && !PAYMENT_METHODS.has(record.paidWith)) {
+    throw new TypeError("The backup contains an unknown payment method.");
+  }
   if (tableName === "payments" && !PAYMENT_METHODS.has(record.paymentMethod)) {
     throw new TypeError("The backup contains an unknown payment method.");
   }

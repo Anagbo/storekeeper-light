@@ -434,9 +434,9 @@ export default function PosApp() {
     setNotice(stockSavedNotice(result));
   }
 
-  async function paySupplier(supplierId, amountPesewas) {
+  async function paySupplier(supplierId, amountPesewas, paidWith) {
     const { recordSupplierPayment } = await import("../db/suppliers.js");
-    await recordSupplierPayment({ supplierId, amountPesewas });
+    await recordSupplierPayment({ supplierId, amountPesewas, paidWith });
     void requestBackgroundSync();
   }
 
