@@ -323,3 +323,52 @@ test("33 at 340, 360 and 393px: card rows keep label and amount on one line with
     }
   }
 });
+
+// ---- wide layout (D7) ----------------------------------------------------------------------------------------
+
+const WIDE_MEASURE = `(frame, win, doc) => {
+  const box = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { top: Math.round(r.top), left: Math.round(r.left), right: Math.round(r.right), bottom: Math.round(r.bottom), width: Math.round(r.width) }; };
+  const q = (s) => doc.querySelector(s);
+  return {
+    title: box(q("h1")), periods: box(q("[data-periods]")),
+    moneyLeft: box(q('[data-block="money-left"]')), profit: box(q('[data-card="profit"]')),
+    moneyIn: box(q('[data-card="money-in"]')), moneySpent: box(q('[data-card="money-spent"]')), shouldHave: box(q('[data-card="should-have-left"]')),
+    tiles: box(q("[data-tiles]")),
+    clipped: [...doc.querySelectorAll("[data-method-cards] strong, [data-method-cards] p")].some((el) => el.scrollWidth > el.clientWidth + 0.5),
+    pageOverflow: doc.scrollingElement.scrollWidth > win.innerWidth
+  };
+}`;
+
+test("33 wide (D7) at 1024, 1280 and 1440px: selector top right, Money left beside profit, three cards in one row; 768px keeps the phone layout", { skip: browser ? false : "no Chrome or Edge found (set HEADER_TEST_BROWSER)" }, async () => {
+  const { view } = await mount(screenReport({ moneyIn: 1234500, spentCash: 1234500 }));
+  setLiveQuery(null);
+  const results = measureInFrames({ pages: [{ name: "33", html: toHtml(view.tree) }], css: await appCss(), widths: [768, 1024, 1280, 1440], height: 1200, measure: WIDE_MEASURE });
+  for (const r of results) {
+    const where = `${r.width}px`;
+    assert.equal(r.pageOverflow, false, `${where}: no horizontal scroll`);
+    assert.equal(r.clipped, false, `${where}: nothing clipped in the cards`);
+    if (r.width < 1024) {
+      assert.ok(r.periods.top > r.title.top, `${where}: selector under the title (phone layout)`);
+      assert.ok(r.moneyIn.top < r.moneySpent.top && r.moneySpent.top < r.shouldHave.top, `${where}: cards stacked`);
+      continue;
+    }
+    assert.ok(r.periods.left > r.title.right, `${where}: selector to the right of the title`);
+    assert.ok(r.periods.top < r.moneyLeft.top, `${where}: selector at the top`);
+    assert.ok(r.periods.right >= r.moneyIn.left + 2 * r.moneyIn.width, `${where}: selector at the right`);
+    assert.equal(r.moneyLeft.top, r.profit.top, `${where}: Money left beside the profit card`);
+    assert.ok(r.moneyLeft.right <= r.profit.left, `${where}: Money left on the left`);
+    assert.equal(r.moneyIn.top, r.moneySpent.top, `${where}: one row`);
+    assert.equal(r.moneySpent.top, r.shouldHave.top, `${where}: one row`);
+    assert.ok(r.moneyIn.right <= r.moneySpent.left && r.moneySpent.right <= r.shouldHave.left, `${where}: Money in, Money spent, What you should have left`);
+    assert.ok(Math.abs(r.moneyIn.width - r.shouldHave.width) <= 1, `${where}: equal cards`);
+    assert.ok(r.moneyIn.top >= r.profit.bottom, `${where}: the cards under the first row`);
+    assert.ok(r.tiles.top >= r.shouldHave.bottom, `${where}: the balance tiles last`);
+  }
+});
+
+test("33 wide: with the profit card hidden, Money left takes the whole first row", async () => {
+  const { view } = await mount({ ...screenReport(), showProfit: false });
+  const block = [...walk(view.tree)].find((node) => node.props?.["data-block"] === "money-left");
+  assert.match(block.props.className, /lg:col-span-2/);
+  assert.equal([...walk(view.tree)].some((node) => node.props?.["data-card"] === "profit"), false);
+});
