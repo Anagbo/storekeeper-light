@@ -146,35 +146,18 @@ function lateDebtorData(overrides = {}) {
   return { name: "Ama", customerId: "c1", phone: "+233241234567", ghanaCardNumber: "", balancePesewas: 3000, debt, unpaidDebts: [debt], unpaidDebtCount: 1, history: [] };
 }
 
-test("43: late state shows a full-width Send reminder on WhatsApp and Last reminder from lastReminderAt", async () => {
-  const { DebtorDetail } = await loadJsx("src/pos/DebtCollection.jsx");
-  const data = lateDebtorData({ lastReminderAt: daysAgo(2).getTime() });
-  setLiveQuery(([debtId]) => (debtId === "d1" ? data : undefined));
-  const view = render({ type: DebtorDetail, props: { params: { debtId: "d1", customerName: "Ama" }, onBack() {}, onNavigate() {}, onCollect() {}, shopName: "My shop" } });
-  const send = [...walk(view.tree)].find((node) => node.type === "a" && textOf(node).includes("Send reminder on WhatsApp"));
-  assert.ok(send, "Send reminder on WhatsApp");
-  assert.match(send.props.className, /w-full/);
-  assert.match(textOf(view.tree), /Last reminder: 2 days ago/);
-});
-
-test("43: no Last reminder line before any reminder, and the on-time state (29) keeps its WhatsApp button", async () => {
+// Wording and placement of the Last reminder line changed with rules_global.reminders (15 Nov 2026):
+// see tests/reminderLastLine.test.js. The late layout itself is kept here.
+test("43: late state shows a full-width Send reminder on WhatsApp; the on-time state (29) does not", async () => {
   const { DebtorDetail } = await loadJsx("src/pos/DebtCollection.jsx");
   setLiveQuery(([debtId]) => (debtId === "d1" ? lateDebtorData() : undefined));
   let view = render({ type: DebtorDetail, props: { params: { debtId: "d1", customerName: "Ama" }, onBack() {}, onNavigate() {}, onCollect() {}, shopName: "My shop" } });
-  assert.match(textOf(view.tree), /Send reminder on WhatsApp/);
-  assert.doesNotMatch(textOf(view.tree), /Last reminder/);
+  const send = [...walk(view.tree)].find((node) => node.type === "a" && textOf(node).includes("Send reminder on WhatsApp"));
+  assert.ok(send, "Send reminder on WhatsApp");
+  assert.match(send.props.className, /w-full/);
   setLiveQuery(([debtId]) => (debtId === "d1" ? lateDebtorData({ dueDate: localDateString(daysAgo(-5)) }) : undefined));
   view = render({ type: DebtorDetail, props: { params: { debtId: "d1", customerName: "Ama" }, onBack() {}, onNavigate() {}, onCollect() {}, shopName: "My shop" } });
   assert.doesNotMatch(textOf(view.tree), /Send reminder on WhatsApp/);
-});
-
-test("43: Last reminder wording for today, one day and several days", async () => {
-  const { formatLastReminder } = await import("../src/pos/reminderLabel.js");
-  const now = new Date(2026, 10, 9, 15);
-  assert.equal(formatLastReminder(new Date(2026, 10, 9, 8).getTime(), now), "Last reminder: today");
-  assert.equal(formatLastReminder(new Date(2026, 10, 8, 23).getTime(), now), "Last reminder: 1 day ago");
-  assert.equal(formatLastReminder(new Date(2026, 10, 7, 9).getTime(), now), "Last reminder: 2 days ago");
-  assert.equal(formatLastReminder(undefined, now), "");
 });
 
 // The old per-debt lastReminderAt record (written on return from WhatsApp) was replaced by the

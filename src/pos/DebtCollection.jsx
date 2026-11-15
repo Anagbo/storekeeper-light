@@ -6,6 +6,7 @@ import { COLLECTION_UNDO_WINDOW_MS, undoDebtCollection } from "../db/debts.js";
 import { correctDebtBalance } from "../db/debtLedger.js";
 import { formatLastReminder } from "./reminderLabel.js";
 import { useReminderCheck } from "./ReminderCheck.jsx";
+import { latestReminderAt, loadReminderEvents } from "../db/reminders.js";
 import { formatDate, formatTime } from "../lib/formatDate.js";
 import { formatGhs, formatGhsAmount, toPesewas } from "../lib/money.js";
 import { formatGhanaCard } from "../utils/formatters.js";
@@ -655,6 +656,8 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
       ? await db.customers.get(customerId)
       : await db.customers.where("nameLower").equals(normalizedName).first();
     const history = await loadCustomerHistory(customer?.id, name);
+    // rules_global.reminders: the latest reminder recorded for this person (any screen).
+    const lastReminderAt = latestReminderAt(await loadReminderEvents(), { customerId: customer?.id ?? customerId, customerName: name });
     const historyRows = groupCollectionHistory(history.events);
     const selectedOpenDebt = customerDebts.find((debt) => debt.id === selectedDebt?.id && debt.status === "unpaid");
     const unpaidDebts = customerDebts.filter((debt) => debt.status === "unpaid");
@@ -681,6 +684,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
         (right.createdAt ?? right.created_at ?? 0) - (left.createdAt ?? left.created_at ?? 0)
       )),
       unpaidDebtCount: unpaidDebts.length,
+      lastReminderAt,
       history: historyRows
     };
   }, [params?.debtId, params?.customerName], undefined);
@@ -696,8 +700,8 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
   }, [params?.editContact, data]);
   const phone = normalizeWhatsAppPhone(data?.phone);
   const reminderLink = data && generateWhatsAppLink(data.phone, data.name, data.balancePesewas, shopName);
-  const lastReminderAt = Math.max(0, ...(data?.unpaidDebts ?? []).map((debt) => Number(debt.lastReminderAt) || 0));
-  const lastReminderLabel = formatLastReminder(lastReminderAt || undefined);
+  const lastReminderAt = data?.lastReminderAt ?? 0;
+  const lastReminderLabel = formatLastReminder(lastReminderAt);
   // rules_global.reminders: both WhatsApp reminder controls go through the shared path, which
   // records a reminder for this person when the app hands over to WhatsApp.
   const reminders = useReminderCheck();
@@ -866,7 +870,6 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                 className: "flex h-16 w-full items-center justify-center gap-2.5 rounded-[18px] border-[3px] border-emerald-900 bg-white px-3 text-lg font-extrabold text-emerald-900",
                 children: <><WhatsAppIcon /> {t("collect.remindOnWhatsApp")}</>
               })}
-              {lastReminderLabel && <p className="text-center text-base text-slate-800">{lastReminderLabel}</p>}
             </div>
           )}
           {/* Action buttons (wiring 29 and 43): one row that never wraps at 340px and wider, icon above
@@ -890,6 +893,9 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                   <Phone size={26} aria-hidden="true" /><span>{t("collect.call")}</span>
                 </button>}
           </div>
+          {/* Wiring 29/43: Last reminder, under the action buttons and above Correct balance. Per
+              person; it says when the reminder was handed to WhatsApp, never that it was delivered. */}
+          <p data-last-reminder="" className="text-center text-base text-slate-800">{lastReminderLabel}</p>
           {balanceReceiptText && (
             <>
               <div className="flex flex-col gap-2">
