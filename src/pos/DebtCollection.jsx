@@ -901,7 +901,8 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               </div>
             </section>
           )}
-          {(data.unpaidDebtCount > 1 || !singleDebtMatchesTotal) && (
+          {/* Wiring 29/43 "No open debt entries" (15 Nov 2026): no heading and no line without an open entry. */}
+          {data.unpaidDebtCount > 0 && (data.unpaidDebtCount > 1 || !singleDebtMatchesTotal) && (
             <section className="mt-2">
               <h2 className="mb-2 text-[22px] font-extrabold leading-tight">Open debt entries</h2>
               <ul className="overflow-hidden rounded-[18px] border-2 border-slate-500 bg-white">
