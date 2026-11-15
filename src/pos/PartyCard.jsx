@@ -45,6 +45,7 @@ const SQUARE = "grid h-[52px] w-[52px] shrink-0 place-items-center rounded-[14px
 // Top row: the name (bold 19px, up to 2 lines, capital first letter) and the amount (bold, never
 // shrunk or clipped) on the right; the due tag under the name. Bottom row: the green action (52px,
 // takes the remaining width), then WhatsApp (when given) and Call (only with a valid number).
+// `whatsapp.onClick` is the shared reminder check on 22 (rules_global.reminders).
 // `framed` draws the card border (46); on 22 the card sits inside the Owed card without one.
 export function PartyCard({
   framed = true,
@@ -90,7 +91,7 @@ export function PartyCard({
           {ActionIcon && <ActionIcon size={22} aria-hidden="true" />}{action.label}
         </button>
         {whatsapp?.href && (
-          <a href={whatsapp.href} target="_blank" rel="noopener noreferrer" aria-label={whatsapp.label} className={`${SQUARE} border-emerald-900 text-emerald-900`}>
+          <a href={whatsapp.href} target="_blank" rel="noopener noreferrer" onClick={whatsapp.onClick} aria-label={whatsapp.label} className={`${SQUARE} border-emerald-900 text-emerald-900`}>
             {whatsapp.icon}
           </a>
         )}

@@ -121,10 +121,11 @@ for (const [label, phone] of [["with a phone", PHONE], ["without a phone", ""]])
   });
 }
 
-// 29 (on time) and 43 (late) Debtor detail: the current-balance Receipt button
+// 29 (on time) and 43 (late) Debtor detail: the Receipt button for the latest payment (15 Nov 2026)
 function debtorData(dueDate, phone = "+233241234567") {
   const debt = { id: "d1", customerId: "c1", customerName: "Ama", amountPesewas: 8000, status: "unpaid", isInstallmentPlan: false, dueDate };
-  return { name: "Ama", customerId: "c1", phone, ghanaCardNumber: "", balancePesewas: 8000, debt, unpaidDebts: [debt], unpaidDebtCount: 1, history: [] };
+  const payment = { id: "collection-c1", type: "payment", timestamp: Date.now() - 3_600_000, amountPesewas: 3000, collectionParts: [{ method: "Cash", amountPesewas: 3000 }] };
+  return { name: "Ama", customerId: "c1", phone, ghanaCardNumber: "", balancePesewas: 8000, debt, unpaidDebts: [debt], unpaidDebtCount: 1, history: [payment] };
 }
 
 async function showDetail(env, dueDate, phone) {
@@ -153,19 +154,19 @@ for (const [screen, dueDate] of [["29", dayOffset(7)], ["43", dayOffset(-3)]]) {
     assert.ok([...walk(tree)].some((node) => node.type === "a" && String(node.props.href).startsWith("https://wa.me/233241234567?text=Hello")), "the WhatsApp reminder stays");
     assert.ok([...walk(tree)].some((node) => node.type === "a" && String(node.props.href).startsWith("tel:")), "Call stays");
   });
-  test(`${screen} flag on: Receipt button with the current balance`, async () => {
+  test(`${screen} flag on: Receipt button for the latest payment`, async () => {
     const tree = await showDetail(ON, dueDate);
     assertFlag(tree, true, screen);
     const send = findButton(tree, "Receipt");
     assert.equal(send.type, "button", "no raw link");
-    assert.match(send.props["aria-label"], /Send current balance receipt for Ama/);
+    assert.equal(textOf(send).trim(), "Receipt for GH₵30.00 payment", "the label says which payment");
     assert.ok(findButton(tree, "Copy receipt"));
   });
   test(`${screen} flag on without a phone: Receipt and Copy receipt still show; no wa.me or tel: link (WhatsApp uses the share sheet, Call is disabled)`, async () => {
     const tree = await showDetail(ON, dueDate, "");
     const send = findButton(tree, "Receipt");
     assert.equal(send.type, "button");
-    assert.match(send.props["aria-label"], /Send current balance receipt for Ama/);
+    assert.equal(textOf(send).trim(), "Receipt for GH₵30.00 payment", "the label says which payment");
     assert.ok(findButton(tree, "Copy receipt"));
     assert.equal(findButton(tree, "Add contact"), null, "Add contact is not in the action row (Edit contact in the header)");
     assert.equal(findButton(tree, "Call").props.disabled, true, "Call is greyed and disabled");

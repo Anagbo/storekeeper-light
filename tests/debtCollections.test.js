@@ -1,11 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { COLLECTION_UNDO_WINDOW_MS, normalizeCollectionParts } from "../src/db/debts.js";
-import {
-  appendCollectionAmountDigit,
-  getDefaultCollectionSplit,
-  normalizeCollectionAmountInput
-} from "../src/pos/collectionSplit.js";
+import { getDefaultCollectionSplit } from "../src/pos/collectionSplit.js";
+import { normalizeTypedAmount, pressAmountKey } from "../src/pos/amountKeypad.js";
 
 test("collection parts preserve each payment method and reconcile to one total", () => {
   const result = normalizeCollectionParts([
@@ -50,11 +47,12 @@ test("split collection is incomplete until both cash and MoMo have a positive sh
   assert.throws(() => getDefaultCollectionSplit(1, 0), /at least two pesewas/);
 });
 
-test("cash amount accepts both keypad and direct keyboard input", () => {
-  const keypadAmount = ["6", ".", "5", "0"].reduce(appendCollectionAmountDigit, "");
+// 26 has no typed field any more (15 Nov 2026); typed amounts elsewhere (44) use normalizeTypedAmount.
+test("cash amount on the keypad, and typed amount text, follow the same rules", () => {
+  const keypadAmount = ["6", ".", "5", "0"].reduce((text, key) => pressAmountKey(text, key), "");
   assert.equal(keypadAmount, "6.50");
-  assert.equal(normalizeCollectionAmountInput("6.50"), "6.50");
-  assert.equal(normalizeCollectionAmountInput("GHS 6,50"), "6.50");
-  assert.equal(normalizeCollectionAmountInput("6.500", "6.50"), "6.50");
-  assert.equal(appendCollectionAmountDigit(keypadAmount, "backspace"), "6.5");
+  assert.equal(normalizeTypedAmount("6.50"), "6.50");
+  assert.equal(normalizeTypedAmount("GHS 6,50"), "6.50");
+  assert.equal(normalizeTypedAmount("6.500", "6.50"), "6.50");
+  assert.equal(pressAmountKey(keypadAmount, "Delete"), "6.5");
 });

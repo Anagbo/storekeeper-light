@@ -11,6 +11,8 @@ import SearchField from "./SearchField.jsx";
 import { DueTag } from "./PartyCard.jsx";
 import { PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { generateWhatsAppLink } from "../utils/whatsapp.js";
+import { latestReminderAt, loadReminderEvents } from "../db/reminders.js";
+import { useReminderCheck } from "./ReminderCheck.jsx";
 
 function WhatsAppIcon() {
   return (
@@ -40,7 +42,8 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
   }, [reloadKey], { status: "loading", debts: [], nextCursor: null, hasMore: false });
   const customerResult = useLiveQuery(async () => {
     try {
-      return { status: "ready", customers: await db.customers.toArray() };
+      const [customers, reminderEvents] = await Promise.all([db.customers.toArray(), loadReminderEvents()]);
+      return { status: "ready", customers, reminderEvents };
     } catch (error) {
       console.error("Could not load customer details for outstanding debts.", error);
       return { status: "error", customers: [] };
@@ -123,6 +126,18 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
       </PosSecondaryButton>
     </div>
   );
+
+  // rules_global.reminders: each row's WhatsApp button goes through the shared check and records the
+  // reminder. No Last reminder text on this screen.
+  const reminders = useReminderCheck();
+  function onWhatsApp(event, customer, href) {
+    const person = { customerId: customer.customerId ?? "", name: customer.customerName };
+    return reminders.onReminder(event, {
+      person,
+      lastReminderAt: latestReminderAt(customerResult.reminderEvents ?? [], { customerId: person.customerId, customerName: person.name }),
+      href
+    });
+  }
 
   function openDetails(customer, editContact = false) {
     onNavigate("DebtorDetail", {
@@ -234,7 +249,7 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
                   </PosPrimaryButton>
                   {whatsappUrl ? (
                     <>
-                      <a href={whatsappUrl} aria-label={`WhatsApp ${displayName(customer.customerName)}`} className="grid h-14 w-14 place-items-center rounded-2xl border-2 border-emerald-900 bg-white text-emerald-900 max-[380px]:h-12 max-[380px]:w-12">
+                      <a href={whatsappUrl} onClick={(event) => onWhatsApp(event, customer, whatsappUrl)} aria-label={`WhatsApp ${displayName(customer.customerName)}`} className="grid h-14 w-14 place-items-center rounded-2xl border-2 border-emerald-900 bg-white text-emerald-900 max-[380px]:h-12 max-[380px]:w-12">
                         <WhatsAppIcon />
                       </a>
                       <a href={`tel:${customer.phone}`} aria-label={`Call ${displayName(customer.customerName)}`} className="grid h-14 w-14 place-items-center rounded-2xl border-2 border-slate-300 bg-slate-300 text-slate-900 max-[380px]:h-12 max-[380px]:w-12">
@@ -259,6 +274,7 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
           {showMoreControl}
         </section>
       )}
+      {reminders.sheet}
     </PosPage>
   );
 }

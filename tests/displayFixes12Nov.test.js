@@ -119,7 +119,7 @@ async function to26(app, amount) {
   await app.settle();
   await app.tap(/^Pay part$/);
   assert.equal(app.route, "CollectPayPart");
-  await app.type("Amount to collect", amount);
+  await app.keys(String(amount).split("")); // 26 is typed on the keypad only (15 Nov 2026)
 }
 
 test("26 says \"Still owed after this\", never \"Left to pay\"; 28 says \"Juju still owes\" with the same figure", async () => {

@@ -26,7 +26,7 @@ after(async () => {
   await resetDatabase();
 });
 
-test("upgrades a v1 database through v13 without losing ledger data", async () => {
+test("upgrades a v1 database through v14 without losing ledger data", async () => {
   await createLegacyDatabase(1, {
     products: "++id, name, updatedAt, syncStatus, [name+updatedAt], [syncStatus+updatedAt]",
     transactions: "id, type, createdAt, updatedAt, syncStatus, [type+createdAt], [syncStatus+updatedAt]",
@@ -42,7 +42,8 @@ test("upgrades a v1 database through v13 without losing ledger data", async () =
   const [transaction] = await db.transactions.toArray();
   const [debt] = await db.debts.toArray();
 
-  assert.equal(db.verno, 13);
+  assert.equal(db.verno, 14);
+  assert.ok(db.tables.some((table) => table.name === "reminders"), "v14 adds the reminder events");
   assert.ok(await db.suppliers.count() >= 0);
   assert.equal(product.unit, "unit");
   assert.equal(transaction.timestamp, 100);
@@ -70,7 +71,8 @@ test("upgrades a v11 database to v12 with supplier storage and indexes", async (
   });
 
   await db.open();
-  assert.equal(db.verno, 13);
+  assert.equal(db.verno, 14);
+  assert.ok(db.tables.some((table) => table.name === "reminders"), "v14 adds the reminder events");
   assert.ok(db.tables.some((table) => table.name === "suppliers"));
   assert.ok(db.tables.some((table) => table.name === "planPayments"));
   assert.ok(db.transactions.schema.indexes.some((index) => index.name === "supplierId"));

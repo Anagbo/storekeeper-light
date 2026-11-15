@@ -1,20 +1,25 @@
 import { db } from "../db/db.js";
 import { recalculateCustomerDebtBalance } from "../db/debtLedger.js";
+import { REMINDER_CHANNELS } from "../db/reminders.js";
 
 const BACKUP_FORMAT_VERSION = 1;
-const BACKUP_TABLES = ["transactions", "customers", "debts", "products", "payments", "suppliers"];
+const BACKUP_TABLES = ["transactions", "customers", "debts", "products", "payments", "suppliers", "reminders"];
 const PRIMARY_KEYS = {
   transactions: "id",
   customers: "id",
   debts: "id",
   products: "id",
   payments: "id",
-  suppliers: "id"
+  suppliers: "id",
+  reminders: "id"
 };
+// Tables an older backup may not have: they restore as empty lists.
+const OPTIONAL_TABLES = new Set(["payments", "suppliers", "reminders"]);
 
 // The ledger is append-only: a restore may add missing rows but never change a saved one (D4).
-// Debts are included so a backup cannot change a stored debt balance (Batch 6b).
-const LEDGER_TABLES = new Set(["transactions", "payments", "debts"]);
+// Debts are included so a backup cannot change a stored debt balance (Batch 6b). Reminder events
+// are appended only, never edited (rules_global.reminders).
+const LEDGER_TABLES = new Set(["transactions", "payments", "debts", "reminders"]);
 const TRANSACTION_TYPES = new Set([
   "sale", "cash_sale", "credit_sale", "installment_sale", "installment_addon",
   "income", "income_reversal", "debt_payment", "expense", "supplier_payment",
@@ -45,11 +50,22 @@ function validateRecordValues(tableName, record) {
   if (tableName === "transactions" && record.type !== undefined && !TRANSACTION_TYPES.has(record.type)) {
     throw new TypeError("The backup contains an unknown transaction type.");
   }
+  // Paid with on spending (wiring 44/45/46): absent on older records, otherwise Cash or MoMo.
+  if (tableName === "transactions" && record.paidWith !== undefined && !PAYMENT_METHODS.has(record.paidWith)) {
+    throw new TypeError("The backup contains an unknown payment method.");
+  }
   if (tableName === "payments" && !PAYMENT_METHODS.has(record.paymentMethod)) {
     throw new TypeError("The backup contains an unknown payment method.");
   }
   if (tableName === "debts" && record.status !== undefined && !DEBT_STATUSES.has(record.status)) {
     throw new TypeError("The backup contains an unknown debt status.");
+  }
+  if (tableName === "reminders" && (
+    !REMINDER_CHANNELS.has(record.channel) ||
+    !Number.isSafeInteger(record.createdAt) || record.createdAt <= 0 ||
+    !((typeof record.customerId === "string" && record.customerId) || (typeof record.nameLower === "string" && record.nameLower))
+  )) {
+    throw new TypeError("The backup contains an invalid reminder record.");
   }
 }
 
@@ -83,7 +99,7 @@ export function validateBackupData(backup) {
   }
 
   for (const tableName of BACKUP_TABLES) {
-    const records = backup.data[tableName] ?? (["payments", "suppliers"].includes(tableName) ? [] : undefined);
+    const records = backup.data[tableName] ?? (OPTIONAL_TABLES.has(tableName) ? [] : undefined);
     if (!Array.isArray(records)) {
       throw new TypeError(`The backup is missing a valid ${tableName} record list.`);
     }
@@ -122,6 +138,11 @@ export function validateBackupData(backup) {
     for (const record of backup.data[tableName] ?? []) validateRecordValues(tableName, record);
   }
   return { ...backup.data, payments: backup.data.payments ?? [], suppliers: backup.data.suppliers ?? [] };
+}
+
+// Every table as a list: a backup made before reminder events existed restores none.
+function withOptionalTables(data) {
+  return { ...data, reminders: data.reminders ?? [] };
 }
 
 export async function exportDatabaseToJson() {
@@ -166,7 +187,7 @@ export async function importDatabaseFromJson(jsonFile) {
   } catch {
     throw new TypeError("The selected file is not valid JSON.");
   }
-  const data = validateBackupData(backup);
+  const data = withOptionalTables(validateBackupData(backup));
   const added = Object.fromEntries(BACKUP_TABLES.map((tableName) => [tableName, 0]));
   let skippedLedgerRows = 0;
 
@@ -184,7 +205,8 @@ export async function importDatabaseFromJson(jsonFile) {
         const isLedger = LEDGER_TABLES.has(tableName);
         const records = incomingRecords.filter((record, index) => {
           if (isLedger && existingRecords[index]) {
-            skippedLedgerRows += 1;
+            // The restore message names sales, payments and debts; a reminder already here is just kept.
+            if (tableName !== "reminders") skippedLedgerRows += 1;
             return false;
           }
           return shouldRestoreBackupRecord(existingRecords[index], record);

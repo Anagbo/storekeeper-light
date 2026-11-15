@@ -98,7 +98,7 @@ test("28 payment received keeps the green home tile; it goes Home", async () => 
   const app = await open();
   await toCollect(app);
   await app.tap("Pay part");
-  await app.type("Amount to collect", "7");
+  await app.keys(["7"]); // 26 is typed on the keypad only (15 Nov 2026)
   await app.tap(/^Cash$/);
   await app.tap(/^Received$/);
   assert.equal(app.route, "PaymentReceived");

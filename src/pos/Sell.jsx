@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Banknote, Check, Delete, Plus, Smartphone, UserRound } from "lucide-react";
+import { Banknote, Check, Plus, Smartphone, UserRound } from "lucide-react";
 import { recordCashSale } from "../db/sales.js";
 import { isSaveOutcomeUnknown, isSaveTimeout } from "../lib/saveAttempt.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
@@ -12,6 +12,8 @@ import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { useBackBlock } from "./browserBack.js";
 import { getSplitPaymentParams } from "./routes.js";
+import AmountKeypad from "./AmountKeypad.jsx";
+import { pesewasToAmountText, pressAmountKey } from "./amountKeypad.js";
 
 const paymentChoices = [
   { value: "cash", label: "sell.cash", icon: Banknote },
@@ -25,7 +27,7 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
   const [amount, setAmount] = useState(typeof params.amountText === "string"
     ? params.amountText
     : Number.isSafeInteger(params.amountPesewas) && params.amountPesewas > 0
-      ? (params.amountPesewas / 100).toFixed(2)
+      ? pesewasToAmountText(params.amountPesewas)
       : "");
   const [paymentMethod, setPaymentMethod] = useState(params.paymentMethod === "momo" ? "momo" : "cash");
   const [busy, setBusy] = useState(false);
@@ -44,7 +46,7 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
   // An amount that arrives from outside (not the one typed here) replaces what is on the pad.
   useEffect(() => {
     if (Number.isSafeInteger(params.amountPesewas) && params.amountPesewas !== (toPesewas(amount) ?? 0)) {
-      setAmount(params.amountPesewas > 0 ? (params.amountPesewas / 100).toFixed(2) : "");
+      setAmount(pesewasToAmountText(params.amountPesewas));
     }
   }, [params.amountPesewas]);
 
@@ -59,14 +61,7 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
   function appendDigit(digit) {
     if (hasSaleItems) return;
     setError("");
-    setAmount((current) => {
-      if (digit === "backspace") return current.slice(0, -1);
-      if (digit === "00" && !current) return "0";
-      if (digit === "." && current.includes(".")) return current;
-      const next = `${current}${digit}`;
-      const [whole, fraction] = next.split(".");
-      return fraction?.length > 2 ? current : whole.length > 8 ? current : next;
-    });
+    setAmount((current) => pressAmountKey(current, digit));
   }
 
   async function saveSale(confirmed = false) {
@@ -116,7 +111,7 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
         appendDigit(".");
       } else if (event.key === "Backspace") {
         event.preventDefault();
-        appendDigit("backspace");
+        appendDigit("Delete");
       } else if (event.key === "Enter" && canSave && !busy) {
         event.preventDefault();
         void saveSale();
@@ -135,14 +130,7 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
             <p className="text-base font-bold text-slate-700 lg:text-lg">{t("sell.customerPays")}</p>
             <output aria-live="polite" className="amount-fit font-extrabold">{formatGhs(amountPesewas ?? 0)}</output>
           </PosCard>
-          <div className="grid grid-cols-3 gap-2 lg:gap-3" aria-label={t("sell.enterAmount")}>
-            {["1", "2", "3", "4", "5", "6", "7", "8", "9", "00", "0"].map((digit) => (
-              <button key={digit} type="button" disabled={hasSaleItems} onClick={() => appendDigit(digit)} style={{ fontSize: 28, fontWeight: 800 }} className="h-[62px] rounded-2xl border-2 border-slate-500 bg-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 lg:h-[76px]">{digit}</button>
-            ))}
-            <button type="button" disabled={hasSaleItems} onClick={() => appendDigit("backspace")} aria-label={t("sell.deleteLastDigit")} className="flex h-[62px] items-center justify-center rounded-2xl bg-slate-300 text-slate-950 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 lg:h-[76px]">
-              <Delete size={28} aria-hidden="true" />
-            </button>
-          </div>
+          <AmountKeypad label={t("sell.enterAmount")} disabled={hasSaleItems} onKey={appendDigit} />
         </div>
         <div className="flex flex-col gap-3 lg:pt-1">
           <button

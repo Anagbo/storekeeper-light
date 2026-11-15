@@ -6,9 +6,9 @@ import { getMoreCategoryGroups, getPopularCategories, isSomethingElseOnly, searc
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
-import { padCount, padMoney, pressPad, startPad } from "./amountPad.js";
+import { amountTextToPesewas, COUNT_KEYPAD, countFromKeypadText, MONEY_KEYPAD, pressAmountKey } from "./amountKeypad.js";
 import { posText as t } from "./i18n.js";
-import NumberPad from "./NumberPad.jsx";
+import AmountKeypad from "./AmountKeypad.jsx";
 import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
 import { useBackBlock } from "./browserBack.js";
 
@@ -209,12 +209,12 @@ export function MoreCategories({ selected, onSelectedChange, onBack, onDone }) {
 
 export function HowMuchIsItem({ params, onBack, onReturnTo }) {
   const product = params.product;
-  // The price is typed on the number pad as whole pesewas (4 5 0 = GH₵4.50), never as a decimal.
-  const [pad, setPad] = useState(() => startPad(0));
+  // The shared amount keypad (wiring rules_global.amount_entry): 4 . 5 is GH₵4.50, read by integer math.
+  const [priceText, setPriceText] = useState("");
   const [saving, setSaving] = useState(false);
   useBackBlock(saving);
   const [error, setError] = useState("");
-  const pricePesewas = pad.value;
+  const pricePesewas = amountTextToPesewas(priceText);
 
   async function savePrice() {
     if (!product || saving) return;
@@ -252,7 +252,7 @@ export function HowMuchIsItem({ params, onBack, onReturnTo }) {
         <p className="text-[17px] font-bold text-slate-800">{t("setup.priceFor")}</p>
         <output aria-live="polite" className="block text-5xl font-extrabold">{formatGhs(pricePesewas)}</output>
       </PosCard>
-      <NumberPad disabled={saving} onKey={(key) => { setPad((current) => pressPad(current, key, padMoney)); setError(""); }} />
+      <AmountKeypad disabled={saving} onKey={(key) => { setPriceText((current) => pressAmountKey(current, key, MONEY_KEYPAD)); setError(""); }} />
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
       <PosPrimaryButton type="button" disabled={saving || !product} onClick={() => void savePrice()} className="mt-auto">{saving ? t("items.saving") : t("sellItems.savePrice")}</PosPrimaryButton>
     </PosPage>
@@ -264,12 +264,18 @@ export function HowManyItem({ params, onBack, onReturnTo }) {
   const unitPricePesewas = params.unitPricePesewas ??
     (product ? toPesewas(product.default_price) : null);
   const isEditingExisting = params.mode === "edit" || params.setQuantity === true;
-  // The count is typed on the number pad; the first digit replaces the starting number.
-  const [pad, setPad] = useState(() => startPad(
-    Number.isSafeInteger(params.quantity) && params.quantity > 0 ? params.quantity : 1
-  ));
+  // The count is typed on the shared keypad (whole numbers, "." does nothing); the first digit
+  // replaces the starting number, Delete edits it.
+  const [pad, setPad] = useState(() => ({
+    text: String(Number.isSafeInteger(params.quantity) && params.quantity > 0 ? params.quantity : 1),
+    fresh: true
+  }));
   const [error, setError] = useState("");
-  const quantity = pad.value;
+  const quantity = countFromKeypadText(pad.text);
+  const pressCount = (key) => setPad((current) => ({
+    text: pressAmountKey(current.fresh && key !== "Delete" && key !== "." ? "" : current.text, key, COUNT_KEYPAD),
+    fresh: key === "." ? current.fresh : false
+  }));
 
   function addToSale() {
     if (!product || !Number.isSafeInteger(product.id) ||
@@ -310,7 +316,7 @@ export function HowManyItem({ params, onBack, onReturnTo }) {
         <p className="text-[17px] font-bold text-slate-800">{t("setup.quantityFor", { name: product?.name ?? "" })}</p>
         <output aria-live="polite" className="block text-5xl font-extrabold">{quantity}</output>
       </PosCard>
-      <NumberPad onKey={(key) => { setPad((current) => pressPad(current, key, padCount)); setError(""); }} />
+      <AmountKeypad decimalDisabled onKey={(key) => { pressCount(key); setError(""); }} />
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
       <PosPrimaryButton type="button" disabled={!product} onClick={addToSale} className="mt-auto">{t("setup.addQuantity", { quantity })}</PosPrimaryButton>
     </PosPage>

@@ -40,7 +40,7 @@ async function renderCard(debt) {
   return { view, calls, card: () => [...walk(view.tree)].find((node) => node.type === "section" && textOf(node).includes("Existing payment terms")), first: card };
 }
 const type = (view, digits) => {
-  for (const digit of digits) findButton(view.tree, digit).props.onClick();
+  for (const digit of digits) [...walk(view.tree)].find((node) => node.type === "button" && textOf(node) === digit).props.onClick();
   view.rerender();
 };
 
@@ -54,7 +54,7 @@ test("53 card: no '{paid} paid' line; the contract removes it", async () => {
 test("53 card: '{n} payments left now' is computed live after adding the new amount, not read from the stored counter", async () => {
   const { view, card } = await renderCard(planDebt({ installmentsRemaining: 99 }));
   assert.match(textOf(card()), /15 payments left now/, "before typing: ceil(150.00 ÷ 10.00)");
-  type(view, ["2", "5", "0", "0"]);
+  type(view, ["2", "5"]); // the shared keypad fills whole cedis (15 Nov 2026)
   assert.match(textOf(card()), /18 payments left now/, "after adding GH₵25.00: ceil(175.00 ÷ 10.00)");
   assert.doesNotMatch(textOf(card()), /99/);
 });
@@ -71,7 +71,7 @@ test("53 card: the button is Change, disabled until an amount is typed, and goes
   assert.ok(button(), "Change");
   assert.doesNotMatch(textOf(card()), /Modify/);
   assert.equal(button().props.disabled, true);
-  type(view, ["5", "0", "0"]);
+  type(view, ["5"]); // GH₵5.00 on the shared keypad (15 Nov 2026)
   assert.equal(button().props.disabled, false);
   button().props.onClick();
   assert.equal(calls[0][0], "WhenWillTheyPay");

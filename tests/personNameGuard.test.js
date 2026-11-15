@@ -40,7 +40,9 @@ const ALLOWLIST = [
   ["src/pos/CustomerContactEditor.jsx", "name: customer.name,", "stored value written back to the database"],
   ["src/pos/ManualDebtScreens.jsx", "customerName: params.customer?.name", "route params"],
   ["src/pos/PosApp.jsx", "name: details.customer?.name", "save payload (database)"],
-  ["src/pos/SupplierScreens.jsx", "newSupplier: isNew ? { name: supplierName", "typed supplier saved to the database"]
+  ["src/pos/SupplierScreens.jsx", "newSupplier: isNew ? { name: supplierName", "typed supplier saved to the database"],
+  ["src/pos/DebtCollection.jsx", "const reminderPerson = data ? { customerId: data.customerId ?? \"\", name: data.name }", "person key for the reminder log (database); the sheet shows it through displayName"],
+  ["src/pos/OwedScreens.jsx", "const person = { customerId: customer.customerId ?? \"\", name: customer.customerName }", "person key for the reminder log (database); the sheet shows it through displayName"]
 ];
 
 function allowed(file, line) {

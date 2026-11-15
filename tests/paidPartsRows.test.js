@@ -148,7 +148,7 @@ test("28: Cash and MoMo are separate rows and what Juju still owes is its own ro
   await app.settle();
   await app.tap(/^Pay part$/);
   assert.equal(app.route, "CollectPayPart");
-  await app.type("Amount to collect", "7");
+  await app.keys(["7"]); // 26 is typed on the keypad only (15 Nov 2026)
   await app.tap(/Split payment$/);
   await splitPart(app, "Cash", "4.00");
   await splitPart(app, "MoMo", "3.00");

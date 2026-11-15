@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Banknote, Check, Clock3, Delete, Phone, Plus, ReceiptText, Smartphone, Undo2, UserRoundPen, X } from "lucide-react";
+import { Banknote, Check, Clock3, Phone, Plus, ReceiptText, Smartphone, Undo2, UserRoundPen, X } from "lucide-react";
 import { db } from "../db/db.js";
 import { COLLECTION_UNDO_WINDOW_MS, undoDebtCollection } from "../db/debts.js";
-import { correctDebtBalance, recordDebtReminder } from "../db/debtLedger.js";
+import { correctDebtBalance } from "../db/debtLedger.js";
 import { formatLastReminder } from "./reminderLabel.js";
+import { useReminderCheck } from "./ReminderCheck.jsx";
+import { latestReminderAt, loadReminderEvents } from "../db/reminders.js";
 import { formatDate, formatTime } from "../lib/formatDate.js";
 import { formatGhs, formatGhsAmount, toPesewas } from "../lib/money.js";
 import { formatGhanaCard } from "../utils/formatters.js";
@@ -14,8 +16,9 @@ import { getOutstandingDebtPesewas } from "../lib/money.js";
 import { buildWhatsAppReminderText, generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { sendReceipt } from "./receiptShare.js";
 import { CopyReceiptButton, ReceiptFailedLine, ReceiptOfflineLine, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
-import { buildCustomerBalanceReceipt, getCollectionReceiptText, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
-import { normalizeCollectionAmountInput } from "./collectionSplit.js";
+import { buildLatestPaymentReceipt, getCollectionReceiptText, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
+import AmountKeypad from "./AmountKeypad.jsx";
+import { pressAmountKey } from "./amountKeypad.js";
 import { getDebtDueLabel, getDebtDueLine } from "./money.js";
 import { getInstallmentsLeft, getPlanProgress } from "../utils/installments.js";
 import { getCustomerLedgerRecords, getPlanPaidPesewas } from "../utils/debtLedgerMath.js";
@@ -50,6 +53,16 @@ function WhatsAppIcon({ size = 28 }) {
       <path d="M8.5 7.2c.3-.5.8-.5 1.1-.3l1 2c.1.3 0 .6-.2.8l-.6.7c.7 1.3 1.7 2.3 3 3l.8-.6c.2-.2.5-.2.8-.1l1.9 1c.3.2.4.6.2 1-.4 1-1.4 1.6-2.4 1.4-3.2-.7-6-3.4-6.8-6.5-.1-.6.1-1.1.3-1.6z" fill="#fff" />
     </svg>
   );
+}
+
+// A payment row that cannot make a receipt (a broken amount or time) never stops the screen: no receipt.
+function latestPaymentReceiptOrNull(details) {
+  try {
+    return buildLatestPaymentReceipt(details);
+  } catch (error) {
+    console.error("Could not build the receipt for the latest payment.", error);
+    return null;
+  }
 }
 
 function groupCollectionHistory(events) {
@@ -282,28 +295,6 @@ function CollectionSheetError({ loading, onClose }) {
   );
 }
 
-function DigitKeypad({ onDigit, disabled = false }) {
-  return (
-    <div className="grid grid-cols-3 gap-2" aria-label={t("collect.enterAmount")}>
-      {["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "00"].map((digit) => (
-        <button key={digit} type="button" disabled={disabled} onClick={() => onDigit(digit)} style={{ fontSize: 26, fontWeight: 800 }} className="h-[62px] rounded-2xl border-2 border-slate-500 bg-white disabled:opacity-50">{digit}</button>
-      ))}
-      <button type="button" disabled={disabled} onClick={() => onDigit("backspace")} aria-label={t("collect.deleteLastDigit")} className="flex h-[62px] items-center justify-center rounded-2xl bg-slate-300 disabled:opacity-50">
-        <Delete size={26} aria-hidden="true" />
-      </button>
-    </div>
-  );
-}
-
-function appendAmountDigit(current, digit) {
-  if (digit === "backspace") return current.slice(0, -1);
-  if (digit === "00" && current.length === 0) return "0";
-  if (digit === "." && current.includes(".")) return current;
-  const next = `${current}${digit}`;
-  const [whole, fraction] = next.split(".");
-  return fraction?.length > 2 || whole.length > 8 ? current : next;
-}
-
 export function CollectPayPart(props) {
   return <CollectPayPartScreen {...props} />;
 }
@@ -431,32 +422,15 @@ function CollectPayPartScreen({ params, onBack, onNavigate, onUpdateParams, onRe
             <PosBackButton onClick={onBack} />
             <h1 className="text-2xl font-extrabold">{t("collect.collectFrom", { name: displayName(debt.customerName) })}</h1>
           </div>
-          <section className="rounded-[20px] border-2 border-slate-500 bg-white px-4 py-2 text-right">
+          <section className="amount-fit-container rounded-[20px] border-2 border-slate-500 bg-white px-4 py-2 text-right">
             <p className="text-[17px] font-bold text-slate-800">{t("collect.namePays", { name: displayName(debt.customerName) })}</p>
-            <div className="flex items-center justify-end gap-2">
-              <span className="text-lg font-bold text-slate-700">GH₵</span>
-              <input
-                type="text"
-                inputMode="decimal"
-                autoComplete="off"
-                aria-label={t("collect.amountToCollect")}
-                value={amount}
-                onChange={(event) => {
-                  const next = normalizeCollectionAmountInput(event.target.value, amount);
-                  setAmount(next);
-                  onUpdateParams({ amount: next });
-                  setError("");
-                }}
-                disabled={busy}
-                placeholder="0.00"
-                className="w-full min-w-0 bg-transparent text-right text-[46px] font-extrabold outline-none placeholder:text-slate-400 disabled:opacity-60"
-              />
-            </div>
+            {/* Decided 15 Nov 2026: the amount is shown like every other pad (GH₵8.00), typed only on the keypad. */}
+            <output aria-live="polite" aria-label={t("collect.amountToCollect")} className="amount-fit block font-extrabold">{formatGhs(amountPesewas ?? 0)}</output>
             <p className="text-lg font-bold text-rose-900">{t("collect.leftToPay", { amount: formatGhs(Math.max(0, debt.amountPesewas - (amountPesewas ?? 0))) })}</p>
           </section>
           {amountPesewas > debt.amountPesewas && <CollectionError>{t("collect.amountTooHigh")}</CollectionError>}
-          <DigitKeypad onDigit={(digit) => {
-            const next = appendAmountDigit(amount, digit);
+          <AmountKeypad label={t("collect.enterAmount")} onKey={(digit) => {
+            const next = pressAmountKey(amount, digit);
             setAmount(next);
             onUpdateParams({ amount: next });
             setError("");
@@ -654,6 +628,8 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
       ? await db.customers.get(customerId)
       : await db.customers.where("nameLower").equals(normalizedName).first();
     const history = await loadCustomerHistory(customer?.id, name);
+    // rules_global.reminders: the latest reminder recorded for this person (any screen).
+    const lastReminderAt = latestReminderAt(await loadReminderEvents(), { customerId: customer?.id ?? customerId, customerName: name });
     const historyRows = groupCollectionHistory(history.events);
     const selectedOpenDebt = customerDebts.find((debt) => debt.id === selectedDebt?.id && debt.status === "unpaid");
     const unpaidDebts = customerDebts.filter((debt) => debt.status === "unpaid");
@@ -680,6 +656,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
         (right.createdAt ?? right.created_at ?? 0) - (left.createdAt ?? left.created_at ?? 0)
       )),
       unpaidDebtCount: unpaidDebts.length,
+      lastReminderAt,
       history: historyRows
     };
   }, [params?.debtId, params?.customerName], undefined);
@@ -693,69 +670,37 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
       setContactEditorOpen(true);
     }
   }, [params?.editContact, data]);
-  // 43: lastReminderAt is recorded when the merchant comes back from WhatsApp (brief line 286).
-  const pendingReminderDebtIds = useRef(null);
-  useEffect(() => {
-    function onReturn() {
-      if (document.visibilityState !== "visible" || !pendingReminderDebtIds.current) return;
-      const debtIds = pendingReminderDebtIds.current;
-      pendingReminderDebtIds.current = null;
-      void recordDebtReminder({ debtIds }).catch((error) => console.error("Could not record the reminder time.", error));
-    }
-    document.addEventListener("visibilitychange", onReturn);
-    return () => document.removeEventListener("visibilitychange", onReturn);
-  }, []);
   const phone = normalizeWhatsAppPhone(data?.phone);
   const reminderLink = data && generateWhatsAppLink(data.phone, data.name, data.balancePesewas, shopName);
-  const lastReminderAt = Math.max(0, ...(data?.unpaidDebts ?? []).map((debt) => Number(debt.lastReminderAt) || 0));
-  const lastReminderLabel = formatLastReminder(lastReminderAt || undefined);
-  const markReminderOpened = () => {
-    pendingReminderDebtIds.current = (data?.unpaidDebts ?? []).map((debt) => debt.id);
-  };
+  const lastReminderAt = data?.lastReminderAt ?? 0;
+  const lastReminderLabel = formatLastReminder(lastReminderAt);
+  // rules_global.reminders: both WhatsApp reminder controls go through the shared path, which
+  // records a reminder for this person when the app hands over to WhatsApp.
+  const reminders = useReminderCheck();
+  const reminderPerson = data ? { customerId: data.customerId ?? "", name: data.name } : null;
   // 29/43 with no valid phone: WhatsApp stays on and opens the share sheet with the reminder text, the
-  // owner picks the chat (the same share logic as the receipts). A closed share sheet records nothing;
-  // a finished share records the reminder time now.
+  // owner picks the chat (the same share logic as the receipts). A closed share sheet records nothing.
   const reminderText = data ? buildWhatsAppReminderText(data.name, data.balancePesewas, shopName) : null;
-  async function shareReminder() {
-    if (!reminderText) return;
-    markReminderOpened();
-    try {
-      const result = await sendReceipt({ text: reminderText, title: t("collect.remindOnWhatsApp") });
-      if (result === "cancelled") pendingReminderDebtIds.current = null;
-      else if (result === "share" && pendingReminderDebtIds.current) {
-        const debtIds = pendingReminderDebtIds.current;
-        pendingReminderDebtIds.current = null;
-        await recordDebtReminder({ debtIds });
-      }
-    } catch (error) {
-      pendingReminderDebtIds.current = null;
-      console.error("Could not open WhatsApp for the reminder.", error);
-    }
-  }
+  const shareReminder = () => sendReceipt({ text: reminderText, title: t("collect.remindOnWhatsApp") });
   // The WhatsApp control: a direct link to the saved number, or the share sheet without one.
   function reminderControl({ label, ariaLabel, className, children }) {
     if (phone && reminderLink) {
-      return <a href={reminderLink} target="_blank" rel="noopener noreferrer" onClick={markReminderOpened} aria-label={ariaLabel} className={className}>{children}</a>;
+      return <a href={reminderLink} target="_blank" rel="noopener noreferrer" onClick={(event) => reminders.onReminder(event, { person: reminderPerson, lastReminderAt, href: reminderLink })} aria-label={ariaLabel} className={className}>{children}</a>;
     }
-    return <button type="button" disabled={!reminderText} onClick={() => void shareReminder()} aria-label={ariaLabel ?? label} className={className}>{children}</button>;
+    return <button type="button" disabled={!reminderText} onClick={(event) => (reminderText ? reminders.onReminder(event, { person: reminderPerson, lastReminderAt, share: shareReminder }) : undefined)} aria-label={ariaLabel ?? label} className={className}>{children}</button>;
   }
-  // The current-balance Receipt, Copy receipt and offline line show only with VITE_ENABLE_POS_RECEIPTS on.
-  // Send goes through the same share logic as 28, 30 and 31: a valid phone opens WhatsApp to that
-  // number, no phone opens the share sheet.
-  const balanceReceiptText = isReceiptTemplatesEnabled() && data
-    ? buildCustomerBalanceReceipt({
-        shopName,
-        customerName: data.name,
-        timestamp: Date.now(),
-        balancePesewas: data.balancePesewas,
-        installmentPesewas: data.debt?.isInstallmentPlan ? data.debt.installmentAmount : 0,
-        nextDueDate: data.debt?.nextDueDate
-      })
+  // Wiring 29/43 "Collection receipt" (15 Nov 2026): Receipt and Copy receipt cover the person's latest
+  // payment only, and the label says so. A person who never paid has no receipt buttons. They show only
+  // with VITE_ENABLE_POS_RECEIPTS on. Send goes through the same share logic as 28, 30 and 31.
+  const latestPayment = data?.history?.find((row) => row.type === "payment" && row.amountPesewas > 0) ?? null;
+  const balanceReceiptText = isReceiptTemplatesEnabled() && data && latestPayment
+    ? latestPaymentReceiptOrNull({ shopName, customerName: data.name, payment: latestPayment, balancePesewas: data.balancePesewas, plan: data.debt?.status === "unpaid" ? data.debt : null })
     : null;
   const balanceActions = useReceiptActions(balanceReceiptText ?? "", phone ?? "");
+  const receiptLabel = latestPayment ? t("collect.receiptForPayment", { amount: formatGhs(latestPayment.amountPesewas) }) : "";
   const balanceReceiptButton = balanceReceiptText && (
-    <button type="button" onClick={() => void balanceActions.send()} aria-label={`Send current balance receipt for ${displayName(data.name)}`} className="flex min-h-14 w-full min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 sm:text-[17px]">
-      <ReceiptText size={26} aria-hidden="true" /> <span className="truncate">Receipt</span>
+    <button type="button" onClick={() => void balanceActions.send()} className="flex min-h-14 w-full min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 sm:text-[17px]">
+      <ReceiptText size={26} aria-hidden="true" /> <span className="min-w-0 truncate">{receiptLabel}</span>
     </button>
   );
   const dueDate = data?.debt?.isInstallmentPlan ? data.debt.nextDueDate : data?.debt?.dueDate;
@@ -892,7 +837,6 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                 className: "flex h-16 w-full items-center justify-center gap-2.5 rounded-[18px] border-[3px] border-emerald-900 bg-white px-3 text-lg font-extrabold text-emerald-900",
                 children: <><WhatsAppIcon /> {t("collect.remindOnWhatsApp")}</>
               })}
-              {lastReminderLabel && <p className="text-center text-base text-slate-800">{lastReminderLabel}</p>}
             </div>
           )}
           {/* Action buttons (wiring 29 and 43): one row that never wraps at 340px and wider, icon above
@@ -916,6 +860,9 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                   <Phone size={26} aria-hidden="true" /><span>{t("collect.call")}</span>
                 </button>}
           </div>
+          {/* Wiring 29/43: Last reminder, under the action buttons and above Correct balance. Per
+              person; it says when the reminder was handed to WhatsApp, never that it was delivered. */}
+          <p data-last-reminder="" className="text-center text-base text-slate-800">{lastReminderLabel}</p>
           {balanceReceiptText && (
             <>
               <div className="flex flex-col gap-2">
@@ -959,7 +906,8 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               </div>
             </section>
           )}
-          {(data.unpaidDebtCount > 1 || !singleDebtMatchesTotal) && (
+          {/* Wiring 29/43 "No open debt entries" (15 Nov 2026): no heading and no line without an open entry. */}
+          {data.unpaidDebtCount > 0 && (data.unpaidDebtCount > 1 || !singleDebtMatchesTotal) && (
             <section className="mt-2">
               <h2 className="mb-2 text-[22px] font-extrabold leading-tight">Open debt entries</h2>
               <ul className="overflow-hidden rounded-[18px] border-2 border-slate-500 bg-white">
@@ -1121,6 +1069,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
           </section>
         </div>
       )}
+      {reminders.sheet}
     </PosPage>
   );
 }

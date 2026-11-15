@@ -100,21 +100,18 @@ test("27: the split total from 26's typed amount, and 27 from 19, refuse 1e2 and
   setLiveQuery(null);
 });
 
-// ---- 34 (new person with an amount) and 18 ---------------------------------------------------------------
+// ---- 34 (new person) and 18 --------------------------------------------------------------------------------
 
-test("34: the amount owed on the new person form refuses 1e2 and 0x10", async () => {
+test("34: no typed amount on the new person form (wiring 34 \"No amount field on 34\", 15 Nov 2026)", async () => {
   const { default: CreditScreens } = await loadJsx("src/pos/CreditScreens.jsx");
-  for (const typed of ["1e2", "0x10"]) {
-    const navigated = [];
-    const view = render({ type: CreditScreens, props: { route: "NewPerson", params: { amountPesewas: 5000 }, onBack() {}, onNavigate: (...args) => navigated.push(args) } });
-    const [amount, name] = inputs(view.tree);
-    amount.props.onChange({ target: { value: typed } });
-    view.rerender();
-    name.props.onChange({ target: { value: "Kofi" } });
-    view.rerender();
-    [...walk(view.tree)].find((node) => node.type === "form").props.onSubmit({ preventDefault() {} });
-    assert.equal(navigated.length, 0, `${typed} does not continue`);
+  for (const params of [{ amountPesewas: 5000 }, { manualDebt: true, flow: "add_debt" }]) {
+    const view = render({ type: CreditScreens, props: { route: "NewPerson", params, onBack() {}, onNavigate() {} } });
+    assert.equal(inputs(view.tree).length, 3, JSON.stringify(params));
+    assert.equal(inputs(view.tree).some((node) => node.props?.type === "number" || node.props?.inputMode === "decimal"), false, JSON.stringify(params));
   }
+  const source = readFileSync(new URL("../src/pos/CreditScreens.jsx", import.meta.url), "utf8");
+  const newPerson = source.slice(source.indexOf("function NewPerson"), source.indexOf("function WhenWillTheyPay"));
+  assert.doesNotMatch(newPerson, /toPesewas|parseFloat|\bNumber\(/);
 });
 
 test("18: the screen takes its amounts from the sale in whole pesewas (no typed field to parse)", async () => {
@@ -130,7 +127,8 @@ test("15: the pad builds an exact amount; 1250 on the pad is saved as 125000 pes
   const sales = [];
   const view = render({ type: Sell, props: { params: {}, onNavigate() {}, recordSale: async (sale) => { sales.push(sale); return { id: "t1" }; } } });
   for (const key of ["1", "2", "5", "0"]) {
-    findButton(view.tree, key).props.onClick();
+    // Exact text: findButton matches by "includes", and the shared keypad has 00 after 0 (15 Nov 2026).
+    [...walk(view.tree)].find((node) => node.type === "button" && textOf(node) === key).props.onClick();
     view.rerender();
   }
   assert.match(textOf(view.tree), /1,250\.00/);

@@ -200,7 +200,13 @@ export function describeTransactionRow(row) {
   if (row.kind === "sold") {
     const received = row.cashReceivedPesewas;
     if (row.owedPesewas > 0 && received === 0) {
-      return { title: t("transactions.row.soldOnCredit"), amountPesewas: row.owedPesewas, tone: "credit", chips: name ? [person(name)] : [] };
+      // Wiring 24 "Credit rows look the same" (15 Nov 2026): the chip carries the amount, like Stock on credit.
+      return {
+        title: t("transactions.row.soldOnCredit"),
+        amountPesewas: row.owedPesewas,
+        tone: "credit",
+        chips: [person(t("transactions.row.owes", { name: name || t("home.unnamedCustomer"), amount: formatGhs(row.owedPesewas) }))]
+      };
     }
     if (row.owedPesewas > 0) {
       return {
@@ -218,10 +224,11 @@ export function describeTransactionRow(row) {
   if ((row.kind === "spent" || row.kind === "credit") && row.owedPesewas > 0) {
     // Stock bought on credit (wiring 24, 11 Nov 2026; only stock can be owed to a supplier).
     // Nothing paid now: "Stock on credit", dark red, no sign. Part paid: "Stock", the amount paid
-    // now with a minus. Either way a pink "You owe {Supplier}" chip, with the rest when part paid.
+    // now with a minus. Either way a pink "You owe {Supplier} GH₵x" chip with what is still owed
+    // (credit rows look the same, 15 Nov 2026).
     const supplier = displayName(row.supplierName) || t("expense.supplier");
     if (row.kind === "credit") {
-      return { title: t("transactions.row.stockOnCredit"), amountPesewas: row.owedPesewas, tone: "credit", chips: [person(t("transactions.row.youOwe", { name: supplier }))] };
+      return { title: t("transactions.row.stockOnCredit"), amountPesewas: row.owedPesewas, tone: "credit", chips: [person(t("transactions.row.youOweAmount", { name: supplier, amount: formatGhs(row.owedPesewas) }))] };
     }
     return {
       title: t("transactions.row.stock"),

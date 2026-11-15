@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Plus, Wallet } from "lucide-react";
+import { Banknote, Plus, Smartphone, Wallet } from "lucide-react";
 import { db } from "../db/db.js";
 import { displayName } from "../lib/displayName.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { localDateString } from "../utils/installments.js";
 import { getSupplierBalances, orderSuppliersByRecentUse, SUPPLIER_CATEGORIES } from "../utils/suppliers.js";
 import { posText as t } from "./i18n.js";
+import { normalizeTypedAmount } from "./amountKeypad.js";
 import { PartyCard } from "./PartyCard.jsx";
 import { PosBackButton, PosCard, PosPage, PosPrimaryButton } from "./PosComponents.jsx";
 import { useBackBlock, useBackHandler } from "./browserBack.js";
@@ -18,6 +19,29 @@ const CATEGORY_LABELS = Object.freeze({
   utilities: "expense.category.utilities",
   other: "expense.category.other"
 });
+
+// Wiring 44/45/46 "Paid with": Cash or MoMo, Cash by default, each with its icon (wide_layout icons
+// rule). One control for the three screens; the choice is stored as paidWith.
+export function PaidWithChoice({ value, onChange }) {
+  return (
+    <fieldset data-paid-with="">
+      <legend className="mb-1 text-lg font-extrabold">{t("expense.paidWith")}</legend>
+      <div className="grid grid-cols-2 gap-2">
+        {[["cash", Banknote, "credit.method.cash"], ["momo", Smartphone, "credit.method.momo"]].map(([method, Icon, label]) => (
+          <button
+            key={method}
+            type="button"
+            aria-pressed={value === method}
+            onClick={() => onChange(method)}
+            className={`flex min-h-[56px] min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-2xl border-[3px] px-2 text-xl font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 ${value === method ? "border-emerald-900 bg-emerald-900 text-white" : "border-slate-500 bg-white text-slate-950"}`}
+          >
+            <Icon size={22} aria-hidden="true" />{t(label)}
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
 
 function AmountInput({ label, value, onChange }) {
   return (
@@ -45,6 +69,7 @@ export function SpentMoney({ params = {}, onBack, onNavigate, onUpdateParams, on
   const [amount, setAmount] = useState(params.expenseAmount ?? "");
   const [category, setCategory] = useState(params.expenseCategory ?? "stock");
   const [note, setNote] = useState(params.expenseNote ?? "");
+  const [paidWith, setPaidWith] = useState(params.expensePaidWith === "momo" ? "momo" : "cash");
   const [saving, setSaving] = useState(false);
   useBackBlock(saving);
   const [error, setError] = useState("");
@@ -68,7 +93,7 @@ export function SpentMoney({ params = {}, onBack, onNavigate, onUpdateParams, on
     setSaving(true);
     setError("");
     try {
-      await onSave({ amountPesewas, paidAmountPesewas: amountPesewas, category, note });
+      await onSave({ amountPesewas, paidAmountPesewas: amountPesewas, category, note, paidWith });
     } catch (saveError) {
       console.error("Could not save this expense.", saveError);
       setError(t("expense.saveFailed"));
@@ -83,7 +108,12 @@ export function SpentMoney({ params = {}, onBack, onNavigate, onUpdateParams, on
         <PosBackButton onClick={onBack} />
         <h1 className="text-2xl font-extrabold">{t("expense.title")}</h1>
       </div>
-      <AmountInput label={t("expense.amount")} value={amount} onChange={(value) => { setAmount(value); onUpdateParams?.({ expenseAmount: value }); }} />
+      <AmountInput label={t("expense.amount")} value={amount} onChange={(typed) => {
+        // Wiring rules_global.amount_entry: the typed field follows the shared keypad rules.
+        const value = normalizeTypedAmount(typed, amount);
+        setAmount(value);
+        onUpdateParams?.({ expenseAmount: value });
+      }} />
       <fieldset className="space-y-2">
         <legend className="mb-1 text-lg font-extrabold">{t("expense.whatFor")}</legend>
         <div className="grid grid-cols-2 gap-2">
@@ -109,6 +139,8 @@ export function SpentMoney({ params = {}, onBack, onNavigate, onUpdateParams, on
           </button>
         </div>
       </fieldset>
+      {/* Wiring 44: Paid with under Paid all now?, for Yes (Save). No asks it on 45 or at Pay on 46. */}
+      <PaidWithChoice value={paidWith} onChange={(method) => { setPaidWith(method); onUpdateParams?.({ expensePaidWith: method }); }} />
       {error && <p role="alert" className="rounded-xl bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
       <PosPrimaryButton type="button" onClick={() => void save()} disabled={saving || !Number.isSafeInteger(amountPesewas) || amountPesewas <= 0}>
         {saving ? t("expense.saving") : t("expense.save")}
@@ -145,6 +177,8 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
   const [supplierName, setSupplierName] = useState(params?.stockSupplierName ?? "");
   const [supplierPhone, setSupplierPhone] = useState(params?.stockSupplierPhone ?? "");
   const [payBy, setPayBy] = useState(params?.stockPayBy ?? "");
+  // Wiring 45: Paid with for the part paid now, asked only when Paid now is above zero.
+  const [paidWith, setPaidWith] = useState(params?.stockPaidWith === "momo" ? "momo" : "cash");
   const [saving, setSaving] = useState(false);
   useBackBlock(saving);
   const [error, setError] = useState("");
@@ -185,7 +219,8 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
         note: params?.note ?? "",
         supplierId: isNew ? undefined : supplierId || undefined,
         newSupplier: isNew ? { name: supplierName, phone: supplierPhone } : undefined,
-        payBy
+        payBy,
+        ...(paidPesewas > 0 && { paidWith })
       });
     } catch (saveError) {
       console.error("Could not save the stock purchase.", saveError);
@@ -213,6 +248,11 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
           <input type="text" inputMode="decimal" autoComplete="off" value={paidAmount} onChange={(event) => { setPaidAmount(event.target.value); onUpdateParams?.({ stockPaidNow: event.target.value }); }} placeholder="0.00" className="h-14 w-full min-w-0 rounded-[14px] border-2 border-slate-500 bg-white px-3.5 text-right text-2xl font-extrabold" />
         </label>
       </section>
+      {validPaidAmount && paidPesewas > 0 && (
+        <section data-card="paid-with" className={card}>
+          <PaidWithChoice value={paidWith} onChange={(method) => { setPaidWith(method); onUpdateParams?.({ stockPaidWith: method }); }} />
+        </section>
+      )}
       {!validPaidAmount && <p role="alert" className="rounded-xl bg-rose-100 p-3 font-semibold text-rose-950">{t("expense.paidAmountTooHigh")}</p>}
       {owedPesewas > 0 && (
         <>
@@ -264,6 +304,8 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
 export function YouOweSuppliers({ onBack, onPay }) {
   const [selectedSupplier, setSelectedSupplier] = useState(null);
   const [amount, setAmount] = useState("");
+  // Wiring 44 rule: Pay on 46 records Cash or MoMo (default Cash) for money owed from a No on 44.
+  const [paidWith, setPaidWith] = useState("cash");
   const [saving, setSaving] = useState(false);
   useBackBlock(saving);
   const [error, setError] = useState("");
@@ -281,7 +323,7 @@ export function YouOweSuppliers({ onBack, onPay }) {
     setSaving(true);
     setError("");
     try {
-      await onPay(supplier.id, amountPesewas);
+      await onPay(supplier.id, amountPesewas, paidWith);
       setSelectedSupplier(null);
       setAmount("");
     } catch (paymentError) {
@@ -321,7 +363,7 @@ export function YouOweSuppliers({ onBack, onPay }) {
                 dueDate={supplier.nextDueDate}
                 today={today}
                 wording="supplier"
-                action={{ label: t("supplier.pay"), ariaLabel: t("supplier.payAria", { name }), icon: Wallet, onClick: () => { setSelectedSupplier(supplier); setAmount((supplier.balancePesewas / 100).toFixed(2)); setError(""); } }}
+                action={{ label: t("supplier.pay"), ariaLabel: t("supplier.payAria", { name }), icon: Wallet, onClick: () => { setSelectedSupplier(supplier); setAmount((supplier.balancePesewas / 100).toFixed(2)); setPaidWith("cash"); setError(""); } }}
                 phone={supplier.phone}
                 callLabel={t("supplier.call", { name })}
               />
@@ -335,6 +377,7 @@ export function YouOweSuppliers({ onBack, onPay }) {
             <h2 id="supplier-payment-title" data-sheet-title="supplier-pay" className="min-w-0 text-xl font-extrabold [overflow-wrap:anywhere]">{t("supplier.payTitle", { name: displayName(selectedSupplier.name) })}</h2>
             <p className="font-semibold">{t("supplier.balance", { amount: formatGhs(selectedSupplier.balancePesewas) })}</p>
             <AmountInput label={t("supplier.paymentAmount")} value={amount} onChange={setAmount} />
+            <PaidWithChoice value={paidWith} onChange={setPaidWith} />
             {error && <p role="alert" className="rounded-xl bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
             {/* 46 Pay sheet: Record payment (green) and Cancel (outlined) below it, both full width and 52px. */}
             <button type="button" onClick={() => void submitPayment(selectedSupplier)} disabled={saving || !Number.isSafeInteger(toPesewas(amount)) || toPesewas(amount) <= 0 || toPesewas(amount) > selectedSupplier.balancePesewas} className="flex h-[52px] w-full items-center justify-center rounded-2xl border-2 border-emerald-950 bg-emerald-900 px-4 text-lg font-extrabold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50">

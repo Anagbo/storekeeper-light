@@ -85,17 +85,17 @@ for (const [name, back] of [["on-screen Back", onScreenBack], ["phone back", (ap
     await app.tap("Pay part");
     assert.equal(app.route, "CollectPayPart");
     await app.keys(["4"]);
-    const typed = app.input("Amount to collect").props.value;
+    const typed = app.amountShown("Amount to collect");
     assert.ok(typed);
     await app.tap(/Split payment$/);
     assert.equal(app.route, "SplitPayment");
     await back(app);
     assert.equal(app.route, "CollectPayPart");
-    assert.equal(app.input("Amount to collect").props.value, typed);
+    assert.equal(app.amountShown("Amount to collect"), typed);
     await app.tap(/^MoMo$/);
     assert.equal(app.route, "MoMoChoice");
     await back(app);
-    assert.equal(app.input("Amount to collect").props.value, typed);
+    assert.equal(app.amountShown("Amount to collect"), typed);
     assert.equal(app.button(/^Cash$/).props["aria-pressed"], true);
   });
 }

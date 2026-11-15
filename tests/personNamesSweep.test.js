@@ -106,7 +106,7 @@ test("customer KOFI MENSAH: Home 22, 32, 43, 25, 26, 27, 28 and 24 show Kofi Men
   await app.tap(/^Pay part$/);
   assert.equal(app.route, "CollectPayPart");
   check(app, "26");
-  await app.type("Amount to collect", "4");
+  await app.keys(["4"]); // 26 is typed on the keypad only (15 Nov 2026)
   await app.tap(/Split payment$/);
   assert.equal(app.route, "SplitPayment");
   check(app, "27 (collect)");

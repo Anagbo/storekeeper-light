@@ -27,16 +27,31 @@ import { getCarriedPaymentParts, getMomoPickParams, getPaidPaymentPesewas } from
 import { useBackBlock } from "./browserBack.js";
 import { confirmDirectMomoParts, describeSplitPart, isLockedMomoRow, isUnconfirmedDirectMomo } from "./splitTender.js";
 
-function amountInputValue(amountPesewas) {
-  return (amountPesewas / 100).toFixed(2);
-}
-
 function CreditAmount({ amountPesewas }) {
   return (
     <div className="amount-fit-container amount-fit-row flex items-center justify-between gap-3 rounded-2xl bg-rose-100 px-4 py-3 text-rose-950">
       <span className="text-lg font-bold">{t("credit.owed")}</span>
       <strong className="amount-fit text-right font-extrabold">{formatGhs(amountPesewas)}</strong>
     </div>
+  );
+}
+
+// 34 in a sale (wiring "No amount field on 34"): one read-only row, label left, amount right, never
+// wrapping. The amount is up to 28px; a longer amount gets a smaller font so it still fits the row:
+// the box is the container, the label keeps about 10.5rem, and a bold amount character is about
+// 0.62em wide (measured at 340px).
+function OwesFromSale({ amountPesewas }) {
+  const amountText = formatGhs(amountPesewas);
+  return (
+    <p data-owes-from-sale="" className="@container flex min-h-14 items-center justify-between gap-2 rounded-2xl bg-rose-100 px-3 py-2 text-slate-900">
+      <span className="shrink-0 whitespace-nowrap text-base font-bold">{t("credit.owesFromThisSale")}</span>{" "}
+      <strong
+        className="min-w-0 overflow-hidden whitespace-nowrap font-extrabold leading-tight text-rose-900"
+        style={{ "--amount-chars": String(amountText.length), fontSize: "clamp(0.75rem, calc((100cqi - 10.5rem) / (var(--amount-chars) * 0.62)), 1.75rem)" }}
+      >
+        {amountText}
+      </strong>
+    </p>
   );
 }
 
@@ -163,14 +178,12 @@ function WhoOwesYou({ params, onBack, onNavigate, onUpdateParams }) {
 }
 
 function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
+  // Wiring 34 "No amount field on 34" (15 Nov 2026): no typed amount. In a sale the amount comes
+  // from the sale and is shown read-only; in add debt (manualDebt) it is entered next on 53.
   const amountOwedPesewas = getCreditAmountOwedPesewas(params);
-  const isAmountDerivedFromSale = !params.manualDebt &&
-    Number.isSafeInteger(params.initialPaymentPesewas) &&
-    params.initialPaymentPesewas > 0;
   // Wiring 34 "Draft survives Back" (12 Nov 2026): what is typed is also kept in the route params
-  // (newPerson*), so Next > 18 > Back (or Back from 19) shows it again. The error box is local
+  // (newPerson*), so Next > 18 > Back (or Back from 19 or 53) shows it again. The error box is local
   // state: it shows only after Next with a problem, never on a returning form.
-  const [amount, setAmount] = useState(params.newPersonAmount ?? (params.manualDebt ? "" : amountInputValue(amountOwedPesewas)));
   const [name, setName] = useState(params.newPersonName ?? "");
   const [phone, setPhone] = useState(params.newPersonPhone ?? "");
   const [ghanaCardNumber, setGhanaCardNumber] = useState(params.newPersonGhanaCard ?? "");
@@ -178,7 +191,6 @@ function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
   // Someone who already owes under the name typed here: the debt is added to theirs (the writers
   // find it by name), so say so, and carry what they owe so 19 sizes the plan on the whole balance.
   const [existingDebtor, setExistingDebtor] = useState(null);
-  const amountPesewas = toPesewas(amount);
   const phoneInvalid = Boolean(phone.trim() && !normalizeWhatsAppPhone(phone));
 
   useEffect(() => {
@@ -205,7 +217,7 @@ function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
   function continueWithNewCustomer(event) {
     event.preventDefault();
     const cleanName = name.trim();
-    if (!cleanName || (!params.manualDebt && (!Number.isSafeInteger(amountPesewas) || amountPesewas <= 0))) {
+    if (!cleanName || (!params.manualDebt && amountOwedPesewas <= 0)) {
       setError(t("credit.nameAndAmountRequired"));
       return;
     }
@@ -219,7 +231,6 @@ function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
     }
     onNavigate(params.manualDebt ? "ManualDebtAmount" : "WhenWillTheyPay", {
       ...params,
-      amountPesewas: isAmountDerivedFromSale ? params.amountPesewas : amountPesewas,
       customer: {
         name: cleanName,
         nameLower: cleanName.toLowerCase(),
@@ -238,11 +249,7 @@ function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
         <h1 className="text-2xl font-extrabold">{t("credit.newPerson")}</h1>
       </div>
       <form onSubmit={continueWithNewCustomer} className="flex flex-1 flex-col gap-3">
-        <label className="block">
-          <span className="mb-1 block font-extrabold">{params.manualDebt ? "Amount owed later" : t("credit.amountOwed")}</span>
-          <input type="number" min="0.01" step="0.01" inputMode="decimal" value={amount} disabled={isAmountDerivedFromSale} onChange={(event) => { setAmount(event.target.value); onUpdateParams?.({ newPersonAmount: event.target.value }); }} className="h-14 w-full rounded-2xl border-[3px] border-rose-900 bg-rose-100 px-4 text-2xl font-extrabold text-rose-950 disabled:cursor-not-allowed disabled:opacity-70" />
-          <span className="text-sm text-slate-700">{params.manualDebt ? "You will enter the amount next." : t("credit.fromThisSale")}</span>
-        </label>
+        {!params.manualDebt && <OwesFromSale amountPesewas={amountOwedPesewas} />}
         <label className="block">
           <span className="mb-1 block font-extrabold">{t("credit.name")}</span>
           <input autoComplete="name" placeholder={t("credit.namePlaceholder")} value={name} onChange={(event) => { setName(event.target.value); onUpdateParams?.({ newPersonName: event.target.value }); }} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />
