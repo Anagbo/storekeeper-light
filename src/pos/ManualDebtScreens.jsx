@@ -3,7 +3,11 @@ import { Banknote, CalendarDays, Check, Delete, Smartphone } from "lucide-react"
 import { formatDate } from "../lib/formatDate.js";
 import { digitsToWholeNumber } from "../lib/parsePesewas.js";
 import { formatGhs } from "../lib/money.js";
-import { generateWhatsAppLink } from "../utils/whatsapp.js";
+import { useLiveQuery } from "dexie-react-hooks";
+import { buildWhatsAppReminderText, generateWhatsAppLink } from "../utils/whatsapp.js";
+import { latestReminderAt, loadReminderEvents } from "../db/reminders.js";
+import { sendReceipt } from "./receiptShare.js";
+import { useReminderCheck } from "./ReminderCheck.jsx";
 import { isValidInstallmentPlanForBalance, localDateString } from "../utils/installments.js";
 import { PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
 import { getDebtDueLabel } from "./money.js";
@@ -229,6 +233,21 @@ export function ManualDebtSaved({ params, onDone, onNavigate, shopName }) {
   const initialPaymentPesewas = result?.initialPaymentPesewas ?? params.initialPaymentPesewas ?? 0;
   const initialPaymentParts = result?.initialPaymentParts ?? params.initialPaymentParts ?? [];
   const whatsappLink = generateWhatsAppLink(params.customer?.phone, params.customer?.name, balance, shopName);
+  // rules_global.reminders: this WhatsApp link goes through the same shared check and record as
+  // 22, 32, 29 and 43. Without a valid phone it opens the share sheet with the reminder text, as on 29/43.
+  const reminders = useReminderCheck();
+  const reminderCustomerId = result?.customer?.id ?? params.customer?.id ?? "";
+  const reminderName = params.customer?.name ?? "";
+  const lastReminderResult = useLiveQuery(
+    async () => latestReminderAt(await loadReminderEvents(), { customerId: reminderCustomerId, customerName: reminderName }),
+    ["manualDebtSavedReminder", reminderCustomerId, reminderName],
+    0
+  );
+  const lastReminderAt = typeof lastReminderResult === "number" ? lastReminderResult : 0;
+  const reminderPerson = { customerId: reminderCustomerId, name: reminderName };
+  const reminderText = buildWhatsAppReminderText(reminderName, balance, shopName);
+  const shareReminder = () => sendReceipt({ text: reminderText, title: t("collect.remindOnWhatsApp") });
+  const whatsappClass = "flex min-h-14 items-center justify-center rounded-2xl border-2 border-emerald-900 px-2 text-center font-extrabold text-emerald-900";
   return (
     <PosPage className="flex flex-col gap-4 text-center">
       <div className="pt-2 text-center">
@@ -275,12 +294,17 @@ export function ManualDebtSaved({ params, onDone, onNavigate, shopName }) {
         </div>
       )}
       <div className="grid grid-cols-2 gap-2">
-        <a href={whatsappLink} target="_blank" rel="noreferrer" className="flex min-h-14 items-center justify-center rounded-2xl border-2 border-emerald-900 px-2 text-center font-extrabold text-emerald-900">WhatsApp {displayName(params.customer?.name)}</a>
+        {whatsappLink ? (
+          <a href={whatsappLink} target="_blank" rel="noreferrer" onClick={(event) => reminders.onReminder(event, { person: reminderPerson, lastReminderAt, href: whatsappLink })} className={whatsappClass}>WhatsApp {displayName(params.customer?.name)}</a>
+        ) : (
+          <button type="button" disabled={!reminderText} onClick={(event) => reminders.onReminder(event, { person: reminderPerson, lastReminderAt, share: shareReminder })} className={whatsappClass}>WhatsApp {displayName(params.customer?.name)}</button>
+        )}
         <PosSecondaryButton type="button" onClick={() => onNavigate("DebtorDetail", { customerId: result?.customer?.id ?? params.customer?.id, customerName: params.customer?.name, debtId: result?.debt?.id })}>See details ›</PosSecondaryButton>
       </div>
       <div className="mt-auto grid gap-2">
         <PosPrimaryButton type="button" onClick={onDone}>Done</PosPrimaryButton>
       </div>
+      {reminders.sheet}
     </PosPage>
   );
 }

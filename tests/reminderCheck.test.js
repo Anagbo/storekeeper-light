@@ -57,6 +57,18 @@ async function detailScreen({ late, phone, lastReminderAt }) {
   return { view, find };
 }
 
+async function manualDebtSaved({ phone, lastReminderAt }) {
+  const { ManualDebtSaved } = await loadJsx("src/pos/ManualDebtScreens.jsx");
+  setLiveQuery(([key, customerId]) => (key === "manualDebtSavedReminder" && customerId === "c1" ? lastReminderAt : undefined));
+  const params = {
+    customer: { id: "c1", name: "Ama", phone },
+    amountPesewas: 2000,
+    manualDebtResult: { customer: { id: "c1" }, debt: { id: "d1", amountPesewas: 8000 } }
+  };
+  const view = render({ type: ManualDebtSaved, props: { params, onDone() { navigation.push("done"); }, ...props } });
+  return { view, find: () => [...walk(view.tree)].find((node) => (node.type === "a" || node.type === "button") && textOf(node) === "WhatsApp Ama") };
+}
+
 const SCREENS = {
   "22 Home Collect first": async ({ lastReminderAt }) => {
     const { default: Home } = await loadJsx("src/pos/Home.jsx");
@@ -81,6 +93,8 @@ const SCREENS = {
     view.rerender();
     return { view, find: () => [...walk(view.tree)].find((node) => node.type === "a" && node.props["aria-label"] === "WhatsApp Ama") };
   },
+  "ManualDebtSaved (debt added)": (state) => manualDebtSaved({ ...state, phone: PHONE }),
+  "ManualDebtSaved (debt added), no phone (share sheet)": (state) => manualDebtSaved({ ...state, phone: "" }),
   "29 debtor detail": (state) => detailScreen({ ...state, late: false, phone: PHONE }),
   "43 debtor detail": (state) => detailScreen({ ...state, late: true, phone: PHONE }),
   "29 debtor detail, no phone (share sheet)": (state) => detailScreen({ ...state, late: false, phone: "" }),
@@ -210,13 +224,13 @@ test("sheet wording: today, yesterday and a date, with the name in Title Case", 
 });
 
 test("every reminder button on 22, 32, 29 and 43 goes through the one shared check", () => {
-  for (const file of ["src/pos/Home.jsx", "src/pos/OwedScreens.jsx", "src/pos/DebtCollection.jsx"]) {
+  for (const file of ["src/pos/Home.jsx", "src/pos/OwedScreens.jsx", "src/pos/DebtCollection.jsx", "src/pos/ManualDebtScreens.jsx"]) {
     const source = read(file);
     assert.match(source, /useReminderCheck\(\)/, `${file} uses the shared check`);
     assert.match(source, /\{reminders\.sheet\}/, `${file} renders the shared sheet`);
     assert.doesNotMatch(source, /needsReminderCheck|REMINDER_REPEAT_WINDOW_MS|reminders\.add\(/, `${file} has no copy of the check or the record`);
     // Every WhatsApp reminder link or button on the screen calls onReminder.
-    const reminderControls = source.match(/<a href=\{(whatsappUrl|reminderLink)\}[^\n]*/g) ?? [];
+    const reminderControls = source.match(/<a href=\{(whatsappUrl|reminderLink|whatsappLink)\}[^\n]*/g) ?? [];
     if (file === "src/pos/Home.jsx") assert.match(source, /whatsapp=\{whatsappLink \? \{ href: whatsappLink, onClick: onWhatsApp,/, "22: the tile's WhatsApp (in PartyCard) gets the check");
     else assert.ok(reminderControls.length > 0, `${file} has its WhatsApp reminder link`);
     for (const control of reminderControls) assert.match(control, /onReminder|onWhatsApp/, `${file}: ${control}`);
