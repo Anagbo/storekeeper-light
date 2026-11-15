@@ -94,14 +94,14 @@ test("24: Sale of GH₵8.00 with Cash GH₵4.00 and GH₵4.00 owed by Juju", asy
   assert.ok(all(personChip, (n) => typeof n.type === "function").length > 0, "with a person icon");
 });
 
-test("24: a credit-only sale shows \"Sold on credit\", GH₵8.00 in dark red with no sign, and a Juju chip", async () => {
+test("24: a credit-only sale shows \"Sold on credit\", GH₵8.00 in dark red with no sign, and a \"Juju owes GH₵8.00\" chip", async () => {
   await recordCreditSale({ amountPesewas: 800, name: "juju", note: "Sale" });
   const { rows, totals } = await today();
   const [row] = rowViews((await mount(rows, totals)).tree);
   assert.equal(row.title, "Sold on credit");
   assert.equal(row.amount, "GH₵8.00");
   assert.match(cls(row.amountNode), /text-\[#7F1D1D\]/);
-  assert.deepEqual(row.chips, [{ kind: "person", text: "Juju" }]);
+  assert.deepEqual(row.chips, [{ kind: "person", text: "Juju owes GH₵8.00" }]); // amount in the chip since 15 Nov 2026
 });
 
 test("24: a fully paid MoMo sale shows +GH₵8.00 and a MoMo chip", async () => {
@@ -211,17 +211,42 @@ test("24: rows are not buttons (no chevron, not focusable)", async () => {
 // wholesale" and shown through the shared displayName helper.
 const buyStock = (paidAmountPesewas) => recordExpense({ amountPesewas: 8000, paidAmountPesewas, category: "stock", newSupplier: { name: "kofi wholesale" } });
 
-test("24: stock GH₵80.00 with nothing paid is \"Stock on credit\", dark red with no sign, pink \"You owe Kofi Wholesale\"", async () => {
+test("24: stock GH₵80.00 with nothing paid is \"Stock on credit\", dark red with no sign, pink \"You owe Kofi Wholesale GH₵80.00\"", async () => {
   await buyStock(0);
   const { rows, totals } = await today();
   const [row] = rowViews((await mount(rows, totals)).tree);
   assert.equal(row.title, "Stock on credit");
   assert.equal(row.amount, "GH₵80.00");
   assert.match(cls(row.amountNode), /text-\[#7F1D1D\]/);
-  assert.deepEqual(row.chips, [{ kind: "person", text: "You owe Kofi Wholesale" }]);
+  assert.deepEqual(row.chips, [{ kind: "person", text: "You owe Kofi Wholesale GH₵80.00" }]); // amount in the chip since 15 Nov 2026
   const chip = all(row.node, (n) => n.props["data-chip"] === "person" && n.type === "span")[0];
   assert.match(cls(chip), /bg-\[#FECDD3\]/, "pink chip");
   assert.equal(totals.expenses, 0, "no money went out");
+});
+
+// Wiring 24 "Credit rows look the same" (15 Nov 2026).
+test("24: Sold on credit and Stock on credit look the same: dark red, no sign, pink chip with a person icon and the amount; tiles = rows", async () => {
+  await recordCreditSale({ amountPesewas: 800, name: "juju", note: "Sale" });
+  await buyStock(0);
+  const { rows, totals } = await today();
+  const view = await mount(rows, totals);
+  const views = rowViews(view.tree);
+  const sold = views.find((row) => row.title === "Sold on credit");
+  const stock = views.find((row) => row.title === "Stock on credit");
+  assert.deepEqual(sold.chips, [{ kind: "person", text: "Juju owes GH₵8.00" }]);
+  assert.deepEqual(stock.chips, [{ kind: "person", text: "You owe Kofi Wholesale GH₵80.00" }]);
+  for (const row of [sold, stock]) {
+    assert.match(row.amount, /^GH₵/, `${row.title}: no + or − (no money moved)`);
+    assert.equal(cls(row.amountNode), cls(sold.amountNode), `${row.title}: the same amount style`);
+    const chip = all(row.node, (n) => n.props["data-chip"] === "person" && n.type === "span")[0];
+    assert.equal(cls(chip), cls(all(sold.node, (n) => n.props["data-chip"] === "person" && n.type === "span")[0]), `${row.title}: the same chip`);
+    assert.ok(all(chip, (n) => n.props["aria-hidden"] === "true").length > 0, `${row.title}: a person icon`);
+  }
+  assert.doesNotMatch(views.map((row) => row.amount).join(" "), /−|-/, "no minus anywhere: no money went out");
+  const tile = (name) => pesewas(textOf(all(view.tree, (n) => n.props["data-summary"] === name)[0]));
+  assert.equal(tile("given-on-credit"), 800, "Given on credit = the sale's owed part (stock owed is not in it)");
+  assert.equal(tile("spent"), 0, "Spent = money paid out");
+  assert.equal(tile("money-in"), 0);
 });
 
 test("24: stock GH₵80.00 with GH₵30.00 paid is \"Stock\", −GH₵30.00 in amber-brown, pink \"You owe Kofi Wholesale GH₵50.00\"", async () => {

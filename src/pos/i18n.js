@@ -520,7 +520,6 @@ const ENGLISH = Object.freeze({
   "transactions.row.spent": "Spent",
   "transactions.row.stock": "Stock",
   "transactions.row.stockOnCredit": "Stock on credit",
-  "transactions.row.youOwe": "You owe {name}",
   "transactions.row.youOweAmount": "You owe {name} {amount}",
   "transactions.row.paymentCollected": "Payment collected",
   "transactions.row.addedToDebt": "Added to debt",

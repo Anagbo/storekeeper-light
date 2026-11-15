@@ -141,8 +141,8 @@ test("24: the transaction chip names the person with a capital", () => {
     customer_name: "juju", customerName: "juju", createdAt: Date.now(), timestamp: Date.now()
   }], new Map());
   const text = JSON.stringify(rows.map(describeTransactionRow));
-  assert.match(text, /"label":"Juju"/);
-  assert.doesNotMatch(text, /"label":"juju"/);
+  assert.match(text, /"label":"Juju owes GH₵8\.00"/); // the chip carries the amount (15 Nov 2026)
+  assert.doesNotMatch(text, /"label":"juju/);
 });
 
 test("WhatsApp and receipt text name the person with a capital", () => {
