@@ -36,6 +36,25 @@ function CreditAmount({ amountPesewas }) {
   );
 }
 
+// 34 in a sale (wiring "No amount field on 34"): one read-only row, label left, amount right, never
+// wrapping. The amount is up to 28px; a longer amount gets a smaller font so it still fits the row:
+// the box is the container, the label keeps about 10.5rem, and a bold amount character is about
+// 0.62em wide (measured at 340px).
+function OwesFromSale({ amountPesewas }) {
+  const amountText = formatGhs(amountPesewas);
+  return (
+    <p data-owes-from-sale="" className="@container flex min-h-14 items-center justify-between gap-2 rounded-2xl bg-rose-100 px-3 py-2 text-slate-900">
+      <span className="shrink-0 whitespace-nowrap text-base font-bold">{t("credit.owesFromThisSale")}</span>{" "}
+      <strong
+        className="min-w-0 overflow-hidden whitespace-nowrap font-extrabold leading-tight text-rose-900"
+        style={{ "--amount-chars": String(amountText.length), fontSize: "clamp(0.75rem, calc((100cqi - 10.5rem) / (var(--amount-chars) * 0.62)), 1.75rem)" }}
+      >
+        {amountText}
+      </strong>
+    </p>
+  );
+}
+
 function CustomerChoice({ customer, selected, onSelect }) {
   return (
     <button
@@ -230,11 +249,7 @@ function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
         <h1 className="text-2xl font-extrabold">{t("credit.newPerson")}</h1>
       </div>
       <form onSubmit={continueWithNewCustomer} className="flex flex-1 flex-col gap-3">
-        {!params.manualDebt && (
-          <p data-owes-from-sale="" className="amount-fit-container rounded-2xl bg-rose-100 px-4 py-3 text-lg font-bold text-slate-900">
-            {t("credit.owesFromThisSale")} <strong className="amount-fit font-extrabold text-rose-900">{formatGhs(amountOwedPesewas)}</strong>
-          </p>
-        )}
+        {!params.manualDebt && <OwesFromSale amountPesewas={amountOwedPesewas} />}
         <label className="block">
           <span className="mb-1 block font-extrabold">{t("credit.name")}</span>
           <input autoComplete="name" placeholder={t("credit.namePlaceholder")} value={name} onChange={(event) => { setName(event.target.value); onUpdateParams?.({ newPersonName: event.target.value }); }} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />
