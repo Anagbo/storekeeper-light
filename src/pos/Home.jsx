@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Banknote, CirclePlus, ShoppingCart, UserRoundPen } from "lucide-react";
 import { db } from "../db/db.js";
+import { latestReminderAt, loadReminderEvents } from "../db/reminders.js";
 import {
   formatGhs,
   getFinancialTransactions,
@@ -19,6 +20,7 @@ import {
 } from "./money.js";
 import { callHrefFor, PartyCard } from "./PartyCard.jsx";
 import { PosCard, PosPage } from "./PosComponents.jsx";
+import { useReminderCheck } from "./ReminderCheck.jsx";
 
 function WhatsAppIcon({ size = 27 }) {
   return (
@@ -44,16 +46,25 @@ export function countUncountedInPeriod(skipped = [], range, transactions = []) {
 export default function Home({ onNavigate, notice = "" }) {
   const range = useMemo(() => getMoneyPeriodRange("day"), []);
   const data = useLiveQuery(async () => {
-    const [transactions, debts] = await Promise.all([
+    const [transactions, debts, reminderEvents] = await Promise.all([
       getFinancialTransactions(range),
-      db.debts.where("status").equals("unpaid").toArray()
+      db.debts.where("status").equals("unpaid").toArray(),
+      loadReminderEvents()
     ]);
     // A record that cannot be counted is left out and logged; it must not stop Home loading.
     const { totals, skipped } = summarizePosMoneySafely(transactions);
+    const urgentDebt = getMostUrgentCustomerDebt(debts);
+    // The person behind the Collect first tile, for the shared reminder check (nothing shown here).
+    const urgentPerson = urgentDebt ? {
+      customerId: debts.find((debt) => debt.id === urgentDebt.debtId)?.customerId ?? "",
+      name: urgentDebt.customerName
+    } : null;
     return {
       totals,
       debtPesewas: getOutstandingDebtPesewas(debts),
-      urgentDebt: getMostUrgentCustomerDebt(debts),
+      urgentDebt,
+      urgentPerson,
+      urgentLastReminderAt: urgentPerson ? latestReminderAt(reminderEvents, { customerId: urgentPerson.customerId, customerName: urgentPerson.name }) : 0,
       owed: summarizeOwedPeople(debts),
       uncounted: countUncountedInPeriod(skipped, range, transactions)
     };
@@ -66,6 +77,13 @@ export default function Home({ onNavigate, notice = "" }) {
     urgentDebt.customerName,
     urgentDebt.amountPesewas
   ) : null;
+  // rules_global.reminders: the WhatsApp button goes through the shared check and records the reminder.
+  const reminders = useReminderCheck();
+  const onWhatsApp = (event) => reminders.onReminder(event, {
+    person: data?.urgentPerson ?? { customerId: "", name: urgentDebt?.customerName ?? "" },
+    lastReminderAt: data?.urgentLastReminderAt ?? 0,
+    href: whatsappLink
+  });
   const owedPeople = data?.owed?.people ?? 0;
   const owedLate = data?.owed?.late ?? 0;
   const owedCountLine = [
@@ -137,7 +155,7 @@ export default function Home({ onNavigate, notice = "" }) {
                   amountSize={22}
                   dueDate={urgentDebt.dueDate}
                   action={{ label: t("home.collect"), ariaLabel: t("home.collectPayment", { name: urgentName }), icon: Banknote, onClick: () => onNavigate("CollectPayment", urgentDebt) }}
-                  whatsapp={whatsappLink ? { href: whatsappLink, label: t("home.whatsappCustomer", { name: urgentName }), icon: <WhatsAppIcon size={24} /> } : null}
+                  whatsapp={whatsappLink ? { href: whatsappLink, onClick: onWhatsApp, label: t("home.whatsappCustomer", { name: urgentName }), icon: <WhatsAppIcon size={24} /> } : null}
                   phone={urgentDebt.phone}
                   callLabel={t("home.callCustomer", { name: urgentName })}
                   extra={callHrefFor(urgentDebt.phone) ? null : (

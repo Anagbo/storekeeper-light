@@ -772,22 +772,6 @@ export async function correctDebtBalance({
   });
 }
 
-// 43: the merchant opened a WhatsApp reminder and came back (brief line 286). Stored on each
-// of the person's unpaid debts, since the reminder covers their whole balance.
-export async function recordDebtReminder({ debtIds, now = Date.now() }) {
-  if (!Array.isArray(debtIds) || !Number.isFinite(now)) throw new TypeError("Debts and a time are required.");
-  return db.transaction("rw", db.debts, async () => {
-    const debts = (await db.debts.bulkGet(debtIds)).filter((debt) => debt?.status === "unpaid");
-    await Promise.all(debts.map((debt) => db.debts.update(debt.id, {
-      lastReminderAt: now,
-      updatedAt: now,
-      synced: false,
-      syncStatus: "pending"
-    })));
-    return debts.length;
-  });
-}
-
 // Temporary compatibility wrappers for the legacy UI until its editor is
 // migrated to correctDebtBalance and updateCustomerProfile.
 export async function updateCustomerPhone({

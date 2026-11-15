@@ -3,8 +3,9 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { Banknote, Check, Clock3, Delete, Phone, Plus, ReceiptText, Smartphone, Undo2, UserRoundPen, X } from "lucide-react";
 import { db } from "../db/db.js";
 import { COLLECTION_UNDO_WINDOW_MS, undoDebtCollection } from "../db/debts.js";
-import { correctDebtBalance, recordDebtReminder } from "../db/debtLedger.js";
+import { correctDebtBalance } from "../db/debtLedger.js";
 import { formatLastReminder } from "./reminderLabel.js";
+import { useReminderCheck } from "./ReminderCheck.jsx";
 import { formatDate, formatTime } from "../lib/formatDate.js";
 import { formatGhs, formatGhsAmount, toPesewas } from "../lib/money.js";
 import { formatGhanaCard } from "../utils/formatters.js";
@@ -693,51 +694,24 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
       setContactEditorOpen(true);
     }
   }, [params?.editContact, data]);
-  // 43: lastReminderAt is recorded when the merchant comes back from WhatsApp (brief line 286).
-  const pendingReminderDebtIds = useRef(null);
-  useEffect(() => {
-    function onReturn() {
-      if (document.visibilityState !== "visible" || !pendingReminderDebtIds.current) return;
-      const debtIds = pendingReminderDebtIds.current;
-      pendingReminderDebtIds.current = null;
-      void recordDebtReminder({ debtIds }).catch((error) => console.error("Could not record the reminder time.", error));
-    }
-    document.addEventListener("visibilitychange", onReturn);
-    return () => document.removeEventListener("visibilitychange", onReturn);
-  }, []);
   const phone = normalizeWhatsAppPhone(data?.phone);
   const reminderLink = data && generateWhatsAppLink(data.phone, data.name, data.balancePesewas, shopName);
   const lastReminderAt = Math.max(0, ...(data?.unpaidDebts ?? []).map((debt) => Number(debt.lastReminderAt) || 0));
   const lastReminderLabel = formatLastReminder(lastReminderAt || undefined);
-  const markReminderOpened = () => {
-    pendingReminderDebtIds.current = (data?.unpaidDebts ?? []).map((debt) => debt.id);
-  };
+  // rules_global.reminders: both WhatsApp reminder controls go through the shared path, which
+  // records a reminder for this person when the app hands over to WhatsApp.
+  const reminders = useReminderCheck();
+  const reminderPerson = data ? { customerId: data.customerId ?? "", name: data.name } : null;
   // 29/43 with no valid phone: WhatsApp stays on and opens the share sheet with the reminder text, the
-  // owner picks the chat (the same share logic as the receipts). A closed share sheet records nothing;
-  // a finished share records the reminder time now.
+  // owner picks the chat (the same share logic as the receipts). A closed share sheet records nothing.
   const reminderText = data ? buildWhatsAppReminderText(data.name, data.balancePesewas, shopName) : null;
-  async function shareReminder() {
-    if (!reminderText) return;
-    markReminderOpened();
-    try {
-      const result = await sendReceipt({ text: reminderText, title: t("collect.remindOnWhatsApp") });
-      if (result === "cancelled") pendingReminderDebtIds.current = null;
-      else if (result === "share" && pendingReminderDebtIds.current) {
-        const debtIds = pendingReminderDebtIds.current;
-        pendingReminderDebtIds.current = null;
-        await recordDebtReminder({ debtIds });
-      }
-    } catch (error) {
-      pendingReminderDebtIds.current = null;
-      console.error("Could not open WhatsApp for the reminder.", error);
-    }
-  }
+  const shareReminder = () => sendReceipt({ text: reminderText, title: t("collect.remindOnWhatsApp") });
   // The WhatsApp control: a direct link to the saved number, or the share sheet without one.
   function reminderControl({ label, ariaLabel, className, children }) {
     if (phone && reminderLink) {
-      return <a href={reminderLink} target="_blank" rel="noopener noreferrer" onClick={markReminderOpened} aria-label={ariaLabel} className={className}>{children}</a>;
+      return <a href={reminderLink} target="_blank" rel="noopener noreferrer" onClick={(event) => reminders.onReminder(event, { person: reminderPerson, lastReminderAt, href: reminderLink })} aria-label={ariaLabel} className={className}>{children}</a>;
     }
-    return <button type="button" disabled={!reminderText} onClick={() => void shareReminder()} aria-label={ariaLabel ?? label} className={className}>{children}</button>;
+    return <button type="button" disabled={!reminderText} onClick={(event) => (reminderText ? reminders.onReminder(event, { person: reminderPerson, lastReminderAt, share: shareReminder }) : undefined)} aria-label={ariaLabel ?? label} className={className}>{children}</button>;
   }
   // The current-balance Receipt, Copy receipt and offline line show only with VITE_ENABLE_POS_RECEIPTS on.
   // Send goes through the same share logic as 28, 30 and 31: a valid phone opens WhatsApp to that

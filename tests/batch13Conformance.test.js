@@ -177,24 +177,8 @@ test("43: Last reminder wording for today, one day and several days", async () =
   assert.equal(formatLastReminder(undefined, now), "");
 });
 
-test("43: recordDebtReminder stores lastReminderAt on the person's unpaid debts", async () => {
-  const { recordDebtReminder } = await import("../src/db/debtLedger.js");
-  await db.debts.bulkAdd([
-    { id: "a", customerId: "c1", status: "unpaid", amountPesewas: 100, updatedAt: 1 },
-    { id: "b", customerId: "c1", status: "paid", amountPesewas: 0, updatedAt: 1 },
-    { id: "c", customerId: "c2", status: "unpaid", amountPesewas: 100, updatedAt: 1 }
-  ]);
-  await recordDebtReminder({ debtIds: ["a", "b"], now: 5000 });
-  assert.equal((await db.debts.get("a")).lastReminderAt, 5000);
-  assert.equal((await db.debts.get("b")).lastReminderAt, undefined, "a paid debt is left alone");
-  assert.equal((await db.debts.get("c")).lastReminderAt, undefined);
-});
-
-test("43: the reminder is recorded when the merchant comes back to the app (brief line 286)", () => {
-  const source = read("src/pos/DebtCollection.jsx");
-  assert.match(source, /visibilitychange/);
-  assert.match(source, /recordDebtReminder\(/);
-});
+// The old per-debt lastReminderAt record (written on return from WhatsApp) was replaced by the
+// reminder event log (rules_global.reminders, 15 Nov 2026): see tests/reminderRecord.test.js.
 
 // ---- wording on 52, 36, 23, 32 ----
 test("52: items are grouped by category with Show all {n}, named Show all {category}, which expands the group", async () => {
