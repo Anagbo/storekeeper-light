@@ -123,14 +123,17 @@ for (const [name, back] of [["on-screen Back", (app) => app.tap("Back")], ["phon
   });
 }
 
-test("34: an edited Amount owed survives Next > 18 > Back", async () => {
+// Wiring 34 "No amount field on 34" (15 Nov 2026): the amount is the sale's, not typed, and is the
+// same after Next > 18 > Back.
+test("34: no Amount owed field; the sale's amount is kept through Next > 18 > Back", async () => {
   const app = await open();
   await to34(app);
-  await typeInto(app, amountOwedInput(app), "6.50");
+  assert.equal(amountOwedInput(app), undefined);
   await submit34(app);
-  assert.equal(app.params.amountPesewas, 650);
+  assert.equal(app.params.amountPesewas, 800);
   await app.tap("Back");
-  assert.equal(amountOwedInput(app).props.value, "6.50");
+  assert.equal(amountOwedInput(app), undefined);
+  assert.match(shown(app), /Owes from this sale: GH₵8\.00/);
 });
 
 test("34: the error box shows only after Next with a problem, and not on return", async () => {

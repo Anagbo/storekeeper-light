@@ -289,7 +289,7 @@ function getCollectSplitDraft(params = {}) {
 // opening the same screen again in the same task puts them back (navigateState). A fresh stack (Home,
 // a tab, a result screen, Leave) has no keptDrafts, so a new task starts empty.
 export const KEPT_ON_BACK = Object.freeze({
-  [POS_ROUTES.NewPerson]: ["newPersonName", "newPersonPhone", "newPersonGhanaCard", "newPersonAmount"],
+  [POS_ROUTES.NewPerson]: ["newPersonName", "newPersonPhone", "newPersonGhanaCard"],
   [POS_ROUTES.WhenWillTheyPay]: ["creditDueChoice"],
   [POS_ROUTES.MoMoSetup]: ["payoutNetwork", "payoutNumber"],
   [POS_ROUTES.MoMoPayment]: ["requestNetwork", "requestPhone"],
