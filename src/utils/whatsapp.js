@@ -1,3 +1,6 @@
+import { displayName } from "../lib/displayName.js";
+import { formatGhs } from "../lib/formatGhs.js";
+
 const GHANA_MOBILE_PREFIX = /^(?:2[0-9]|5[0-9])/;
 
 export function normalizeWhatsAppPhone(customerPhone) {
@@ -28,20 +31,27 @@ export function normalizeWhatsAppPhone(customerPhone) {
   return `+${digits}`;
 }
 
+// The amount is whole pesewas, shown through the one formatter ("GH₵12.00"). A cedi or
+// fractional value is refused, so a caller that still passes cedis fails loudly instead of
+// sending a wrong amount.
+// The reminder text itself, also used without a phone (29/43: the share sheet, the owner picks the chat).
+export function buildWhatsAppReminderText(customerName, debtAmountPesewas, shopName = "StoreKeeper Light") {
+  if (!Number.isSafeInteger(debtAmountPesewas) || debtAmountPesewas <= 0) return null;
+  // The customer's name with a capital first letter, as on screen; the stored name is not changed.
+  const name = typeof customerName === "string" ? displayName(customerName) : "";
+  const shop = typeof shopName === "string" ? shopName.trim() : "";
+  if (!name || !shop) return null;
+  return `Hello *${name}*, this is a gentle reminder from *${shop}* regarding your outstanding balance of *${formatGhs(debtAmountPesewas)}*. Kindly arrange payment at your earliest convenience. Thank you!`;
+}
+
 export function generateWhatsAppLink(
   customerPhone,
   customerName,
-  debtAmount,
+  debtAmountPesewas,
   shopName = "StoreKeeper Light"
 ) {
   const phone = normalizeWhatsAppPhone(customerPhone);
-  const amount = Number(debtAmount);
-  if (!phone || !Number.isFinite(amount) || amount <= 0) return null;
-
-  const name = typeof customerName === "string" ? customerName.trim() : "";
-  const shop = typeof shopName === "string" ? shopName.trim() : "";
-  if (!name || !shop) return null;
-
-  const message = `Hello *${name}*, this is a gentle reminder from *${shop}* regarding your outstanding balance of *GH₵ ${amount.toFixed(2)}*. Kindly arrange payment at your earliest convenience. Thank you!`;
+  const message = buildWhatsAppReminderText(customerName, debtAmountPesewas, shopName);
+  if (!phone || !message) return null;
   return `https://wa.me/${phone.slice(1)}?text=${encodeURIComponent(message)}`;
 }

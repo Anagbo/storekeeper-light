@@ -1,3 +1,5 @@
+import { getInstallmentsLeft } from "./installments.js";
+
 export function getLargestUnpaidBalances(debts) {
   const balancesByCustomer = new Map();
 
@@ -17,7 +19,7 @@ export function getLargestUnpaidBalances(debts) {
           installmentAmount: debt.installmentAmount,
           frequency: debt.frequency,
           nextDueDate: debt.nextDueDate,
-          installmentsRemaining: debt.installmentsRemaining,
+          installmentsRemaining: getInstallmentsLeft(debt),
           totalInstallments: debt.totalInstallments
         });
       }
@@ -33,7 +35,7 @@ export function getLargestUnpaidBalances(debts) {
           installmentAmount: debt.installmentAmount,
           frequency: debt.frequency,
           nextDueDate: debt.nextDueDate,
-          installmentsRemaining: debt.installmentsRemaining,
+          installmentsRemaining: getInstallmentsLeft(debt),
           totalInstallments: debt.totalInstallments
         })
       });

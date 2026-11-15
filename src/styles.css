@@ -21,12 +21,6 @@ body {
   margin: 0;
 }
 
-button,
-input,
-textarea {
-  font: inherit;
-}
-
 button {
   touch-action: manipulation;
 }
@@ -37,4 +31,52 @@ button {
 
 .safe-bottom {
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.amount-fit-container {
+  container-type: inline-size;
+  min-width: 0;
+}
+
+.amount-fit {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: clamp(0.75rem, 12cqi, 3.75rem);
+  line-height: 1.15;
+}
+
+/* A label beside the amount shares the row, so the amount gets less room. */
+.amount-fit-row .amount-fit {
+  font-size: clamp(0.75rem, 8cqi, 3.75rem);
+}
+
+/* Three summary tiles side by side: a narrow tile needs a smaller floor so a bold amount fits. */
+.amount-fit-tile .amount-fit {
+  font-size: clamp(0.625rem, 11cqi, 3.75rem);
+}
+
+/* Menu drawer (wiring 23): slides in from the left in 200ms; no animation when reduced motion is asked. */
+@keyframes pos-drawer-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+.pos-drawer {
+  animation: pos-drawer-in 200ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pos-drawer {
+    animation: none;
+  }
+}
+
+@media (max-width: 480px) {
+  input[inputmode="decimal"] {
+    min-width: 0;
+    font-size: clamp(1rem, 7vw, 2.125rem);
+  }
 }

@@ -3,13 +3,6 @@ import { createId } from "../lib/ids.js";
 
 export const db = new Dexie("StoreKeeperLight");
 
-const sampleProducts = [
-  { name: "Cooking oil", default_price: 2500, unit: "bottle", category: "Groceries" },
-  { name: "Rice", default_price: 1800, unit: "bag", category: "Groceries" },
-  { name: "Cement", default_price: 9500, unit: "bag", category: "Building supplies" },
-  { name: "Soft drink", default_price: 1000, unit: "bottle", category: "Drinks" }
-];
-
 db.version(1).stores({
   products: "++id, name, updatedAt, syncStatus, [name+updatedAt], [syncStatus+updatedAt]",
   transactions: "id, type, createdAt, updatedAt, syncStatus, [type+createdAt], [syncStatus+updatedAt]",
@@ -34,22 +27,12 @@ db.version(4).stores({
   debts: "id, customerName, customer_name, phone, customer_phone, status, amountPesewas, total_owed, created_at, updatedAt, syncStatus, synced, [status+updatedAt], [customerName+status], [syncStatus+updatedAt], [status+updatedAt+id], [status+amountPesewas+id], [status+created_at]"
 }).upgrade(async (transaction) => {
   const products = transaction.table("products");
-  const productCount = await products.count();
   await products.toCollection().modify((product) => {
     product.default_price ??= 0;
     product.unit ??= "unit";
     product.category ??= "Other";
     product.synced ??= product.syncStatus === "synced";
   });
-  if (productCount === 0) {
-    await products.bulkAdd(sampleProducts.map((product) => ({
-      ...product,
-      updatedAt: Date.now(),
-      syncStatus: "synced",
-      synced: true
-    })));
-  }
-
   await transaction.table("transactions").toCollection().modify((record) => {
     record.total_amount ??= record.amountPesewas;
     record.payment_method ??= record.paymentType ?? null;
@@ -188,6 +171,37 @@ db.version(10).stores({
   customers: "id, name, nameLower, phone, totalDebtPesewas, createdAt, updatedAt",
   settings: "key",
   payments: "id, debtId, createdAt, paymentMethod, syncStatus, synced, [debtId+createdAt], [syncStatus+createdAt]"
+});
+
+db.version(11).stores({
+  products: "++id, name, category, default_price, updatedAt, syncStatus, synced, [name+updatedAt], [syncStatus+updatedAt], [category+name]",
+  transactions: "id, type, customerId, createdAt, timestamp, updatedAt, syncStatus, synced, [type+createdAt], [syncStatus+updatedAt], [createdAt+id], [type+timestamp], [synced+timestamp]",
+  debts: "id, customerId, customerName, customer_name, phone, customer_phone, status, amountPesewas, updatedAt, syncStatus, synced, [status+updatedAt], [customerName+status], [syncStatus+updatedAt], [status+updatedAt+id], [status+amountPesewas+id], [status+created_at], nextDueDate",
+  customers: "id, name, nameLower, phone, totalDebtPesewas, createdAt, updatedAt",
+  settings: "key",
+  payments: "id, customerId, debtId, createdAt, paymentMethod, syncStatus, synced, [customerId+createdAt], [debtId+createdAt], [syncStatus+createdAt]"
+});
+
+db.version(12).stores({
+  products: "++id, name, category, default_price, updatedAt, syncStatus, synced, [name+updatedAt], [syncStatus+updatedAt], [category+name]",
+  transactions: "id, type, customerId, supplierId, createdAt, timestamp, updatedAt, syncStatus, synced, [type+createdAt], [syncStatus+createdAt], [createdAt+id], [type+timestamp], [synced+timestamp], [supplierId+createdAt]",
+  debts: "id, customerId, customerName, customer_name, phone, customer_phone, status, amountPesewas, updatedAt, syncStatus, synced, [status+updatedAt], [customerName+status], [syncStatus+updatedAt], [status+updatedAt+id], [status+amountPesewas+id], [status+created_at], nextDueDate",
+  customers: "id, name, nameLower, phone, totalDebtPesewas, createdAt, updatedAt",
+  settings: "key",
+  payments: "id, customerId, debtId, createdAt, paymentMethod, syncStatus, synced, [customerId+createdAt], [debtId+createdAt], [syncStatus+createdAt]",
+  suppliers: "id, name, nameLower, phone, createdAt, updatedAt"
+});
+
+db.version(13).stores({
+  products: "++id, name, category, default_price, updatedAt, syncStatus, synced, [name+updatedAt], [syncStatus+updatedAt], [category+name]",
+  transactions: "id, type, customerId, supplierId, createdAt, timestamp, updatedAt, syncStatus, synced, [type+createdAt], [syncStatus+createdAt], [createdAt+id], [type+timestamp], [synced+timestamp], [supplierId+createdAt]",
+  debts: "id, customerId, customerName, customer_name, phone, customer_phone, status, amountPesewas, updatedAt, syncStatus, synced, [status+updatedAt], [customerName+status], [syncStatus+updatedAt], [status+updatedAt+id], [status+amountPesewas+id], [status+created_at], nextDueDate",
+  customers: "id, customerId, name, nameLower, phone, totalDebtPesewas, createdAt, updatedAt",
+  settings: "key",
+  payments: "id, customerId, debtId, createdAt, paymentMethod, syncStatus, synced, [customerId+createdAt], [debtId+createdAt], [syncStatus+createdAt]",
+  suppliers: "id, name, nameLower, phone, createdAt, updatedAt",
+  planPayments: "id, planId, createdAt, status, method, [planId+createdAt]",
+  draftSales: "id, status, flow, updatedAt"
 });
 
 export const storagePersistPromise =

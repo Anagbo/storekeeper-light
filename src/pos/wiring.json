@@ -1,0 +1,3800 @@
+{
+ "version": 1,
+ "purpose": "Single source of truth for navigation. Implement every control below exactly. Control labels match the visible text or the accessible name; the prototype matches by prefix.",
+ "start_screen": "21",
+ "history": "Back and BACK mean: return to the previous screen in the history stack.",
+ "special_destinations": {
+  "BACK": "Return to the previous screen in the navigation history.",
+  "FROM": "Setup finished or skipped. If the previous screen is 39 (My items), return to 39. Otherwise go to 22 (Home).",
+  "MULTI": "Go to 52 if several categories are chosen (the prototype uses: More categories was opened). Otherwise go to 36.",
+  "ADD": "Start the add-debt flow (flow=add_debt) and go to 17.",
+  "ADDP": "Start the add-debt-for-a-person flow (flow=add_debt_person) and go to 53.",
+  "NEXT17": "If flow=add_debt go to 53. Otherwise (a sale on credit) go to 18.",
+  "NEXT53": "Apply the inheritance rule: if the person has no balance, or no due date and no plan, go to 18. Otherwise go to 31 and show the inherited terms. (The prototype uses flow=add_debt_person to decide; the brief's inheritance rule is the real rule.)",
+  "MOMO": "Start a MoMo payment from the current screen. Remember the origin screen. Always go to 61 (never block the sale on setup).",
+  "MOMO16": "Done on 16, in this order: (1) parts must sum to the total; (2) if a MoMo part exists, confirm it (Direct: 62; Phone request: 56 then 57, setup via 60 if needed); (3) commit once; (4) go to 30. If the request fails go to 59 and keep the draft on 16. Same order, lock and leave question (decided 11 Nov 2026) on the collect split 27 (also when opened from 19) and on 19's own MoMo choice: Direct on 61 returns unconfirmed; 62 opens only at Received (27) or Save plan (19); money confirmed on 62 is locked if the save then fails; leaving a draft that holds received MoMo asks the leave question. Back from 16 opened from 55 keeps the parts the same way as from 15. Leave on Back with received MoMo goes: from 16 to an empty 15, from 27 to Home, from 19 to an empty 15 (Home for a manual debt). While 19 holds received MoMo, Next cycle is disabled (choosing it would drop the money) and the payment-recorded panel shows \"Received\" with a green check or \"not confirmed yet\" under each part.",
+  "MOMO27": "Received on 27: if a MoMo part exists, run the MoMo request for that part (56) before recording the collection. Otherwise go to 28.",
+  "SEND": "Send the request to Paystack. If the charge asks for a code (status send_otp), go to 58. Otherwise go to 57. (The prototype goes to 58 only when Telecel is chosen.)",
+  "MOMOOK": "From 62: the merchant confirms the money arrived (recorded 'MoMo · you confirmed'). From the Paystack flow: charge confirmed (recorded 'MoMo · verified'). Go to 30 for a sale (15, 55, 16) or 28 for a collection (25, 26, 27). From 19: continue the plan commit (31, or 16 in flow=split).",
+  "PAYOTHER": "Return to the origin screen so the merchant can choose another payment method.",
+  "CANCELMOMO": "Cancel the pending request and return to the origin screen.",
+  "SAVEMOMO": "Save the payout account and create or update the Paystack subaccount. If the merchant arrived by tapping MoMo, continue to 56. Otherwise return to the previous screen.",
+  "DIRECT": "From 61: go to 62. Needs no setup beyond the merchant's own MoMo number. Records the MoMo part as 'you confirmed'.",
+  "PHONE": "From 61: if the Paystack payout account is not set up go to 60 (Save and verify continues to 56); otherwise go to 56.",
+  "MOMOPICK": "MoMo tile on 16 (split): first ask how much (amount editor prefilled with Left to pay, can be lowered), then go to 61 with pick16 set and that amount. DIRECT or PHONE then records the method on the MoMo part and returns to 16. With a direct MoMo row already present, the tile raises it and only the extra goes to 61/62. Nothing is requested yet.",
+  "SAVECREDIT": "Save on 18 or 19. If flow=split, mark the Owe part complete and return to 16 (drop the screens in between from history). Otherwise go to 31.",
+  "SAVE19": "Save plan on 19. If today's payment includes MoMo: confirm it first (Direct: 62; Phone request: 56 then 57, 60 for setup, 61 when the method is not chosen yet). Then commit once (debt or sale credit, plan, collection of the amount paid today) and go to 31. In flow=split return to 16 with the Owe part complete. If the request fails go to 59 and stay on 19, nothing saved.",
+  "MOMOPICK19": "MoMo on 19: go to 61 with pick19 set. The chosen method returns to 19."
+ },
+ "flows_and_flags": {
+  "flow=add_debt": "Set by Add debt on 32. Hides the Owed banner on 17. Cleared on arriving at 22 or 15.",
+  "flow=add_debt_person": "Set by + Add to debt on 29 or 43. Cleared on arriving at 22 or 15.",
+  "flags": "estimatedProfit and trackCost (Settings, screen 47). Both off by default. If both are on, the cost-price version of 33 wins. trackCost shows the Cost price field on 40 and 41.",
+  "momo": "Origin screen is remembered (momoFrom). momoReady no longer gates the first MoMo tap: 61 always opens, and only 'Phone request' needs 60. Setting 'When I tap MoMo' (63) can skip 61: Ask me each time (default), Always customer sends, Always phone request.",
+  "flow=split": "Set by Owe on 16. Draft sale holds all parts. Cleared on arriving at 22, 15 or 30."
+ },
+ "states": {
+  "29/43": "One DebtorDetail component. 43 is the late state, 29 the on-time state.",
+  "33/48/49": "One MyMoney component: default, estimated profit, profit from item costs.",
+  "40/50": "One EditItem component: with or without cost price.",
+  "36/52": "One YourStarterList component: single list, or grouped when the combined core list exceeds about 30 items.",
+  "69/70": "PlanPaymentResult: 69 paid and confirmed (Paystack), 70 waiting to confirm (cash or direct MoMo, a StoreKeeper agent or admin confirms).",
+  "16": "SplitPayment draft: one row per mode (Cash, MoMo, Owe). Owe always equals Left to pay. Row status shows MoMo method and Owe person and terms."
+ },
+ "prototype_only_shortcuts_do_not_copy": [
+  "Every debtor name opens Amoto.",
+  "Every item row opens Sugar.",
+  "Keypads do not type; tabs do not filter.",
+  "Sample names, amounts and dates.",
+  "The Not wired in this prototype message.",
+  "21: With items jumps straight to 35. Real app: select an option, then Continue.",
+  "Disabled Done and Received buttons are enabled by tapping Cash or MoMo. Real app: enabled when the parts add up to the total.",
+  "57: the two Demo buttons simulate Paystack results. Real app: advance on the Paystack webhook or status check."
+ ],
+ "screens": {
+  "15": {
+   "name": "Sell",
+   "component": "Sell",
+   "controls": [
+    {
+     "label": "1",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "2",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "3",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "4",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "5",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "6",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "7",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "8",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "9",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "0",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Delete",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Cash",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "MoMo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "MOMO"
+    },
+    {
+     "label": "Owe",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "17"
+    },
+    {
+     "label": "Done",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "30"
+    },
+    {
+     "label": "Add items",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "20"
+    },
+    {
+     "label": "Split payment",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "16"
+    },
+    {
+     "label": "Home",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    },
+    {
+     "label": "Sell",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "15"
+    },
+    {
+     "label": "Owed",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "32"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": true,
+   "rules": [
+    "Draft survives a trip away (bug found 11 Nov 2026): the amount typed on the keypad, the payment choice (Cash or MoMo) and any items added are kept when the owner goes to a screen opened from 15 (Add items, Owe and its steps, Split payment, MoMo and its steps, Menu > Settings) and comes back with Back or the phone's back button. 15 must show the same amount, not 0.00. The draft is cleared only after a sale is saved (Done), or when the owner taps the header Home or a different bottom-bar tab (Home, Owed). Like the split screen, 15 keeps its draft in the route parameters. After a MoMo pick returns, the pending MoMo values are removed so an old amount can never come back."
+   ]
+  },
+  "16": {
+   "name": "Split payment",
+   "component": "SplitPayment",
+   "controls": [
+    {
+     "label": "Remove Cash",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Remove MoMo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Remove Owe",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Removes the credit part. Left to pay goes back up."
+    },
+    {
+     "label": "Cash",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection",
+     "effect": "Adds a payment part. Enables Done or Received once the parts add up."
+    },
+    {
+     "label": "MoMo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "MOMOPICK"
+    },
+    {
+     "label": "Owe",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "17",
+     "sets_flow": "split"
+    },
+    {
+     "label": "Done",
+     "role": null,
+     "disabled_initially": true,
+     "type": "navigate",
+     "to": "MOMO16"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "rules": [
+    "A MoMo row whose money has been received is locked (decided 11 Nov 2026): when the phone request is verified, or the owner has tapped \"Money received\" on 62 for a Direct MoMo, the row cannot be edited or removed. It shows no pencil and no x, the amount in a plain (non-chip) style, and the status line \"Received\" with a green check. Before the money is confirmed a Direct MoMo row can be edited or removed, and its status line reads \"Customer sends to my number · not confirmed yet\". If a later step fails and the draft returns to 16, the locked rows stay locked. Cash is never locked. If a locked MoMo row exists and the owner leaves the draft (Cancel sale on 59, header Home, or another tab), ask first: \"GH₵{amount} MoMo was already received and will not be recorded. Leave anyway?\" with Stay (default) and Leave. Back from 16 (the on-screen Back and the phone back button) behaves like leaving the draft when a locked MoMo row exists: it asks the same question and only goes to 15 if the owner chooses Leave, in which case the whole draft, including the split parts, is discarded. Never go back to 15 with received money still held in a hidden draft. With no locked row, Back goes to 15 and keeps the split parts in 15's route parameters, so tapping Split payment again reopens 16 with the same Cash, MoMo and Owe parts; if the amount on 15 was changed meanwhile (the total no longer matches the parts) the parts are cleared and 16 starts again with the new total. The draft is cleared as before by Done, header Home or another tab. A Direct MoMo pick is NOT confirmed when it is chosen: it returns to 16 as \"not confirmed yet\" and is confirmed on 62 only after Done, as in MOMO16.",
+    "Where Done ends (decided 11 Nov 2026): after the sale is saved, if any money was received today (a Cash or MoMo part above zero) go to 30 Sale recorded, which lists each paid part and a line \"{Name} still owes GH₵x\" for the owed part. If nothing was received today (the whole sale is owed, so the only part is Owe) go to 31 Saved as credit, the same as a plain credit sale from 15. Screen 30 must never refuse a saved sale: if its receipt cannot be built it shows \"Sale saved.\" with a Done button that goes Home.",
+    "The draft survives Menu > Settings > Back; header Home discards it.",
+    "Editable amounts must look editable (11 Nov 2026): on every row of the draft that can be changed (Cash and MoMo only) the amount is shown as a tappable chip: light grey background, grey 2px border, the amount in bold 21px and a small green pencil icon on its right, at least 48px tall, with the accessible name \"Edit {Cash|MoMo} amount\". The Owe row (decided 11 Nov 2026) shows the same chip look without a pencil and is not tappable, because the Owe amount always equals Left to pay and carries the customer and plan terms set on 18 and 19; to change it the owner removes it with x and adds Owe again. Tapping the chip (or the row) opens the same editor as today. The remove button (x) stays separate at the far right. Under \"Sale total\" one quiet line: \"Tap an amount to change it.\" A row that cannot be edited shows no pencil. At 360px the chip must not clip GH₵12,345.00 or push the remove button out of the row.",
+    "Row layout on 16 and 27 (decided 12 Nov 2026), the same at every width (360px, 393px and wider): line 1 = icon, short name (Cash, MoMo, Owe), the amount chip and the x; line 2 = the status text using the full card width (at most 2 lines). Never put the status text in a narrow column beside the chip. Status wording: MoMo not confirmed \"Customer sends · not confirmed yet\"; MoMo confirmed \"Customer sent · received ✓\"; Owe \"{Name} · GH₵{amount} {every week|every 2 weeks|every month} · first payment {dd/mm/yyyy}\" (the amount is the payment each time, so it must read as \"GH₵50.00 every week\", never a bare \"· GH₵50.00 ·\" that looks like the Owe chip amount); Cash has no status line."
+   ]
+  },
+  "17": {
+   "name": "Who owes you?",
+   "component": "WhoOwesYou",
+   "controls": [
+    {
+     "label": "AmotoGH₵30.00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "KofiGH₵25.00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "AkosuaGH₵18.00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "YawGH₵12.00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "EfuaGH₵8.00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "New person",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "34"
+    },
+    {
+     "label": "Next ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "NEXT17",
+     "to_rule": "If flow=add_debt go to 53. Otherwise (a sale on credit) go to 18."
+    }
+   ],
+   "inputs": [
+    "Search by name or phone"
+   ],
+   "bottom_bar": false
+  },
+  "18": {
+   "name": "When will they pay?",
+   "component": "WhenWillTheyPay",
+   "controls": [
+    {
+     "label": "Today",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "In 1 week",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "In 2 weeks",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "A little at a timePay small amounts again and again",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "19"
+    },
+    {
+     "label": "Save · Amoto owes GH₵35.00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "SAVECREDIT"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "19": {
+   "name": "A little at a time",
+   "component": "ALittleAtATime",
+   "controls": [
+    {
+     "label": "Every week",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Every 2 weeks",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Every month",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Today",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects Today. Shows Amount paid today and How is it paid? (hidden when flow=split)."
+    },
+    {
+     "label": "Next cycle",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Label shows the chosen frequency: Next cycle (Every week | Every 2 weeks | Every month). Hides Amount paid today and How is it paid?. Amount paid today counts as 0."
+    },
+    {
+     "label": "Cash",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects Cash for today's payment."
+    },
+    {
+     "label": "MoMo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "MOMOPICK19",
+     "effect": "Opens 61 with the pick flag. DIRECT or PHONE records the method and returns to 19. Nothing is requested yet."
+    },
+    {
+     "label": "Split payment",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "27",
+     "effect": "Opens 27 (cash + MoMo parts of the amount paid today). Received and Back return to 19, not to 28."
+    },
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK"
+    },
+    {
+     "label": "Save plan",
+     "role": null,
+     "disabled_initially": true,
+     "type": "navigate",
+     "to": "SAVE19"
+    }
+   ],
+   "inputs": [
+    {
+     "name": "eachTime",
+     "max": "amount owed",
+     "note": "Maximum: shown under the field"
+    },
+    {
+     "name": "amountPaidToday",
+     "max": "amount owed",
+     "note": "Maximum today: shown under the field. Visible only when First payment is Today and flow is not split"
+    },
+    {
+     "name": "nextPaymentDate",
+     "note": "Prefilled with one cycle after today. Editable. Must be after today."
+    }
+   ],
+   "bottom_bar": false,
+   "rules": [
+    "Save plan stays disabled until: each time is above 0 and not above the maximum; amount paid today (if shown) is not above the maximum; a method is chosen when amount paid today is above 0; the next payment date is valid.",
+    "Amount paid today equal to the full amount owed settles the debt: record the debt and the payment, save NO plan, balance becomes 0. (Decided by the owner, matches the live app.)",
+    "In flow=split the payment section is hidden because the cash and MoMo parts on 16 already cover today. (Decided by the owner, matches the live app.)",
+    "Wording before and after the money is confirmed (decided 12 Nov 2026): in the draft panel on 19 (and after a failed save) use \"Paying today\" as the heading, \"Paid today\" for the helper text under Amount paid today, and \"Total today\" for the total. A MoMo row that was confirmed on 62 shows \"Received ✓\" in its own status line. The words \"Payment received today\" and \"Total received\" are only used on the result screens (31, 28, 30) after the money has arrived.",
+    "Owe in the draft panel (decided 12 Nov 2026): the rows above \"Total today\" must add up to it, so Owe is never listed among the payment rows. \"Paying today\" lists only Cash and MoMo, then a divider and \"Total today\" (money paid today). Below the total, a separate pink row with a person icon shows the unpaid part: \"Still owed · {Name}\" with the amount on the right. It is not part of the total. If nothing is owed the pink row is not shown. The same rule applies to any panel with a total line on 27, 28, 30 and 31: a total always equals the sum of the rows above it.",
+    "Draft survives Back (decided 12 Nov 2026, reported on the phone): in the sale-on-credit flow (15 → 17 → 34/18 → 19 → 27) everything the owner has typed or chosen is kept when they go Back and return, until the sale is saved (Done or Save plan) or the owner leaves with header Home or another tab. Nothing is lost by going one step back and forward. Kept values live in the route parameters, like 15 and 16. On 19 that means How much each time, How often, First payment (Today or Next cycle), Amount paid today, Next payment date and the chosen method or split parts. Opening Split payment (27) from 19 and coming back with Back keeps the 19 values; opening 27 again reopens it with the same Cash and MoMo parts.",
+    "Still owed row, all flows (clarified 12 Nov 2026 after a phone test): the pink \"Still owed · {Name}\" row under \"Total today\" is shown whenever the Paying today panel is shown and something remains owed after today's payment, in every flow, not only when an Owe part sits in a split draft. Amount = the Owed figure at the top of 19 minus the amount paid today (the customer's balance after this sale and today's payment, the same figure screen 31 shows as \"owes\"). Example: sale GH₵8.00 on credit, GH₵2.00 paid today (Cash 1.00 + MoMo 1.00) shows the rows Cash 1.00, MoMo 1.00, Total today GH₵2.00, then the pink row \"Still owed · Kofi Mensah GH₵6.00\". If today's payment settles the whole balance, the pink row is absent.",
+    "Paying today panel with one method (decided 12 Nov 2026): the panel is shown whenever Amount paid today is above zero and a method is chosen, also for Cash only or MoMo only (one row, then Total today, then the pink Still owed row). Hidden for Next cycle or when nothing is paid today. This keeps the unpaid balance visible in every flow."
+   ]
+  },
+  "20": {
+   "name": "Sell with items",
+   "component": "SellWithItems",
+   "controls": [
+    {
+     "label": "Bread",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Water",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Sugar",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "37"
+    },
+    {
+     "label": "Rice",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Oil",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "+ New item",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "41"
+    },
+    {
+     "label": "Remove Other amount",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Less Bread",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Quantity Bread",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "38"
+    },
+    {
+     "label": "More Bread",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Next · GH₵13.00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "55"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "rules": [
+    "Back is kept (built extra).",
+    "Line controls and amounts (live app reference, 14 Nov 2026; amounts decided the same day): every line in the sale ends with a remove button: bin icon (Lucide trash-2), white, grey border #64748B, crimson bin #8B0836, 44px, accessible name \"Remove {item}\". Every amount is written in full with the cedi sign through formatGhs (GH₵10.00), never a bare number. PHONE: an item line has two rows: row 1 the name (wraps to two lines when long) and the amount on the right; row 2 Less, the quantity and More on the left and the bin on the right. Less is greyed and disabled at quantity 1; the bin removes the whole line. The Other amount line has no stepper and stays one row: title and the line 'From Sell' on the left, the amount, then the bin. Buttons 44px. At 340px nothing overflows or is cut off. WIDE (D9): one row per item: name, Less, quantity, More, the amount, the bin."
+   ]
+  },
+  "21": {
+   "name": "How do you want to sell?",
+   "component": "HowDoYouWantToSell",
+   "controls": [
+    {
+     "label": "Just numbers",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "With items",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "35"
+    },
+    {
+     "label": "Continue ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "22": {
+   "name": "Home",
+   "component": "Home",
+   "controls": [
+    {
+     "label": "Menu",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "23"
+    },
+    {
+     "label": "Sell",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "15"
+    },
+    {
+     "label": "Spent money",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "44"
+    },
+    {
+     "label": "Collect payment from Amoto",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "25"
+    },
+    {
+     "label": "WhatsApp Amoto",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "Open WhatsApp with the existing reminder template (reminders) or the new receipt template (receipts, after approval). The merchant reviews and sends. Nothing is sent automatically."
+    },
+    {
+     "label": "Call Amoto",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "tel: link to the person's valid phone number."
+    },
+    {
+     "label": "Today’s transactions ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "24"
+    },
+    {
+     "label": "Home",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    },
+    {
+     "label": "Owed",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "32"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": true,
+   "rules": [
+    "Tapping the debtor name opens 43 (brief line 122).",
+    "Built extras kept: People-who-owe link, Add contact.",
+    "Owed card on Home (redesign 11 Nov 2026, layout and wording only): a white card with a 2px light grey border and a thicker red left edge (the same style as the debt tiles on My money), not a pink block. Top: the label \"Owed to you\" (17px, grey), the total in bold dark text (30px, never red or pink), a quiet line \"{n} people · {m} late\" (\"1 person\"; leave out \"· {m} late\" when none is late), and \"See all ›\" in green on the right. The whole top part is one tappable area that opens 32 (accessible name \"Owed to you, see all\"). Under a thin line and the small heading \"Collect first\": the most urgent debtor (same ordering as today) with the name (bold 19px, up to 2 lines, capital first letter), the amount (bold 22px, never clipped, at the right), and the due tag under the name in the same wording and colours as the Owed list (\"Late 1 day\" red, \"Due today\" and \"Due in n days\" amber, grey when far). Then one row of buttons: a green \"Collect\" button with a small cash icon and the word Collect (52px, takes the remaining width, accessible name \"Collect payment from {name}\", opens 25), a square WhatsApp button (52px, green outline) and a square Call button (52px, dark outline) shown only when the person has a valid phone number (never a greyed disabled Call button). Icon-only buttons keep their accessible names.",
+    "Header (decided 14 Nov 2026): the Menu button is on the left (hamburger icon + the word Menu, 48px), then the shop name, then the connection status. It opens the Menu drawer (see 23) over this page; the page and any draft stay as they are. The bottom bar is covered by the dimmed layer while the drawer is open.",
+    "Nobody owes (decided 14 Nov 2026 from a phone test where a corrected balance of zero still showed 'Owed to you GHS 0.00' and a Collect button): a person counts as owing only with a balance above zero. When nobody owes, the Owed to you card is not shown at all; Home goes from Spent money straight to the Today's transactions link, and the Owed tab in the bottom bar stays. Collect first, the people count and the total use only people with a balance above zero, so a person whose balance was corrected to zero or paid in full disappears from all three."
+   ]
+  },
+  "23": {
+   "name": "Menu (a drawer over the page)",
+   "component": "MenuDrawer",
+   "controls": [
+    {
+     "label": "Close menu",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Closes the drawer and shows the same page again, exactly as it was (draft intact). Nothing is added to the history. Tapping the dimmed page, the Android Back button and the Escape key do the same."
+    },
+    {
+     "label": "Home",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22",
+     "to_rule": "Closes the drawer and goes to 22 (header Home rule: discards a draft)."
+    },
+    {
+     "label": "Today’s transactions",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "24"
+    },
+    {
+     "label": "My money",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "33"
+    },
+    {
+     "label": "Items",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "39"
+    },
+    {
+     "label": "Settings",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "47"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "rules": [
+    "23 is no longer a page. It is a drawer that slides in from the left over the page the owner is on (decided 14 Nov 2026, from the owner's request and a reference design). The page stays visible and untouched behind a dimmed layer (rgba 15,23,42 at 55%).",
+    "The Menu button sits at the LEFT of the header on every screen that had it (Home 22; on 25 the sheet dims it and it is not tappable): hamburger icon plus the word Menu, 48px high, dark border, in the place where the green home tile used to be. Then the shop name (truncates with an ellipsis on a long name), then the connection status on the right.",
+    "Drawer: 320px wide, at most 86% of the screen, full height, white, a soft shadow on the right edge, slides in 200ms (no animation when the phone asks for reduced motion). Top: green home tile, shop name, the date (dd/mm/yyyy with the weekday) and a 48px Close button with an X. Then rows of at least 60px: icon, label (19px bold) and a short line under it: Home, Today’s transactions (Money in, spent, owed), My money (Week and month report), Items (Things you sell), a divider, Settings (the Language row was removed on 10 Nov 2026). The row for the page the owner came from is highlighted in light green with a green bar on the left and green text.",
+    "Opening the drawer is not navigation: it adds nothing to the history and keeps every draft. Choosing a row closes the drawer and goes to that screen. Back from Settings, Items, My money or Today’s transactions returns to the page the drawer was opened from, not to the drawer (this replaces the old rule 'Back returns to the menu'). Focus moves into the drawer when it opens, stays inside it, and returns to the Menu button when it closes. The drawer has role dialog and the accessible name Menu.",
+    "Touch targets 48px or more. At 340px nothing overflows. On tablets and wide screens (768px and up) the side menu or icon rail replaces the drawer and the header Menu button is hidden; the destinations are identical.",
+    "Only the screens that show the Menu button lose the green home tile. Every other screen keeps its header exactly as before, including the green home tile as the header Home button (and its draft rule). The phone must not lose the header Home on task screens such as 26, 27, 28, 29/43 and setup."
+   ]
+  },
+  "24": {
+   "name": "Today’s transactions",
+   "component": "TodaysTransactions",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    },
+    {
+     "label": "All",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Sold",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Spent",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Credit",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "+GH₵13.00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "not_designed",
+     "effect": "A list row. Its detail view is not designed. Ask before building anything."
+    },
+    {
+     "label": "+GH₵8.00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "not_designed",
+     "effect": "A list row. Its detail view is not designed. Ask before building anything."
+    },
+    {
+     "label": "+GH₵6.00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "not_designed",
+     "effect": "A list row. Its detail view is not designed. Ask before building anything."
+    },
+    {
+     "label": "GH₵12.00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "not_designed",
+     "effect": "A list row. Its detail view is not designed. Ask before building anything."
+    },
+    {
+     "label": "−GH₵10.00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "not_designed",
+     "effect": "A list row. Its detail view is not designed. Ask before building anything."
+    }
+   ],
+   "inputs": [],
+   "rules": [
+    "Redesign 11 Nov 2026. Header: Back and the title \\\"Today’s transactions\\\" (use the curly apostrophe ’, never ´) with a small line under it \\\"Today · dd/mm/yyyy\\\" (formatDate.js). The title may wrap to two lines at 360px.",
+    "Summary: one full-width green card \\\"Money in\\\" with the amount at 34px bold, then two half-width tiles, Spent (amber) and Given on credit (pink), amounts at 22px bold. Every amount uses formatGhs (GH₵ shown). Remove the old line \\\"All amounts in GH₵\\\" and the tiny 10px tile text. The amount must not clip GH₵12,345.00 at 360px.",
+    "Money in is money actually received today (cash and MoMo parts of sales, plus collections). Each row's amount must be consistent with it: a sale paid in part shows the money received as its amount (+GH₵4.00) and the title \\\"Sale of GH₵8.00\\\"; the owed part is the pink chip \\\"{Name} owes GH₵4.00\\\". The sum of the green + amounts in the list equals the Money in card (add a test).",
+    "Row layout: a white card, 2px #CBD5E1 border, 18px radius. Line 1: title in bold 18px on the left (Sale, Sale of GH₵x, Sold on credit, Spent, Payment collected, Added to debt, Balance correction) and the amount in bold 22px on the right. Line 2: chips on the left (grey payment chips \\\"Cash GH₵x\\\", \\\"MoMo GH₵x\\\"; pink person chip with a small person icon, \\\"{Name} owes GH₵x\\\" for the owed part or just the name for a credit-only sale; amber category chip for Spent) and the time in 16px bold on the right. Chips wrap. Person names are capitalised (Juju, not juju) and a name is never a plain grey chip that looks like a payment.",
+    "Amount colours: money in green #03543F with a +, spent amber-brown #92400E with a −, credit-only sale dark red #7F1D1D with no sign (nothing was received).",
+    "Stock bought on credit (decided 11 Nov 2026): a purchase with nothing paid now is titled \"Stock on credit\" (never \"Spent\", because no money went out), its amount is in dark red with no sign, and it has a pink chip \"You owe {Supplier}\". A part-paid purchase is titled \"Stock\", shows the amount paid now with a minus sign in amber-brown, and the pink chip \"You owe {Supplier} GH₵x\" for the rest. A fully paid purchase is a normal Spent row. The Spent tile counts only money actually paid out.",
+    "Rows are not buttons until their detail view is designed: no chevron, no hover, not focusable. Do not make them tappable.",
+    "A filter with no rows shows one quiet line, \\\"Nothing here yet today.\\\" Filters All, Sold, Spent and Credit stay as a radio-style row (52px, bold, selected = solid green).",
+    "Credit filter (decided 14 Nov 2026 from a phone test where Balance correction rows appeared only under All): Credit shows every row that changes what people owe: credit-only sales, part-paid sales (their owed part), Added to debt, Payment collected and Balance correction. Sold and Spent are unchanged. A correction moves no money, so it is never under Sold or Spent. All shows everything.",
+    "Balance correction row (corrections only ever lower a balance; the correction event stores the previous balance, the new balance, the difference and the reason): title 'Balance corrected'; on the right the amount the debt was lowered by, in plain dark text with no plus or minus and no green or red; line 2 has a pink person chip '{Name} owes GH₵y now' (y is the new balance) and a grey chip with the reason; the time is on the right as usual. The accessible name includes 'lowered by GH₵x'. The tiles at the top must equal the sum of the rows (report how the Owed tile is computed).",
+    "Given on credit tile (decided 14 Nov 2026; it was labelled Owed and confused the owner because it is not what people owe now): the label is 'Given on credit' and the amount is the credit given today: the owed part of today's credit and part-paid sales (including installment sales) plus today's Added to debt rows. Payments collected and Balance corrections are not subtracted (they have their own rows) and stock bought on credit is not counted (that is money the owner owes). The tile equals the sum of the owed parts shown in the rows above it. On the wide table the column is called 'On credit'."
+   ],
+   "bottom_bar": false
+  },
+  "25": {
+   "name": "Collect payment (sheet over Home)",
+   "component": "CollectPayment",
+   "controls": [
+    {
+     "label": "Close",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    },
+    {
+     "label": "Due now",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Pay all",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Pay part",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "26"
+    },
+    {
+     "label": "Cash",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "MoMo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "MOMO"
+    },
+    {
+     "label": "Received",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "28"
+    },
+    {
+     "label": "See Amoto’s details ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "43"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": true,
+   "bottom_bar_note": "The bar belongs to Home, which shows behind the Collect sheet (as in the prototype).",
+   "rules": [
+    "Installment line (revised 11 Nov 2026, after a real mismatch: \"Payment 3 of 44 · 42 left\" on the sheet against \"2 paid · 42 left\" on the details screen, with only GH₵21.00 paid on a GH₵20.00-a-week plan). Never show \"Payment x of y\" or a paid-installment count, because part payments make those counters wrong. Everything comes from money: payments left = balance divided by the installment, rounded up. On the collect sheet, for \"Due now\" only: \"{left-1} left after this\" (for example 41 when the balance says 42 left now). Hidden for \"Pay all\" and \"Pay part\". On the debtor details plan card (43): \"GH₵{paid so far} paid · {left} payments left\" (\"1 payment left\" when one is left) with the progress bar from money paid divided by the plan total. The same single function feeds every screen.",
+    "Header (decided 14 Nov 2026): the Menu button is at the left, as on 22, but 25 is a sheet over Home with a dimmed page, so the header behind it is not tappable; the drawer opens only from the page itself (22)."
+   ]
+  },
+  "26": {
+   "name": "Collect: pay part",
+   "component": "CollectPayPart",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "25"
+    },
+    {
+     "label": "1",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "2",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "3",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "4",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "5",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "6",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "7",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "8",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "9",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "0",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Delete",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Cash",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "MoMo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "MOMO"
+    },
+    {
+     "label": "Received",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "28"
+    },
+    {
+     "label": "Split payment",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "27"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "rules": [
+    "Wording (decided 12 Nov 2026): the line that shows the balance after this payment is \"Still owed after this\" (not \"Left to pay\", which means what a split still has to cover on 16 and 27), and 28 says \"{Name} still owes GH₵x\" for the same figure."
+   ]
+  },
+  "27": {
+   "name": "Split payment (collect)",
+   "component": "SplitPayment",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "26",
+     "note": "If opened from 19 (flow from19): returns to 19"
+    },
+    {
+     "label": "Remove Cash",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Cash",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection",
+     "effect": "Adds a payment part. Enables Done or Received once the parts add up."
+    },
+    {
+     "label": "MoMo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "MOMOPICK",
+     "to_rule": "Ask how much first (prefilled with Left to pay), then 61 with that amount, same as 16. Returns to 27 with the MoMo part."
+    },
+    {
+     "label": "Done",
+     "role": null,
+     "disabled_initially": true,
+     "type": "navigate",
+     "to": "MOMO27",
+     "note": "If opened from 19 (flow from19): returns to 19",
+     "rule_note": "MoMo tile opens 61 so the MoMo method is recorded."
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "decisions": [
+    "MoMo opens 61 (not a plain selection), so the chosen MoMo method is recorded."
+   ],
+   "rules": [
+    "Split screens use one ending word (decided 12 Nov 2026): the button on 27 is \"Done\", not \"Received\", because nothing is received until the confirm step. Done continues to 62 for an unconfirmed Direct MoMo part and then saves (28), or, when 27 was opened from 19, returns the parts to 19 and saves nothing.",
+    "Row layout on 27 (same component as 16) (decided 12 Nov 2026), the same at every width (360px, 393px and wider): line 1 = icon, short name (Cash, MoMo, Owe), the amount chip and the x; line 2 = the status text using the full card width (at most 2 lines). Never put the status text in a narrow column beside the chip. Status wording: MoMo not confirmed \"Customer sends · not confirmed yet\"; MoMo confirmed \"Customer sent · received ✓\"; Owe \"{Name} · GH₵{amount} {every week|every 2 weeks|every month} · first payment {dd/mm/yyyy}\" (the amount is the payment each time, so it must read as \"GH₵50.00 every week\", never a bare \"· GH₵50.00 ·\" that looks like the Owe chip amount); Cash has no status line.",
+    "Back from 27 opened from 19 keeps the parts in 19's route parameters. Tapping Split payment on 19 again reopens 27 with the same Cash and MoMo parts while the amount paid today is unchanged; if the amount changed, the parts are cleared and 27 starts again with the new amount. Same locked-row and leave-question rules as 16 when a MoMo part has been confirmed."
+   ]
+  },
+  "28": {
+   "name": "Payment received",
+   "component": "PaymentReceived",
+   "controls": [
+    {
+     "label": "Undo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    },
+    {
+     "label": "Send receipt",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "Open WhatsApp with the existing reminder template (reminders) or the new receipt template (receipts, after approval). The merchant reviews and sends. Nothing is sent automatically."
+    },
+    {
+     "label": "See Amoto’s details ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "29"
+    },
+    {
+     "label": "Done",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "rules": [
+    "Never list a payment part with GH₵0.00 (for example no \"MoMo GH₵0.00\" row after a cash-only payment): only parts above zero are shown.",
+    "Receipts offline (decided 12 Nov 2026): the sale or collection is already saved before the receipt button is shown, and a receipt never blocks Done or New sale. Send receipt opens WhatsApp through the installed app or the phone's share sheet (not a wa.me web page that fails offline), with the receipt text filled in. When the phone is offline, one quiet line appears directly under the Send receipt button (8px below it, above Copy receipt; it explains what Send receipt does, so it never sits under Copy receipt or further down): \"You are offline. WhatsApp will send it when you are back online.\" A secondary outlined button \"Copy receipt\" copies the same text (shows \"Copied\" for two seconds). Receipt buttons only exist when VITE_ENABLE_POS_RECEIPTS is \"true\". Amounts in the receipt text and in the panel above it always use formatGhs (GH₵5.00), also the Sale line."
+   ]
+  },
+  "29": {
+   "name": "Debtor detail (on-time state)",
+   "component": "DebtorDetail",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history (keeps the user's place when opened from 32 or 22)."
+    },
+    {
+     "label": "Edit contact",
+     "role": null,
+     "disabled_initially": false,
+     "type": "reuse_existing",
+     "effect": "Open the existing edit-contact form with its existing validation. No new screen."
+    },
+    {
+     "label": "Collect",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "25"
+    },
+    {
+     "label": "WhatsApp",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "Open WhatsApp with the existing reminder template (reminders) or the new receipt template (receipts, after approval). The merchant reviews and sends. Nothing is sent automatically."
+    },
+    {
+     "label": "Call",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "tel: link to the person's valid phone number."
+    },
+    {
+     "label": "Correct balance",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "54"
+    },
+    {
+     "label": "+ Add to debt",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "ADDP",
+     "to_rule": "Start the add-debt-for-a-person flow (flow=add_debt_person) and go to 53."
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "rules": [
+    "Under the balance, one line about when it is due. Fixed due date and no plan: \"Due 20/11/2026 · In 5 days\" (or \"Due 03/11/2026 · Late 7 days\"; Due today when equal). Installment plan: \"GH₵10.00 every week · next 14/11/2026\" (already built, kept). No date and no plan: nothing. Date through the shared formatter; the In N days and Late wording is the existing wording.",
+    "Plan card (decided 12 Nov 2026): two full-width lines, never wrapped in two columns: \"GH₵{paid} paid · {left} payments left\", then \"Next payment {dd/mm/yyyy}\".",
+    "Action buttons (from a phone test at 360px, 14 Nov 2026): Collect, WhatsApp and Call are ONE row of three equal columns with the icon above the label, 48px tall or more, at 340px and wider. They never wrap and Call is never alone on a second row. Call is greyed and disabled without a valid phone.",
+    "No valid phone (decided 14 Nov 2026): WhatsApp stays active and uses the phone's share sheet with the reminder text filled in (the owner picks the chat), exactly like the receipt. Call is greyed and disabled. There is no Add contact button in the action row; adding a number is done through Edit contact in the header."
+   ]
+  },
+  "30": {
+   "name": "Sale recorded (receipt)",
+   "component": "SaleRecorded",
+   "controls": [
+    {
+     "label": "Send receipt",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "Open WhatsApp with the existing reminder template (reminders) or the new receipt template (receipts, after approval). The merchant reviews and sends. Nothing is sent automatically."
+    },
+    {
+     "label": "Done",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    },
+    {
+     "label": "New sale",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "15"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "rules": [
+    "The owed part of this sale reads \"{Name} owes GH₵x from this sale\" (not \"still owes\"). When the customer had an earlier balance, add one quiet line \"Total owed GH₵y\" under it, the same figure 31 and Home show. On 24 the chip stays \"{Name} owes GH₵x\" because a transaction row describes only that sale.",
+    "Never list a payment part with GH₵0.00 (for example no \"MoMo GH₵0.00\" row after a cash-only payment): only parts above zero are shown.",
+    "Receipts offline (decided 12 Nov 2026): the sale or collection is already saved before the receipt button is shown, and a receipt never blocks Done or New sale. Send receipt opens WhatsApp through the installed app or the phone's share sheet (not a wa.me web page that fails offline), with the receipt text filled in. When the phone is offline, one quiet line appears directly under the Send receipt button (8px below it, above Copy receipt; it explains what Send receipt does, so it never sits under Copy receipt or further down): \"You are offline. WhatsApp will send it when you are back online.\" A secondary outlined button \"Copy receipt\" copies the same text (shows \"Copied\" for two seconds). Receipt buttons only exist when VITE_ENABLE_POS_RECEIPTS is \"true\". Amounts in the receipt text and in the panel above it always use formatGhs (GH₵5.00), also the Sale line."
+   ]
+  },
+  "31": {
+   "name": "Saved as credit",
+   "component": "SavedAsCredit",
+   "controls": [
+    {
+     "label": "See Amoto’s details ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "29"
+    },
+    {
+     "label": "Done",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "rules": [
+    "Never list a payment part with GH₵0.00 (for example no \"MoMo GH₵0.00\" row after a cash-only payment): only parts above zero are shown.",
+    "Receipts offline (decided 12 Nov 2026): the sale or collection is already saved before the receipt button is shown, and a receipt never blocks Done or New sale. Send receipt opens WhatsApp through the installed app or the phone's share sheet (not a wa.me web page that fails offline), with the receipt text filled in. When the phone is offline, one quiet line appears directly under the Send receipt button (8px below it, above Copy receipt; it explains what Send receipt does, so it never sits under Copy receipt or further down): \"You are offline. WhatsApp will send it when you are back online.\" A secondary outlined button \"Copy receipt\" copies the same text (shows \"Copied\" for two seconds). Receipt buttons only exist when VITE_ENABLE_POS_RECEIPTS is \"true\". Amounts in the receipt text and in the panel above it always use formatGhs (GH₵5.00), also the Sale line.",
+    "No reminder button on 31 (decided 14 Nov 2026): the old 'WhatsApp {Name}' reminder button is removed. This screen appears seconds after the sale and the receipt already tells the customer what they owe; reminders live on the debtor detail page (29/43), the Home Collect first tile and the Owed list. The buttons are, top to bottom: Send receipt, the offline line (offline only), Copy receipt (these three only with the receipts flag on), See {Name}'s details ›, Done."
+   ]
+  },
+  "32": {
+   "name": "People who owe you (tab: Owed)",
+   "component": "PeopleWhoOweYou",
+   "controls": [
+    {
+     "label": "Add debt",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "ADD",
+     "to_rule": "Start the add-debt flow (flow=add_debt) and go to 17."
+    },
+    {
+     "label": "All",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Late",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Due soon",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "AmotoGH₵30.00Late",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "43"
+    },
+    {
+     "label": "Collect from Amoto",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "25"
+    },
+    {
+     "label": "WhatsApp Amoto",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "Open WhatsApp with the existing reminder template (reminders) or the new receipt template (receipts, after approval). The merchant reviews and sends. Nothing is sent automatically."
+    },
+    {
+     "label": "Call Amoto",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "tel: link to the person's valid phone number."
+    },
+    {
+     "label": "KofiGH₵25.00Due today",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "43"
+    },
+    {
+     "label": "Collect from Kofi",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "25"
+    },
+    {
+     "label": "WhatsApp Kofi",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "Open WhatsApp with the existing reminder template (reminders) or the new receipt template (receipts, after approval). The merchant reviews and sends. Nothing is sent automatically."
+    },
+    {
+     "label": "Call Kofi",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "tel: link to the person's valid phone number."
+    },
+    {
+     "label": "AkosuaGH₵18.00In 5 days",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "43"
+    },
+    {
+     "label": "Collect from Akosua",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "25"
+    },
+    {
+     "label": "WhatsApp Akosua",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "Open WhatsApp with the existing reminder template (reminders) or the new receipt template (receipts, after approval). The merchant reviews and sends. Nothing is sent automatically."
+    },
+    {
+     "label": "Call Akosua",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "tel: link to the person's valid phone number."
+    },
+    {
+     "label": "YawGH₵12.00In 12 days",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "43"
+    },
+    {
+     "label": "Collect from Yaw",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "25"
+    },
+    {
+     "label": "WhatsApp Yaw",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "Open WhatsApp with the existing reminder template (reminders) or the new receipt template (receipts, after approval). The merchant reviews and sends. Nothing is sent automatically."
+    },
+    {
+     "label": "Call Yaw",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "tel: link to the person's valid phone number."
+    },
+    {
+     "label": "EfuaGH₵8.00In 14 days",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "43"
+    },
+    {
+     "label": "Collect from Efua",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "25"
+    },
+    {
+     "label": "WhatsApp Efua",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "Open WhatsApp with the existing reminder template (reminders) or the new receipt template (receipts, after approval). The merchant reviews and sends. Nothing is sent automatically."
+    },
+    {
+     "label": "Call Efua",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "tel: link to the person's valid phone number."
+    },
+    {
+     "label": "Home",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    },
+    {
+     "label": "Sell",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "15"
+    },
+    {
+     "label": "Owed",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    }
+   ],
+   "inputs": [
+    "Search by name or phone"
+   ],
+   "bottom_bar": true,
+   "rules": [
+    "Collect for a person with several debts opens 43 so the merchant chooses the debt.",
+    "Extras kept: Load more.",
+    "Search field above the list, same field and wording as on 17 (\"Search by name or phone\"). It filters the list as the merchant types, ignoring case and spaces, and works together with the All, Late and Due soon filters. Clearing it shows the full list again. No search button: the field is always visible. When nobody matches, show the existing empty-list wording (or ask the owner for new text). Search never changes any data and works offline.",
+    "The list shows only people with a balance above zero. A person corrected to zero or paid in full is not listed. When nobody is left the existing empty-list wording shows."
+   ]
+  },
+  "33": {
+   "name": "My money",
+   "component": "MyMoney",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    },
+    {
+     "label": "This week",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "This month",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Owed to youGH₵93.00See who ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "32"
+    },
+    {
+     "label": "You owe suppliersGH₵280.00See list ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "46"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "rules": [
+    "Layout, top to bottom: (1) one strong green block \"Money left this week\" with one calm line \"GH₵X more than last week\" or \"GH₵X less than last week\" (never a green card with a red or alarming drop) and \"Money in minus money spent\"; (2) Money in and Money spent side by side, each with its breakdown (Cash and MoMo; Stock and Other); show no breakdown line instead of an error when none exists; (3) the profit card; (4) Owed to you and You owe suppliers as two white tiles with a coloured left edge and a clear \"See who ›\" / \"See list ›\" link.",
+    "The big heading says \"Money left\", not \"Cash left\", because Money in includes MoMo.",
+    "Only one strong colour block on the screen. The other cards are white with a thin border.",
+    "Profit card (Estimate, version A): Estimated profit = Sales − stock bought − other costs for the selected week or month, from the Spent money categories. Shown with an \"Estimate\" tag, the line \"Sales 300.00 − stock 150.00 − other costs 30.00\", and \"Average of last 4 weeks\" only when there are at least 4 weeks of data. A credit sale counts when it is sold. Shown by default; Settings has one switch to hide it. No nudge card pointing to Settings.",
+    "Item-level profit (version B, \"Based on 8 of 10 items\" and Add costs ›) stays deferred until items have cost prices.",
+    "The comparison with last week uses integer pesewas through the shared formatter. A value that cannot be real (for example more than a million cedis) must be checked as a possible unit bug.",
+    "Built and kept: no Open Settings or Add costs controls on 33. The profit card is hidden with the one switch in Settings (47); there is no nudge card.",
+    "One bad or inconsistent record must never stop the screen loading. A record whose parts do not add up (for example a credit sale whose cash and credit parts do not match the sale amount) is left out of the totals, logged with its id to the console, and the screen shows one quiet line: \"1 sale is not counted because its amounts do not match.\" (plural: \"{n} sales are not counted...\"). The same must hold on every screen that sums money (22 and others), not only 33."
+   ]
+  },
+  "34": {
+   "name": "New person",
+   "component": "NewPerson",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "17"
+    },
+    {
+     "label": "Next ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "NEXT17",
+     "to_rule": "In the add-debt flow follow the NEXT17 rule (go to 53); in other flows go to 18."
+    }
+   ],
+   "inputs": [
+    "np-amt",
+    "e.g. Kofi Mensah",
+    "024 000 0000",
+    "GHA-000000000-0"
+   ],
+   "bottom_bar": false,
+   "rules": [
+    "Draft survives Back (decided 12 Nov 2026, reported on the phone): in the sale-on-credit flow (15 → 17 → 34/18 → 19 → 27) everything the owner has typed or chosen is kept when they go Back and return, until the sale is saved (Done or Save plan) or the owner leaves with header Home or another tab. Nothing is lost by going one step back and forward. Kept values live in the route parameters, like 15 and 16. On 34 that means the Name, Phone number and Ghana Card number fields and the Amount owed (if the owner edited it). Returning to 34 shows them filled in. The error box \"Enter the customer's name and a valid amount.\" only appears after the owner taps Next with a problem, never on a fresh or returning form."
+   ]
+  },
+  "35": {
+   "name": "What do you sell?",
+   "component": "WhatDoYouSell",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "21"
+    },
+    {
+     "label": "Category Provisions shop",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Food and drinks",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Fresh produce",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Hair and beauty",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Clothes, shoes and bags",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Phone and airtime",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "More categories ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "51"
+    },
+    {
+     "label": "Category Something else",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Continue ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "MULTI",
+     "to_rule": "Go to 52 if several categories are chosen (the prototype uses: More categories was opened). Otherwise go to 36."
+    },
+    {
+     "label": "Skip for now",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    }
+   ],
+   "inputs": [
+    "Find your business"
+   ],
+   "bottom_bar": false,
+   "rules": [
+    "If only \"Something else\" is chosen, Continue goes to 41 (brief line 359)."
+   ]
+  },
+  "36": {
+   "name": "Your starter list",
+   "component": "YourStarterList",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Item Bread",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Sugar",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Salt",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Rice",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Cooking oil",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Tomato paste",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Sardine",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Instant noodles",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Milo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Milk (tin)",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Washing soap",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Bathing soap",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Matches",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Biscuits",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Tea",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Coffee",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Custard",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Oats",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Cornflakes",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Cerelac",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Show more (69)",
+     "role": null,
+     "disabled_initially": false,
+     "type": "expand",
+     "effect": "Expands or collapses a list on the same screen. No navigation."
+    },
+    {
+     "label": "Continue · 14 items",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "FROM",
+     "to_rule": "Setup finished or skipped. If the previous screen is 39 (My items), return to 39. Otherwise go to 22 (Home)."
+    },
+    {
+     "label": "Skip, I’ll add items later",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "FROM",
+     "to_rule": "Setup finished or skipped. If the previous screen is 39 (My items), return to 39. Otherwise go to 22 (Home)."
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "37": {
+   "name": "How much is {item}?",
+   "component": "ItemPrice",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "20"
+    },
+    {
+     "label": "1",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "2",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "3",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "4",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "5",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "6",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "7",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "8",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "9",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "0",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Delete",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Save price",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "20"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "rules": [
+    "Save price goes to 20.",
+    "Uses the number pad (like the other money screens)."
+   ]
+  },
+  "38": {
+   "name": "How many {item}?",
+   "component": "ItemQuantity",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "20"
+    },
+    {
+     "label": "1",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "2",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "3",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "4",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "5",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "6",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "7",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "8",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "9",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "0",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Delete",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Add 12",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "20"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "rules": [
+    "Button reads \"Add {quantity}\".",
+    "Uses the number pad.",
+    "Extra kept: \"{amount} each\" line."
+   ]
+  },
+  "39": {
+   "name": "My items",
+   "component": "MyItems",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "23"
+    },
+    {
+     "label": "New item",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "41"
+    },
+    {
+     "label": "Bread",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "40"
+    },
+    {
+     "label": "Water",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "40"
+    },
+    {
+     "label": "Sugar",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "40"
+    },
+    {
+     "label": "Rice",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "40"
+    },
+    {
+     "label": "Cooking oil",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "40"
+    },
+    {
+     "label": "Soap",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "40"
+    },
+    {
+     "label": "Add from starter list",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "36"
+    }
+   ],
+   "inputs": [
+    "Find item"
+   ],
+   "bottom_bar": false
+  },
+  "40": {
+   "name": "Edit item",
+   "component": "EditItem",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Delete item",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "42"
+    },
+    {
+     "label": "Save",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    }
+   ],
+   "inputs": [
+    "e.g. Bread",
+    "0.00",
+    "What you paid for one"
+   ],
+   "bottom_bar": false
+  },
+  "41": {
+   "name": "New item",
+   "component": "NewItem",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Save",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    }
+   ],
+   "inputs": [
+    "e.g. Bread",
+    "0.00"
+   ],
+   "bottom_bar": false
+  },
+  "42": {
+   "name": "Delete item?",
+   "component": "DeleteItem",
+   "controls": [
+    {
+     "label": "Keep Sugar",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Yes, delete",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "39"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "43": {
+   "name": "Debtor detail (late state)",
+   "component": "DebtorDetail",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history (keeps the user's place when opened from 32 or 22)."
+    },
+    {
+     "label": "Edit contact",
+     "role": null,
+     "disabled_initially": false,
+     "type": "reuse_existing",
+     "effect": "Open the existing edit-contact form with its existing validation. No new screen."
+    },
+    {
+     "label": "Send reminder on WhatsApp",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "Open WhatsApp with the existing reminder template (reminders) or the new receipt template (receipts, after approval). The merchant reviews and sends. Nothing is sent automatically."
+    },
+    {
+     "label": "Collect",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "25"
+    },
+    {
+     "label": "Call",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "tel: link to the person's valid phone number."
+    },
+    {
+     "label": "Correct balance",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "54"
+    },
+    {
+     "label": "+ Add to debt",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "ADDP",
+     "to_rule": "Start the add-debt-for-a-person flow (flow=add_debt_person) and go to 53."
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "rules": [
+    "Late state button: \"Send reminder on WhatsApp\" (full width) and \"Last reminder: {n} days ago\" from lastReminderAt.",
+    "Extra kept: Open debt entries list with \"Correct this entry\". A correction adds a debt_adjustment entry (old and new balance, reason) and lowers the balance in one transaction; raising is refused (\"Use Add to debt\").",
+    "Under the balance, one line about when it is due. Fixed due date and no plan: \"Due 20/11/2026 · In 5 days\" (or \"Due 03/11/2026 · Late 7 days\"; Due today when equal). Installment plan: \"GH₵10.00 every week · next 14/11/2026\" (already built, kept). No date and no plan: nothing. Date through the shared formatter; the In N days and Late wording is the existing wording.",
+    "Plan card (decided 12 Nov 2026): two full-width lines, never wrapped in two columns: \"GH₵{paid} paid · {left} payments left\", then \"Next payment {dd/mm/yyyy}\".",
+    "Action buttons (from a phone test at 360px, 14 Nov 2026): the wide WhatsApp reminder button on top, then Collect and Call side by side in one row. Nothing wraps or sits alone at 340px and wider. Call is greyed and disabled without a valid phone.",
+    "No valid phone (decided 14 Nov 2026): WhatsApp stays active and uses the phone's share sheet with the reminder text filled in (the owner picks the chat), exactly like the receipt. Call is greyed and disabled. There is no Add contact button in the action row; adding a number is done through Edit contact in the header."
+   ]
+  },
+  "44": {
+   "name": "Spent money",
+   "component": "SpentMoney",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    },
+    {
+     "label": "Stock",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Transport",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Rent",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Utilities",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Other",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Yes",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "No",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "45"
+    },
+    {
+     "label": "Save",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    }
+   ],
+   "inputs": [
+    "Amount"
+   ],
+   "bottom_bar": false
+  },
+  "45": {
+   "name": "Stock on credit",
+   "component": "StockOnCredit",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "44"
+    },
+    {
+     "label": "Kofi Wholesale",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "+ New supplier",
+     "role": null,
+     "disabled_initially": false,
+     "type": "not_designed",
+     "effect": "Not designed in the prototype. Ask before building. Do not invent a screen."
+    },
+    {
+     "label": "Save",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    }
+   ],
+   "inputs": [
+    "pn",
+    "pb"
+   ],
+   "bottom_bar": false,
+   "rules": [
+    "Supplier names are shown with a capital first letter everywhere (select options, the Supplier name field result, messages, sheets), without changing the stored name.",
+    "After saving stock bought on credit, Home shows a calm message in words the owner uses: \"Stock of GH₵80.00 saved. You still owe GH₵80.00.\" (when part is paid now: \"Stock of GH₵80.00 saved. You paid GH₵30.00 and still owe GH₵50.00.\"; when all is paid now: \"Stock of GH₵80.00 saved. Paid in full.\"). The word \"Expense\" is not used for this. Spent money (other costs) keeps \"Spent GH₵x saved.\"",
+    "The Supplier select shows no stray marks or text other than the chosen name or \"Choose supplier\". The pay-by date uses the phone's own date picker; the saved date is shown as dd/mm/yyyy everywhere else.",
+    "Supplier picker (replaces the dropdown, decision 11 Nov 2026): inside one card headed \"Who do you owe?\" the suppliers are a vertical list of selectable rows (role radio, 60px tall, a circle on the left, the supplier name in bold, long names wrap). The chosen row has a green border, a light green background and a filled circle. The last row is a dashed green \"+ New supplier\" row. Tapping it selects it (solid green border, light green background) and shows the fields \"Supplier name\" and \"Phone (optional)\" below the list inside the same card. Choosing a supplier hides those fields and keeps what was typed until Save.",
+    "More than 4 suppliers: show the 4 most recently used, then a row \"Show all {n} suppliers ›\" that shows the whole list. With no suppliers yet, only the \"+ New supplier\" row is shown, already selected, with its fields open. No native dropdown (select) anywhere in the POS for choosing a supplier or customer.",
+    "Layout: Stock total and Still owed in one card at the top (Still owed in dark red); Paid now in its own card with the amount right-aligned; the supplier card; Pay by (optional) in its own card with the phone's date picker; a green Save button at the end of the list."
+   ]
+  },
+  "46": {
+   "name": "You owe suppliers",
+   "component": "YouOweSuppliers",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "33"
+    },
+    {
+     "label": "Kofi WholesaleGH₵200.00Due in 3 days",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Pay Kofi Wholesale",
+     "role": null,
+     "disabled_initially": false,
+     "type": "not_designed",
+     "effect": "Not designed in the prototype. Ask before building. Do not invent a screen."
+    },
+    {
+     "label": "Call Kofi Wholesale",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "tel: link to the person's valid phone number."
+    },
+    {
+     "label": "Madam AmaGH₵80.00Due in 10 days",
+     "role": null,
+     "disabled_initially": false,
+     "type": "not_designed",
+     "effect": "A list row. Its detail view is not designed. Ask before building anything."
+    },
+    {
+     "label": "Pay Madam Ama",
+     "role": null,
+     "disabled_initially": false,
+     "type": "not_designed",
+     "effect": "Not designed in the prototype. Ask before building. Do not invent a screen."
+    },
+    {
+     "label": "Call Madam Ama",
+     "role": null,
+     "disabled_initially": false,
+     "type": "external",
+     "effect": "tel: link to the person's valid phone number."
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "rules": [
+    "Redesign (layout only, no behaviour change). Summary card at the top: \"Total you owe\", the supplier count (\"2 suppliers\", \"1 supplier\") and the total in bold. It uses a calm amber background, because this is money the shop owes.",
+    "One card per supplier, soonest due first. Inside the card: top row = supplier name (bold 19px, up to 2 lines, first letter shown in capitals even if saved in lowercase) on the left and the amount (bold 24px, never shrunk or clipped) on the right; the due tag under the name; bottom row = a green \"Pay\" button with a wallet icon (52px, takes the remaining width) and, only when the supplier has a valid phone number, a square Call icon button (52px, dark outline). If there is no number, the Call button is not shown. Never show a greyed disabled Call button.",
+    "Due tag wording and colour: \"Due in n days\" grey when more than 3 days away; \"Due in n days\" or \"Due today\" amber when 3 days or less; \"Late n days\" in the red style used on the Owed list when past due; no tag when there is no due date. Dates elsewhere dd/mm/yyyy.",
+    "Empty state: \"You don't owe any suppliers.\" with no summary card.",
+    "The Pay and Call buttons keep their accessible names (\"Pay Kofi Wholesale\", \"Call Kofi Wholesale\").",
+    "Pay sheet (opened by Pay): the title \"Pay {Supplier name}\" wraps onto more lines for a long name and never runs past the sheet edge at 360px (overflow-wrap anywhere). The supplier name is capitalised as on the list. \"Record payment\" is the full-width green button and \"Cancel\" is a full-width outlined button below it (same width, 52px)."
+   ]
+  },
+  "47": {
+   "name": "Settings",
+   "component": "Settings",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Save",
+     "role": null,
+     "disabled_initially": true,
+     "type": "action",
+     "effect": "Saves the shop name. Disabled until the name is changed and not empty."
+    },
+    {
+     "label": "Show estimated profit",
+     "role": "switch",
+     "disabled_initially": false,
+     "type": "toggle",
+     "effect": "Shows or hides the Estimated profit card on screen 33."
+    },
+    {
+     "label": "MoMo payments",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "63"
+    },
+    {
+     "label": "My plan",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "64"
+    },
+    {
+     "label": "Backup and restore",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "71"
+    },
+    {
+     "label": "Done",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Same as Back. Never goes to Home, so a draft is not dropped."
+    }
+   ],
+   "inputs": [
+    {
+     "label": "Shop name",
+     "type": "text"
+    }
+   ],
+   "bottom_bar": false,
+   "rules": [
+    "Layout: four groups, each one white card with a small heading above it: Shop (shop name field with Save beside it), Preferences (the Show estimated profit switch), Payments and plan (MoMo payments, My plan), Your records (Backup and restore). Rows inside a card are separated by a thin line, not separate boxes.",
+    "Use a switch (role switch), not a tick box, for Show estimated profit, with a one-line helper under it.",
+    "My plan row shows the status in words (\"Active until dd/mm/yyyy\") and a small green \"Active\" tag when active. The old separate \"View subscription\" button and its Paystack plans pop-up are removed (decision 10 Nov 2026): paying for the plan goes only through Pay now on 64 (screen 65: Cash, Mobile money, later Phone request).",
+    "MoMo payments row shows \"Not set up\" or \"Set up\" under the title.",
+    "Shop name: Save is disabled until the name changes. After saving, the header shows Saved.",
+    "No \"Track cost price of items\" switch while item-level profit is deferred.",
+    "Done sits at the end of the list (scrolls with it). It returns exactly like Back.",
+    "Built: the My plan row shows only when the subscription flag is on, as before. With the flag off, the Payments and plan group shows only MoMo payments.",
+    "Save button: grey and disabled while the name is unchanged or empty; the moment the name changes to something valid it turns green (#03543F, white bold text) and is tappable. After saving it goes back to grey.",
+    "The Shop name field starts with the current saved name filled in. If no name was ever saved it shows the default \"My shop\" as grey placeholder text, never an empty-looking field next to a header that says \"My shop\".",
+    "Every row in Payments and plan and Your records has a small green icon on the left (phone for MoMo payments, card for My plan, database for Backup and restore). Backup and restore has the second line \"Save or restore your records\".",
+    "Text style matches the prototype: Back and Done use bold (800) text, same as the other POS screens.",
+    "Decision 10 Nov 2026: no \"Sound and voice feedback\" switch while no POS screen plays a sound. A control that does nothing must not be shown. Sounds and spoken confirmations are a possible later feature; the audio helper code is kept.",
+    "Backup and restore row (decided 14 Nov 2026): the status line under the title reads \"Save or restore your records\" on the phone and on wide screens (it replaces \"Keep a copy of your records\"). The row keeps the database icon."
+   ]
+  },
+  "51": {
+   "name": "More categories",
+   "component": "MoreCategories",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Category Restaurants and chop bars",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Meat and fish",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Bakery and pastries",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Drinks and bar",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Jewellery and accessories",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Beauty products and toiletries",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Mobile money agent",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Electrical and wiring",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Repairs and fixing",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Tailoring and sewing",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Laundry and cleaning",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Delivery and transport",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Vehicle parts and tyres",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Printing and photography",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Events and hire",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Chemical shop (over the counter)",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Building materials",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Plumbing materials",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Paint and finishing",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Tools and fasteners",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Water and ice",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Stationery and school",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Household and baby",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Furniture and mattresses",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Gas, charcoal and fuel",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Category Farm and livestock",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Done ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "52": {
+   "name": "Your starter list (several categories, grouped)",
+   "component": "YourStarterList",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Item Bread",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Sugar",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Salt",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Show all Provisions shop",
+     "role": null,
+     "disabled_initially": false,
+     "type": "expand",
+     "effect": "Expands or collapses a list on the same screen. No navigation."
+    },
+    {
+     "label": "Item Jollof rice",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Waakye",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Item Fried rice",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Show all Food and drinks",
+     "role": null,
+     "disabled_initially": false,
+     "type": "expand",
+     "effect": "Expands or collapses a list on the same screen. No navigation."
+    },
+    {
+     "label": "Continue · 27 items",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "FROM",
+     "to_rule": "Setup finished or skipped. If the previous screen is 39 (My items), return to 39. Otherwise go to 22 (Home)."
+    },
+    {
+     "label": "Skip, I’ll add items later",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "FROM",
+     "to_rule": "Setup finished or skipped. If the previous screen is 39 (My items), return to 39. Otherwise go to 22 (Home)."
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "53": {
+   "name": "How much do they owe?",
+   "component": "HowMuchDoTheyOwe",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "1",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "2",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "3",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "4",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "5",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "6",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "7",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "8",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "9",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "00",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "0",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Delete",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Taken on: Today",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Next ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "NEXT53",
+     "to_rule": "Apply the inheritance rule: if the person has no balance, or no due date and no plan, go to 18. Otherwise go to 31 and show the inherited terms. (The prototype uses flow=add_debt_person to decide; the brief's inheritance rule is the real rule.)"
+    }
+   ],
+   "inputs": [
+    "What for? (optional)"
+   ],
+   "bottom_bar": false,
+   "existing_terms_card": {
+    "shows_when": "The debt passed to 53 has an installment plan, or no plan but one due date. From 29/43 it is the debt on that screen; from 17 it is the person's largest single debt.",
+    "lines": [
+     "GH₵{installment} every week | 2 weeks | month (words from the translation file)",
+     "due tag",
+     "progress bar",
+     "Paid this week | Paid in these 2 weeks | Paid this month: GH₵{carry} (current cycle; wording follows the frequency, from the translation file)",
+     "Still needed this week | in these 2 weeks | this month: GH₵{installment minus carry}",
+     "Next: {dd/mm/yyyy}",
+     "{n} payments left now (computed live after adding the new amount, not from the stored counter)",
+     "A short line naming which debt the card describes, e.g. Plan for the debt of GH₵150.00"
+    ],
+    "removed": "The '{paid} paid · {left} left' line is not shown on 53.",
+    "button": {
+     "label": "Change",
+     "effect": "Disabled until an amount is typed. Goes to 18 with the amount and note so new terms are set. Without Change, Next inherits the terms."
+    },
+    "amounts": "All through formatGhs."
+   }
+  },
+  "54": {
+   "name": "Correct balance (sheet over Debtor detail)",
+   "component": "CorrectBalance",
+   "controls": [
+    {
+     "label": "Close",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Reason Wrong amount entered",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection",
+     "effect": "Chooses the reason and enables Save correction."
+    },
+    {
+     "label": "Reason Customer dispute",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection",
+     "effect": "Chooses the reason and enables Save correction."
+    },
+    {
+     "label": "Reason Goods returned",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection",
+     "effect": "Chooses the reason and enables Save correction."
+    },
+    {
+     "label": "Reason Debt forgiven",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection",
+     "effect": "Chooses the reason and enables Save correction."
+    },
+    {
+     "label": "Reason Other",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection",
+     "effect": "Chooses the reason and enables Save correction."
+    },
+    {
+     "label": "Save correction",
+     "role": null,
+     "disabled_initially": true,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Cancel",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    }
+   ],
+   "inputs": [
+    "nb"
+   ],
+   "bottom_bar": false
+  },
+  "55": {
+   "name": "Review and pay",
+   "component": "ReviewAndPay",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Cash",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "MoMo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "MOMO"
+    },
+    {
+     "label": "Owe",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "17"
+    },
+    {
+     "label": "Split payment",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "16"
+    },
+    {
+     "label": "Done",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "30"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "56": {
+   "name": "MoMo payment (Paystack request)",
+   "component": "MoMoPayment",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Network MTN",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Chooses the network. No navigation. (Prototype: choosing Telecel makes Send request go to 58.)"
+    },
+    {
+     "label": "Network Telecel",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Chooses the network. No navigation. (Prototype: choosing Telecel makes Send request go to 58.)"
+    },
+    {
+     "label": "Network AirtelTigo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Chooses the network. No navigation. (Prototype: choosing Telecel makes Send request go to 58.)"
+    },
+    {
+     "label": "Send request",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "SEND"
+    },
+    {
+     "label": "Customer already paid me directly",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "62",
+     "to_rule": "Goes to 62 (DIRECT) so the merchant must do the balance check before confirming."
+    }
+   ],
+   "inputs": [
+    "mp"
+   ],
+   "bottom_bar": false
+  },
+  "57": {
+   "name": "Waiting for customer",
+   "component": "MoMoWaiting",
+   "controls": [
+    {
+     "label": "Resend request",
+     "role": null,
+     "disabled_initially": true,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Cancel request",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "CANCELMOMO"
+    },
+    {
+     "label": "Demo: approved",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "MOMOOK",
+     "prototype_only": true,
+     "effect": "Prototype only. Simulates the Paystack result. Do not build. In the real app the screen advances when Paystack confirms or fails the charge."
+    },
+    {
+     "label": "Demo: declined",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "59",
+     "prototype_only": true,
+     "effect": "Prototype only. Simulates the Paystack result. Do not build. In the real app the screen advances when Paystack confirms or fails the charge."
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "58": {
+   "name": "Enter the code",
+   "component": "MoMoCode",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Submit code",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "57"
+    }
+   ],
+   "inputs": [
+    "000000"
+   ],
+   "bottom_bar": false,
+   "helper_texts": [
+    "The customer got a code by SMS. Ask them for it. (When the merchant pays for their own plan, say: You got a code by SMS. Enter it.)",
+    "Code not arriving? Go back and send the request again."
+   ]
+  },
+  "59": {
+   "name": "Payment not completed",
+   "component": "MoMoNotCompleted",
+   "controls": [
+    {
+     "label": "Try again",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "56"
+    },
+    {
+     "label": "Pay another way",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "PAYOTHER"
+    },
+    {
+     "label": "Cancel sale",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "22"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false
+  },
+  "60": {
+   "name": "Receive MoMo payments (setup)",
+   "component": "MoMoSetup",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history."
+    },
+    {
+     "label": "Payout MTN",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Payout Telecel",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Payout AirtelTigo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Save and verify",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "SAVEMOMO"
+    }
+   ],
+   "inputs": [
+    "bn",
+    "pn2"
+   ],
+   "bottom_bar": false,
+   "rules": [
+    "No \"Account name will appear after verification\" text until the backend verifies names."
+   ]
+  },
+  "61": {
+   "name": "MoMo: how will they pay?",
+   "component": "MoMoChoice",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK"
+    },
+    {
+     "label": "Customer sends to my number",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "DIRECT"
+    },
+    {
+     "label": "Phone request",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "PHONE"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "change_request": "2026-11-07 MoMo choice and plan payments"
+  },
+  "62": {
+   "name": "Customer sends to my number",
+   "component": "MoMoDirect",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK"
+    },
+    {
+     "label": "Copy number",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Money received",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "MOMOOK"
+    },
+    {
+     "label": "Set up MoMo number",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "63",
+     "to_rule": "Shown only when no MoMo number is saved (it replaces the Send to my number card). Opens 63 with the sale or payment draft kept; the Customer sends to my number switch is already on and the number field is focused. After Save, Back returns to 62."
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "change_request": "2026-11-07 MoMo choice and plan payments",
+   "advice_text": "Wait for the MoMo message. Check the amount and the name, and check your MoMo balance, not only the SMS. Then tap Money received.",
+   "rules": [
+    "Balance-check wording: check the MoMo balance, not only the SMS.",
+    "Redesign 12 Nov 2026 (layout and wording only, no behaviour change). Header: Back and the short title \"Customer sends\" on one line at 340px and up (the Back button never wraps its label).",
+    "Order: (1) a green hero card \"Ask the customer to send\" with the amount at 42px bold (formatGhs); (2) a white card \"Send to my number\" with a compact outlined Copy button (accessible name \"Copy number\", 44px, copy icon) on the same line as the label, the number at 34px bold, a small yellow network chip (MTN, Telecel or AirtelTigo) and the name in bold, and the quiet line \"The customer will see this name when they send.\"; (3) an amber-bordered card \"Before you tap Money received\" with three numbered steps (round green number badges, not tick boxes): \"Wait for the MoMo message.\", \"Check that the amount and the name are right.\", \"Check your MoMo balance went up, not only the SMS.\"; (4) a pinned footer with the full-width green \"Money received\" button (60px, check icon) and, under it, the quiet line \"Will be recorded as MoMo · you confirmed.\"",
+    "The footer is pinned: the body scrolls, the Money received button never moves off screen. Tapping Copy shows \"Copied\" for two seconds on the Copy button itself.",
+    "Wording: never say \"Saved\" on this screen, because nothing is saved until Money received is tapped (the line under the button uses \"Will be recorded as\"). When the amount is only the MoMo part of a larger sale (split), add one quiet line under the amount card: \"MoMo part of a GH₵{total} sale\".",
+    "No MoMo number saved (decided 14 Nov 2026 from a phone test): when Direct MoMo is used and no MoMo number is saved, the 'Send to my number' card is replaced by one card 'Your MoMo number is not set up yet' with a large button 'Set up MoMo number' that opens 63. The three numbered steps are hidden and Money received is disabled, because there is no number the customer could have sent money to. After Save on 63, Back returns to 62 with the sale or payment draft intact and the number shown, and Money received is enabled. The same state applies to a MoMo sale, a MoMo collection, a split MoMo part and Save plan. There is never a text path such as 'Menu > Settings > MoMo payments'.",
+    "Times are shown 24-hour HH:mm built by the app, never by the device language (decided 14 Nov 2026)."
+   ]
+  },
+  "63": {
+   "name": "How customers pay me",
+   "component": "PaymentSettings",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK"
+    },
+    {
+     "label": "Phone request: set up ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "60"
+    },
+    {
+     "label": "Ask me each time",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Always: customer sends to my number",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Always: phone request",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Save",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK"
+    }
+   ],
+   "inputs": [
+    {
+     "name": "receivingNumber",
+     "label": "My MoMo number",
+     "note": "Number customers send to. Validated Ghana mobile format. Required before Money received on 62 is enabled."
+    },
+    {
+     "name": "receivingNetwork",
+     "label": "Network",
+     "options": [
+      "MTN",
+      "Telecel",
+      "AirtelTigo"
+     ],
+     "note": "Network of the receiving number."
+    }
+   ],
+   "bottom_bar": false,
+   "change_request": "2026-11-07 MoMo choice and plan payments",
+   "rules": [
+    "Saving a changed receiving number first shows a masked confirmation, for example: Customers will send to 024•••4567 · MTN. Correct?",
+    "Every change is stored as a local audit record: old number, new number, time.",
+    "The Paystack payout number is separate and is never written to the receiving number.",
+    "Change request 2026-11-09: number and network inputs added to complete 'Customer sends to my number (on or off, number, network)'.",
+    "Redesign (layout only, no behaviour change). Title \"MoMo payments\" (same words as the Settings row).",
+    "Card 1 \"Customer sends to my number\": the title with a switch (role switch, not a tick box). When on: field \"My MoMo number\", then \"Network\" as three equal buttons in one row (MTN, Telecel, AirtelTigo; the selected one is green), then one green line \"Customers will send to 059•••8442 · MTN\". When off, the number and network fields are hidden.",
+    "Card 2 \"Phone request\": one row, \"Confirmed by itself. Fee GH₵0.25 per payment.\" with \"Set up ›\" on the right (opens 60) when the phone-request flag is on. When the flag is off the row shows a grey \"Coming soon\" tag instead and is not tappable. No disabled button.",
+    "Section \"When I tap MoMo\": one card with radio rows (role radio, a circle on the left, the chosen one filled green with a light green row background): \"Ask me each time\", \"Always: customer sends to my number\". \"Always: phone request\" is shown only when the phone-request flag is on. If phone request is not set up yet it is shown greyed, not selectable, with the line \"Set up phone request first\". When the flag is off it is not shown at all. No person icons.",
+    "Save is pinned at the bottom (always visible), 60px, green, with a check icon."
+   ]
+  },
+  "64": {
+   "name": "My plan",
+   "component": "MyPlan",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK"
+    },
+    {
+     "label": "Pay now",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "65"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "change_request": "2026-11-07 MoMo choice and plan payments",
+   "rules": [
+    "Section \"Payments\": one card with rows separated by thin lines. Each row: left, the method (\"Phone request\", \"Mobile money\", \"Cash\") with the date under it; right, the amount in bold with a \"Confirmed\" tag under it (other statuses use their own tag). No long text that wraps to a second line beside the amount. If there are no payments: \"No payments yet.\"",
+    "Dates dd/mm/yyyy, amounts through the shared formatter.",
+    "One plan card: \"Shop plan\" with a status tag, the price large (\"GH₵15.00\" with \"a month\" small), one status line, the reassurance line, and one button, \"Pay now\" (solid green, 56px), which opens 65. There is no View subscription or Subscribe button and no pop-up (decision 10 Nov 2026). The old Paystack plans pop-up, plan picker and email field are removed from the POS.",
+    "Status line by state: Active: \"Active until dd/mm/yyyy · n days left\" with a green Active tag. Trial: \"Trial · n days left\" with a Trial tag. Due today: \"Due today\". Late/expired: \"Your plan ended on dd/mm/yyyy. Your sales and records are safe.\" (calm, not red alarm). Pay now stays in every state.",
+    "Never show a red verification error on this screen. An old unfinished Paystack payment record must not produce a message; when the plan is active, or the record is more than 24 hours old, the app clears the record quietly. Phone request payments have their own pending screens (56 to 62).",
+    "Section \"Payments\": one card with rows separated by thin lines. Each row: left, the method (\"Phone request\", \"Mobile money\", \"Cash\") with the date under it; right, the amount in bold with a \"Confirmed\" tag under it (other statuses use their own tag). If there are no payments: \"No payments yet.\"",
+    "Dates dd/mm/yyyy, amounts through the shared formatter."
+   ]
+  },
+  "65": {
+   "name": "Pay for my plan",
+   "component": "PlanPayMethod",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK"
+    },
+    {
+     "label": "Cash",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "66"
+    },
+    {
+     "label": "Mobile money",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "67"
+    },
+    {
+     "label": "Phone request",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "68"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "change_request": "2026-11-07 MoMo choice and plan payments",
+   "tags": {
+    "Cash": "Free",
+    "Mobile money": "Last used · Free (the Last used tag shows only on the stored last-used method)",
+    "Phone request": "Fee GH₵{fee from configuration}"
+   },
+   "helper_texts": {
+    "Cash": "Give cash to a StoreKeeper agent.",
+    "Mobile money": "Send to our number. Enter the message code.",
+    "Phone request": "Approve on your phone. Confirmed by itself."
+   }
+  },
+  "66": {
+   "name": "Pay cash",
+   "component": "PlanPayCash",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK"
+    },
+    {
+     "label": "I gave the cash",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "70"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "change_request": "2026-11-07 MoMo choice and plan payments"
+  },
+  "67": {
+   "name": "Send to StoreKeeper",
+   "component": "PlanPayMoMo",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK"
+    },
+    {
+     "label": "I sent it",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "70"
+    }
+   ],
+   "inputs": [
+    "ref",
+    "code"
+   ],
+   "bottom_bar": false,
+   "change_request": "2026-11-07 MoMo choice and plan payments"
+  },
+  "68": {
+   "name": "Phone request",
+   "component": "PlanPayPhone",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK"
+    },
+    {
+     "label": "Network MTN",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Network Telecel",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Network AirtelTigo",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Selects or edits a value on this screen. No navigation."
+    },
+    {
+     "label": "Send request",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "70",
+     "to_rule": "Goes to 70 (waiting) until the server confirms the plan payment. Goes to 69 only when the server has confirmed it."
+    }
+   ],
+   "inputs": [
+    "mp"
+   ],
+   "bottom_bar": false,
+   "change_request": "2026-11-07 MoMo choice and plan payments",
+   "rules": [
+    "Fee shown through the formatter from configuration (e.g. Fee GH₵0.59). No developer placeholder text."
+   ]
+  },
+  "69": {
+   "name": "Plan paid",
+   "component": "PlanPaymentResult",
+   "controls": [
+    {
+     "label": "Done",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "64"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "change_request": "2026-11-07 MoMo choice and plan payments",
+   "detail_text": "Plan runs to {end date} · {method} · {verification label}. Values come from the stored plan payment, never fixed text. Example for a Paystack payment: Plan runs to 19 Dec · Phone request · MoMo · verified.",
+   "status_words": {
+    "waiting": "Waiting to confirm",
+    "confirmed": "Confirmed",
+    "failed": "Payment not completed",
+    "reversed": "Payment reversed"
+   }
+  },
+  "70": {
+   "name": "Waiting to confirm",
+   "component": "PlanPaymentResult",
+   "controls": [
+    {
+     "label": "Done",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "64"
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "change_request": "2026-11-07 MoMo choice and plan payments",
+   "status_words": {
+    "waiting": "Waiting to confirm",
+    "confirmed": "Confirmed",
+    "failed": "Payment not completed",
+    "reversed": "Payment reversed"
+   }
+  },
+  "71": {
+   "name": "Backup and restore",
+   "component": "BackupRestore",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen in the navigation history (Settings)."
+    },
+    {
+     "label": "Download backup",
+     "role": null,
+     "disabled_initially": false,
+     "type": "action",
+     "effect": "Saves one backup file with all records. Works offline."
+    },
+    {
+     "label": "Choose backup file",
+     "role": null,
+     "disabled_initially": false,
+     "type": "action",
+     "effect": "Opens the file picker. After a file is chosen, a confirmation asks before anything is changed."
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "rules": [
+    "This replaces the old Backup & restore pop-up. It is a normal screen with Back, not a dark pop-up over a blurred page.",
+    "Two cards: Save a backup (green button) and Restore from a backup (outlined button, because restoring is the riskier action).",
+    "No sound switch here (it lives in Settings only). No emoji in labels. No orange button.",
+    "Last backup line (\"Last backup: dd/mm/yyyy\") is shown only if the app already stores the last backup date. If it does not, leave the line out; do not add storage for it in this change.",
+    "Restore asks first: \"Restore from this file?\" with the number of records found if known, and the words \"Records already on this phone are kept. Matching ones are updated.\" Buttons: Restore / Cancel. Cancel changes nothing.",
+    "After a restore: \"Restore finished.\" A bad or wrong file shows \"This file cannot be used. Choose a StoreKeeper backup file.\" and changes nothing. Never show raw error text.",
+    "Existing backup and restore logic is not changed, only the screen around it.",
+    "Exact text and order, top to bottom: (1) intro line under the title: \"Keep a copy of your sales, debts and items. It works without internet.\" (2) Card \"Save a backup\" with a green download icon before the heading, text \"Saves one file on this phone with all your records.\", green button \"Download backup\", and \"Last backup: dd/mm/yyyy\" only if stored. (3) Card \"Restore from a backup\" with a green upload icon before the heading, text \"Adds the records from a backup file to this phone. Matching records are updated. Nothing here is deleted.\", button \"Choose backup file\".",
+    "Look: heading 19px bold, card text 16px grey (#475569), both buttons 56px tall with bold (800) 18px text. Download backup is solid green (#03543F, white text). Choose backup file is white with a dark (#0F172A) 2px outline and dark text, not green. Cards have a 2px light grey (#CBD5E1) border, 18px corners, 16px padding, 14px gap between cards.",
+    "After a restore the message says only what the app knows exactly: \"Restore finished. {total} record(s) in the file. {kept} saved sale(s), payment(s) and debt(s) were already on this phone and were kept.\" Use the singular for 1 (\"1 record\", \"1 saved sale, payment or debt was\"). Do not say \"added or updated\" unless the restore returns an exact count of them."
+   ]
+  },
+  "ManualDebtSaved": {
+   "name": "Debt saved (add-debt flow)",
+   "component": "ManualDebtSaved",
+   "controls": [],
+   "inputs": [],
+   "bottom_bar": false,
+   "note": "Stands in for 31 after the add-debt flow (53 NEXT53). Built; kept."
+  }
+ },
+ "integration": {
+  "provider": "Paystack (Ghana mobile money)",
+  "notes": "Paystack secret key stays on the server. See the Paystack section of agent-conformance-prompt.md."
+ },
+ "rules_global": {
+  "currency": "Show money as GH₵ followed directly by the amount, for example GH₵268.20. Use the app's existing money formatter everywhere. The letters GHS appear only as the currency parameter of API calls.",
+  "bottom_bar_note": "The bottom bar shows only on 15, 22, 25 and 32, as in the prototype. It is hidden on every other screen so a tap on Home or Owed cannot lose a draft mid-flow. On wide screens the side menu may show instead.",
+  "date_format": "All dates are shown as dd/mm/yyyy (for example 14/11/2026) through one shared formatter. The prototype month-name dates (2 Oct, 19 Dec) are examples only. Browser date inputs show the device format.",
+  "amount_entry": "Typed amounts are parsed to integer pesewas by integer math from the typed text, never through floating point. Exponent and hex text (1e2, 0x10) are refused. More than two decimals: a third digit of 5 or more rounds the pesewa up.",
+  "large_amount_confirm": {
+   "rule": "A sale above the large-amount limit asks for confirmation before it is saved. The limit is configurable, default GH₵1,000.00 (100000 pesewas, VITE_LARGE_AMOUNT_CONFIRM_PESEWAS). Exactly the limit does not ask; one pesewa above does. An invalid or missing setting uses the default.",
+   "applies_to": "The sale total on 15 Done, 55 Review and pay, and 16 Done (split), including credit sales and plans saved from 19.",
+   "dialog": {
+    "title": "Large amount",
+    "body": "This sale is GH₵{amount}. Is the amount right?",
+    "buttons": [
+     "Change amount",
+     "Yes, save"
+    ],
+    "behaviour": "Change amount closes the dialog and returns to the screen with everything kept. Yes, save continues the normal save. The dialog opens before the save starts (before the save attempt key is used), works offline, is announced to screen readers, and the focus starts on Change amount (the safe choice)."
+   },
+   "later": "Extend the same check to collections (including collecting by MoMo outside the split screen), spent money and manual debts after the owner decides.",
+   "momo": {
+    "rule": "A MoMo amount above the limit asks before it goes to 61, so the customer is never asked to pay a wrong large amount. It does not ask again on 62.",
+    "where": [
+     "MoMo tile on 15 and 55 (sale amount going to 61)",
+     "Save in the How much MoMo? editor on 16 and 27, including 27 from 19 and editing an already confirmed MoMo row (only the extra goes to 61)",
+     "MoMo choice for the payment today on 19"
+    ],
+    "wording": "This MoMo payment is GH₵{amount}. Is the amount right?",
+    "split": "A split asks once for the MoMo part at the editor, and once at Done for the sale total only when the total is above the limit. Exactly the limit never asks."
+   }
+  },
+  "back_button": {
+   "rule": "Every POS screen with a Back button uses the one shared PosBackButton: label \"‹ Back\", bold (800) 18px, 52px tall, 2px #0F172A border, accessible name \"Back\". Where Back sits in a bottom row beside a main button, both have the same height (56px). Button text is bold as in the prototype. Text must never wrap to a third line on a 360px-wide phone; shorten the label or reduce the side padding instead of letting the button grow."
+  },
+  "person_names": "Person names (customers and suppliers) are shown capitalised everywhere (Juju, Kofi Mensah, Kofi Wholesale) through one shared displayName helper, without changing the stored name. Rule: when the stored name is all lower case or all upper case, show it in Title Case (first letter of every word capital, the rest lower case): \"kofi mensah\" and \"KOFI MENSAH\" both show \"Kofi Mensah\". A name typed in mixed case (for example \"Nana Yaa\" or \"Kofi McDonald\") is shown as typed with the first letter capital. Applies to 16 Owe row, 17, 18, 19, 24 chips, 30, 31, 43, 32, Home cards, buttons such as \"WhatsApp Kofi Mensah\" and \"See Kofi Mensah's details\", messages, sheets, and the WhatsApp and receipt text. Title Case also capitalises the letter after a hyphen: \"FRIMPOMAA-BOATENG\" shows \"Frimpomaa-Boateng\".",
+  "draft_survives_trip_away": "Draft survives a trip away (decided 12 Nov 2026), for every form or multi-step task: when the owner goes from a screen to another screen of the same task (to pick, set up, confirm or review something) and returns with Back or the phone back button, everything typed or chosen on the screen they left is still there. This applies to 15, 16, 17 (search text), 19, 20 (items in the cart), 25/26 (collect amount and method), 27, 34, 35 (chosen businesses and categories, also after 51), 44 and 45 (amount, category, stock total, paid now, chosen or typed supplier, pay-by date), 47 (an unsaved Shop name when going to 63, 64 or 71), 53, 55, 60 and 63 (unsaved choices when going to 60). Kept values live in the route parameters. Cleared only by saving or finishing (Done, Save, Save plan), the header Home, another bottom-bar tab, or Leave in the leave question. Not applicable where Back deliberately cancels a standalone form with no trip away (closing a sheet, Cancel on 54, Back from 41 New item with nothing sent elsewhere): those discard as designed.",
+  "connection_status": "Online and offline status (decided 14 Nov 2026): the app always shows whether the device is online. Online = a bright green dot (#22C55E with a soft green ring). Offline = a crossed-out Wi-Fi icon and the word \"Offline\" in amber-brown (#92400E). Offline is normal for this app, so it is never red and never an error. Colour is never the only signal: the word or icon always changes too. Phone header: the status sits where \"Saved ✓\" is: online shows the green dot then \"Saved ✓\"; offline shows the crossed Wi-Fi icon then \"Offline\"; while a save is running it shows \"Saving…\" as today. Tapping it shows a short message: online \"You are online. Everything is saved on this phone.\"; offline \"You are offline. Everything is still saved on this phone. Sending by WhatsApp will wait until you are back online.\" Wide screens: the bottom of the sidebar shows the dot or icon with \"Online\" or \"Offline\" and under it \"Saved on this device\". The status follows navigator.onLine and the online and offline events and updates without a reload. Accessible name: \"Online. Saved on this phone.\" or \"Offline. Saved on this phone.\" The header must still fit at 340px without cutting the shop name more than today.",
+  "wide_layout": {
+   "status": "Design approved in draft (14 Nov 2026). Build after the merge. The contract for wide screens is pos-prototype-desktop.html (frames D1 to D15) plus these rules. The phone layout (pos-prototype.html) is unchanged below 768px.",
+   "breakpoints": "Below 768px: phone layout as today (bottom bar, header with the Menu button on the left that opens the Menu drawer). 768px to 1023px (tablet portrait) and any touch tablet up to 1279px wide in landscape: an 84px icon rail on the left (icons only, 60px targets, accessible names) and the wide page types. 1280px and up: a 300px sidebar with icon and label. Content never stretches past 1160px: on wider screens it stays centred with the background around it.",
+   "shell": "Sidebar order: shop name with today's date under it (dd/mm/yyyy with the weekday), then Home, Sell, Owed, Today's transactions, My money, Items; at the bottom Settings, then the connection status (rules_global.connection_status). Labels 18px bold on one line, rows 54px, the active row has a light green background AND a green outline (never colour alone). On wide screens the sidebar replaces the bottom bar, the header and the Menu screen (23): every Menu destination is in the sidebar. First-run setup (21, 35, 36, 51, 52) shows no sidebar: a centred column only.",
+   "page_types": {
+    "dashboard": "Cards in a grid. Used by Home (22) and My money (33). Only one strong green block per screen.",
+    "list_with_detail": "A list on the left (about 400px, with its search field) and the selected record's detail on the right. Selecting a row never leaves the page. Used by Owed (32 with 29/43), Items (39 with 40/41) and Today's transactions as a full-width table. Back is not shown, because nothing was left.",
+    "task_column": "One white panel centred on the grey background, 640px wide (wider only where a rule below says so), with the same components, wording and order as the phone screen, a Back button at the top left of the panel and the main button at the bottom. Used by every sale, collect, plan, MoMo, supplier, spent-money, manual-debt, backup and plan-payment screen not listed elsewhere.",
+    "dialog": "Every phone sheet and confirmation (25 Collect, 54 Correct balance, the 46 Pay sheet, large-amount confirm, the leave question, restore confirm, delete item 42) is a centred dialog 520px wide over a dark scrim. Escape and a click on the scrim act as Cancel or Close (as Stay in the leave question). Focus stays inside the dialog and returns to the button that opened it."
+   },
+   "screens": {
+    "22 Home": "D1. Row 1: Money left today (Money in and Spent fill the card) and, beside it, Sell (the largest button on the screen) above Spent money. Row 2: Owed to you with a \"Collect first\" list of up to two people (most late first), each with its due tag, amount and the same three buttons as the phone tile (Collect, WhatsApp, and Call only with a valid number); tapping a name opens that person on Owed. Beside it, Today's transactions as a small table (Time, What, Money in, Owed) with See all. When nobody owes (no person with a balance above zero) the Owed to you card is not shown and Today's transactions takes the full row.",
+    "15 Sell": "D2 and D15. Left: the amount (\"Customer pays\") and a keypad that fills the height. Right, top to bottom (decided 14 Nov 2026, the owner's order, because items change the amount and so come before the payment choice): the Items row with Add items; then How is it paid? as four tiles in a 2x2 grid with full labels (Cash, MoMo, Owe, Split payment; the split icon is cash + phone + person); then a quiet \"Last sale\" box (amount, method, time); then Done pinned at the bottom with one line that says why it is disabled. The selected tile has a tick as well as the colour.",
+    "20 and 55 Sell with items": "D9. On wide screens these are one screen: item tiles on the left (search, tap to add, New item, Other amount) and \"This sale\" on the right. The lines use exactly the phone controls of screen 20: every line (item lines and the Other amount line) ends with the same remove button: the bin icon, white, grey border (#64748B) and a dark crimson bin (#8B0836), accessible name \"Remove {item}\", placed after the amount. An item line is: name, Less, the quantity, More, the amount, the bin. Less is greyed and disabled at quantity 1 (the bin removes the line); this is the live app, and the phone and desktop match it. Then Total, the four payment tiles and Done. 37 and 38 open as dialogs.",
+    "32, 29, 43 Owed": "D3. Left: search, the All / Late / Due soon filters, the people list and Load more. Right, the selected person: balance, Edit contact and Correct balance as small secondary buttons, Collect (widest), the WhatsApp reminder button, Call (only with a valid number), the receipt button when the receipts flag is on, the due line or plan card with two full lines, What happened and Add to debt. Add debt sits at the top right of the page. The late state (43) keeps \"Send reminder on WhatsApp\" and \"Last reminder: n days ago\".",
+    "24 Today's transactions": "D4. Three summary cards (Money in, Spent, Given on credit), the filters, then a table: Time, What, Details (payment chips or the spent category), Person, Money in, Spent, On credit. Every amount is in its own column: a part-paid sale shows the money received under Money in AND its unpaid part under On credit (sale of GH₵13.00 with GH₵5.00 owed: +GH₵8.00 and GH₵5.00). An empty cell shows a dash. A \"Total today\" row at the bottom equals the three cards. Rows are not buttons.",
+    "33 My money": "D7. Money left this week and the Estimated profit card on the first row; Money in and Money spent with their breakdowns on the second; Owed to you and You owe suppliers on the third. This week / This month sits at the top right.",
+    "39, 40, 41 Items": "D8. Items on the left with Find item; Edit item or New item as a form on the right (Price and What you paid for one side by side). New item and Add from starter list sit at the top right.",
+    "19 A little at a time": "D10. Wider task layout: the form on the left (fields in two columns) and a summary on the right: Owed, the Paying today panel with Total today and the pink Still owed row, and Save plan pinned at the bottom. The three \"How is it paid?\" options each have their icon and label: Cash, MoMo, and Split payment with the cash + phone icon.",
+    "30, 31, 28 results": "D11. A centred panel: tick, title, amount, the paid parts, the owed row, Send receipt and Copy receipt side by side, then New sale (primary) and Done.",
+    "47 Settings": "D13. List with detail. Left: four rows, each with an icon, a title and its status line: Shop (\"Name and preferences\"), MoMo payments (\"Set up\" or \"Not set up\"), My plan (\"Active until dd/mm/yyyy\" with the Active tag; only with the subscription flag), Backup and restore. Right: the selected section shown in place, so 63, 64 and 71 open in the right pane instead of a new screen. Shop is selected first and shows the Shop name field with Save and, under a divider, Preferences with the Show estimated profit switch. An unsaved Shop name survives switching sections (draft_survives_trip_away). Icons and helper texts are the phone's: the Backup and restore row uses the same database icon as the phone Settings row, with the status line \"Save or restore your records\" (one line); the Show estimated profit helper reads \"A good guess, not exact\".",
+    "46 You owe suppliers": "D14. The amber total card across the top, then supplier cards two per row.",
+    "16, 27 Split payment": "D5. Task column, same rows as the phone."
+   },
+   "keyboard_and_mouse": "On Sell the amount can be typed on the keyboard (digits, Backspace) and Enter is Done; on a result screen Enter is New sale; Escape closes a dialog. No single-letter shortcuts. Every control has a visible focus ring (3px #0F172A outline with a 2px offset) and a hover state (slightly darker border or background). Tab order follows the reading order.",
+   "sizes": "Touch targets stay 48px or taller on every width, because counter tablets are used by touch. Body text 17px or larger; page titles 30px; money in columns uses equal-width digits (tabular-nums) and is right-aligned. Cards keep the phone style: white, 2px #CBD5E1 border, 20px radius.",
+   "testing": "Check 768x1024, 1024x768, 1280x800 and 1440x900 in addition to 340, 360 and 393px. No horizontal scroll, no clipped amount (GH₵12,345.00), no wrapped button label.",
+   "same_as_phone": "Wide screens change layout only. Every control, label, rule, destination, validation, money calculation and saved record is the one defined for that screen in this file; nothing in wide_layout overrides a screen's own rules. A control that exists on the phone screen must exist on the wide screen with the same label and accessible name, except: (a) Menu (23), the header Home button, the bottom bar and the Done button on Settings are replaced by the sidebar; (b) Back is not shown on Home, Owed, Today's transactions, My money, Items and Settings, because the sidebar reaches them, and is kept on every task column; (c) on Owed the per-row Collect, WhatsApp and Call buttons move to the selected person's detail; (d) 20 and 55 are shown together. Flags behave the same (receipts, subscription, phone request).",
+   "icons": "Every payment choice shows its icon with its label on every screen and width: Cash (note), MoMo (phone), Owe (person), Split payment (cash + phone + person where Owe can be part of the split, as on 15, 55 and 16; cash + phone where only Cash and MoMo are possible, as on 19, 26 and 27). A label is never shown without its icon.",
+   "approved_additions": "Approved by the owner on 14 Nov 2026 (build everything, no temporary fix). These four are the ONLY content added on wide screens and each is a read-only view of data the app already stores; none creates a record, a rule or a money calculation. (1) Sell with items is one screen on wide layouts (20 and 55 together); the phone keeps two screens. (2) 'Last sale' box on Sell: the most recent saved sale today, showing its amount (formatGhs), method (Cash, MoMo, Split or On credit) and time; hidden when there is no sale today; not tappable. (3) 'Collect first' on Home: up to two people with the largest late balances, most late first (same order as the phone tile), each with its due tag, amount and Collect, WhatsApp and Call (Call only with a valid number); hidden when nobody owes. (4) Person column in Today's transactions: the customer's name in Title Case (displayName), a dash when there is none. The wide-layout test must assert that each addition reads from the same source as the phone and changes no stored value."
+  },
+  "menu_drawer": "The menu is a left drawer over the current page, never a separate page. Header Menu button at the left (see 23). It adds no history entry and keeps drafts. Back from a destination chosen in the drawer returns to the page the drawer was opened from.",
+  "header_always_visible": "The header (Menu button or home tile, shop name, connection status) is fixed at the top of the screen on every screen and at every width while the content scrolls beneath it (decided 14 Nov 2026 from a phone test where the Menu button was out of sight on a long Home). It keeps the safe-area inset and the 3px bottom border, sits above content and below the Menu drawer and dialogs, and is never hidden or moved by scrolling or by the virtual keyboard. There is no hide-on-scroll behaviour.",
+  "times_24h": "Every time of day is written HH:mm in 24-hour form by a hand-built formatter, never by the device locale, like dates are written dd/mm/yyyy (decided 14 Nov 2026 after a locale-dependent receipt time was found)."
+ },
+ "built_extras_kept": {
+  "24": "row tags Collected Debt, Balance correction, Added to debt",
+  "25": "Payment {n} of {total} · {left} left (installment-sized steps, not payments)",
+  "19": "Payment received today / Total received panel; notice 'The installment was capped at the maximum allowed amount.'",
+  "20": "search box",
+  "44": "optional note field",
+  "33": "Cash / MoMo breakdown under Money in",
+  "46": "Total owed card",
+  "17": "Back",
+  "29/43": "Done",
+  "42/59": "Back",
+  "28/31": "Add/Edit contact; 31 Send receipt",
+  "36/52": "search box",
+  "27": "Remove MoMo",
+  "16/18/25": "Back, Split payment"
+ },
+ "built_design_pending": [
+  "45 + New supplier",
+  "46 Pay (records locally only, no payment provider)"
+ ]
+}

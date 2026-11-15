@@ -1,16 +1,63 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, test } from "node:test";
 import initiate from "../api/subscription/initiate.js";
 import verify from "../api/subscription/verify.js";
-import { FEATURE_FLAGS, FEATURE_SUBSCRIPTION_LOCKOUT } from "../src/config/features.js";
+import { FEATURE_FLAGS } from "../src/config/features.js";
+import { addSubscriptionMonths } from "../src/lib/subscriptionDates.js";
+import { getEffectiveTrialNow, getTrialExpiry, normalizeTrialDays } from "../src/lib/subscriptionTrial.js";
 
 const originalSecret = process.env.PAYSTACK_SECRET_KEY;
 const originalAppUrl = process.env.APP_URL;
 const originalFetch = global.fetch;
+const subscriptionHookSource = readFileSync(new URL("../src/hooks/useSubscription.js", import.meta.url), "utf8");
+const posAppSource = readFileSync(new URL("../src/pos/PosApp.jsx", import.meta.url), "utf8");
+const settingsSource = readFileSync(new URL("../src/pos/SettingsScreens.jsx", import.meta.url), "utf8");
 
-test("subscription UI and lockout are disabled by default", () => {
+test("subscription UI is disabled by default and there is no lockout", () => {
   assert.equal(FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE, false);
-  assert.equal(FEATURE_SUBSCRIPTION_LOCKOUT, false);
+  assert.doesNotMatch(subscriptionHookSource, /FEATURE_SUBSCRIPTION_LOCKOUT|subscriptionRequired/);
+});
+
+test("subscription trial is initialized from configuration", () => {
+  assert.match(subscriptionHookSource, /VITE_SUBSCRIPTION_TRIAL_DAYS/);
+  assert.match(subscriptionHookSource, /subscriptionTrialStartedAt/);
+  assert.match(subscriptionHookSource, /const trialActive = /);
+});
+
+test("trial policy normalizes configuration and resists device clock rollback", () => {
+  assert.equal(normalizeTrialDays("30"), 30);
+  assert.equal(normalizeTrialDays("0"), 0);
+  assert.equal(normalizeTrialDays("-1"), 0);
+  assert.equal(normalizeTrialDays("not-a-number"), 0);
+  assert.equal(
+    getTrialExpiry("2026-11-06T10:00:00.000Z", 30),
+    "2026-12-06T10:00:00.000Z"
+  );
+  assert.equal(
+    getEffectiveTrialNow(Date.parse("2026-11-10T10:00:00.000Z"), "2026-11-20T10:00:00.000Z"),
+    Date.parse("2026-11-20T10:00:00.000Z")
+  );
+});
+
+test("payment recovery persists pending references and retries after reconnect", () => {
+  assert.match(subscriptionHookSource, /pendingSubscriptionPayment/);
+  assert.match(subscriptionHookSource, /retryPendingPayment/);
+  assert.match(subscriptionHookSource, /addEventListener\("online"/);
+  assert.match(subscriptionHookSource, /key: "pendingSubscriptionPayment"/);
+});
+
+test("the POS no longer mounts the Paystack plans pop-up; plan payments go through Pay now on 64", () => {
+  assert.doesNotMatch(posAppSource, /SubscriptionModal|subscriptionOpen|onOpenSubscription/);
+  assert.doesNotMatch(readFileSync(new URL("../src/pos/PlanScreens.jsx", import.meta.url), "utf8"), /onOpenSubscription|View subscription|Subscribe/);
+  // Brief 3.13: Settings has one My plan row.
+  assert.match(settingsSource, /subscriptionEnabled &&/);
+  assert.match(posAppSource, /useSubscription\(\)/);
+  // The plans (and their prices, in pesewas) live in one table: src/config/plans.js.
+  const plansSource = readFileSync(new URL("../src/config/plans.js", import.meta.url), "utf8");
+  assert.match(plansSource, /id: "monthly"/);
+  assert.match(plansSource, /id: "six_months"/);
+  assert.match(plansSource, /id: "yearly"/);
 });
 
 function makeResponse() {
@@ -53,7 +100,7 @@ test("initializes a fixed GHS 15 Mobile Money checkout without exposing the secr
     return {
       ok: true,
       status: 200,
-      text: async () => JSON.stringify({ status: true, data: { authorization_url: "https://checkout.paystack.com/ref" } })
+      text: async () => JSON.stringify({ status: true, data: { authorization_url: "https://checkout.paystack.com/ref", reference: "monthly-reference" } })
     };
   };
   const response = makeResponse();
@@ -61,7 +108,7 @@ test("initializes a fixed GHS 15 Mobile Money checkout without exposing the secr
   await initiate({ method: "POST", body: { email: "buyer@example.com", amount: 1 } }, response);
 
   assert.equal(response.statusCode, 200);
-  assert.deepEqual(response.body, { success: true, authorization_url: "https://checkout.paystack.com/ref" });
+  assert.deepEqual(response.body, { success: true, authorization_url: "https://checkout.paystack.com/ref", reference: "monthly-reference" });
   assert.equal(request.url, "https://api.paystack.co/transaction/initialize");
   assert.equal(request.options.headers.Authorization, "Bearer server-test-secret");
   assert.deepEqual(JSON.parse(request.options.body), {
@@ -69,7 +116,7 @@ test("initializes a fixed GHS 15 Mobile Money checkout without exposing the secr
     amount: 1500,
     currency: "GHS",
     channels: ["mobile_money"],
-    callback_url: "https://storekeeper.example/?subscription=verify"
+    callback_url: "https://storekeeper.example/?subscription=verify&plan=monthly"
   });
 });
 
@@ -82,7 +129,7 @@ test("uses a trusted request origin for the Paystack callback", async () => {
       status: 200,
       text: async () => JSON.stringify({
         status: true,
-        data: { authorization_url: "https://checkout.paystack.com/ref" }
+        data: { authorization_url: "https://checkout.paystack.com/ref", reference: "monthly-reference" }
       })
     };
   };
@@ -94,11 +141,12 @@ test("uses a trusted request origin for the Paystack callback", async () => {
     body: { email: "buyer@example.com" }
   }, response);
 
-  assert.equal(payload.callback_url, "https://storekeeper.example/?subscription=verify");
+  assert.equal(payload.callback_url, "https://storekeeper.example/?subscription=verify&plan=monthly");
   assert.equal(response.statusCode, 200);
 });
 
-test("returns Paystack's error message for a failed API response", async () => {
+// B9: Paystack's own message and technical detail are logged, not sent to the merchant.
+test("answers a failed Paystack API response with plain words, not Paystack's message", async () => {
   global.fetch = async () => ({
     ok: false,
     status: 400,
@@ -109,10 +157,10 @@ test("returns Paystack's error message for a failed API response", async () => {
   await initiate({ method: "POST", body: { email: "buyer@example.com" } }, response);
 
   assert.equal(response.statusCode, 502);
-  assert.equal(response.body.error, "Invalid key");
+  assert.equal(response.body.error, "Checkout could not be started. Please try again.");
 });
 
-test("reports status when Paystack returns an empty or non-JSON response", async () => {
+test("answers an empty or non-JSON Paystack response with plain words", async () => {
   for (const text of ["", "<html>gateway error</html>"]) {
     global.fetch = async () => ({
       ok: false,
@@ -124,7 +172,7 @@ test("reports status when Paystack returns an empty or non-JSON response", async
     await initiate({ method: "POST", body: { email: "buyer@example.com" } }, response);
 
     assert.equal(response.statusCode, 502);
-    assert.match(response.body.error, /HTTP 502/);
+    assert.equal(response.body.error, "Checkout could not be started. Please try again.");
   }
 });
 
@@ -167,7 +215,61 @@ test("grants an expiry only after verifying successful GHS 15 Mobile Money payme
   assert.equal(response.statusCode, 200);
   assert.equal(response.body.success, true);
   assert.equal(response.body.reference, "paid-reference");
-  assert.equal(response.body.expiresAt, "2026-11-23T10:00:00.000Z");
+  assert.equal(response.body.expiresAt, "2026-11-24T10:00:00.000Z");
+  assert.equal(response.body.paidAt, "2026-10-24T10:00:00.000Z");
+  assert.equal(response.body.durationMonths, 1);
+});
+
+test("clamps calendar subscription dates at month end", () => {
+  assert.equal(
+    addSubscriptionMonths("2024-01-31T10:00:00.000Z", 1).toISOString(),
+    "2024-02-29T10:00:00.000Z"
+  );
+  assert.equal(
+    addSubscriptionMonths("2023-08-31T10:00:00.000Z", 6).toISOString(),
+    "2024-02-29T10:00:00.000Z"
+  );
+});
+
+test("initializes and verifies a configured six-month plan", async () => {
+  process.env.SUBSCRIPTION_SIX_MONTHS_AMOUNT_PESEWAS = "7000";
+  let initializePayload;
+  global.fetch = async (url, options) => {
+    if (url.includes("/transaction/initialize")) {
+      initializePayload = JSON.parse(options.body);
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ status: true,         data: { authorization_url: "https://checkout.paystack.com/ref", reference: "six-month-reference" } })
+      };
+    }
+    return {
+      ok: true,
+      json: async () => ({
+        status: true,
+        data: {
+          reference: "six-month-reference",
+          status: "success",
+          amount: 7000,
+          currency: "GHS",
+          channel: "mobile_money",
+          paid_at: "2026-10-24T10:00:00.000Z"
+        }
+      })
+    };
+  };
+
+  const initiateResponse = makeResponse();
+  await initiate({ method: "POST", body: { email: "buyer@example.com", planId: "six_months" } }, initiateResponse);
+  assert.equal(initiateResponse.statusCode, 200);
+  assert.equal(initializePayload.amount, 7000);
+  assert.match(initializePayload.callback_url, /plan=six_months$/);
+
+  const verifyResponse = makeResponse();
+  await verify({ method: "POST", body: { reference: "six-month-reference", planId: "six_months" } }, verifyResponse);
+  assert.equal(verifyResponse.statusCode, 200);
+  assert.equal(verifyResponse.body.expiresAt, "2027-04-24T10:00:00.000Z");
+  delete process.env.SUBSCRIPTION_SIX_MONTHS_AMOUNT_PESEWAS;
 });
 
 test("does not grant expiry for unsuccessful or mismatched payment details", async () => {

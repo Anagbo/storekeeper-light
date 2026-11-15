@@ -1,6 +1,23 @@
+import "fake-indexeddb/auto";
 import assert from "node:assert/strict";
-import { test } from "node:test";
-import { runTransactionWithTimeout, SaveTimeoutError } from "../src/db/runTransactionWithTimeout.js";
+import { after, before, beforeEach, test } from "node:test";
+import Dexie from "dexie";
+import { runTransactionWithTimeout, SaveOutcomeUnknownError, SaveTimeoutError } from "../src/db/runTransactionWithTimeout.js";
+const atomicDb = new Dexie(`StoreKeeperAtomicity-${process.pid}`);
+atomicDb.version(1).stores({ transactions: "id, syncStatus" });
+
+before(async () => {
+  await atomicDb.open();
+});
+
+beforeEach(async () => {
+  await atomicDb.transactions.clear();
+});
+
+after(async () => {
+  atomicDb.close();
+  await atomicDb.delete();
+});
 
 function createFakeDb() {
   return {
@@ -21,15 +38,17 @@ test("runs transaction operations and returns their result", async () => {
   assert.equal(result, "saved");
 });
 
-test("rejects operations that exceed the save deadline", async () => {
+// D11 (Batch 14): a save with no answer after the deadline is "unknown", not "not saved".
+test("rejects operations that exceed the save deadline with an unknown outcome", async () => {
   await assert.rejects(
     runTransactionWithTimeout(
       createFakeDb(),
       ["transactions"],
       () => new Promise(() => {}),
-      10
+      10,
+      20
     ),
-    SaveTimeoutError
+    SaveOutcomeUnknownError
   );
 });
 
@@ -52,4 +71,27 @@ test("does not run a transaction callback that starts after the deadline", async
   await new Promise((resolve) => setTimeout(resolve, 25));
 
   assert.equal(wrote, false);
+});
+
+test("rolls back writes when a Dexie transaction callback fails", async () => {
+  await assert.rejects(
+    runTransactionWithTimeout(
+      atomicDb,
+      [atomicDb.transactions],
+      async () => {
+        await atomicDb.transactions.add({
+          id: "timed-out-sale",
+          type: "sale",
+          amountPesewas: 1000,
+          createdAt: 1,
+          updatedAt: 1,
+          syncStatus: "pending"
+        });
+        throw new Error("simulated write failure");
+      },
+      1000
+    ),
+    /simulated write failure/
+  );
+  assert.equal(await atomicDb.transactions.count(), 0);
 });

@@ -3,14 +3,15 @@ import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from
 import { CacheableResponsePlugin } from "workbox-cacheable-response";
 import { ExpirationPlugin } from "workbox-expiration";
 import { StaleWhileRevalidate } from "workbox-strategies";
+import { createIdempotencyKey, createSyncPayload, postSyncBatch, TABLES } from "./lib/syncPayload.js";
 
 const DATABASE_NAME = "StoreKeeperLight";
-const TABLES = ["products", "transactions", "debts"];
 const SYNC_ENDPOINT = import.meta.env.VITE_SYNC_ENDPOINT?.trim();
 
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
-registerRoute(new NavigationRoute(createHandlerBoundToURL("/index.html")));
+// D10: a navigation to /api must reach the server, not be answered with the app shell.
+registerRoute(new NavigationRoute(createHandlerBoundToURL("/index.html"), { denylist: [/^\/api\//] }));
 registerRoute(
   ({ request, url }) =>
     ["script", "style", "font"].includes(request.destination) &&
@@ -24,10 +25,9 @@ registerRoute(
   })
 );
 
-self.addEventListener("install", () => {
-  void self.skipWaiting();
-});
-
+// D9: a new service worker waits for the app to be closed. It used to skip waiting on install,
+// which reloaded the page in the middle of a sale and lost the draft. SKIP_WAITING below is
+// kept for a future "Update ready" prompt.
 self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
@@ -120,12 +120,12 @@ async function syncPendingRecords() {
     const records = await readPending(db);
     if (!TABLES.some((tableName) => records[tableName].length > 0)) return;
 
-    const response = await fetch(SYNC_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ schemaVersion: 2, records })
-    });
-    if (!response.ok) throw new Error(`Sync server returned HTTP ${response.status}.`);
+    const { body, serializedBody } = createSyncPayload(records);
+    const response = await postSyncBatch(
+      SYNC_ENDPOINT,
+      body,
+      await createIdempotencyKey(serializedBody)
+    );
 
     const acknowledged = getAcknowledgedIds(await response.json());
     await markAcknowledged(db, records, acknowledged);
