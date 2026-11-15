@@ -207,11 +207,12 @@ test("28 without a phone: Send receipt opens the share sheet; Copy copies the sa
   }
 });
 
-// 29 (on time) and 43 (late): the current-balance receipt uses the same logic as 28, 30 and 31.
+// 29 (on time) and 43 (late): the latest-payment receipt uses the same logic as 28, 30 and 31.
 async function showDetail(env = ON, due = "2099-01-01", phone = "+233241234567") {
   const { DebtorDetail } = await loadJsx("src/pos/DebtCollection.jsx", env);
   const debt = { id: "d1", customerId: "c1", customerName: "Ama", amountPesewas: 8000, status: "unpaid", isInstallmentPlan: false, dueDate: due };
-  const data = { name: "Ama", customerId: "c1", phone, ghanaCardNumber: "", balancePesewas: 8000, debt, unpaidDebts: [debt], unpaidDebtCount: 1, history: [] };
+  const payment = { id: "collection-c1", type: "payment", timestamp: Date.now() - 3_600_000, amountPesewas: 3000, collectionParts: [{ method: "Cash", amountPesewas: 3000 }] }; // 29/43 receipts cover the latest payment (15 Nov 2026)
+  const data = { name: "Ama", customerId: "c1", phone, ghanaCardNumber: "", balancePesewas: 8000, debt, unpaidDebts: [debt], unpaidDebtCount: 1, history: [payment] };
   setLiveQuery(([debtId]) => (debtId === "d1" ? data : undefined));
   try {
     const view = render({ type: DebtorDetail, props: { params: { debtId: "d1", customerName: "Ama" }, onBack() {}, onNavigate() {}, onCollect() {}, shopName: "Shop" } });
@@ -222,10 +223,10 @@ async function showDetail(env = ON, due = "2099-01-01", phone = "+233241234567")
 }
 
 for (const [screen, due] of [["29", "2099-01-01"], ["43", "2000-01-01"]]) {
-  test(`${screen} Receipt sends the balance receipt through the shared logic and Copy receipt copies the same GH₵ text`, async () => {
+  test(`${screen} Receipt sends the latest payment receipt through the shared logic and Copy receipt copies the same GH₵ text`, async () => {
     const { calls } = setNavigator({ share: true, clipboard: true });
     const view = await showDetail(ON, due);
-    await findButton(view.tree, "Receipt").props.onClick();
+    await findButton(view.tree, "Receipt for").props.onClick();
     await findButton(view.tree, "Copy receipt").props.onClick();
     // The customer has a saved number: the app link opens to that number, the share sheet is not used.
     assert.deepEqual(calls.share, []);
@@ -239,7 +240,7 @@ for (const [screen, due] of [["29", "2099-01-01"], ["43", "2000-01-01"]]) {
   test(`${screen} without a phone: Receipt opens the share sheet and Copy receipt copies the same GH₵ text`, async () => {
     const { calls } = setNavigator({ share: true, clipboard: true });
     const view = await showDetail(ON, due, "");
-    await findButton(view.tree, "Receipt").props.onClick();
+    await findButton(view.tree, "Receipt for").props.onClick();
     await findButton(view.tree, "Copy receipt").props.onClick();
     assert.equal(calls.share.length, 1);
     assert.equal(calls.location, "");

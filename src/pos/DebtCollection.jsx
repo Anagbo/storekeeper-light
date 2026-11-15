@@ -16,7 +16,7 @@ import { getOutstandingDebtPesewas } from "../lib/money.js";
 import { buildWhatsAppReminderText, generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { sendReceipt } from "./receiptShare.js";
 import { CopyReceiptButton, ReceiptFailedLine, ReceiptOfflineLine, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
-import { buildCustomerBalanceReceipt, getCollectionReceiptText, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
+import { buildLatestPaymentReceipt, getCollectionReceiptText, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
 import AmountKeypad from "./AmountKeypad.jsx";
 import { pressAmountKey } from "./amountKeypad.js";
 import { getDebtDueLabel, getDebtDueLine } from "./money.js";
@@ -53,6 +53,16 @@ function WhatsAppIcon({ size = 28 }) {
       <path d="M8.5 7.2c.3-.5.8-.5 1.1-.3l1 2c.1.3 0 .6-.2.8l-.6.7c.7 1.3 1.7 2.3 3 3l.8-.6c.2-.2.5-.2.8-.1l1.9 1c.3.2.4.6.2 1-.4 1-1.4 1.6-2.4 1.4-3.2-.7-6-3.4-6.8-6.5-.1-.6.1-1.1.3-1.6z" fill="#fff" />
     </svg>
   );
+}
+
+// A payment row that cannot make a receipt (a broken amount or time) never stops the screen: no receipt.
+function latestPaymentReceiptOrNull(details) {
+  try {
+    return buildLatestPaymentReceipt(details);
+  } catch (error) {
+    console.error("Could not build the receipt for the latest payment.", error);
+    return null;
+  }
 }
 
 function groupCollectionHistory(events) {
@@ -679,23 +689,18 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
     }
     return <button type="button" disabled={!reminderText} onClick={(event) => (reminderText ? reminders.onReminder(event, { person: reminderPerson, lastReminderAt, share: shareReminder }) : undefined)} aria-label={ariaLabel ?? label} className={className}>{children}</button>;
   }
-  // The current-balance Receipt, Copy receipt and offline line show only with VITE_ENABLE_POS_RECEIPTS on.
-  // Send goes through the same share logic as 28, 30 and 31: a valid phone opens WhatsApp to that
-  // number, no phone opens the share sheet.
-  const balanceReceiptText = isReceiptTemplatesEnabled() && data
-    ? buildCustomerBalanceReceipt({
-        shopName,
-        customerName: data.name,
-        timestamp: Date.now(),
-        balancePesewas: data.balancePesewas,
-        installmentPesewas: data.debt?.isInstallmentPlan ? data.debt.installmentAmount : 0,
-        nextDueDate: data.debt?.nextDueDate
-      })
+  // Wiring 29/43 "Collection receipt" (15 Nov 2026): Receipt and Copy receipt cover the person's latest
+  // payment only, and the label says so. A person who never paid has no receipt buttons. They show only
+  // with VITE_ENABLE_POS_RECEIPTS on. Send goes through the same share logic as 28, 30 and 31.
+  const latestPayment = data?.history?.find((row) => row.type === "payment" && row.amountPesewas > 0) ?? null;
+  const balanceReceiptText = isReceiptTemplatesEnabled() && data && latestPayment
+    ? latestPaymentReceiptOrNull({ shopName, customerName: data.name, payment: latestPayment, balancePesewas: data.balancePesewas })
     : null;
   const balanceActions = useReceiptActions(balanceReceiptText ?? "", phone ?? "");
+  const receiptLabel = latestPayment ? t("collect.receiptForPayment", { amount: formatGhs(latestPayment.amountPesewas) }) : "";
   const balanceReceiptButton = balanceReceiptText && (
-    <button type="button" onClick={() => void balanceActions.send()} aria-label={`Send current balance receipt for ${displayName(data.name)}`} className="flex min-h-14 w-full min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 sm:text-[17px]">
-      <ReceiptText size={26} aria-hidden="true" /> <span className="truncate">Receipt</span>
+    <button type="button" onClick={() => void balanceActions.send()} className="flex min-h-14 w-full min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 sm:text-[17px]">
+      <ReceiptText size={26} aria-hidden="true" /> <span className="min-w-0 truncate">{receiptLabel}</span>
     </button>
   );
   const dueDate = data?.debt?.isInstallmentPlan ? data.debt.nextDueDate : data?.debt?.dueDate;

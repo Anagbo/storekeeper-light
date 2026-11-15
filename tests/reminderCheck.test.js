@@ -240,12 +240,12 @@ test("every reminder button on 22, 32, 29 and 43 goes through the one shared che
 });
 
 test("a receipt never triggers the check", async () => {
-  // The balance receipt on 29 (receipts on) uses the receipt actions, not the reminder path.
+  // The payment receipt on 29 (receipts on) uses the receipt actions, not the reminder path.
   const { DebtorDetail } = await loadJsx("src/pos/DebtCollection.jsx", { VITE_ENABLE_POS_RECEIPTS: "true" });
   const debt = { id: "d1", customerId: "c1", customerName: "Ama", amountPesewas: 8000, status: "unpaid", isInstallmentPlan: false, dueDate: dayOffset(7) };
-  setLiveQuery(([debtId]) => (debtId === "d1" ? { name: "Ama", customerId: "c1", phone: "", ghanaCardNumber: "", balancePesewas: 8000, debt, unpaidDebts: [debt], unpaidDebtCount: 1, lastReminderAt: Date.now() - DAY, history: [] } : undefined));
+  setLiveQuery(([debtId]) => (debtId === "d1" ? { name: "Ama", customerId: "c1", phone: "", ghanaCardNumber: "", balancePesewas: 8000, debt, unpaidDebts: [debt], unpaidDebtCount: 1, lastReminderAt: Date.now() - DAY, history: [{ id: "collection-c1", type: "payment", timestamp: Date.now() - 3_600_000, amountPesewas: 3000, collectionParts: [{ method: "Cash", amountPesewas: 3000 }] }] } : undefined));
   const view = render({ type: DebtorDetail, props: { params: { debtId: "d1", customerName: "Ama" }, ...props } });
-  const receipt = [...walk(view.tree)].find((node) => /Send current balance receipt/.test(node.props?.["aria-label"] ?? ""));
+  const receipt = [...walk(view.tree)].find((node) => node.type === "button" && /^Receipt for .* payment$/.test(textOf(node).trim()));
   assert.ok(receipt);
   await withNavigator(sharing, async () => {
     await receipt.props.onClick();

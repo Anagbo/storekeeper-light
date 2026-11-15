@@ -22,7 +22,7 @@ function setOnline(onLine) {
   Object.defineProperty(globalThis, "window", { value: new EventTarget(), configurable: true });
 }
 
-const isSend = (node) => node.type === "button" && (/Send receipt/.test(textOf(node)) || /^Send current balance receipt/.test(node.props?.["aria-label"] ?? ""));
+const isSend = (node) => node.type === "button" && (/Send receipt/.test(textOf(node)) || /^Receipt for .* payment$/.test(textOf(node).trim()));
 const isCopy = (node) => node.type === "button" && textOf(node).includes("Copy receipt");
 const isLine = (node) => node.type === "p" && textOf(node) === OFFLINE_LINE;
 const contains = (root, predicate) => [...walk(root)].some(predicate);
@@ -65,7 +65,9 @@ async function show(screen, env) {
   // 29 (due later) and 43 (late)
   const { DebtorDetail } = await loadJsx("src/pos/DebtCollection.jsx", env);
   const debt = { id: "d1", customerId: "c1", customerName: "Ama", amountPesewas: 8000, status: "unpaid", isInstallmentPlan: false, dueDate: screen === "43" ? "2000-01-01" : "2099-01-01" };
-  const data = { name: "Ama", customerId: "c1", phone: "+233241234567", ghanaCardNumber: "", balancePesewas: 8000, debt, unpaidDebts: [debt], unpaidDebtCount: 1, history: [] };
+  // 29/43 show a receipt only for the latest payment (15 Nov 2026), so Ama has paid once.
+  const payment = { id: "collection-c1", type: "payment", timestamp: Date.now() - 3_600_000, amountPesewas: 3000, collectionParts: [{ method: "Cash", amountPesewas: 3000 }] };
+  const data = { name: "Ama", customerId: "c1", phone: "+233241234567", ghanaCardNumber: "", balancePesewas: 8000, debt, unpaidDebts: [debt], unpaidDebtCount: 1, history: [payment] };
   setLiveQuery(([debtId]) => (debtId === "d1" ? data : undefined));
   return render({ type: DebtorDetail, props: { params: { debtId: "d1", customerName: "Ama" }, onBack() {}, onNavigate() {}, onCollect() {}, shopName: "Shop" } });
 }

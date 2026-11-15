@@ -40,7 +40,8 @@ function withNavigator(value, run) {
 async function detail({ late = false, phone = PHONE, env = {} } = {}) {
   const { DebtorDetail } = await loadJsx("src/pos/DebtCollection.jsx", env);
   const debt = { id: "d1", customerId: "c1", customerName: "Ama", amountPesewas: 8000, status: "unpaid", isInstallmentPlan: false, dueDate: dayOffset(late ? -3 : 7) };
-  const data = { name: "Ama", customerId: "c1", phone, ghanaCardNumber: "", balancePesewas: 8000, debt, unpaidDebts: [debt], unpaidDebtCount: 1, history: [] };
+  const payment = { id: "collection-c1", type: "payment", timestamp: Date.now() - 3_600_000, amountPesewas: 3000, collectionParts: [{ method: "Cash", amountPesewas: 3000 }] }; // 29/43 receipts cover the latest payment (15 Nov 2026)
+  const data = { name: "Ama", customerId: "c1", phone, ghanaCardNumber: "", balancePesewas: 8000, debt, unpaidDebts: [debt], unpaidDebtCount: 1, history: [payment] };
   setLiveQuery(([debtId]) => (debtId === "d1" ? data : undefined));
   try {
     return render({ type: DebtorDetail, props: { params: { debtId: "d1", customerName: "Ama" }, onBack() {}, onNavigate() {}, onCollect() {}, shopName: "My shop" } });
@@ -151,9 +152,9 @@ test("receipts never record a reminder: only the shared reminder path writes rem
   }
 });
 
-test("29 with receipts on: the balance Receipt button is not a reminder button", async () => {
+test("29 with receipts on: the payment Receipt button is not a reminder button", async () => {
   const view = await detail({ env: { VITE_ENABLE_POS_RECEIPTS: "true" } });
-  const receipt = control(view, (node) => /Send current balance receipt/.test(node.props["aria-label"] ?? ""));
-  assert.ok(receipt, "the balance receipt button");
+  const receipt = control(view, (node) => /^Receipt for .* payment$/.test(textOf(node).trim()));
+  assert.ok(receipt, "the payment receipt button");
   assert.doesNotMatch(String(receipt.props.onClick), /onReminder/);
 });

@@ -87,15 +87,15 @@ test("sample 2: split credit sale shows paid parts and what is owed, without ite
   assert.doesNotMatch(receipt, /Ama Owusu/);
 });
 
-test("sample 3: installment collection shows the split, balance and next payment", () => {
+// Changed 15 Nov 2026 (wiring 28 and 29/43 "Collection receipt"): one text, no comma after the date,
+// no Next payment line.
+test("sample 3: a split collection names both parts and the balance owed now", () => {
   const receipt = buildPaymentReceiptFromCollection(collection, "Ama's Shop");
   assert.equal(receipt, [
-    "Payment received by Ama's Shop",
-    "03/11/2026, 14:05",
-    "From: Ama Owusu",
-    "Amount: GH₵12.50 (Cash GH₵5.00, MoMo GH₵7.50)",
-    "Still owed: GH₵8.75",
-    "Next payment: GH₵3.00 on 10/11/2026",
+    "Receipt from Ama's Shop",
+    "03/11/2026 14:05",
+    "Received from Ama Owusu: GH₵12.50 (Cash GH₵5.00, MoMo GH₵7.50)",
+    "Balance owed now: GH₵8.75",
     "Thank you!"
   ].join("\n"));
   assert.doesNotMatch(receipt, PRIVATE_DETAILS);
@@ -164,7 +164,7 @@ test("only applicable lines appear", () => {
     parts: [{ paymentMethod: "cash", amountPesewas: 1250 }],
     debtAfter: { isInstallmentPlan: false }
   }, "Shop");
-  assert.match(cashOnly, /Amount: GH₵12\.50 \(Cash GH₵12\.50\)/);
+  assert.match(cashOnly, /Received from Ama Owusu: GH₵12\.50 \(Cash\)\n/);
   assert.doesNotMatch(cashOnly, /MoMo|Next payment/);
 });
 
@@ -184,5 +184,5 @@ test("one flag chooses between the new templates and the existing receipts", () 
   assert.match(getSaleReceiptText(cashSale, "Ama's Shop"), /^Sale recorded by Ama's Shop\n/);
   assert.match(getSaleReceiptText(cashSale, "Ama's Shop", {}, true), /^Receipt from Ama's Shop\n/);
   assert.match(getCollectionReceiptText(collection, "Ama's Shop"), /^Payment received by Ama's Shop\n/);
-  assert.match(getCollectionReceiptText(collection, "Ama's Shop", true), /\n03\/11\/2026, 14:05\n/);
+  assert.match(getCollectionReceiptText(collection, "Ama's Shop", true), /^Receipt from Ama's Shop\n03\/11\/2026 14:05\n/);
 });

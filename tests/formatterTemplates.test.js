@@ -68,7 +68,7 @@ test("F4: the default collection receipt shows amounts through the formatter and
 
 test("F4: the receipt templates show amounts through the formatter and still reject bad amounts", () => {
   const payment = buildPaymentReceipt({ shopName: "Shop", customerName: "Kofi", timestamp: Date.UTC(2026, 10, 9, 12), cashPesewas: 100000, momoPesewas: 23450, remainingPesewas: 250000 });
-  assert.match(payment, /Amount: GH₵1,234\.50 \(Cash GH₵1,000\.00, MoMo GH₵234\.50\)/);
+  assert.match(payment, /Received from Kofi: GH₵1,234\.50 \(Cash GH₵1,000\.00, MoMo GH₵234\.50\)/); // collection receipt text since 15 Nov 2026
   const sale = buildSaleReceipt({ shopName: "Shop", timestamp: Date.UTC(2026, 10, 9, 12), totalPesewas: 123450, cashPesewas: 123450 });
   assert.match(sale, /Total: GH₵1,234\.50/);
   assert.throws(() => buildPaymentReceipt({ shopName: "Shop", customerName: "Kofi", timestamp: Date.now(), cashPesewas: 100, remainingPesewas: 0.5 }), TypeError);
