@@ -15,6 +15,7 @@ import {
 } from "../src/pos/amountKeypad.js";
 import { posText } from "../src/pos/i18n.js";
 import wiring from "../src/pos/wiring.json" with { type: "json" };
+import { appCss, browser, measureInFrames, toHtml } from "./helpers/browserLayout.js";
 import { findButton, loadJsx, render, setLiveQuery, textOf, walk } from "./helpers/renderJsx.js";
 
 // One shared amount keypad (wiring rules_global.amount_entry, decided 15 Nov 2026).
@@ -163,6 +164,50 @@ test("the wiring's pad screens list the same keys as the keypad", () => {
   for (const id of ["15", "26", "37", "38", "53"]) {
     const labels = wiring.screens[id].controls.map((control) => control.label);
     for (const key of AMOUNT_KEYPAD_LAST_ROW) assert.ok(labels.includes(key), `${id} lists ${key}`);
+  }
+});
+
+// ---- the last row in a real browser -------------------------------------------------------------------------
+
+test("every pad at 340, 360 and 393px: the last row is four equal keys on one line, inside the screen, nothing clipped", { skip: browser ? false : "no Chrome or Edge found (set HEADER_TEST_BROWSER)" }, async () => {
+  setLiveQuery(() => ({ id: "d1", amountPesewas: 10000, customerName: "Ama", status: "unpaid" }));
+  let pages;
+  try {
+    const screens = await pads();
+    pages = Object.entries(screens).map(([name, mount]) => ({ name, html: toHtml(mount().tree) }));
+  } finally {
+    setLiveQuery(null);
+  }
+  const results = measureInFrames({
+    pages,
+    css: await appCss(),
+    widths: [340, 360, 393],
+    height: 1400,
+    measure: `(frame, win, doc) => {
+      const row = doc.querySelector('[data-keypad-last-row]');
+      const keys = [...row.querySelectorAll('button')].map((key) => {
+        const box = key.getBoundingClientRect();
+        return { text: key.textContent || key.getAttribute('aria-label'), left: box.left, right: box.right, top: Math.round(box.top), width: box.width, height: box.height, clipped: key.scrollWidth > key.clientWidth + 1, bg: getComputedStyle(key).backgroundColor };
+      });
+      const digit = doc.querySelector('[data-amount-keypad] button').getBoundingClientRect();
+      return { keys, digitHeight: digit.height, viewport: win.innerWidth, pageOverflow: doc.scrollingElement.scrollWidth > win.innerWidth };
+    }`
+  });
+  assert.equal(results.length, pages.length * 3);
+  for (const result of results) {
+    const where = `${result.name} at ${result.width}px`;
+    const { keys } = result;
+    assert.equal(result.pageOverflow, false, `${where}: no horizontal scroll`);
+    assert.deepEqual(keys.map((key) => key.text), [".", "0", "00", "Delete last digit"], where);
+    assert.equal(new Set(keys.map((key) => key.top)).size, 1, `${where}: one line, no orphan row`);
+    for (const key of keys) {
+      assert.ok(Math.abs(key.width - keys[0].width) <= 0.5, `${where}: ${key.text} is as wide as the others (${key.width} vs ${keys[0].width})`);
+      assert.ok(key.left >= 0 && key.right <= result.viewport, `${where}: ${key.text} is inside the screen`);
+      assert.equal(key.clipped, false, `${where}: ${key.text} is not clipped`);
+      assert.ok(key.height >= 44, `${where}: ${key.text} is at least 44px tall`);
+      assert.equal(key.height, result.digitHeight, `${where}: ${key.text} is as tall as the digit keys`);
+    }
+    assert.notEqual(keys[3].bg, keys[0].bg, `${where}: Delete is grey`);
   }
 });
 
