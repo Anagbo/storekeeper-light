@@ -9,8 +9,8 @@ import { appCss, browser, measureInFrames, toHtml } from "./helpers/browserLayou
 import { findButton, loadJsx, render, setLiveQuery, textOf, walk } from "./helpers/renderJsx.js";
 
 // Wiring 33 (15 Nov 2026): Today / This week / This month (default Today); Money in by method (sales
-// parts plus collections; credit and corrections never), the collected line and the quiet "Also given
-// on credit" line (= 24's Given on credit); Money spent by method with "Method not recorded"; What you
+// parts plus collections; credit and corrections never), the Debts paid and On credit rows (On credit =
+// 24's Given on credit); Money spent by method with "Method not recorded"; What you
 // should have left; Owed to you and You owe suppliers do not follow the period. Same rows as 22 and 24.
 
 after(async () => {
@@ -210,32 +210,79 @@ test("33: three period buttons, Today selected by default, one always selected",
   assert.equal(asked.at(-1), "month");
 });
 
-test("33: headings and the caption follow the period", async () => {
+// Changed 15 Nov 2026 (wiring 33 layout rule): the caption is the same for every period.
+test("33: the heading follows the period; the caption is 'This period only. Check your MoMo balance.'", async () => {
   const { view } = await mount(screenReport());
+  const caption = "This period only. Check your MoMo balance.";
   assert.match(textOf(view.tree), /Money left today/);
-  assert.match(textOf(card(view, "should-have-left")), /It does not count money you had before today\. Check your MoMo balance too\./);
-  findButton(view.tree, "This week").props.onClick();
-  view.rerender();
-  assert.match(textOf(view.tree), /Money left this week/);
-  assert.match(textOf(card(view, "should-have-left")), /before this week\./);
-  findButton(view.tree, "This month").props.onClick();
-  view.rerender();
-  assert.match(textOf(view.tree), /Money left this month/);
-  assert.match(textOf(card(view, "should-have-left")), /before this month\./);
+  assert.ok(textOf(card(view, "should-have-left")).endsWith(caption));
+  for (const [button, heading] of [["This week", /Money left this week/], ["This month", /Money left this month/]]) {
+    findButton(view.tree, button).props.onClick();
+    view.rerender();
+    assert.match(textOf(view.tree), heading);
+    assert.ok(textOf(card(view, "should-have-left")).endsWith(caption), button);
+  }
 });
 
-test("33: Money in card: Cash and MoMo rows, the collected line and the quiet credit line", async () => {
+// Changed 15 Nov 2026 (wiring 33 "Debts paid"): the two sentences under Cash and MoMo are now two rows
+// under a thicker line.
+const rowOf = (view, name) => [...walk(view.tree)].find((node) => node.type === "p" && node.props?.["data-row"] === name);
+test("33: Money in card: Cash and MoMo rows, then Debts paid (dark green) and On credit (dark crimson) under a thicker line", async () => {
   const { view } = await mount(screenReport());
   const text = textOf(card(view, "money-in"));
   assert.ok(text.includes(`Money in${formatGhs(6000)}`));
   assert.ok(text.includes(`Cash${formatGhs(3500)}`));
   assert.ok(text.includes(`MoMo${formatGhs(2500)}`));
-  assert.ok(text.includes(`Includes ${formatGhs(1000)} paid by customers who owed you.`));
-  assert.ok(text.includes(`Also given on credit: ${formatGhs(4300)} (not money received yet)`));
+  assert.ok(text.endsWith(`Debts paid${formatGhs(1000)}On credit${formatGhs(4300)}`), text);
+  assert.doesNotMatch(text, /Includes|Also given on credit|paid by customers/, "the two sentences are gone");
+  const extras = [...walk(card(view, "money-in"))].find((node) => node.props?.["data-line"] === "money-in-extras");
+  assert.match(extras.props.className, /border-t-\[3px\]/, "a thicker line above the two rows");
+  const paid = rowOf(view, "debts-paid");
+  const credit = rowOf(view, "on-credit");
+  assert.match(paid.props.className, /text-emerald-900/);
+  assert.match(credit.props.className, /text-rose-900/);
+  const cash = rowOf(view, "cash-in");
+  for (const extra of [paid, credit]) {
+    assert.doesNotMatch(extra.props.className, /\bbg-|\bborder\b|border-/, "no fill and no border");
+    const [label, amount] = extra.props.children;
+    assert.match(label.props.className, /font-bold/, "a plain bold label");
+    assert.equal(amount.type, cash.props.children[1].type);
+    assert.equal(amount.props.className, cash.props.children[1].props.className, "the amount in the same column and size as Cash");
+  }
   const elsewhere = textOf(view.tree).replace(text, "");
-  assert.doesNotMatch(elsewhere, /given on credit/i, "credit only once, inside Money in");
+  assert.doesNotMatch(elsewhere, /On credit|Debts paid/, "both only once, inside Money in");
+});
+
+test("33: Debts paid and On credit are each hidden when zero; Cash + MoMo = Money in", async () => {
+  const noPaid = await mount(screenReport({ collectedIn: 0 }));
+  assert.equal(rowOf(noPaid.view, "debts-paid"), undefined);
+  assert.ok(rowOf(noPaid.view, "on-credit"));
+  const noCredit = await mount(screenReport({ givenOnCredit: 0 }));
+  assert.ok(rowOf(noCredit.view, "debts-paid"));
+  assert.equal(rowOf(noCredit.view, "on-credit"), undefined);
   const none = await mount(screenReport({ collectedIn: 0, givenOnCredit: 0 }));
-  assert.doesNotMatch(textOf(none.view.tree), /Includes|Also given on credit/, "lines only when above zero");
+  assert.doesNotMatch(textOf(none.view.tree), /Debts paid|On credit/);
+  assert.equal([...walk(none.view.tree)].some((node) => node.props?.["data-line"] === "money-in-extras"), false, "no line without the rows");
+});
+
+test("33 on real records: Cash + MoMo = Money in (Debts paid is inside it), and On credit = 24's Given on credit tile", async () => {
+  await db.transactions.bulkAdd([
+    splitSale("a", at(18, 9), 1500, 500), partPaidCreditSale("b", at(18, 10), 100, 200, 700), collection("c", at(18, 11), 400, "momo"),
+    addedToDebt("d", at(18, 12), 900), correction("e", at(18, 12), 300), expense("f", at(18, 13), 250, { paidWith: "cash" })
+  ]);
+  const real = await report("day");
+  assert.equal(real.summary.cashIn + real.summary.momoIn, real.summary.moneyIn);
+  assert.equal(real.summary.moneyIn, 1500 + 500 + 100 + 200 + 400, "the collection is counted once");
+  const { view } = await mount(real);
+  assert.ok(textOf(rowOf(view, "debts-paid")).endsWith(formatGhs(400)));
+  const { createPosTransactionRows } = await import("../src/pos/transactionFeed.js");
+  const rows = await getFinancialTransactions(getMoneyPeriodRange("day", NOW));
+  const { default: TodaysTransactions } = await loadJsx("src/pos/TodaysTransactions.jsx");
+  setLiveQuery(() => ({ status: "ready", transactions: createPosTransactionRows(rows), totals: summarizeFinancialTransactionsSafely(rows).totals }));
+  const tile = [...walk(render({ type: TodaysTransactions, props: { onBack() {} } }).tree)].find((node) => node.props?.["data-summary"] === "given-on-credit");
+  const tileAmount = textOf(tile).replace(/^Given on credit/, "");
+  assert.equal(tileAmount, formatGhs(700 + 900));
+  assert.ok(textOf(rowOf(view, "on-credit")).endsWith(tileAmount), "33's On credit = 24's tile");
 });
 
 test("33: Money spent card shows Method not recorded only when above zero", async () => {
@@ -307,7 +354,7 @@ test("33 at 340, 360 and 393px: card rows keep label and amount on one line with
       const rows = [...doc.querySelectorAll('[data-method-cards] [data-row]')].map((el) => {
         const [label, amount] = el.children;
         const box = el.getBoundingClientRect();
-        return { text: el.textContent, amountLines: lines(amount), labelRight: label.getBoundingClientRect().right, amountLeft: amount.getBoundingClientRect().left, amountRight: amount.getBoundingClientRect().right, right: box.right };
+        return { name: el.dataset.row, fontSize: getComputedStyle(amount).fontSize, labelLines: lines(label), text: el.textContent, amountLines: lines(amount), labelRight: label.getBoundingClientRect().right, amountLeft: amount.getBoundingClientRect().left, amountRight: amount.getBoundingClientRect().right, right: box.right };
       });
       return { rows, pageOverflow: doc.scrollingElement.scrollWidth > win.innerWidth };
     }`
@@ -315,7 +362,14 @@ test("33 at 340, 360 and 393px: card rows keep label and amount on one line with
   for (const result of results) {
     const where = `${result.width}px`;
     assert.equal(result.pageOverflow, false, `${where}: no horizontal scroll`);
-    assert.equal(result.rows.length, 7, `${where}: every row is there`);
+    assert.equal(result.rows.length, 9, `${where}: every row is there (Debts paid and On credit since 15 Nov 2026)`);
+    const cash = result.rows.find((row) => row.name === "cash-in");
+    for (const name of ["debts-paid", "on-credit"]) {
+      const extra = result.rows.find((row) => row.name === name);
+      assert.equal(extra.labelLines, 1, `${where}: ${name}: label on one line`);
+      assert.equal(extra.fontSize, cash.fontSize, `${where}: ${name}: same size as Cash`);
+      assert.ok(Math.abs(extra.amountRight - cash.amountRight) <= 0.5, `${where}: ${name}: same right-hand column as Cash`);
+    }
     for (const row of result.rows) {
       assert.equal(row.amountLines, 1, `${where}: ${row.text}: amount on one line`);
       assert.ok(row.labelRight <= row.amountLeft + 0.5, `${where}: ${row.text}: label and amount do not overlap`);

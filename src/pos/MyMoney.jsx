@@ -17,11 +17,12 @@ const COMPARISON_KEYS = {
 };
 const cardClass = "min-w-0 rounded-[18px] border-2 border-slate-300 bg-white px-3.5 py-3";
 
-// One label and amount on a line; the amount never wraps or shrinks.
-function Row({ label, amountPesewas, ...rest }) {
+// One label and amount on a line; the amount never wraps or shrinks. `tone` colours the whole row and
+// makes the label bold (Debts paid, On credit): text only, no fill and no border.
+function Row({ label, amountPesewas, tone = "", ...rest }) {
   return (
-    <p {...rest} className="flex min-w-0 items-baseline justify-between gap-3 text-base sm:text-lg">
-      <span className="min-w-0">{label}</span>
+    <p {...rest} className={`flex min-w-0 items-baseline justify-between gap-3 text-base sm:text-lg ${tone}`}>
+      <span className={`min-w-0 ${tone ? "font-bold" : ""}`}>{label}</span>
       <strong className="shrink-0 whitespace-nowrap">{formatGhs(amountPesewas)}</strong>
     </p>
   );
@@ -88,16 +89,18 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home") 
           )}
 
           <div data-method-cards="" className="grid min-w-0 gap-2.5 lg:order-4 lg:col-span-2 lg:grid-cols-3 lg:gap-5">
-            {/* (2) Money in: Cash + MoMo = Money in. Collections are in it; credit is only the quiet line. */}
+            {/* (2) Money in: Cash + MoMo = Money in. Under a thicker line, Debts paid (already inside Cash
+                and MoMo, never added again) and On credit (= Given on credit on 24, not money received);
+                each row only when above zero. */}
             <section data-card="money-in" className={`flex flex-col gap-1 ${cardClass}`}>
               <CardTitle amountPesewas={summary.moneyIn}>{t("money.moneyIn")}</CardTitle>
               <Row data-row="cash-in" label={t("money.cash")} amountPesewas={summary.cashIn} />
               <Row data-row="momo-in" label={t("money.momo")} amountPesewas={summary.momoIn} />
-              {summary.collectedIn > 0 && (
-                <p data-line="collected" className="text-sm leading-snug text-slate-800 sm:text-base">{t("money.includesCollected", { amount: formatGhs(summary.collectedIn) })}</p>
-              )}
-              {summary.givenOnCredit > 0 && (
-                <p data-line="given-on-credit" className="text-sm leading-snug text-slate-600 sm:text-base">{t("money.alsoGivenOnCredit", { amount: formatGhs(summary.givenOnCredit) })}</p>
+              {(summary.collectedIn > 0 || summary.givenOnCredit > 0) && (
+                <div data-line="money-in-extras" className="mt-1 flex flex-col gap-1 border-t-[3px] border-slate-300 pt-1.5">
+                  {summary.collectedIn > 0 && <Row data-row="debts-paid" tone="text-emerald-900" label={t("money.debtsPaid")} amountPesewas={summary.collectedIn} />}
+                  {summary.givenOnCredit > 0 && <Row data-row="on-credit" tone="text-rose-900" label={t("money.onCredit")} amountPesewas={summary.givenOnCredit} />}
+                </div>
               )}
             </section>
 
@@ -114,7 +117,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home") 
               <CardTitle>{t("money.shouldHaveLeft")}</CardTitle>
               <Row data-row="cash-left" label={t("money.cash")} amountPesewas={summary.cashShouldHave} />
               <Row data-row="momo-left" label={t("money.momo")} amountPesewas={summary.momoShouldHave} />
-              <p className="text-sm leading-snug text-slate-700 sm:text-base">{t("money.shouldHaveLeftCaption", { period: periodWords })}</p>
+              <p className="text-sm leading-snug text-slate-700 sm:text-base">{t("money.shouldHaveLeftCaption")}</p>
             </section>
           </div>
 
