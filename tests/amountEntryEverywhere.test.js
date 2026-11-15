@@ -130,7 +130,8 @@ test("15: the pad builds an exact amount; 1250 on the pad is saved as 125000 pes
   const sales = [];
   const view = render({ type: Sell, props: { params: {}, onNavigate() {}, recordSale: async (sale) => { sales.push(sale); return { id: "t1" }; } } });
   for (const key of ["1", "2", "5", "0"]) {
-    findButton(view.tree, key).props.onClick();
+    // Exact text: findButton matches by "includes", and the shared keypad has 00 after 0 (15 Nov 2026).
+    [...walk(view.tree)].find((node) => node.type === "button" && textOf(node) === key).props.onClick();
     view.rerender();
   }
   assert.match(textOf(view.tree), /1,250\.00/);

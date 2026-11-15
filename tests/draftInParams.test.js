@@ -92,14 +92,14 @@ test("53: the typed amount and note survive Menu > Settings > Back", async () =>
   const app = makeApp(POS_ROUTES.ManualDebtAmount, { customer: { name: "Ama" } });
   const mount = await mount53(app);
   let view = mount();
-  for (const key of ["1", "2", "5", "0"]) {
+  for (const key of ["1", "2", ".", "5"]) {
     exact(view.tree, key).props.onClick();
     view.rerender();
   }
   noteField(view.tree).props.onChange({ target: { value: "Rice and oil" } });
   view.rerender();
   assert.match(textOf(view.tree), /GH₵12\.50/);
-  assert.equal(app.state.params.amountDigits, "1250");
+  assert.equal(app.state.params.debtAmountText, "12.5");
   assert.equal(app.state.params.note, "Rice and oil");
   app.tripToSettings();
   view = mount();
@@ -113,16 +113,16 @@ test("53: Delete is remembered, and a fast second tap in the same frame is not l
   const view = mount();
   exact(view.tree, "9").props.onClick();
   exact(view.tree, "9").props.onClick();      // same frame: the screen has not re-rendered in between
-  assert.equal(app.state.params.amountDigits, "99");
-  byLabel(view.tree, "Delete amount digit").props.onClick();
-  assert.equal(app.state.params.amountDigits, "9");
+  assert.equal(app.state.params.debtAmountText, "99");
+  byLabel(view.tree, "Delete last digit").props.onClick();
+  assert.equal(app.state.params.debtAmountText, "9");
 });
 
 test("53: coming Back from 18 (the next screen) shows the amount and note again", async () => {
   const app = makeApp(POS_ROUTES.ManualDebtAmount, { customer: { name: "Ama" } });
   const mount = await mount53(app);
   let view = mount();
-  for (const key of ["5", "0", "0"]) {
+  for (const key of ["5"]) {
     exact(view.tree, key).props.onClick();
     view.rerender();
   }

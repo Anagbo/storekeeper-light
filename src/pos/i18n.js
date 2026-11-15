@@ -182,7 +182,7 @@ const ENGLISH = Object.freeze({
   "setup.priceTitle": "How much is {name}?",
   "setup.quantityTitle": "How many {name}?",
   "pad.label": "Number pad",
-  "pad.delete": "Delete",
+  "pad.delete": "Delete last digit",
   "setup.priceFor": "Price for one",
   "setup.quantityFor": "Number of {name}",
   "setup.quantityLess": "Remove one",

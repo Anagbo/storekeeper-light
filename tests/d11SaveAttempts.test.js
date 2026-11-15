@@ -197,7 +197,7 @@ test("D11 screen 26: Try again after an unknown result keeps the same key; a cha
       findButton(view.tree, posText("save.tryAgain")).props.onClick();
       await settle();
       view.rerender();
-      findComponent(view.tree, "DigitKeypad").props.onDigit("5");
+      findComponent(view.tree, "AmountKeypad").props.onKey("5");
       view.rerender();
       findButton(view.tree, posText("collect.received")).props.onClick();
       await settle();

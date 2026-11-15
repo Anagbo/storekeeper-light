@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Banknote, Check, Clock3, Delete, Phone, Plus, ReceiptText, Smartphone, Undo2, UserRoundPen, X } from "lucide-react";
+import { Banknote, Check, Clock3, Phone, Plus, ReceiptText, Smartphone, Undo2, UserRoundPen, X } from "lucide-react";
 import { db } from "../db/db.js";
 import { COLLECTION_UNDO_WINDOW_MS, undoDebtCollection } from "../db/debts.js";
 import { correctDebtBalance } from "../db/debtLedger.js";
@@ -18,6 +18,8 @@ import { sendReceipt } from "./receiptShare.js";
 import { CopyReceiptButton, ReceiptFailedLine, ReceiptOfflineLine, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
 import { buildCustomerBalanceReceipt, getCollectionReceiptText, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
 import { normalizeCollectionAmountInput } from "./collectionSplit.js";
+import AmountKeypad from "./AmountKeypad.jsx";
+import { pressAmountKey } from "./amountKeypad.js";
 import { getDebtDueLabel, getDebtDueLine } from "./money.js";
 import { getInstallmentsLeft, getPlanProgress } from "../utils/installments.js";
 import { getCustomerLedgerRecords, getPlanPaidPesewas } from "../utils/debtLedgerMath.js";
@@ -284,28 +286,6 @@ function CollectionSheetError({ loading, onClose }) {
   );
 }
 
-function DigitKeypad({ onDigit, disabled = false }) {
-  return (
-    <div className="grid grid-cols-3 gap-2" aria-label={t("collect.enterAmount")}>
-      {["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "00"].map((digit) => (
-        <button key={digit} type="button" disabled={disabled} onClick={() => onDigit(digit)} style={{ fontSize: 26, fontWeight: 800 }} className="h-[62px] rounded-2xl border-2 border-slate-500 bg-white disabled:opacity-50">{digit}</button>
-      ))}
-      <button type="button" disabled={disabled} onClick={() => onDigit("backspace")} aria-label={t("collect.deleteLastDigit")} className="flex h-[62px] items-center justify-center rounded-2xl bg-slate-300 disabled:opacity-50">
-        <Delete size={26} aria-hidden="true" />
-      </button>
-    </div>
-  );
-}
-
-function appendAmountDigit(current, digit) {
-  if (digit === "backspace") return current.slice(0, -1);
-  if (digit === "00" && current.length === 0) return "0";
-  if (digit === "." && current.includes(".")) return current;
-  const next = `${current}${digit}`;
-  const [whole, fraction] = next.split(".");
-  return fraction?.length > 2 || whole.length > 8 ? current : next;
-}
-
 export function CollectPayPart(props) {
   return <CollectPayPartScreen {...props} />;
 }
@@ -457,8 +437,8 @@ function CollectPayPartScreen({ params, onBack, onNavigate, onUpdateParams, onRe
             <p className="text-lg font-bold text-rose-900">{t("collect.leftToPay", { amount: formatGhs(Math.max(0, debt.amountPesewas - (amountPesewas ?? 0))) })}</p>
           </section>
           {amountPesewas > debt.amountPesewas && <CollectionError>{t("collect.amountTooHigh")}</CollectionError>}
-          <DigitKeypad onDigit={(digit) => {
-            const next = appendAmountDigit(amount, digit);
+          <AmountKeypad label={t("collect.enterAmount")} onKey={(digit) => {
+            const next = pressAmountKey(amount, digit);
             setAmount(next);
             onUpdateParams({ amount: next });
             setError("");

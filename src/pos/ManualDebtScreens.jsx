@@ -1,7 +1,8 @@
 import { useRef, useState } from "react";
-import { Banknote, CalendarDays, Check, Delete, Smartphone } from "lucide-react";
+import { Banknote, CalendarDays, Check, Smartphone } from "lucide-react";
 import { formatDate } from "../lib/formatDate.js";
-import { digitsToWholeNumber } from "../lib/parsePesewas.js";
+import AmountKeypad from "./AmountKeypad.jsx";
+import { amountTextToPesewas, pressAmountKey } from "./amountKeypad.js";
 import { formatGhs } from "../lib/money.js";
 import { useLiveQuery } from "dexie-react-hooks";
 import { buildWhatsAppReminderText, generateWhatsAppLink } from "../utils/whatsapp.js";
@@ -21,9 +22,9 @@ import { useBackBlock } from "./browserBack.js";
 export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, onSaveManualDebt }) {
   // The typed amount and note are kept in the route params (as the split parts on 16 are), so
   // Menu > Settings > Back > Close menu, or Back from the next screen, restores them.
-  const initialDigits = typeof params.amountDigits === "string" ? params.amountDigits : "";
-  const [amountDigits, setAmountDigits] = useState(initialDigits);
-  const digitsRef = useRef(initialDigits);
+  const initialText = typeof params.debtAmountText === "string" ? params.debtAmountText : "";
+  const [amountText, setAmountText] = useState(initialText);
+  const textRef = useRef(initialText);
   const [note, setNote] = useState(typeof params.note === "string" ? params.note : "");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -33,7 +34,7 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, o
   const today = localDateString();
   const [takenOn, setTakenOn] = useState(params.takenOn ?? today);
   const [pickingDate, setPickingDate] = useState(false);
-  const amountPesewas = digitsToWholeNumber(amountDigits);
+  const amountPesewas = amountTextToPesewas(amountText);
   const amountValid = Number.isSafeInteger(amountPesewas) && amountPesewas > 0;
   const debt = params.customer?.debt;
   const hasPlanRecord = Boolean(debt?.isInstallmentPlan && debt.installmentAmount > 0);
@@ -105,15 +106,13 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, o
   }
 
   function pressAmount(key) {
-    // The ref holds the latest digits, so two taps in one frame both count.
-    const current = digitsRef.current;
-    const next = key === "delete"
-      ? current.slice(0, -1)
-      : current.length >= 9 ? current : `${current}${key}`.replace(/^0+(?=\d)/, "");
+    // The ref holds the latest text, so two taps in one frame both count.
+    const current = textRef.current;
+    const next = pressAmountKey(current, key);
     if (next === current) return;
-    digitsRef.current = next;
-    setAmountDigits(next);
-    onUpdateParams?.({ amountDigits: next });
+    textRef.current = next;
+    setAmountText(next);
+    onUpdateParams?.({ debtAmountText: next });
   }
 
   return (
@@ -130,12 +129,7 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, o
         <span className="block text-base font-bold text-slate-700">Amount owed</span>
         <strong className="block text-4xl font-extrabold text-rose-900 sm:text-5xl">{formatGhs(amountPesewas)}</strong>
       </div>
-      <div className="grid grid-cols-3 gap-2" aria-label="Amount keypad">
-        {["1", "2", "3", "4", "5", "6", "7", "8", "9", "00", "0"].map((key) => (
-          <button key={key} type="button" onClick={() => pressAmount(key)} className="h-14 rounded-2xl border-2 border-slate-500 bg-white text-2xl font-extrabold sm:h-16">{key}</button>
-        ))}
-        <button type="button" aria-label="Delete amount digit" onClick={() => pressAmount("delete")} className="grid h-14 place-items-center rounded-2xl bg-slate-300 sm:h-16"><Delete size={27} aria-hidden="true" /></button>
-      </div>
+      <AmountKeypad label="Amount keypad" onKey={pressAmount} />
       <label className="block">
         <span className="sr-only">What for (optional)</span>
         <input value={note} onChange={(event) => { setNote(event.target.value); onUpdateParams?.({ note: event.target.value }); }} placeholder="What for? (optional)" className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />

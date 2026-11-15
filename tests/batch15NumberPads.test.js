@@ -5,7 +5,8 @@ import { after, beforeEach, test } from "node:test";
 import { db } from "../src/db/db.js";
 import { normalizeProductInput } from "../src/db/products.js";
 import { formatGhs } from "../src/lib/money.js";
-import { PAD_KEYS, padCount, pressPad, startPad } from "../src/pos/amountPad.js";
+import { AMOUNT_KEYPAD_KEYS, amountTextToPesewas, COUNT_KEYPAD, pressAmountKey } from "../src/pos/amountKeypad.js";
+import { posText } from "../src/pos/i18n.js";
 import wiring from "../src/pos/wiring.json" with { type: "json" };
 import { findButton, loadJsx, render, setLiveQuery, textOf, walk } from "./helpers/renderJsx.js";
 
@@ -25,8 +26,9 @@ const padLabels = (screenId) => wiring.screens[screenId].controls
   .filter((control) => control.type === "selection_or_edit")
   .map((control) => control.label);
 // A key button by its visible text, or by its accessible name (the Delete key has an icon).
+// The wiring calls the key "Delete"; its accessible name is "Delete last digit".
 const key = (tree, label) => [...walk(tree)].find((node) => node.type === "button" &&
-  (textOf(node) === label || node.props?.["aria-label"] === label));
+  (textOf(node) === label || node.props?.["aria-label"] === (label === "Delete" ? posText("pad.delete") : label)));
 const press = (view, ...labels) => {
   for (const label of labels) {
     const button = key(view.tree, label);
@@ -38,56 +40,26 @@ const press = (view, ...labels) => {
 
 // ---- the pad logic: integers only ------------------------------------------------------
 
+// Changed 15 Nov 2026 (one shared amount keypad, rules_global.amount_entry): 37 and 38 use the shared
+// keypad, so the keys are the wiring's (now with ".") and money fills whole cedis, not pesewas.
 test("pad: the keys are exactly the ones in the wiring file for 37 and 38", () => {
   assert.deepEqual(padLabels("37"), padLabels("38"));
-  assert.deepEqual(padLabels("37"), ["1", "2", "3", "4", "5", "6", "7", "8", "9", "00", "0", "Delete"]);
-  assert.deepEqual(PAD_KEYS, ["1", "2", "3", "4", "5", "6", "7", "8", "9", "00", "0", "Delete"]);
+  assert.deepEqual([...padLabels("37")].sort(), [...AMOUNT_KEYPAD_KEYS].sort());
 });
 
-test("pad: money is whole pesewas: typing 8 0 0 is GH₵8.00 and 4 5 is GH₵0.45", () => {
-  let pad = startPad(0);
-  for (const digit of ["8", "0", "0"]) pad = pressPad(pad, digit);
-  assert.equal(pad.value, 800);
-  assert.equal(formatGhs(pad.value), "GH₵8.00");
-  pad = startPad(0);
-  for (const digit of ["4", "5"]) pad = pressPad(pad, digit);
-  assert.equal(pad.value, 45);
-  assert.equal(formatGhs(pad.value), "GH₵0.45");
+test("pad: money fills whole cedis: typing 8 is GH₵8.00 and 4 . 5 is GH₵4.50", () => {
+  const type = (...keys) => keys.reduce((text, next) => pressAmountKey(text, next), "");
+  assert.equal(formatGhs(amountTextToPesewas(type("8"))), "GH₵8.00");
+  assert.equal(formatGhs(amountTextToPesewas(type("4", ".", "5"))), "GH₵4.50");
+  for (let index = 0; index < 20; index += 1) assert.ok(Number.isSafeInteger(amountTextToPesewas(type(..."9".repeat(index).split("")))));
+  assert.equal(amountTextToPesewas(type(..."9".repeat(20).split(""), ".", "9", "9")), 999999999, "at most 999 999 999 pesewas (same as 53)");
 });
 
-test("pad: 00 multiplies by 100, Delete drops the last digit, the amount stays a safe integer and is capped", () => {
-  let pad = startPad(0);
-  pad = pressPad(pad, "1");
-  pad = pressPad(pad, "00");
-  assert.equal(pad.value, 100);
-  pad = pressPad(pad, "Delete");
-  assert.equal(pad.value, 10);
-  pad = pressPad(pad, "Delete");
-  pad = pressPad(pad, "Delete");
-  pad = pressPad(pad, "Delete");
-  assert.equal(pad.value, 0, "Delete on zero stays zero");
-  pad = pressPad(pad, "00");
-  assert.equal(pad.value, 0, "00 on zero stays zero");
-  for (let index = 0; index < 20; index += 1) pad = pressPad(pad, "9");
-  assert.equal(pad.value, 999999999, "a pesewa amount is at most 9 digits (same as 53)");
-  assert.ok(Number.isSafeInteger(pad.value));
-});
-
-test("pad: the first digit replaces the starting value; Delete edits it", () => {
-  let pad = startPad(1);
-  pad = pressPad(pad, "5");
-  assert.equal(pad.value, 5, "a preset 1 is replaced by 5, not made 15");
-  pad = startPad(12);
-  pad = pressPad(pad, "Delete");
-  assert.equal(pad.value, 1, "Delete on the preset 12 leaves 1");
-  pad = pressPad(pad, "3");
-  assert.equal(pad.value, 13, "after Delete the next digit appends");
-});
-
-test("pad: a count is capped at 6 digits and is not money", () => {
-  let pad = startPad(1, padCount);
-  for (let index = 0; index < 10; index += 1) pad = pressPad(pad, "9", padCount);
-  assert.equal(pad.value, 999999);
+test("pad: a count is whole, capped at 6 digits, and ignores the decimal point", () => {
+  let text = "";
+  for (let index = 0; index < 10; index += 1) text = pressAmountKey(text, "9", COUNT_KEYPAD);
+  assert.equal(text, "999999");
+  assert.equal(pressAmountKey("12", ".", COUNT_KEYPAD), "12");
 });
 
 test("pad: money entry does no floating-point arithmetic (37 and the pad logic); the quantity on 38 is a count", () => {
@@ -99,7 +71,7 @@ test("pad: money entry does no floating-point arithmetic (37 and the pad logic);
   };
   assert.doesNotMatch(bodyOf("HowMuchIsItem"), /toPesewas\(|parseFloat|Number\(|\* 100|\/ 100|toFixed/, "37 must not convert money with floating point");
   assert.doesNotMatch(bodyOf("HowManyItem"), /parseFloat|Number\(|toFixed/, "38 must not parse its count as a float");
-  assert.doesNotMatch(read("src/pos/amountPad.js"), /parseFloat|Number\(|toFixed|\* 100\b|\/ 100\b|Math\.round/);
+  assert.doesNotMatch(read("src/pos/amountKeypad.js"), /parseFloat|Number\(|toFixed|\* 100\b|\/ 100\b|Math\.round/);
 });
 
 // ---- 37 ----------------------------------------------------------------------------------
@@ -111,10 +83,12 @@ test("37: shows the pad from the wiring file, no text field, and the amount thro
   for (const label of padLabels("37")) assert.ok(key(view.tree, label), `${label} key`);
   assert.match(textOf(view.tree), /Price for one/);
   assert.match(textOf(view.tree), /GH₵0\.00/);
-  press(view, "8", "00");
+  press(view, "8");
   assert.match(textOf(view.tree), /GH₵8\.00/);
-  press(view, "Delete", "5");
-  assert.match(textOf(view.tree), /GH₵8.05/);
+  press(view, "00");
+  assert.match(textOf(view.tree), /GH₵800\.00/);
+  press(view, "Delete", "Delete", ".", "0", "5");
+  assert.match(textOf(view.tree), /GH₵8\.05/);
 });
 
 test("37: Save price stores the typed pesewas and returns to 20 with the item in the sale", async () => {
@@ -126,7 +100,7 @@ test("37: Save price stores the typed pesewas and returns to 20 with the item in
     onBack() {},
     onReturnTo: (...args) => calls.push(args)
   } });
-  press(view, "4", "5", "0");
+  press(view, "4", ".", "5");
   findButton(view.tree, "Save price").props.onClick();
   for (let index = 0; index < 20 && !calls.length; index += 1) await settle();
   assert.equal(calls.length, 1);

@@ -38,8 +38,8 @@ test("37: Save price returns to 20 with the item in the sale, not to 38", async 
     onNavigate: (...args) => calls.push(["navigate", ...args]),
     onReturnTo: (...args) => calls.push(["returnTo", ...args])
   } });
-  // Batch 15: the price is typed on the number pad (4 5 0 = 450 pesewas), not into a text field.
-  for (const digit of ["4", "5", "0"]) {
+  // The price is typed on the shared keypad (4 . 5 = 450 pesewas, 15 Nov 2026), not into a text field.
+  for (const digit of ["4", ".", "5"]) {
     [...walk(view.tree)].find((node) => node.type === "button" && textOf(node) === digit).props.onClick();
     view.rerender();
   }

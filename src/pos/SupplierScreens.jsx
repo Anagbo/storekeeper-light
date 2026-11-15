@@ -7,6 +7,7 @@ import { formatGhs, toPesewas } from "../lib/money.js";
 import { localDateString } from "../utils/installments.js";
 import { getSupplierBalances, orderSuppliersByRecentUse, SUPPLIER_CATEGORIES } from "../utils/suppliers.js";
 import { posText as t } from "./i18n.js";
+import { normalizeTypedAmount } from "./amountKeypad.js";
 import { PartyCard } from "./PartyCard.jsx";
 import { PosBackButton, PosCard, PosPage, PosPrimaryButton } from "./PosComponents.jsx";
 import { useBackBlock, useBackHandler } from "./browserBack.js";
@@ -107,7 +108,12 @@ export function SpentMoney({ params = {}, onBack, onNavigate, onUpdateParams, on
         <PosBackButton onClick={onBack} />
         <h1 className="text-2xl font-extrabold">{t("expense.title")}</h1>
       </div>
-      <AmountInput label={t("expense.amount")} value={amount} onChange={(value) => { setAmount(value); onUpdateParams?.({ expenseAmount: value }); }} />
+      <AmountInput label={t("expense.amount")} value={amount} onChange={(typed) => {
+        // Wiring rules_global.amount_entry: the typed field follows the shared keypad rules.
+        const value = normalizeTypedAmount(typed, amount);
+        setAmount(value);
+        onUpdateParams?.({ expenseAmount: value });
+      }} />
       <fieldset className="space-y-2">
         <legend className="mb-1 text-lg font-extrabold">{t("expense.whatFor")}</legend>
         <div className="grid grid-cols-2 gap-2">

@@ -171,7 +171,7 @@ test("53: Taken on survives Menu > Settings > Back, with the amount and note", a
   app.tripToSettings();
   view = mount();
   assert.match(textOf(takenOnButton(view.tree)), /Taken on: 15\/01\/2020/);
-  assert.equal(app.state.params.amountDigits, "5", "the amount is still there");
+  assert.equal(app.state.params.debtAmountText, "5", "the amount is still there");
 });
 
 test("53: a date in the future or an empty date is refused and writes nothing", async () => {
