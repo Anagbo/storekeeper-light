@@ -34,6 +34,23 @@ export function useReminderCheck({ record = recordReminderSent, now = () => Date
     }
   }
 
+  // Double taps (A6): while one reminder tap is being handled (the record, or the share sheet), every
+  // further tap on any reminder button of this screen is ignored, so two quick taps record one
+  // reminder. A reminder recorded here also counts for the 7-day check at once, before the screen's
+  // query has re-read the log.
+  const busy = useRef(false);
+  const recordedHere = useRef(new Map());
+  const personKey = (person) => person?.customerId || `name:${(person?.name ?? "").trim().toLowerCase()}`;
+
+  async function save(person) {
+    try {
+      const event = await record({ customerId: person?.customerId ?? "", customerName: person?.name ?? "" });
+      recordedHere.current.set(personKey(person), event?.createdAt ?? now());
+    } catch (error) {
+      console.error("Could not record the reminder.", error);
+    }
+  }
+
   async function handOver({ person, share }) {
     if (!share) return save(person);
     let result;
@@ -47,21 +64,41 @@ export function useReminderCheck({ record = recordReminderSent, now = () => Date
     return result;
   }
 
+  async function guarded(run) {
+    busy.current = true;
+    try {
+      return await run();
+    } finally {
+      busy.current = false;
+    }
+  }
+
   function onReminder(event, request) {
-    if (needsReminderCheck(request?.lastReminderAt, now())) {
+    if (busy.current || pending) {
       event?.preventDefault?.();
-      setPending(request);
       return undefined;
     }
-    return handOver(request);
+    const lastReminderAt = Math.max(
+      typeof request?.lastReminderAt === "number" ? request.lastReminderAt : 0,
+      recordedHere.current.get(personKey(request?.person)) ?? 0
+    );
+    if (needsReminderCheck(lastReminderAt, now())) {
+      event?.preventDefault?.();
+      setPending({ ...request, lastReminderAt });
+      return undefined;
+    }
+    return guarded(() => handOver(request));
   }
 
   // Send again: a link opens WhatsApp itself (the tap is the browser's), so only the record is ours.
-  function sendAgain() {
+  function sendAgain(event) {
     const request = pending;
+    if (busy.current || !request) {
+      event?.preventDefault?.();
+      return undefined;
+    }
     close();
-    if (!request) return undefined;
-    return request.href ? save(request.person) : handOver(request);
+    return guarded(() => (request.href ? save(request.person) : handOver(request)));
   }
 
   const sheet = pending ? (
