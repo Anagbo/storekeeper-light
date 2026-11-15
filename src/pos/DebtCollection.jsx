@@ -1101,6 +1101,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
           </section>
         </div>
       )}
+      {reminders.sheet}
     </PosPage>
   );
 }

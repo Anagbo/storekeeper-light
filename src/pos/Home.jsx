@@ -172,6 +172,7 @@ export default function Home({ onNavigate, notice = "" }) {
           </button>
         </>
       )}
+      {reminders.sheet}
     </PosPage>
   );
 }

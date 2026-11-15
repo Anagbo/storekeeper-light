@@ -274,6 +274,7 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
           {showMoreControl}
         </section>
       )}
+      {reminders.sheet}
     </PosPage>
   );
 }
