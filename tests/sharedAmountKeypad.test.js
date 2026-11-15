@@ -119,23 +119,13 @@ test("every money pad: pressing 8 shows GH₵8.00 and 2 . 5 shows GH₵2.50", as
     const screens = await pads();
     for (const name of MONEY_PADS) {
       let view = screens[name]();
+      assert.equal([...walk(view.tree)].filter((node) => node.type === "input" && node.props?.inputMode === "decimal").length, 0, `${name}: no typed amount field beside the pad`);
       press(view, "8");
-      if (name.startsWith("26")) {
-        // 26 shows the amount in its typed field (GH₵ prefix + the typed text) and the balance after it.
-        const field = [...walk(view.tree)].find((node) => node.type === "input");
-        assert.equal(field.props.value, "8", name);
-        assert.match(textOf(view.tree), /Still owed after this:? GH₵92\.00/, name);
-      } else {
-        assert.match(textOf(view.tree), /GH₵8\.00/, name);
-      }
+      assert.match(textOf(view.tree), /GH₵8\.00/, name);
       view = screens[name]();
       press(view, "2", ".", "5");
-      if (name.startsWith("26")) {
-        assert.equal([...walk(view.tree)].find((node) => node.type === "input").props.value, "2.5", name);
-        assert.match(textOf(view.tree), /GH₵97\.50/, name);
-      } else {
-        assert.match(textOf(view.tree), /GH₵2\.50/, name);
-      }
+      assert.match(textOf(view.tree), /GH₵2\.50/, name);
+      if (name.startsWith("26")) assert.match(textOf(view.tree), /GH₵97\.50/, "26: the balance after this payment");
     }
   } finally {
     setLiveQuery(null);

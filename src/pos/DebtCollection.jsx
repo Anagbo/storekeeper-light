@@ -17,7 +17,6 @@ import { buildWhatsAppReminderText, generateWhatsAppLink, normalizeWhatsAppPhone
 import { sendReceipt } from "./receiptShare.js";
 import { CopyReceiptButton, ReceiptFailedLine, ReceiptOfflineLine, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
 import { buildCustomerBalanceReceipt, getCollectionReceiptText, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
-import { normalizeCollectionAmountInput } from "./collectionSplit.js";
 import AmountKeypad from "./AmountKeypad.jsx";
 import { pressAmountKey } from "./amountKeypad.js";
 import { getDebtDueLabel, getDebtDueLine } from "./money.js";
@@ -413,27 +412,10 @@ function CollectPayPartScreen({ params, onBack, onNavigate, onUpdateParams, onRe
             <PosBackButton onClick={onBack} />
             <h1 className="text-2xl font-extrabold">{t("collect.collectFrom", { name: displayName(debt.customerName) })}</h1>
           </div>
-          <section className="rounded-[20px] border-2 border-slate-500 bg-white px-4 py-2 text-right">
+          <section className="amount-fit-container rounded-[20px] border-2 border-slate-500 bg-white px-4 py-2 text-right">
             <p className="text-[17px] font-bold text-slate-800">{t("collect.namePays", { name: displayName(debt.customerName) })}</p>
-            <div className="flex items-center justify-end gap-2">
-              <span className="text-lg font-bold text-slate-700">GH₵</span>
-              <input
-                type="text"
-                inputMode="decimal"
-                autoComplete="off"
-                aria-label={t("collect.amountToCollect")}
-                value={amount}
-                onChange={(event) => {
-                  const next = normalizeCollectionAmountInput(event.target.value, amount);
-                  setAmount(next);
-                  onUpdateParams({ amount: next });
-                  setError("");
-                }}
-                disabled={busy}
-                placeholder="0.00"
-                className="w-full min-w-0 bg-transparent text-right text-[46px] font-extrabold outline-none placeholder:text-slate-400 disabled:opacity-60"
-              />
-            </div>
+            {/* Decided 15 Nov 2026: the amount is shown like every other pad (GH₵8.00), typed only on the keypad. */}
+            <output aria-live="polite" aria-label={t("collect.amountToCollect")} className="amount-fit block font-extrabold">{formatGhs(amountPesewas ?? 0)}</output>
             <p className="text-lg font-bold text-rose-900">{t("collect.leftToPay", { amount: formatGhs(Math.max(0, debt.amountPesewas - (amountPesewas ?? 0))) })}</p>
           </section>
           {amountPesewas > debt.amountPesewas && <CollectionError>{t("collect.amountTooHigh")}</CollectionError>}

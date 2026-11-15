@@ -90,7 +90,7 @@ for (const [name, back] of [["on-screen Back", (app) => app.tap("Back")], ["phon
     assert.deepEqual(sorted(partsOf(app)), EXPECTED);
     await back(app);
     assert.equal(app.route, "CollectPayPart");
-    assert.equal(app.input("Amount to collect").props.value, "4");
+    assert.equal(app.amountShown("Amount to collect"), "GH₵4.00");
     await app.tap(/Split payment$/);
     assert.equal(app.route, "SplitPayment");
     assert.deepEqual(sorted(partsOf(app)), EXPECTED);
@@ -106,7 +106,7 @@ test("27 from 26: a changed amount clears the parts and 27 starts with the new a
   await app.tap("Back");
   await app.tap("Delete last digit");
   await app.keys(["6"]);
-  assert.equal(app.input("Amount to collect").props.value, "6");
+  assert.equal(app.amountShown("Amount to collect"), "GH₵6.00");
   await app.tap(/Split payment$/);
   assert.equal(app.route, "SplitPayment");
   assert.deepEqual(partsOf(app), []);
@@ -115,7 +115,7 @@ test("27 from 26: a changed amount clears the parts and 27 starts with the new a
   // Back to 4 again: the cleared parts do not come back.
   await app.tap("Delete last digit");
   await app.keys(["4"]);
-  assert.equal(app.input("Amount to collect").props.value, "4");
+  assert.equal(app.amountShown("Amount to collect"), "GH₵4.00");
   await app.tap(/Split payment$/);
   assert.deepEqual(partsOf(app), []);
 });

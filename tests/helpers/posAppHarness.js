@@ -100,6 +100,13 @@ export async function openPosApp({ env = { VITE_ENABLE_MOMO_PHONE_REQUEST: "true
       }
       throw new Error(`No input "${name}" on ${app.route}`);
     },
+    // The amount a keypad screen shows, by the output's accessible name (26 since 15 Nov 2026).
+    amountShown(name) {
+      for (const node of walk(view.tree)) {
+        if (node.type === "output" && node.props?.["aria-label"] === name) return textOf(node);
+      }
+      throw new Error(`No amount "${name}" on ${app.route}`);
+    },
     async type(name, value) {
       app.input(name).props.onChange({ target: { value } });
       return app.settle();

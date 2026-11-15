@@ -170,7 +170,7 @@ test("(c) collect part of a debt on 25/26/27: 26 Left to pay, 27 Still owed line
   await go(app, "CollectPayment", { debtId: debt.id, customerName: debt.customerName });
   assert.equal(stillOwedLine(app), null, "25 shows no payment total");
   await app.tap(/^Pay part$/);
-  await app.type("Amount to collect", "4");
+  await app.keys(["4"]); // 26 is typed on the keypad only (15 Nov 2026)
   assert.equal(amountAfter(app, /Still owed after this: (GH₵[\d,]+\.\d{2})/, "26"), 600);
   await app.tap(/Split payment$/);
   assert.equal(app.route, "SplitPayment");
