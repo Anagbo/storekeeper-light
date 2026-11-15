@@ -1510,7 +1510,7 @@
    "inputs": [],
    "bottom_bar": false,
    "rules": [
-    "Layout, top to bottom: (0) period selector Today / This week / This month (three equal buttons, 16px, one line each at 340px, default Today); (1) one strong green block \"Money left today\" / \"Money left this week\" / \"Money left this month\" with one calm line \"GH₵X more than yesterday / last week / last month\" or \"GH₵X less than ...\" (never a green card with a red or alarming drop) and \"Money in minus money spent\"; (2) Money in card (Cash and MoMo rows, the line \"Includes GH₵X paid by customers who owed you.\" when above zero, and the quiet line \"Also sold on credit: GH₵X (not money received yet)\" when above zero); (3) Money spent card (Paid in cash, Paid by MoMo); (4) What you should have left card (Cash, MoMo); (5) the profit card; (6) Owed to you and You owe suppliers as two white tiles with a coloured left edge and a clear \"See who ›\" / \"See list ›\" link. The screen scrolls.",
+    "Layout, top to bottom: (0) period selector Today / This week / This month (three equal buttons, 16px, one line each at 340px, default Today); (1) one strong green block \"Money left today\" / \"Money left this week\" / \"Money left this month\" with one calm line \"GH₵X more than yesterday / last week / last month\" or \"GH₵X less than ...\" (never a green card with a red or alarming drop) and \"Money in minus money spent\"; (2) Money in card (Cash and MoMo rows, the line \"Includes GH₵X paid by customers who owed you.\" when above zero, and the quiet line \"Also given on credit: GH₵X (not money received yet)\" when above zero); (3) Money spent card (Paid in cash, Paid by MoMo); (4) What you should have left card (Cash, MoMo); (5) the profit card; (6) Owed to you and You owe suppliers as two white tiles with a coloured left edge and a clear \"See who ›\" / \"See list ›\" link. The screen scrolls.",
     "The big heading says \"Money left\", not \"Cash left\", because Money in includes MoMo.",
     "Only one strong colour block on the screen. The other cards are white with a thin border.",
     "Profit card (Estimate, version A): Estimated profit = Sales − stock bought − other costs for the selected week or month, from the Spent money categories. Shown with an \"Estimate\" tag, the line \"Sales 300.00 − stock 150.00 − other costs 30.00\", and \"Average of last 4 weeks\" only when there are at least 4 weeks of data. A credit sale counts when it is sold. Shown by default; Settings has one switch to hide it. No nudge card pointing to Settings.",
@@ -1521,7 +1521,7 @@
     "Money in by method: cash and MoMo parts of sales (split sales count each part once) plus debt payments collected, by the method they were paid with. Credit parts are not money received and never count as cash or MoMo. Balance corrections are not money and never count. Total = Cash + MoMo and equals the green block's money in.",
     "Money spent by method: every expense records how it was paid (Cash or MoMo). Spending recorded before this existed has no method: show a row \"Method not recorded\" only when above zero; Paid in cash + Paid by MoMo + Method not recorded = Money spent.",
     "What you should have left: Cash = cash in minus cash spent; MoMo = MoMo in minus MoMo spent, for the selected period only. It does not include money held before the period. Caption: \"Cash is cash in minus cash spent. It does not count money you had before {today / this week / this month}. Check your MoMo balance too.\" The two figures plus any unrecorded spending explain the green block.",
-    "Credit is shown once, as one quiet line inside Money in. There is no separate credit card here, so it never competes with Owed to you (which is the total owed now, not this period).",
+    "Credit is shown once, as one quiet line inside Money in: \"Also given on credit: GH₵X (not money received yet)\". X is the owed part of sales plus Added to debt for the period, the same figure as the \"Given on credit\" tile on 24, so the two screens never differ. There is no separate credit card here, so it never competes with Owed to you (the total owed now, not this period).",
     "Owed to you and You owe suppliers are balances right now and do not change with the period.",
     "Estimated profit follows the period (Today: sales − stock − other costs for today). The line \"Average of last 4 weeks\" shows only for This week and only with at least 4 weeks of data.",
     "Wide layout (D7): same content. Selector top right with three options; row of three cards: Money in, Money spent, What you should have left."
@@ -2364,7 +2364,8 @@
    "bottom_bar": false,
    "rules": [
     "\"Paid with\" (Cash or MoMo, default Cash) appears under \"Paid all now?\" and is stored with the expense. When the answer is No, it is not asked here; it is asked when the supplier is paid (the Pay action on 46), which also records Cash or MoMo.",
-    "Spending saved before this existed has no method; 33 shows it as \"Method not recorded\"."
+    "Spending saved before this existed has no method; 33 shows it as \"Method not recorded\".",
+    "Screen 45 (Stock on credit): when \"Paid now\" is above zero, 45 asks \"Paid with\" (Cash or MoMo, default Cash) for that part, the same control as on 44. With nothing paid now it is not asked. The method is stored in a new paidWith field; older records have none and are not migrated."
    ]
   },
   "45": {
