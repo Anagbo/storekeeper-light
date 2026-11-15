@@ -89,13 +89,14 @@ test("sample 2: split credit sale shows paid parts and what is owed, without ite
 
 // Changed 15 Nov 2026 (wiring 28 and 29/43 "Collection receipt"): one text, no comma after the date,
 // no Next payment line.
-test("sample 3: a split collection names both parts and the balance owed now", () => {
+test("sample 3: a split collection names both parts, the balance owed now and the plan's next payment", () => {
   const receipt = buildPaymentReceiptFromCollection(collection, "Ama's Shop");
   assert.equal(receipt, [
     "Receipt from Ama's Shop",
     "03/11/2026 14:05",
     "Received from Ama Owusu: GH₵12.50 (Cash GH₵5.00, MoMo GH₵7.50)",
     "Balance owed now: GH₵8.75",
+    "Next payment: GH₵3.00 on 10/11/2026",
     "Thank you!"
   ].join("\n"));
   assert.doesNotMatch(receipt, PRIVATE_DETAILS);

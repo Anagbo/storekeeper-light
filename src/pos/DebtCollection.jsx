@@ -694,7 +694,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
   // with VITE_ENABLE_POS_RECEIPTS on. Send goes through the same share logic as 28, 30 and 31.
   const latestPayment = data?.history?.find((row) => row.type === "payment" && row.amountPesewas > 0) ?? null;
   const balanceReceiptText = isReceiptTemplatesEnabled() && data && latestPayment
-    ? latestPaymentReceiptOrNull({ shopName, customerName: data.name, payment: latestPayment, balancePesewas: data.balancePesewas })
+    ? latestPaymentReceiptOrNull({ shopName, customerName: data.name, payment: latestPayment, balancePesewas: data.balancePesewas, plan: data.debt?.status === "unpaid" ? data.debt : null })
     : null;
   const balanceActions = useReceiptActions(balanceReceiptText ?? "", phone ?? "");
   const receiptLabel = latestPayment ? t("collect.receiptForPayment", { amount: formatGhs(latestPayment.amountPesewas) }) : "";

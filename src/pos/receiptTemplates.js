@@ -88,15 +88,19 @@ export function buildSaleReceipt({
 //   dd/mm/yyyy HH:mm                      (no comma)
 //   Received from {Name}: GH₵x (Cash|MoMo)
 //   Balance owed now: GH₵y                ("Nothing owed now" when zero)
+//   Next payment: GH₵x on dd/mm/yyyy      (only with a payment plan and something still owed)
 //   Thank you!
 // A payment split between Cash and MoMo names both parts: (Cash GH₵a, MoMo GH₵b).
+// `plan` is the person's open debt when it is a payment plan ({ isInstallmentPlan, installmentAmount,
+// nextDueDate }); x is the next installment, never more than what is owed.
 export function buildPaymentReceipt({
   shopName,
   customerName,
   timestamp,
   cashPesewas = 0,
   momoPesewas = 0,
-  remainingPesewas
+  remainingPesewas,
+  plan = null
 }) {
   const shop = requireName(shopName, "A shop name is required for the receipt.");
   const customer = displayName(requireName(customerName, "A customer name is required for the receipt."));
@@ -115,8 +119,23 @@ export function buildPaymentReceipt({
     `${formatDate(when)} ${formatTime(when)}`,
     `Received from ${customer}: ${amount(paidPesewas)} (${method})`,
     remainingPesewas === 0 ? "Nothing owed now" : `Balance owed now: ${amount(remainingPesewas)}`,
+    ...nextPaymentLine(plan, remainingPesewas),
     "Thank you!"
   ].join("\n");
+}
+
+// A plan whose installment or date cannot be read gives no line rather than no receipt (28 builds the
+// text while it renders).
+function nextPaymentLine(plan, remainingPesewas) {
+  if (!plan?.isInstallmentPlan || !(remainingPesewas > 0)) return [];
+  if (!Number.isSafeInteger(plan.installmentAmount) || plan.installmentAmount <= 0) return [];
+  let due;
+  try {
+    due = formatDueDate(plan.nextDueDate);
+  } catch {
+    return [];
+  }
+  return [`Next payment: ${amount(Math.min(remainingPesewas, plan.installmentAmount))} on ${due}`];
 }
 
 export function buildCustomerBalanceReceipt({
@@ -231,14 +250,15 @@ export function buildPaymentReceiptFromCollection(result, shopName) {
     timestamp: result.createdAt,
     cashPesewas,
     momoPesewas,
-    remainingPesewas: result.remainingPesewas
+    remainingPesewas: result.remainingPesewas,
+    plan: result.debtAfter ?? null
   });
 }
 
 // 29/43 (wiring "Collection receipt"): the receipt covers the person's latest payment only, with the
 // balance owed now. `payment` is a history row: { timestamp, amountPesewas, method } or a grouped
 // collection with collectionParts [{ method, amountPesewas }]. Null when the person never paid.
-export function buildLatestPaymentReceipt({ shopName, customerName, payment, balancePesewas }) {
+export function buildLatestPaymentReceipt({ shopName, customerName, payment, balancePesewas, plan = null }) {
   if (!payment) return null;
   const parts = Array.isArray(payment.collectionParts) && payment.collectionParts.length
     ? payment.collectionParts
@@ -251,7 +271,8 @@ export function buildLatestPaymentReceipt({ shopName, customerName, payment, bal
     timestamp,
     cashPesewas: sumFor("Cash"),
     momoPesewas: sumFor("MoMo"),
-    remainingPesewas: balancePesewas
+    remainingPesewas: balancePesewas,
+    plan
   });
 }
 
