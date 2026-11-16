@@ -1,5 +1,6 @@
 import { db } from "../db/db.js";
 import { recalculateCustomerDebtBalance } from "../db/debtLedger.js";
+import { HIDE_AMOUNTS_PREFERENCE, loadHideAmounts } from "../db/preferences.js";
 import { REMINDER_CHANNELS } from "../db/reminders.js";
 
 const BACKUP_FORMAT_VERSION = 1;
@@ -97,6 +98,14 @@ export function validateBackupData(backup) {
   ) {
     throw new TypeError("This is not a supported StoreKeeper Light backup file.");
   }
+  // Optional settings section (rules_global.hide_amounts). A backup made before it existed has none.
+  if (backup.settings !== undefined) {
+    const { settings } = backup;
+    if (!settings || typeof settings !== "object" || Array.isArray(settings) ||
+      (settings.hideAmounts !== undefined && typeof settings.hideAmounts !== "boolean")) {
+      throw new TypeError("The backup contains invalid settings.");
+    }
+  }
 
   for (const tableName of BACKUP_TABLES) {
     const records = backup.data[tableName] ?? (OPTIONAL_TABLES.has(tableName) ? [] : undefined);
@@ -145,7 +154,9 @@ function withOptionalTables(data) {
   return { ...data, reminders: data.reminders ?? [] };
 }
 
-export async function exportDatabaseToJson() {
+// The backup object: every table, plus the settings section. Format version stays 1 (the settings
+// section is optional on restore).
+export async function buildBackup(now = new Date()) {
   const data = {};
   await db.transaction("r", ...BACKUP_TABLES.map((tableName) => db.table(tableName)), async () => {
     for (const tableName of BACKUP_TABLES) {
@@ -153,13 +164,18 @@ export async function exportDatabaseToJson() {
     }
   });
 
-  const now = new Date();
-  const backup = {
+  return {
     app: "StoreKeeper Light",
     formatVersion: BACKUP_FORMAT_VERSION,
     exportedAt: now.toISOString(),
-    data
+    data,
+    settings: { hideAmounts: await loadHideAmounts() }
   };
+}
+
+export async function exportDatabaseToJson() {
+  const now = new Date();
+  const backup = await buildBackup(now);
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -227,6 +243,10 @@ export async function importDatabaseFromJson(jsonFile) {
       if (await db.customers.get(customerId)) {
         await recalculateCustomerDebtBalance({ customerId }, db);
       }
+    }
+    // The setting replaces the current one only when the backup carries it.
+    if (typeof backup.settings?.hideAmounts === "boolean") {
+      await db.settings.put({ key: HIDE_AMOUNTS_PREFERENCE, value: backup.settings.hideAmounts });
     }
     // Local record of each restore. Not synced: a real audit trail needs the server.
     const stored = await db.settings.get(RESTORE_LOG_KEY);

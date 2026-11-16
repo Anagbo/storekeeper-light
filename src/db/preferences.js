@@ -14,6 +14,19 @@ export async function setPreference(key, value) {
   });
 }
 
+// rules_global.hide_amounts: one shared setting for Home (22) and My money (33). Amounts are shown
+// by default; only a stored true hides them. Carried in backup and restore (settings.hideAmounts).
+export const HIDE_AMOUNTS_PREFERENCE = "hideAmounts";
+
+export async function loadHideAmounts() {
+  return (await getPreference(HIDE_AMOUNTS_PREFERENCE, false)) === true;
+}
+
+export async function saveHideAmounts(hidden) {
+  if (typeof hidden !== "boolean") throw new TypeError("Hide amounts must be true or false.");
+  return setPreference(HIDE_AMOUNTS_PREFERENCE, hidden);
+}
+
 export async function saveSellMode(sellMode) {
   if (!["numbers", "items"].includes(sellMode)) {
     throw new TypeError("Choose numbers or items as the sell mode.");
