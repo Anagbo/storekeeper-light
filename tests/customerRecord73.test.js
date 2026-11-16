@@ -12,7 +12,7 @@ import { resetBrowserBack } from "../src/pos/browserBack.js";
 import { openPosApp } from "./helpers/posAppHarness.js";
 import { loadJsx, render, setLiveQuery, textOf, walk } from "./helpers/renderJsx.js";
 
-// Wiring 73 "Show {Name} the record" (rules_global.customer_proof, 16 Nov 2026): read only, opened from
+// Wiring 73 "Show {Name} the record" (rules_global.customer_proof, 16 Nov 2026): look-only, opened from
 // 29 and 43. "You owe", then What happened newest first: Paid, Took on credit (what for, Signed ✓ or
 // Not signed) and every correction as its own Balance corrected card (old → new, reason).
 
@@ -84,7 +84,8 @@ test("73 shows You owe, then every event newest first with its own card", async 
   assert.equal(noReason.text, `Took on credit${formatGhs(1000)}${when(T0 + 3 * DAY)}No reason writtenNot signed`);
   assert.equal(schoolFees.text, `Took on credit${formatGhs(3000)}${when(T0 + 2 * DAY)}School feesNot signed`);
   assert.equal(rice.text, `Took on credit${formatGhs(6000)}${when(T0 + DAY)}RiceSigned ✓`);
-  assert.match(text, /Read only\. Please hand the phone back when you are done\./);
+  assert.match(text, /You owe ?GH₵80\.00 ?Nothing can be changed here\./, "the notice is right under You owe");
+  assert.doesNotMatch(text, /read only|hand the phone back/i);
 });
 
 test("the signed amount stays GH₵60.00 after a later correction, and 73 shows the correction", async () => {

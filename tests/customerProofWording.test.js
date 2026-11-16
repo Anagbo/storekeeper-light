@@ -43,7 +43,7 @@ test("the strings 72, 73 and the credit rows show", () => {
     "signature.title", "signature.owes", "signature.for", "signature.taken", "signature.payBy", "signature.box", "signature.signHere",
     "signature.clear", "signature.done", "signature.skip", "signature.alreadySigned", "signature.saveFailed", "signature.notFound",
     "creditRow.noReason", "creditRow.signed", "creditRow.notSigned", "creditRow.getSignature",
-    "record.show", "record.youOwe", "record.tookOnCredit", "record.corrected", "record.reason", "record.caption", "record.backToShop",
+    "record.show", "record.youOwe", "record.tookOnCredit", "record.corrected", "record.reason", "record.notice", "record.backToShop",
     "record.nothingYet", "record.notFound", "backup.signaturesLeftOutOne", "backup.signaturesLeftOutMany"
   ];
   for (const key of keys) {
@@ -52,7 +52,7 @@ test("the strings 72, 73 and the credit rows show", () => {
   }
   assert.equal(posText("signature.signHere"), "Sign here with your finger");
   assert.equal(posText("signature.skip"), "Skip for now");
-  assert.equal(posText("record.caption"), "Read only. Please hand the phone back when you are done.");
+  assert.equal(posText("record.notice"), "Nothing can be changed here.");
   assert.equal(posText("record.show", { name: "Amoto" }), "Show Amoto the record");
 });
 

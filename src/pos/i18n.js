@@ -712,7 +712,7 @@ const ENGLISH = Object.freeze({
   "record.corrected": "Balance corrected",
   "record.was": "Was {amount}",
   "record.reason": "Reason: {reason}",
-  "record.caption": "Read only. Please hand the phone back when you are done.",
+  "record.notice": "Nothing can be changed here.",
   "record.backToShop": "Back to shop",
   "record.nothingYet": "Nothing recorded yet.",
   "record.notFound": "This record could not be found."

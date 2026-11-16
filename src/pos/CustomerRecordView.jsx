@@ -9,7 +9,7 @@ import { posText as t } from "./i18n.js";
 import { PosBackButton, PosPage } from "./PosComponents.jsx";
 import SignedTag from "./SignedTag.jsx";
 
-// Wiring 73 "Show {Name} the record" (rules_global.customer_proof, 16 Nov 2026). Read only, for the
+// Wiring 73 "Show {Name} the record" (rules_global.customer_proof, 16 Nov 2026). Look-only, for the
 // customer to read: the balance as "You owe", then what happened, newest first. Paid rows, credit rows
 // (what for, Signed ✓ or Not signed) and every balance correction from 54 as its own dashed card (old →
 // new, reason). No edit, collect, correct, reminder or delete controls; no profit, cost, other
@@ -104,6 +104,9 @@ export default function CustomerRecordView({ params = {}, onBack }) {
             <p className="text-[22px] font-bold">{t("record.youOwe")}</p>
             <p className="amount-fit font-extrabold leading-tight text-rose-950">{formatGhs(data.balancePesewas)}</p>
           </section>
+          {/* Wiring 73 notice (16 Nov 2026): one plain line right under You owe, so a long history never
+              pushes it off screen. */}
+          <p data-record-notice="" className="text-base text-slate-600">{t("record.notice")}</p>
           <h2 className="text-2xl font-extrabold">{t("collect.onTimeHistory")}</h2>
           {data.rows.length ? (
             <ul className="flex flex-col gap-2.5">
@@ -112,7 +115,6 @@ export default function CustomerRecordView({ params = {}, onBack }) {
           ) : <p className="text-lg text-slate-800">{t("record.nothingYet")}</p>}
         </>
       )}
-      <p className="text-lg text-slate-600">{t("record.caption")}</p>
       <button type="button" onClick={onBack} className="h-[60px] w-full rounded-2xl border-[3px] border-emerald-900 bg-emerald-900 px-3 text-xl font-extrabold text-white">
         {t("record.backToShop")}
       </button>
