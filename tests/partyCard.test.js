@@ -117,7 +117,7 @@ test("22 Owed card: white card with a red left edge; the top part opens 32; tota
   const top = all(card, (n) => n.type === "button" && n.props["aria-label"] === "Owed to you, see all")[0];
   assert.ok(top);
   assert.ok(textOf(top).includes("Owed to you"));
-  assert.ok(textOf(top).includes("See all ›"));
+  assert.ok(textOf(top).includes("See all"));
   const total = all(top, (n) => n.props["data-owed-total"] !== undefined)[0];
   assert.equal(textOf(total), "GH₵2,822.81");
   assert.match(cls(total), /text-\[30px\]/);
@@ -127,7 +127,7 @@ test("22 Owed card: white card with a red left edge; the top part opens 32; tota
   top.props.onClick();
   assert.deepEqual(navigated.at(-1), ["PeopleWhoOweYou"]);
   assert.ok(textOf(card).includes("Collect first"));
-  // 360px: the 30px total never shrinks; "See all ›" moves under it when both do not fit.
+  // 360px: the 30px total never shrinks; "See all" moves under it when both do not fit.
   assert.match(cls(total), /whitespace-nowrap/);
   assert.ok(cls(top).split(/\s+/).includes("flex-wrap"));
 });

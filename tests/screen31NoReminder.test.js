@@ -5,7 +5,7 @@ import { flushEffects, loadJsx, render, setLiveQuery, textOf, walk } from "./hel
 // Wiring 31 "No reminder button on 31" (14 Nov 2026): the WhatsApp {Name} reminder button is gone
 // (and with it Add contact and Edit contact, decided by the owner the same day). Top to bottom:
 // Send receipt, the offline line (offline only), Copy receipt (these three only with the receipts
-// flag on), See {Name}'s details ›, Done.
+// flag on), See {Name}'s details, Done.
 const ON = { VITE_ENABLE_POS_RECEIPTS: "true" };
 const OFFLINE_LINE = "You are offline. WhatsApp will send it when you are back online.";
 
@@ -49,19 +49,19 @@ function sequence(view) {
 for (const phone of ["0241234567", ""]) {
   const which = phone ? "with a phone" : "without a phone";
 
-  test(`31 ${which}, receipts on, offline: Send receipt, line, Copy receipt, See Ama's details ›, Done`, async () => {
+  test(`31 ${which}, receipts on, offline: Send receipt, line, Copy receipt, See Ama's details, Done`, async () => {
     setOnline(false);
-    assert.deepEqual(sequence(await show31(ON, phone)), ["Send receipt", "line", "Copy receipt", "See Ama’s details ›", "Done"]);
+    assert.deepEqual(sequence(await show31(ON, phone)), ["Send receipt", "line", "Copy receipt", "See Ama’s details", "Done"]);
   });
 
   test(`31 ${which}, receipts on, online: no offline line`, async () => {
     setOnline(true);
-    assert.deepEqual(sequence(await show31(ON, phone)), ["Send receipt", "Copy receipt", "See Ama’s details ›", "Done"]);
+    assert.deepEqual(sequence(await show31(ON, phone)), ["Send receipt", "Copy receipt", "See Ama’s details", "Done"]);
   });
 
-  test(`31 ${which}, receipts off: See Ama's details › and Done only`, async () => {
+  test(`31 ${which}, receipts off: See Ama's details and Done only`, async () => {
     setOnline(false);
-    assert.deepEqual(sequence(await show31({}, phone)), ["See Ama’s details ›", "Done"]);
+    assert.deepEqual(sequence(await show31({}, phone)), ["See Ama’s details", "Done"]);
   });
 
   test(`31 ${which}: no WhatsApp reminder, no wa.me link, no Add or Edit contact`, async () => {

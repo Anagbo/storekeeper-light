@@ -75,7 +75,6 @@ function MyItems({ onBack, onNavigate }) {
               <span className={`shrink-0 font-extrabold ${item.default_price > 0 ? "text-emerald-900" : "text-amber-900"}`}>
                 {item.default_price > 0 ? formatGhs(toPesewas(item.default_price)) : t("items.setPrice")}
               </span>
-              <span className="text-2xl font-extrabold" aria-hidden="true">›</span>
             </button>
           ))}
         </div>

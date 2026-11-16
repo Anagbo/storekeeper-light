@@ -62,7 +62,7 @@ test("the app draws the bar from that same rule, and keeps the header and the si
 
 // ---- every screen without the bar still has a way back, to Home, or to finish ----
 
-const EXIT_LABEL = /^(‹ )?(back|close|close menu|cancel|cancel request|cancel sale|done|home|skip|keep|continue)/i;
+const EXIT_LABEL = /^(\u2039 )?(back|close|close menu|cancel|cancel request|cancel sale|done|home|skip|keep|continue)/i;
 const EXIT_TARGETS = new Set(["BACK", "22", "FROM", "CANCELMOMO", "PAYOTHER"]);
 // Actions that save or move forward are not a way out (16 Done saves the sale and stays off until the parts add up).
 const FORWARD_TARGETS = new Set(["MOMO16", "MOMO27", "SAVECREDIT", "SAVE19", "NEXT17", "NEXT53", "MOMOOK", "SEND", "SAVEMOMO"]);

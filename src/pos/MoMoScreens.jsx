@@ -282,7 +282,7 @@ export function PaymentSettings({ params = {}, onBack, onNavigate, onUpdateParam
           <p className="text-base">Confirmed by itself.{showPhoneFee ? ` Fee ${formatGhs(MOMO_CONFIG.phoneRequestFeePesewas)} per payment.` : ""}</p>
         </div>
         {PHONE_REQUEST_ENABLED
-          ? <button type="button" aria-label="Phone request: set up" onClick={() => onNavigate("MoMoSetup")} className="shrink-0 rounded-xl px-2 py-3 text-lg font-extrabold text-emerald-900">Set up ›</button>
+          ? <button type="button" aria-label="Phone request: set up" onClick={() => onNavigate("MoMoSetup")} className="shrink-0 rounded-xl px-2 py-3 text-lg font-extrabold text-emerald-900">Set up</button>
           : <PosStatusTag>Coming soon</PosStatusTag>}
       </div>
     </PosCard>

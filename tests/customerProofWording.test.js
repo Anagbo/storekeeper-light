@@ -53,7 +53,7 @@ test("the strings 72, 73 and the credit rows show", () => {
   assert.equal(posText("signature.signHere"), "Sign here with your finger");
   assert.equal(posText("signature.skip"), "Skip for now");
   assert.equal(posText("record.caption"), "Read only. Please hand the phone back when you are done.");
-  assert.equal(posText("record.show", { name: "Amoto" }), "Show Amoto the record ›");
+  assert.equal(posText("record.show", { name: "Amoto" }), "Show Amoto the record");
 });
 
 test("the scan catches the words", () => {

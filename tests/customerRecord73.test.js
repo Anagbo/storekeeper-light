@@ -121,25 +121,25 @@ test("Hide amounts never hides 73: it is about one person", async () => {
   assert.doesNotMatch(text, /••••/);
 });
 
-test("29 opens 73 with Show {Name} the record ›; Back and Back to shop return to 29", async () => {
+test("29 opens 73 with Show {Name} the record; Back and Back to shop return to 29", async () => {
   const app = await openPosApp();
   after(() => app.restoreConsole());
   await app.tap(/^Owed$/);
   await app.tap(/^Kofi/);
   assert.equal(app.route, "DebtorDetail");
-  const show = app.button("Show Kofi the record ›");
-  assert.equal(textOf(show).replace(/\s+/g, " "), "Show Kofi the record ›");
-  await app.tap("Show Kofi the record ›");
+  const show = app.button("Show Kofi the record");
+  assert.equal(textOf(show).replace(/\s+/g, " "), "Show Kofi the record");
+  await app.tap("Show Kofi the record");
   assert.equal(app.route, "CustomerRecordView");
   assert.equal(app.params.customerId, kofi.id);
   assert.match(app.text(), /You owe/);
   assert.equal([...walk(app.view.tree)].some((node) => node.props?.["aria-label"] === "Open menu"), false, "no Menu on 73");
   await app.tap("Back to shop");
   assert.equal(app.route, "DebtorDetail");
-  await app.tap("Show Kofi the record ›");
+  await app.tap("Show Kofi the record");
   await app.tap("Back");
   assert.equal(app.route, "DebtorDetail");
-  await app.tap("Show Kofi the record ›");
+  await app.tap("Show Kofi the record");
   await app.phoneBack();
   assert.equal(app.route, "DebtorDetail");
 });

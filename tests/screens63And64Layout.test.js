@@ -98,7 +98,7 @@ test("63: Phone request is one row; flag off shows a grey Coming soon tag, not t
   assert.match(text, /Phone request/);
   assert.match(text, /Confirmed by itself\./);
   assert.match(text, /Coming soon/);
-  assert.doesNotMatch(text, /Set up ›/);
+  assert.doesNotMatch(text, /Set up/);
   assert.doesNotMatch(text, /Not available yet/);
   const disabledButtons = nodes(view).filter((node) => (node.type === "button" || (typeof node.type === "function" && /Button$/.test(node.type.name))) && node.props.disabled === true);
   assert.deepEqual(disabledButtons.map((node) => textOf(node)), [], "no disabled button on the screen");
@@ -107,7 +107,7 @@ test("63: Phone request is one row; flag off shows a grey Coming soon tag, not t
   assert.equal(row.props.onClick, undefined, "the row is not tappable");
 });
 
-test("63: Phone request on: the row has Set up › on the right and it opens 60", async () => {
+test("63: Phone request on: the row has Set up on the right and it opens 60", async () => {
   const error = console.error;
   console.error = () => {};
   let opened = null;
@@ -116,8 +116,8 @@ test("63: Phone request on: the row has Set up › on the right and it opens 60"
     const view = render({ type: PaymentSettings, props: { onBack() {}, onNavigate: (route) => { opened = route; } } });
     assert.match(textOf(view.tree), /Confirmed by itself\. Fee GH₵0\.25 per payment\./);
     assert.doesNotMatch(textOf(view.tree), /Coming soon/);
-    const setUp = nodes(view).find((node) => node.type === "button" && textOf(node).trim() === "Set up ›");
-    assert.ok(setUp, "Set up › button");
+    const setUp = nodes(view).find((node) => node.type === "button" && textOf(node).trim() === "Set up");
+    assert.ok(setUp, "Set up button");
     setUp.props.onClick();
     assert.equal(opened, "MoMoSetup");
   } finally {

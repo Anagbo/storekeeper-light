@@ -290,11 +290,11 @@ test("3.11: with the switch off the profit card is hidden and no nudge shows (an
 test("3.11: the two debt tiles are white with a coloured edge and a clear link", async () => {
   const { view, navigations } = await mountMyMoney(reportFor());
   const text = textOf(view.tree);
-  assert.ok(text.includes(`Owed to you${formatGhs(9300)}See who ›`) || (text.includes("Owed to you") && text.includes(formatGhs(9300)) && text.includes("See who ›")));
-  assert.ok(text.includes("You owe suppliers") && text.includes(formatGhs(28000)) && text.includes("See list ›"));
-  const owed = findButton(view.tree, "See who ›");
+  assert.ok(text.includes(`Owed to you${formatGhs(9300)}See who`) || (text.includes("Owed to you") && text.includes(formatGhs(9300)) && text.includes("See who")));
+  assert.ok(text.includes("You owe suppliers") && text.includes(formatGhs(28000)) && text.includes("See list"));
+  const owed = findButton(view.tree, "See who");
   owed.props.onClick();
-  findButton(view.tree, "See list ›").props.onClick();
+  findButton(view.tree, "See list").props.onClick();
   assert.deepEqual(navigations.map((entry) => entry[0]), ["PeopleWhoOweYou", "YouOweSuppliers"]);
   assert.match(owed.props.className, /bg-white/);
   assert.match(owed.props.className, /border-l-/);

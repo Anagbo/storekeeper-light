@@ -830,7 +830,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
           {/* Wiring 29/43: Last reminder, under the action buttons and above Correct balance. Per
               person; it says when the reminder was handed to WhatsApp, never that it was delivered. */}
           <p data-last-reminder="" className="text-center text-base text-slate-800">{lastReminderLabel}</p>
-          {/* Wiring 29/43 (16 Nov 2026): "Show {Name} the record ›" under the Last reminder line opens 73,
+          {/* Wiring 29/43 (16 Nov 2026): "Show {Name} the record" under the Last reminder line opens 73,
               read only, for the customer to read. One line: a long name is cut, never the words around it. */}
           <button
             type="button"
@@ -841,7 +841,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
           >
             <span className="shrink-0">Show</span>{" "}
             <span className="min-w-0 truncate">{displayName(data.name)}</span>{" "}
-            <span className="shrink-0">the record ›</span>
+            <span className="shrink-0">the record</span>
           </button>
           {balanceReceiptText && (
             <>

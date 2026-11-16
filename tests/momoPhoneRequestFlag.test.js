@@ -39,7 +39,7 @@ test("screen 61 shows the Phone request tile disabled with Not available yet", (
 
 test("screen 63 shows Coming soon instead of Set up, and hides Always: phone request, while Phone request is off", () => {
   const settings = section(momoSource, "PaymentSettings", "MoMoSetup");
-  assert.match(settings, /PHONE_REQUEST_ENABLED\s*\?\s*<button[^>]*onClick=\{\(\) => onNavigate\("MoMoSetup"\)\}[^>]*>Set up ›<\/button>\s*:\s*<PosStatusTag>Coming soon<\/PosStatusTag>/);
+  assert.match(settings, /PHONE_REQUEST_ENABLED\s*\?\s*<button[^>]*onClick=\{\(\) => onNavigate\("MoMoSetup"\)\}[^>]*>Set up<\/button>\s*:\s*<PosStatusTag>Coming soon<\/PosStatusTag>/);
   assert.match(settings, /\.\.\.\(PHONE_REQUEST_ENABLED \? \[\["phone", "Always: phone request"\]\] : \[\]\)/);
 });
 

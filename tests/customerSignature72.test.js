@@ -230,7 +230,7 @@ test("Add debt 53 > 18: 72 shows the amount added and the reason, then ManualDeb
   await app.keys(["7", "0"]);
   byPlaceholder(app, "What for? (optional)").props.onChange({ target: { value: "Cement" } });
   await app.settle();
-  await app.tap(/^Next ›/);
+  await app.tap(/^Next/);
   assert.equal(app.route, "WhenWillTheyPay");
   await app.tap(/^Save · Juju owes/);
   assert.equal(app.route, "CustomerSignature");
@@ -257,7 +257,7 @@ test("53 inherited-terms save: the same signature step", async () => {
   await app.tap(/^Next/);
   assert.equal(app.route, "ManualDebtAmount");
   await app.keys(["5", "0"]);
-  await app.tap(/^Next ›/);
+  await app.tap(/^Next/);
   assert.equal(app.route, "CustomerSignature");
   await app.tap("Skip for now");
   assert.equal(app.route, "ManualDebtSaved");

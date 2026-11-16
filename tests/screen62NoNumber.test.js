@@ -15,7 +15,7 @@ globalThis.HTMLElement ??= class {};
 // is saved, 62 shows one card "Your MoMo number is not set up yet" with "Set up MoMo number" (63)
 // instead of "Send to my number"; the three steps are hidden; Money received is off. After Save on 63,
 // Back is on 62 with the draft intact, the number shown and Money received on. Same for a MoMo sale,
-// a MoMo collection, a split MoMo part (16) and Save plan (19). No "Menu › Settings › …" text.
+// a MoMo collection, a split MoMo part (16) and Save plan (19). No "Menu, then Settings" text path.
 
 let liveResults = new Map();
 setLiveQuery((deps, query) => {
@@ -134,7 +134,7 @@ function assertNotSetUp(app, flow, where) {
   assert.equal(app.button(/^Money received$/).props.disabled, true, `${where}: Money received is off`);
   assert.doesNotMatch(text, /Send to my number/, `${where}: no Send to my number card`);
   assert.doesNotMatch(text, /Before you tap Money received|Wait for the MoMo message/, `${where}: the steps are hidden`);
-  assert.doesNotMatch(text, /Menu ›|Settings ›|MoMo payments\./, `${where}: no text path to Settings`);
+  assert.doesNotMatch(text, /Menu 203A|Settings 203A|MoMo payments\./, `${where}: no text path to Settings`);
   assert.ok(text.includes(flow.amount), `${where}: the amount is still shown`);
   if (flow.partLine) assert.ok(text.includes(flow.partLine), `${where}: ${flow.partLine}`);
 }
@@ -222,7 +222,7 @@ test("63 opened from Settings (not from 62) with no number: the switch stays off
   assert.throws(() => app.input("My MoMo number"), /No input/);
 });
 
-test("no screen tells the owner a Menu › Settings path", () => {
+test("no screen tells the owner a Menu then Settings path", () => {
   const source = readFileSync(new URL("../src/pos/MoMoScreens.jsx", import.meta.url), "utf8");
-  assert.doesNotMatch(source, /Menu ›|Settings first/);
+  assert.doesNotMatch(source, /Menu 203A|Settings first/);
 });

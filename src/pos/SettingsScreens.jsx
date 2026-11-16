@@ -45,7 +45,6 @@ function LinkRow({ id, icon: Icon, title, detail, tag, onClick }) {
         {detail && <span id={`${id}-detail`} className="block text-sm text-slate-700">{detail}</span>}
       </span>
       {tag}
-      <span aria-hidden="true" className="text-2xl font-extrabold text-slate-700">›</span>
     </button>
   );
 }

@@ -98,13 +98,13 @@ test("45 picker: + New supplier shows the name and phone fields in the same card
   assert.equal(saved[0].supplierId, undefined);
 });
 
-test("45 picker: with 6 suppliers it shows 4 and \"Show all 6 suppliers ›\", which shows the whole list", async () => {
+test("45 picker: with 6 suppliers it shows 4 and \"Show all 6 suppliers\", which shows the whole list", async () => {
   const six = ["A", "B", "C", "D", "E", "F"].map((letter, index) => supplier(`s${index + 1}`, `Supplier ${letter}`));
   const view = await mount(six);
   assert.deepEqual(radios(view.tree).map((n) => n.props["data-supplier-id"]), ["s1", "s2", "s3", "s4", "new"]);
   const showAll = all(view.tree, (n) => n.type === "button" && n.props["data-show-all"] !== undefined)[0];
   assert.ok(showAll);
-  assert.equal(textOf(showAll), "Show all 6 suppliers ›");
+  assert.equal(textOf(showAll), "Show all 6 suppliers");
   showAll.props.onClick();
   view.rerender();
   assert.deepEqual(radios(view.tree).map((n) => n.props["data-supplier-id"]), ["s1", "s2", "s3", "s4", "s5", "s6", "new"]);

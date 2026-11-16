@@ -212,7 +212,7 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, o
         </section>
       )}
       <PosPrimaryButton type="button" disabled={saving || !Number.isSafeInteger(amountPesewas) || amountPesewas <= 0} onClick={continueFlow}>
-        <Check size={20} aria-hidden="true" /> Next ›
+        <Check size={20} aria-hidden="true" /> Next
       </PosPrimaryButton>
     </PosPage>
   );
@@ -293,7 +293,7 @@ export function ManualDebtSaved({ params, onDone, onNavigate, shopName }) {
         ) : (
           <button type="button" disabled={!reminderText} onClick={(event) => reminders.onReminder(event, { person: reminderPerson, lastReminderAt, share: shareReminder })} className={whatsappClass}>WhatsApp {displayName(params.customer?.name)}</button>
         )}
-        <PosSecondaryButton type="button" onClick={() => onNavigate("DebtorDetail", { customerId: result?.customer?.id ?? params.customer?.id, customerName: params.customer?.name, debtId: result?.debt?.id })}>See details ›</PosSecondaryButton>
+        <PosSecondaryButton type="button" onClick={() => onNavigate("DebtorDetail", { customerId: result?.customer?.id ?? params.customer?.id, customerName: params.customer?.name, debtId: result?.debt?.id })}>See details</PosSecondaryButton>
       </div>
       <div className="mt-auto grid gap-2">
         <PosPrimaryButton type="button" onClick={onDone}>Done</PosPrimaryButton>
