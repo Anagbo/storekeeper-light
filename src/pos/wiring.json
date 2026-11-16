@@ -3868,7 +3868,8 @@
     "The phone is handed to the customer. Text at least 18px, buttons 52px or more, Done full width.",
     "Done is disabled until ink exists. Skip for now is always available. Leaving by Back or closing the app counts as Skip for now.",
     "Storage: small vector strokes (or compressed PNG under 20 KB) saved on the debt event as signature plus signedAt. Local only, included in backup and restore. Never sent anywhere in this version.",
-    "Honest limit: a signature shows the customer saw and accepted this amount; it is not a legal proof. Do not use the words legal, proof or guaranteed anywhere in the UI."
+    "Honest limit: a signature shows the customer saw and accepted this amount; it is not a legal proof. Do not use the words legal, proof or guaranteed anywhere in the UI.",
+    "Snapshot: the signature record stores the credit amount and the reason as they were when signed. Anything changed afterwards is shown on 73 as a Balance corrected card; a signature never silently covers a different amount."
    ]
   },
   "73": {
@@ -3898,7 +3899,8 @@
     "Top: {Name}, then pink card \"You owe GH₵x\" (balance, wording for the customer). Below: \"What happened\", newest first, one card per event: Paid (amount, \"dd/mm/yyyy or Today HH:mm · Cash GH₵x, MoMo GH₵y\"), Took on credit (amount in dark red, date/time, what for, tag \"Signed ✓\" green or \"Not signed\" grey).",
     "Every credit row shows what it was for (items, or the reason typed on 54/53). A credit with no items and no reason shows \"No reason written\".",
     "Caption: \"Read only. Please hand the phone back when you are done.\"",
-    "No private shop data on this screen: no profit, cost, other customers, totals or phone numbers."
+    "No private shop data on this screen: no profit, cost, other customers, totals or phone numbers.",
+    "Corrections are shown (decided 16 Nov 2026). Every balance correction made on 54 appears in \"What happened\" as its own dashed card: \"Balance corrected\", \"GH₵old → GH₵new\", date, and \"Reason: …\" (the reason entered on 54). A customer can therefore see if a signed amount was changed later. Corrections are never hidden or merged into the credit rows."
    ]
   }
  },
@@ -3994,7 +3996,8 @@
    "threshold": "VITE_SIGNATURE_THRESHOLD_PESEWAS, default 5000, read only in src/config/features.js.",
    "what_for": "Every credit shows its reason on 29, 43 and 73.",
    "stored": "signature (vector strokes) and signedAt live on the debt event, local, in backup and restore. Dexie version bump only if a new table is needed; prefer fields on the existing event.",
-   "deferred": "Customer confirmation by link on WhatsApp with a server timestamp waits for the backend. Codes generated on the phone are NOT used: they prove nothing and conflict with MoMo anti-fraud advice."
+   "deferred": "Customer confirmation by link on WhatsApp with a server timestamp waits for the backend. Codes generated on the phone are NOT used: they prove nothing and conflict with MoMo anti-fraud advice.",
+   "corrections": "Balance corrections after a signature stay visible on 73 (Balance corrected, old → new, reason), so a signed amount cannot be quietly changed."
   },
   "hide_amounts": {
    "decided": "16 Nov 2026",
