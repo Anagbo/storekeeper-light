@@ -8,7 +8,7 @@ import { formatLastReminder } from "./reminderLabel.js";
 import { useReminderCheck } from "./ReminderCheck.jsx";
 import { latestReminderAt, loadReminderEvents } from "../db/reminders.js";
 import { formatDate, formatTime } from "../lib/formatDate.js";
-import { formatGhs, formatGhsAmount, toPesewas } from "../lib/money.js";
+import { formatGhs, toPesewas } from "../lib/money.js";
 import { formatGhanaCard } from "../utils/formatters.js";
 import { formatHistoryTimestamp } from "../utils/customerDebtHistory.js";
 import { loadCustomerHistory } from "../utils/loadCustomerDebtHistory.js";
@@ -979,7 +979,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                       {event.type === "payment"
                         ? "+"
                         : ""} {event.type === "adjustment"
-                        ? `${formatGhs(event.previousBalancePesewas ?? event.newBalancePesewas ?? 0)} → ${formatGhsAmount(event.newBalancePesewas ?? 0)}`
+                        ? `${formatGhs(event.previousBalancePesewas ?? event.newBalancePesewas ?? 0)} → ${formatGhs(event.newBalancePesewas ?? 0)}`
                         : formatGhs(event.amountPesewas)}
                     </strong>
                   </li>

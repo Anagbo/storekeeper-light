@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { ArrowUpRight } from "lucide-react";
-import { formatGhs, formatGhsAmount } from "../lib/money.js";
+import { formatGhs } from "../lib/money.js";
 import { posText as t } from "./i18n.js";
 import { loadMyMoneyReport } from "./myMoneyReport.js";
 import { PosBackButton, PosCard, PosPage } from "./PosComponents.jsx";
@@ -129,7 +129,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home") 
                 <span className="rounded-[10px] border-2 border-slate-500 bg-slate-100 px-2 text-[15px] font-extrabold text-slate-950">{t("money.estimate")}</span>
               </div>
               <p className="amount-fit font-extrabold leading-tight text-emerald-900">{formatGhs(summary.profit)}</p>
-              <p className="break-words text-sm leading-snug text-slate-800 sm:text-base">{t("money.profitSum", { sales: formatGhsAmount(summary.sales), stock: formatGhsAmount(summary.stockBought), other: formatGhsAmount(summary.otherCosts) })}</p>
+              <p className="break-words text-sm leading-snug text-slate-800 sm:text-base">{t("money.profitSum", { sales: formatGhs(summary.sales), stock: formatGhs(summary.stockBought), other: formatGhs(summary.otherCosts) })}</p>
               {report.averageProfitPesewas !== null && period === "week" && (
                 <p className="text-sm leading-snug text-slate-800 sm:text-base">{t("money.averageFourWeeks", { amount: formatGhs(report.averageProfitPesewas) })}</p>
               )}
