@@ -391,7 +391,7 @@ function RecordedPartRow({ part }) {
             : <span data-row-status="" className="block text-sm font-semibold text-slate-700 [overflow-wrap:anywhere]">{status}</span>)}
         </span>
       </span>
-      <span className="shrink-0 whitespace-nowrap">{formatGhs(part.amountPesewas)}</span>
+      <span data-paying-today-amount="" className="shrink-0 whitespace-nowrap tabular-nums">{formatGhs(part.amountPesewas)}</span>
     </div>
   );
 }
@@ -780,14 +780,14 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
         <fieldset>
           <legend className="mb-1 text-base font-extrabold">{t("credit.firstPaymentMethod")}</legend>
           {recordedParts.length > 0 ? (
-            <div className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
+            <div data-paying-today="" className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
               <p className="mb-2 font-extrabold text-emerald-950">{t("credit.payingToday")}</p>
               <div className="flex flex-col gap-2">
                 {paidOnly(recordedParts).map((part) => <RecordedPartRow key={`${part.paymentMethod}-${part.amountPesewas}`} part={part} />)}
               </div>
-              <div className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 pt-2 font-extrabold text-emerald-950">
+              <div data-total-today="" className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 px-3 pt-2 font-extrabold text-emerald-950">
                 <span>{t("credit.totalToday")}</span>
-                <span>{formatGhs(getPaidPaymentPesewas(recordedParts))}</span>
+                <span data-paying-today-amount="" className="shrink-0 whitespace-nowrap tabular-nums">{formatGhs(getPaidPaymentPesewas(recordedParts))}</span>
               </div>
               <StillOwedRow amountPesewas={stillOwedAfterTodayPesewas} customerName={params.customer?.name} />
             </div>
@@ -816,14 +816,14 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
               ))}
             </div>
             {singlePreviewParts.length > 0 && (
-              <div data-single-method-panel="" className="mt-3 rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
+              <div data-single-method-panel="" data-paying-today="" className="mt-3 rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
                 <p className="mb-2 font-extrabold text-emerald-950">{t("credit.payingToday")}</p>
                 <div className="flex flex-col gap-2">
                   {singlePreviewParts.map((part) => <RecordedPartRow key={part.paymentMethod} part={part} />)}
                 </div>
-                <div className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 pt-2 font-extrabold text-emerald-950">
+                <div data-total-today="" className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 px-3 pt-2 font-extrabold text-emerald-950">
                   <span>{t("credit.totalToday")}</span>
-                  <span>{formatGhs(todayPaymentPesewas)}</span>
+                  <span data-paying-today-amount="" className="shrink-0 whitespace-nowrap tabular-nums">{formatGhs(todayPaymentPesewas)}</span>
                 </div>
                 <StillOwedRow amountPesewas={Math.max(0, maxCreditPesewas - todayPaymentPesewas)} customerName={params.customer?.name} />
               </div>
@@ -833,19 +833,19 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
         </fieldset>
       )}
       {paymentAlreadyMadeToday && paidTodayPesewas > 0 && splitParts.length > 0 && (
-        <div className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
+        <div data-paying-today="" className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
         <p className="mb-2 font-extrabold text-emerald-950">{t("credit.payingToday")}</p>
         <div className="flex flex-col gap-2">
           {paidOnly(splitParts).map((part) => (
             <div key={`${part.paymentMethod}-${part.amountPesewas}`} className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 font-bold">
               <span>{t(`credit.method.${part.paymentMethod}`)}</span>
-              <span>{formatGhs(part.amountPesewas)}</span>
+              <span data-paying-today-amount="" className="shrink-0 whitespace-nowrap tabular-nums">{formatGhs(part.amountPesewas)}</span>
             </div>
           ))}
         </div>
-        <div className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 pt-2 font-extrabold text-emerald-950">
+        <div data-total-today="" className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 px-3 pt-2 font-extrabold text-emerald-950">
           <span>{t("credit.totalToday")}</span>
-          <span>{formatGhs(paidTodayPesewas)}</span>
+          <span data-paying-today-amount="" className="shrink-0 whitespace-nowrap tabular-nums">{formatGhs(paidTodayPesewas)}</span>
         </div>
         <StillOwedRow amountPesewas={stillOwedAfterTodayPesewas} customerName={params.customer?.name} />
         </div>
@@ -945,7 +945,7 @@ function CreditSaved({ params, onHome, onNavigate, shopName }) {
               </div>
             )}
           </div>
-          <div className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 pt-2 font-extrabold text-emerald-950">
+          <div data-total-today="" className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 px-3 pt-2 font-extrabold text-emerald-950">
             <span>{t("credit.paymentRecordedTotal")}</span>
             <span className="tabular-nums">{formatGhs(result.initialPaymentPesewas)}</span>
           </div>

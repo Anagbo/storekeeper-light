@@ -16,7 +16,7 @@ export default function StillOwedRow({ amountPesewas, customerName }) {
         <UserRound size={18} className="shrink-0" aria-hidden="true" />
         <span className="min-w-0 [overflow-wrap:anywhere]">{name ? t("credit.stillOwedName", { name }) : t("credit.stillOwed")}</span>
       </span>
-      <span className="shrink-0 whitespace-nowrap">{formatGhs(amountPesewas)}</span>
+      <span data-paying-today-amount="" className="shrink-0 whitespace-nowrap tabular-nums">{formatGhs(amountPesewas)}</span>
     </div>
   );
 }
