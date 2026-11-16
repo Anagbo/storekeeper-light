@@ -469,6 +469,8 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
   const [frequency, setFrequency] = useState(params.frequency ?? "weekly");
   const carriedPaymentParts = getCarriedPaymentParts(params);
   const paidTodayPesewas = getPaidPaymentPesewas(carriedPaymentParts);
+  // Wiring 18 split rule: 19 carries the reason and shows it as a read-only "For" row.
+  const reasonOn19 = getCreditReasonCase(params).text;
   // In a split sale (flow=split) the payment today is taken on 16, so 19 hides its own
   // payment section and passes 16's parts through unchanged (K5, E2).
   const paymentAlreadyMadeToday = params.paymentAlreadyMadeToday === true ||
@@ -718,6 +720,8 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
     <PosPage className="flex flex-col gap-3">
       <h1 className="text-2xl font-extrabold">{t("credit.aLittleAtATime")}</h1>
       <CreditAmount amountPesewas={maxCreditPesewas} />
+      {/* Wiring 18 "Reason on 18": the reason carried from 18 (typed, the items or the 53 note), read-only; no row when empty. */}
+      {reasonOn19 && <ReasonForRow text={reasonOn19} />}
       <label className="block">
         <span className="mb-1 block text-lg font-extrabold">{t("credit.howMuchEachTime")}</span>
         <span className="flex min-h-16 items-center gap-2 rounded-2xl border-[3px] border-slate-500 px-4">
