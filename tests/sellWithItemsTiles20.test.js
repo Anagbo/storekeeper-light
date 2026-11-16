@@ -148,3 +148,29 @@ test("20 new item: a newly created item appears as a tile and selects like any o
   assert.equal(selected.props["aria-label"], "Milo, GH₵3.00, 1 in the sale");
   assert.equal(textOf(nodes(selected).find((node) => node.props["data-count-badge"] !== undefined)), "×1");
 });
+
+// Wiring 20 (16 Nov 2026): with no item tiles, "+ New item" spans the whole grid row (same 72px
+// height, dashed 3px border kept); with one or more tiles it stays the last tile of the grid.
+const classes = (node) => node.props.className.split(/\s+/);
+const SAME_LOOK = ["min-h-[72px]", "border-[3px]", "border-dashed", "border-emerald-900", "rounded-[18px]"];
+
+test("20 no items: + New item spans the full grid width, same height and dashed border", async () => {
+  const { view } = await show({ products: [] });
+  const button = newItemButton(view.tree);
+  for (const cls of [...SAME_LOOK, "col-span-2", "sm:col-span-3"]) assert.ok(classes(button).includes(cls), `class ${cls}`);
+  setLiveQuery(null);
+});
+
+test("20 with items: + New item stays the last grid tile, one column wide", async () => {
+  for (const products of [[BREAD], [BREAD, RICE]]) {
+    const { view } = await show({ products });
+    const button = newItemButton(view.tree);
+    for (const cls of SAME_LOOK) assert.ok(classes(button).includes(cls), `class ${cls}`);
+    assert.ok(!classes(button).some((cls) => /col-span/.test(cls)), "not stretched across the row");
+    const grid = nodes(view.tree).find((node) => node.type === "div" && /\bgrid-cols-2\b/.test(node.props.className ?? ""));
+    const buttons = [...walk(grid)].filter((node) => node.type === "button");
+    assert.equal(buttons.length, products.length + 1);
+    assert.equal(buttons.at(-1), button, "+ New item comes after every item tile");
+    setLiveQuery(null);
+  }
+});

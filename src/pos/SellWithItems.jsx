@@ -134,10 +134,11 @@ export default function SellWithItems({ params = {}, onBack, onNavigate, onUpdat
               </button>
             );
           })}
+          {/* With no item tiles "+ New item" spans the whole row; otherwise it is the last tile. */}
           <button
             type="button"
             onClick={() => onNavigate("NewItem")}
-            className="min-h-[72px] rounded-[18px] border-[3px] border-dashed border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800"
+            className={`${products.length ? "" : "col-span-2 sm:col-span-3 "}min-h-[72px] rounded-[18px] border-[3px] border-dashed border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800`}
           >
             + {t("sellItems.newItem")}
           </button>
