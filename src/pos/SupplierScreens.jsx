@@ -7,10 +7,11 @@ import { formatGhs, toPesewas } from "../lib/money.js";
 import { localDateString } from "../utils/installments.js";
 import { getSupplierBalances, orderSuppliersByRecentUse, SUPPLIER_CATEGORIES } from "../utils/suppliers.js";
 import { posText as t } from "./i18n.js";
-import { normalizeTypedAmount } from "./amountKeypad.js";
+import AmountTextInput from "./AmountTextInput.jsx";
 import { PartyCard } from "./PartyCard.jsx";
 import { PosBackButton, PosCard, PosPage, PosPrimaryButton } from "./PosComponents.jsx";
 import { useBackBlock, useBackHandler } from "./browserBack.js";
+import { useFormErrors } from "./formErrors.js";
 
 const CATEGORY_LABELS = Object.freeze({
   stock: "expense.category.stock",
@@ -49,14 +50,11 @@ function AmountInput({ label, value, onChange }) {
       <span className="block text-base font-bold">{label}</span>
       <span className="flex items-center gap-2 text-3xl font-extrabold">
         <span aria-hidden="true">GH₵</span>
-        <input
-          type="text"
-          inputMode="decimal"
-          autoComplete="off"
+        <AmountTextInput
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onValue={onChange}
           placeholder="0.00"
-          className="w-full min-w-0 bg-transparent text-right outline-none"
+          className="w-full min-w-0 bg-transparent outline-none"
         />
       </span>
     </label>
@@ -74,16 +72,15 @@ export function SpentMoney({ params = {}, onBack, onNavigate, onUpdateParams, on
   useBackBlock(saving);
   const [error, setError] = useState("");
   const amountPesewas = toPesewas(amount);
+  // rules_global.form_errors: shown after No with a problem, gone as soon as it is fixed.
+  const formErrors = useFormErrors([
+    ["amount", Number.isSafeInteger(amountPesewas) && amountPesewas > 0 ? "" : t("expense.enterAmount")],
+    ["category", category === "stock" ? "" : t("expense.creditStockOnly")]
+  ]);
 
   function continueToSupplierScreen() {
-    if (!Number.isSafeInteger(amountPesewas) || amountPesewas <= 0) {
-      setError(t("expense.enterAmount"));
-      return;
-    }
-    if (category !== "stock") {
-      setError(t("expense.creditStockOnly"));
-      return;
-    }
+    setError("");
+    if (!formErrors.check()) return;
     // 45's own draft kept from a Back comes back while the amount is the same (routes keptDrafts).
     onNavigate("StockOnCredit", { amountPesewas, category, note, ...(params.keptDrafts && { keptDrafts: params.keptDrafts }) });
   }
@@ -92,6 +89,7 @@ export function SpentMoney({ params = {}, onBack, onNavigate, onUpdateParams, on
     if (saving || !Number.isSafeInteger(amountPesewas) || amountPesewas <= 0) return;
     setSaving(true);
     setError("");
+    formErrors.clear();
     try {
       await onSave({ amountPesewas, paidAmountPesewas: amountPesewas, category, note, paidWith });
     } catch (saveError) {
@@ -108,9 +106,8 @@ export function SpentMoney({ params = {}, onBack, onNavigate, onUpdateParams, on
         <PosBackButton onClick={onBack} />
         <h1 className="text-2xl font-extrabold">{t("expense.title")}</h1>
       </div>
-      <AmountInput label={t("expense.amount")} value={amount} onChange={(typed) => {
-        // Wiring rules_global.amount_entry: the typed field follows the shared keypad rules.
-        const value = normalizeTypedAmount(typed, amount);
+      <AmountInput label={t("expense.amount")} value={amount} onChange={(value) => {
+        // Wiring rules_global.amount_entry: the typed field follows the shared rules (AmountTextInput).
         setAmount(value);
         onUpdateParams?.({ expenseAmount: value });
       }} />
@@ -118,7 +115,7 @@ export function SpentMoney({ params = {}, onBack, onNavigate, onUpdateParams, on
         <legend className="mb-1 text-lg font-extrabold">{t("expense.whatFor")}</legend>
         <div className="grid grid-cols-2 gap-2">
           {SUPPLIER_CATEGORIES.map((option) => (
-            <button key={option} type="button" aria-pressed={category === option} onClick={() => { setCategory(option); onUpdateParams?.({ expenseCategory: option }); setError(""); }} className={`min-h-12 rounded-xl border-2 px-3 text-left font-bold ${category === option ? "border-emerald-900 bg-emerald-100" : "border-slate-500 bg-white"}`}>
+            <button key={option} type="button" aria-pressed={category === option} onClick={() => { setCategory(option); onUpdateParams?.({ expenseCategory: option }); }} className={`min-h-12 rounded-xl border-2 px-3 text-left font-bold ${category === option ? "border-emerald-900 bg-emerald-100" : "border-slate-500 bg-white"}`}>
               {t(CATEGORY_LABELS[option])}
             </button>
           ))}
@@ -141,7 +138,7 @@ export function SpentMoney({ params = {}, onBack, onNavigate, onUpdateParams, on
       </fieldset>
       {/* Wiring 44: Paid with under Paid all now?, for Yes (Save). No asks it on 45 or at Pay on 46. */}
       <PaidWithChoice value={paidWith} onChange={(method) => { setPaidWith(method); onUpdateParams?.({ expensePaidWith: method }); }} />
-      {error && <p role="alert" className="rounded-xl bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
+      {(formErrors.message || error) && <p role="alert" className="rounded-xl bg-rose-100 p-3 font-semibold text-rose-950">{formErrors.message || error}</p>}
       <PosPrimaryButton type="button" onClick={() => void save()} disabled={saving || !Number.isSafeInteger(amountPesewas) || amountPesewas <= 0}>
         {saving ? t("expense.saving") : t("expense.save")}
       </PosPrimaryButton>
@@ -190,25 +187,24 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
   const isNew = newSupplier || noSuppliers;
   const listed = suppliers ?? [];
   const visible = showAll || listed.length <= 4 ? listed : listed.slice(0, 4);
+  // rules_global.form_errors: shown after Save with a problem, gone as soon as it is fixed (a supplier
+  // chosen, a name typed, or nothing left owed).
+  const formErrors = useFormErrors([
+    ["supplier", owedPesewas > 0 && !isNew && !supplierId ? t("expense.supplierRequired") : ""],
+    ["supplierName", owedPesewas > 0 && isNew && !supplierName.trim() ? t("expense.supplierNameRequired") : ""]
+  ]);
 
   function chooseSupplier(id) {
     // The new supplier fields are hidden, but what was typed in them is kept until Save.
     setNewSupplier(false);
     setSupplierId(id);
     onUpdateParams?.({ stockNewSupplier: false, stockSupplierId: id });
-    setError("");
   }
 
   async function save() {
     if (saving || !Number.isSafeInteger(paidPesewas) || paidPesewas < 0 || paidPesewas > amountPesewas) return;
-    if (owedPesewas > 0 && !isNew && !supplierId) {
-      setError(t("expense.supplierRequired"));
-      return;
-    }
-    if (owedPesewas > 0 && isNew && !supplierName.trim()) {
-      setError(t("expense.supplierNameRequired"));
-      return;
-    }
+    setError("");
+    if (!formErrors.check()) return;
     setSaving(true);
     setError("");
     try {
@@ -245,7 +241,10 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
       <section data-card="paid-now" className={card}>
         <label className="block">
           <span className="mb-1.5 block text-base font-extrabold">{t("expense.paidNow")}</span>
-          <input type="text" inputMode="decimal" autoComplete="off" value={paidAmount} onChange={(event) => { setPaidAmount(event.target.value); onUpdateParams?.({ stockPaidNow: event.target.value }); }} placeholder="0.00" className="h-14 w-full min-w-0 rounded-[14px] border-2 border-slate-500 bg-white px-3.5 text-right text-2xl font-extrabold" />
+          <span className="flex h-14 items-center gap-2 rounded-[14px] border-2 border-slate-500 bg-white px-3.5">
+            <span className="shrink-0 text-lg font-bold text-slate-700">GH₵</span>
+            <AmountTextInput value={paidAmount} onValue={(value) => { setPaidAmount(value); onUpdateParams?.({ stockPaidNow: value }); }} placeholder="0.00" className="h-full w-full min-w-0 bg-transparent text-2xl font-extrabold outline-none" />
+          </span>
         </label>
       </section>
       {validPaidAmount && paidPesewas > 0 && (
@@ -275,7 +274,7 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
                   {t("expense.showAllSuppliers", { count: listed.length })}
                 </button>
               )}
-              <SupplierRadio dashed checked={isNew} data-supplier-id="new" onSelect={() => { setNewSupplier(true); onUpdateParams?.({ stockNewSupplier: true }); setError(""); }}>
+              <SupplierRadio dashed checked={isNew} data-supplier-id="new" onSelect={() => { setNewSupplier(true); onUpdateParams?.({ stockNewSupplier: true }); }}>
                 <Plus size={24} aria-hidden="true" className="shrink-0" />
                 <b className="min-w-0 flex-1 text-lg">{t("expense.newSupplierRow")}</b>
               </SupplierRadio>
@@ -292,7 +291,7 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
           </section>
         </>
       )}
-      {error && <p role="alert" className="rounded-xl bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
+      {(formErrors.message || error) && <p role="alert" className="rounded-xl bg-rose-100 p-3 font-semibold text-rose-950">{formErrors.message || error}</p>}
       <PosPrimaryButton type="button" onClick={() => void save()} disabled={saving || !Number.isSafeInteger(amountPesewas) || amountPesewas <= 0 || !validPaidAmount}>
         {saving ? t("expense.saving") : t("expense.save")}
       </PosPrimaryButton>

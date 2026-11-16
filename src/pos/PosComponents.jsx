@@ -131,9 +131,9 @@ export function PosSecondaryButton({ children, className = "", ...props }) {
   return <button {...props} className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl border-2 border-slate-600 bg-white px-4 text-base font-bold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}>{children}</button>;
 }
 
-// The one Back button (prototype): "‹ Back", bold 800, 18px, 52px tall, 2px #0F172A border.
+// The one Back button (wiring rules_global.back_button): arrow-left icon (24px, 6px gap) then "Back", bold 800, 18px, 52px tall, 2px #0F172A border.
 export function PosBackButton({ className = "", ...props }) {
-  return <button type="button" aria-label={t("items.back")} {...props} className={`flex h-[52px] shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-[14px] border-2 border-[#0F172A] bg-white px-4 text-[18px] font-extrabold text-[#0F172A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}>‹ {t("items.back")}</button>;
+  return <button type="button" aria-label={t("items.back")} {...props} className={`flex h-[52px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-[14px] border-2 border-[#0F172A] bg-white px-4 text-[18px] font-extrabold text-[#0F172A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M19 12H5M11 5l-7 7 7 7" /></svg>{t("items.back")}</button>;
 }
 
 export function PosCard({ children, className = "", ...rest }) {

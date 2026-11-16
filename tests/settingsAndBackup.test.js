@@ -148,7 +148,7 @@ test("47: Backup and restore is a row that opens 71; Back and Done both go back,
   const { view, calls } = await mountSettings();
   row(view.tree, "Backup and restore").props.onClick();
   assert.equal(calls.backup, 1);
-  nodes(view.tree, (node) => node.type === "button" && textOf(node).trim() === "‹ Back")[0].props.onClick();
+  nodes(view.tree, (node) => node.type === "button" && textOf(node).trim() === "Back")[0].props.onClick();
   const done = nodes(view.tree, (node) => node.type === "button" && textOf(node).trim() === "Done").at(-1);
   done.props.onClick();
   assert.equal(calls.back, 2);
@@ -224,7 +224,7 @@ test("71: two cards, Save a backup (green Download backup) and Restore from a ba
   assert.match(download.props.className, /bg-\[#03543F\]/, "green");
   assert.match(choose.props.className, /bg-white/, "outlined");
   assert.match(choose.props.className, /border-2/);
-  nodes(view.tree, (node) => node.type === "button" && textOf(node).trim() === "‹ Back")[0].props.onClick();
+  nodes(view.tree, (node) => node.type === "button" && textOf(node).trim() === "Back")[0].props.onClick();
   assert.equal(calls.back, 1);
 });
 

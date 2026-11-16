@@ -11,6 +11,7 @@ import { useLargeAmountConfirm } from "./LargeAmountConfirm.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { useBackBlock } from "./browserBack.js";
+import { useFormErrors } from "./formErrors.js";
 import { getSplitPaymentParams } from "./routes.js";
 import AmountKeypad from "./AmountKeypad.jsx";
 import { pesewasToAmountText, pressAmountKey } from "./amountKeypad.js";
@@ -42,6 +43,12 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
   const hasSaleItems = saleItems.length > 0;
   const canSave = Number.isSafeInteger(amountPesewas) && amountPesewas > 0 &&
     (!hasSaleItems || amountPesewas === itemTotalPesewas);
+  // rules_global.form_errors: shown after MoMo or Owe with no amount, gone once there is one.
+  // The message names what the tap needed: credit (Owe) or MoMo (decided 16 Nov 2026).
+  const amountErrors = useFormErrors([
+    ["credit", canSave ? "" : t("sell.enterAmountFirst")],
+    ["momo", canSave ? "" : t("sell.enterAmountBeforeMomo")]
+  ]);
 
   // An amount that arrives from outside (not the one typed here) replaces what is on the pad.
   useEffect(() => {
@@ -148,13 +155,12 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
                 aria-pressed={paymentMethod === value}
                 onClick={() => {
                   if (value === "credit") {
-                    if (canSave && !busy) onNavigate("WhoOwesYou", { amountPesewas, saleItems });
-                    else setError(t("sell.enterAmountFirst"));
+                    if (amountErrors.check(["credit"]) && !busy) onNavigate("WhoOwesYou", { amountPesewas, saleItems });
                   } else if (value === "momo") {
                     // Brief 3.12: a large MoMo amount asks before 61 (before the customer is asked to pay).
-                    if (canSave && !busy) {
+                    if (amountErrors.check(["momo"]) && !busy) {
                       if (!largeAmount.guard(amountPesewas, () => onNavigate("MoMoChoice", { amountPesewas, saleItems }), { momo: true })) onNavigate("MoMoChoice", { amountPesewas, saleItems });
-                    } else setError(t("sell.enterAmountFirst"));
+                    }
                   } else setPaymentMethod(value);
                 }}
                 disabled={value === "credit" && (!canSave || busy)}
@@ -185,7 +191,7 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
               <span className="hidden w-full min-w-0 truncate text-center sm:inline">{t("sell.split")}</span>
             </button>
           </div>
-          {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 text-base font-semibold text-rose-950">{error}</p>}
+          {(amountErrors.message || error) && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 text-base font-semibold text-rose-950">{amountErrors.message || error}</p>}
           <SaveAttemptNotice saveAttempt={saveAttempt} busy={busy} onTryAgain={() => void saveSale(true)} />
           <PosPrimaryButton type="button" onClick={() => void saveSale()} disabled={!canSave || busy} className="mb-4 h-[68px] min-h-0 rounded-[20px] border-0 text-[26px] lg:mb-0 lg:h-20 lg:text-3xl">
             <Check size={32} aria-hidden="true" /> {busy ? t("sell.saving") : t("sell.done")}

@@ -256,7 +256,7 @@ export function ManualDebtSaved({ params, onDone, onNavigate, shopName }) {
         {params.note && <div className="mt-2 text-sm font-semibold">What for: {params.note}</div>}
       </div>
       {initialPaymentPesewas > 0 && (
-        <div className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3 text-left" aria-live="polite">
+        <div data-paying-today="" className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3 text-left" aria-live="polite">
           <p className="mb-2 font-extrabold text-emerald-950">{t("credit.paymentRecorded")}</p>
           <div className="flex flex-col gap-2">
             {initialPaymentParts.length > 0 ? (
@@ -268,7 +268,7 @@ export function ManualDebtSaved({ params, onDone, onNavigate, shopName }) {
                       : <Smartphone size={18} aria-hidden="true" />}
                     <span className="truncate">{t(`credit.method.${part.paymentMethod}`)}</span>
                   </span>
-                  <span className="shrink-0 tabular-nums">{formatGhs(part.amountPesewas)}</span>
+                  <span data-paying-today-amount="" className="shrink-0 tabular-nums">{formatGhs(part.amountPesewas)}</span>
                 </div>
               ))
             ) : (
@@ -277,13 +277,13 @@ export function ManualDebtSaved({ params, onDone, onNavigate, shopName }) {
                   <Banknote size={18} aria-hidden="true" />
                   <span className="truncate">{t("credit.method.cash")}</span>
                 </span>
-                <span className="shrink-0 tabular-nums">{formatGhs(initialPaymentPesewas)}</span>
+                <span data-paying-today-amount="" className="shrink-0 tabular-nums">{formatGhs(initialPaymentPesewas)}</span>
               </div>
             )}
           </div>
-          <div className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 pt-2 font-extrabold text-emerald-950">
+          <div data-total-today="" className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 px-3 pt-2 font-extrabold text-emerald-950">
             <span>{t("credit.paymentRecordedTotal")}</span>
-            <span className="tabular-nums">{formatGhs(initialPaymentPesewas)}</span>
+            <span data-paying-today-amount="" className="tabular-nums">{formatGhs(initialPaymentPesewas)}</span>
           </div>
         </div>
       )}

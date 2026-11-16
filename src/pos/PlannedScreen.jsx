@@ -1,7 +1,7 @@
 import { formatGhs } from "../lib/money.js";
 import { hasPosText, posText as t } from "./i18n.js";
 import { displayName } from "../lib/displayName.js";
-import { PosPage, PosPrimaryButton } from "./PosComponents.jsx";
+import { PosBackButton, PosPage, PosPrimaryButton } from "./PosComponents.jsx";
 
 const warned = new Set();
 
@@ -33,9 +33,7 @@ export default function PlannedScreen({ route, params, onBack, onOpenBackup }) {
           </PosPrimaryButton>
         )}
       </section>
-      <button type="button" onClick={onBack} className="min-h-12 rounded-xl border-2 border-slate-800 px-4 text-base font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800">
-        {t("planned.back")}
-      </button>
+      <PosBackButton onClick={onBack} aria-label={t("planned.back")} />
     </PosPage>
   );
 }

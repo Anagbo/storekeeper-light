@@ -80,7 +80,8 @@ export default function ReviewAndPay({ params = {}, onBack, onNavigate, onUpdate
               <span className="block truncate font-extrabold">{item.name} × {item.quantity}</span>
               {item.subtitle && <span className="block text-sm text-slate-700">{item.subtitle}</span>}
             </span>
-            <strong className="shrink-0">{formatGhs(item.total_amount).replace("GH₵", "")}</strong>
+            {/* Wiring 55 "Amounts on Review and pay" (16 Nov 2026): every line amount keeps GH₵. */}
+            <strong className="shrink-0 whitespace-nowrap">{formatGhs(item.total_amount)}</strong>
           </div>
         ))}
         <div className="flex justify-between gap-3 border-t-2 border-dashed border-slate-400 pt-2 text-xl">

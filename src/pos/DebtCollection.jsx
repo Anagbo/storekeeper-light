@@ -8,7 +8,7 @@ import { formatLastReminder } from "./reminderLabel.js";
 import { useReminderCheck } from "./ReminderCheck.jsx";
 import { latestReminderAt, loadReminderEvents } from "../db/reminders.js";
 import { formatDate, formatTime } from "../lib/formatDate.js";
-import { formatGhs, formatGhsAmount, toPesewas } from "../lib/money.js";
+import { formatGhs, toPesewas } from "../lib/money.js";
 import { formatGhanaCard } from "../utils/formatters.js";
 import { formatHistoryTimestamp } from "../utils/customerDebtHistory.js";
 import { loadCustomerHistory } from "../utils/loadCustomerDebtHistory.js";
@@ -37,6 +37,8 @@ import { getDebtorItemDescription } from "../utils/debtorItemDescription.js";
 import { useBackBlock, useBackHandler } from "./browserBack.js";
 import { displayName } from "../lib/displayName.js";
 import { DueTag } from "./PartyCard.jsx";
+import { useFormErrors } from "./formErrors.js";
+import AmountTextInput from "./AmountTextInput.jsx";
 
 const PAYMENT_METHODS = [
   { value: "cash", label: "collect.cash", icon: Banknote },
@@ -738,6 +740,16 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
     (correctionDebtSnapshot?.openDebtCount === 1 &&
       correctionDebtSnapshot.targetAmountPesewas === correctionDebtSnapshot.customerTotalPesewas &&
       correctionDebtSnapshot.targetAmountPesewas === correctionCurrentBalancePesewas);
+  // rules_global.form_errors: shown after Save correction with a problem, gone as soon as it is fixed.
+  const correctionAmountUsable = correctionAmount.trim() !== "" && Number.isSafeInteger(correctionNewBalancePesewas) && correctionNewBalancePesewas >= 0;
+  const correctionErrors = useFormErrors([
+    ["amount", correctionAmountUsable ? "" : "Enter a valid non-negative balance."],
+    ["increase", correctionAmountUsable && correctionNewBalancePesewas > correctionCurrentBalancePesewas ? "Corrections cannot increase debt. Use Add to debt." : ""],
+    ["lower", correctionAmountUsable && correctionNewBalancePesewas === correctionCurrentBalancePesewas ? "New balance must be lower." : ""],
+    ["target", correctionHasSingleDebtTarget ? "" : "Choose Correct this entry beside an individual debt before saving."],
+    ["reason", correctionReason ? "" : "Choose a reason for correcting the balance."],
+    ["note", correctionReason === "other" && !correctionNote.trim() ? "Add a note when the correction reason is Other." : ""]
+  ]);
 
   function openCorrection(targetDebt = data?.debt, individual = false) {
     const targetAmountPesewas = targetDebt?.amountPesewas ?? targetDebt?.total_owed ?? 0;
@@ -755,36 +767,15 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
     setCorrectionReason("");
     setCorrectionNote("");
     setCorrectionError("");
+    correctionErrors.clear();
     setCorrectionOpen(true);
   }
 
   async function saveCorrection(event) {
     event.preventDefault();
     const newBalancePesewas = correctionNewBalancePesewas;
-    if (correctionAmount.trim() === "" || !Number.isSafeInteger(newBalancePesewas) || newBalancePesewas < 0) {
-      setCorrectionError("Enter a valid non-negative balance.");
-      return;
-    }
-    if (newBalancePesewas > correctionCurrentBalancePesewas) {
-      setCorrectionError("Corrections cannot increase debt. Use Add to debt.");
-      return;
-    }
-    if (newBalancePesewas === correctionCurrentBalancePesewas) {
-      setCorrectionError("New balance must be lower.");
-      return;
-    }
-    if (!correctionHasSingleDebtTarget) {
-      setCorrectionError("Choose Correct this entry beside an individual debt before saving.");
-      return;
-    }
-    if (!correctionReason) {
-      setCorrectionError("Choose a reason for correcting the balance.");
-      return;
-    }
-    if (correctionReason === "other" && !correctionNote.trim()) {
-      setCorrectionError("Add a note when the correction reason is Other.");
-      return;
-    }
+    setCorrectionError("");
+    if (!correctionErrors.check()) return;
     setCorrectionSaving(true);
     setCorrectionError("");
     try {
@@ -812,15 +803,20 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
     <PosPage className="!min-h-[calc(100vh-4rem)] !pb-6 mx-auto flex max-w-2xl flex-col gap-3 px-4 sm:px-6">
       {data === undefined ? <p role="status">{t("collect.loading")}</p> : !data ? <CollectionError>{t("collect.notFound")}</CollectionError> : (
         <>
-          <section className="flex items-center gap-3 rounded-[20px] border-2 border-slate-500 bg-white px-3 py-3">
-            <span className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full bg-emerald-900 text-2xl font-extrabold text-white">{displayName(data.name).slice(0, 1).toUpperCase()}</span>
-            <span className="min-w-0 flex-1">
-              <strong className="line-clamp-2 break-words text-[22px] leading-tight">{displayName(data.name)}</strong>
-              {data.ghanaCardNumber && <span className="text-base text-slate-800">{t("collect.customerId", { number: formatGhanaCard(data.ghanaCardNumber) })}</span>}
+          {/* Wiring 29/43 Back (to BACK: the previous screen in history, so the place on 32 or 22 is kept),
+              top left on the name's row; it takes the place of the initial circle and Edit contact sits
+              under the name (owner's choice, 16 Nov 2026), so a long name still has room at 340px. */}
+          <section data-row="debtor-header" className="flex items-start gap-3 rounded-[20px] border-2 border-slate-500 bg-white px-3 py-3">
+            <PosBackButton onClick={onBack} />
+            <span className="flex min-w-0 flex-1 flex-col items-start gap-2">
+              <span className="flex min-h-[52px] w-full min-w-0 flex-col justify-center">
+                <strong className="line-clamp-2 break-words text-[22px] leading-tight">{displayName(data.name)}</strong>
+                {data.ghanaCardNumber && <span className="text-base text-slate-800">{t("collect.customerId", { number: formatGhanaCard(data.ghanaCardNumber) })}</span>}
+              </span>
+              <button type="button" onClick={() => setContactEditorOpen(true)} className="flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-xl border-2 border-emerald-900 px-2 text-sm font-extrabold text-emerald-900">
+                <UserRoundPen size={20} className="shrink-0" aria-hidden="true" />{t("collect.editContact")}
+              </button>
             </span>
-            <button type="button" onClick={() => setContactEditorOpen(true)} className="shrink-0 rounded-xl border-2 border-emerald-900 px-2 py-2 text-sm font-extrabold text-emerald-900">
-              <UserRoundPen size={20} className="mx-auto" aria-hidden="true" />{t("collect.editContact")}
-            </button>
           </section>
           <section className="amount-fit-container rounded-[20px] bg-rose-200 px-4 py-3">
             <p className="text-lg font-bold text-rose-950">{t("collect.balanceOwed", { name: displayName(data.name) })}</p>
@@ -988,7 +984,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                       {event.type === "payment"
                         ? "+"
                         : ""} {event.type === "adjustment"
-                        ? `${formatGhs(event.previousBalancePesewas ?? event.newBalancePesewas ?? 0)} → ${formatGhsAmount(event.newBalancePesewas ?? 0)}`
+                        ? `${formatGhs(event.previousBalancePesewas ?? event.newBalancePesewas ?? 0)} → ${formatGhs(event.newBalancePesewas ?? 0)}`
                         : formatGhs(event.amountPesewas)}
                     </strong>
                   </li>
@@ -1027,8 +1023,12 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               </button>
             </div>
             <form onSubmit={saveCorrection} className="space-y-3">
-              <label className="block text-[19px] font-extrabold" htmlFor="pos-correction-amount">New balance (GH₵)
-                <input id="pos-correction-amount" inputMode="decimal" min="0" value={correctionAmount} onChange={(event) => { setCorrectionAmount(event.target.value); setCorrectionError(""); }} className="mt-1 h-14 w-full rounded-[14px] border-[3px] border-emerald-900 px-3 text-[28px] font-extrabold outline-none focus:ring-2 focus:ring-emerald-900/20" />
+              <label className="block text-[19px] font-extrabold" htmlFor="pos-correction-amount">New balance
+                {/* rules_global.amount_entry: right-aligned, GH₵ on the left, focus selects the amount. */}
+                <span className="mt-1 flex h-14 items-center gap-2 rounded-[14px] border-[3px] border-emerald-900 px-3 focus-within:ring-2 focus-within:ring-emerald-900/20">
+                  <span className="shrink-0 text-lg font-bold text-slate-700">GH₵</span>
+                  <AmountTextInput id="pos-correction-amount" value={correctionAmount} onValue={(value) => { setCorrectionAmount(value); setCorrectionError(""); }} className="h-full w-full min-w-0 bg-transparent text-[28px] font-extrabold outline-none" />
+                </span>
               </label>
               <p className={`text-lg font-extrabold ${correctionNewBalancePesewas < correctionCurrentBalancePesewas ? "text-emerald-900" : "text-slate-700"}`}>
                 {correctionAmount.trim() !== "" && Number.isSafeInteger(correctionNewBalancePesewas) && correctionNewBalancePesewas < correctionCurrentBalancePesewas
@@ -1060,7 +1060,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               )}
               {!correctionHasSingleDebtTarget && <p className="rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-950">{correctionTargetGuidance}</p>}
               <p className="text-base text-slate-800">No cash moves. Use Collect for money received.</p>
-              {correctionError && <p role="alert" className="rounded-xl bg-rose-100 p-3 font-semibold text-rose-950">{correctionError}</p>}
+              {(correctionErrors.message || correctionError) && <p role="alert" className="rounded-xl bg-rose-100 p-3 font-semibold text-rose-950">{correctionErrors.message || correctionError}</p>}
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <PosPrimaryButton type="submit" disabled={!correctionCanSave || !correctionHasSingleDebtTarget}>{correctionSaving ? "Saving…" : "Save correction"}</PosPrimaryButton>
                 <PosSecondaryButton type="button" onClick={() => setCorrectionOpen(false)} disabled={correctionSaving}>Cancel</PosSecondaryButton>

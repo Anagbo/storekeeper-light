@@ -156,7 +156,7 @@ test("47 Done: bold (800); Back is the shared PosBackButton", async () => {
   const done = nodes(view.tree, (node) => node.type === "button" && textOf(node).trim() === "Done").at(-1);
   assert.match(done.props.className, /font-extrabold/, "bold (800) from the shared primary button class");
   assert.equal(done.props.style, undefined);
-  const back = nodes(view.tree, (node) => node.type === "button" && textOf(node).trim() === "‹ Back")[0];
+  const back = nodes(view.tree, (node) => node.type === "button" && textOf(node).trim() === "Back")[0];
   assert.equal(back.props.style, undefined, "Back is the shared PosBackButton");
   const components = read("src/pos/PosComponents.jsx");
   assert.match(components, /export function PosSecondaryButton[\s\S]*?text-base font-bold text-slate-900/);

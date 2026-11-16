@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Minus, Plus, Search, Trash2 } from "lucide-react";
 import { db } from "../db/db.js";
-import { formatGhs, formatGhsCompactAmount, toPesewas } from "../lib/money.js";
+import { formatGhs, toPesewas } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
 import { PosCard, PosPage, PosPrimaryButton, PosBackButton } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
@@ -102,33 +102,62 @@ export default function SellWithItems({ params = {}, onBack, onNavigate, onUpdat
           {products.map((product) => {
             const unitPrice = toPesewas(product.default_price);
             const hasPrice = Number.isSafeInteger(unitPrice) && unitPrice > 0;
+            const priceText = hasPrice ? formatGhs(unitPrice) : t("items.setPrice");
+            // Wiring 20 "Item tiles": a tile whose item is in the sale is selected (light green, 3px
+            // green border) with a ×n badge, never colour alone; the name says it too.
+            const inSale = cart.find((line) => line.productId === product.id)?.quantity ?? 0;
             return (
               <button
                 key={product.id}
                 type="button"
+                data-item-tile={product.name}
+                aria-label={inSale > 0
+                  ? t("sellItems.tileNameInSale", { name: product.name, price: priceText, count: inSale })
+                  : t("sellItems.tileName", { name: product.name, price: priceText })}
                 onClick={() => chooseProduct(product)}
-                className="flex min-h-[72px] items-center gap-2.5 rounded-[18px] border-2 border-slate-500 bg-white px-2.5 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800"
+                className={`relative flex min-h-[72px] flex-col justify-center gap-1 rounded-[18px] px-2.5 pb-2 pt-5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 ${inSale > 0 ? "border-[3px] border-emerald-900 bg-green-100" : "border-2 border-slate-500 bg-white"}`}
               >
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-emerald-900 text-lg font-extrabold text-white">
-                  {product.name.charAt(0).toUpperCase()}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <strong className="block truncate text-base font-extrabold text-slate-900">{product.name}</strong>
-                  <span className="block whitespace-nowrap text-sm font-bold text-emerald-900">
-                    {hasPrice ? formatGhsCompactAmount(unitPrice) : t("items.setPrice")}
+                {/* Row 1: the letter and the name (the name wraps to two lines rather than squeeze the
+                    price). Row 2: the price on one line across the whole tile (a four-digit price fits at 340px). */}
+                <span className="flex min-w-0 items-center gap-2.5">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-emerald-900 text-lg font-extrabold text-white">
+                    {product.name.charAt(0).toUpperCase()}
                   </span>
+                  <strong data-tile-name="" className="line-clamp-2 min-w-0 flex-1 break-words text-base font-extrabold leading-tight text-slate-900">{product.name}</strong>
                 </span>
+                <span data-tile-price="" className="block whitespace-nowrap text-sm font-bold tabular-nums text-emerald-900">{priceText}</span>
+                {/* The badge sits on the top-right corner, over the edge, so it never covers the name
+                    or the price (the tile's top padding keeps the name below it). */}
+                {inSale > 0 && (
+                  <span data-count-badge="" className="absolute -right-1.5 -top-1.5 grid h-6 min-w-6 place-items-center rounded-full bg-emerald-900 px-1.5 text-sm font-bold leading-none tabular-nums text-white ring-2 ring-white">×{inSale}</span>
+                )}
               </button>
             );
           })}
+          {/* "+ New item" never sits alone in a half-width row: with an even number of item tiles
+              (zero included, and a search that matches nothing) it spans the whole row; with an odd
+              number it is the last tile, beside the last item. One rule on the tile count. */}
           <button
             type="button"
             onClick={() => onNavigate("NewItem")}
-            className="min-h-[72px] rounded-[18px] border-[3px] border-dashed border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800"
+            className={`${products.length % 2 === 0 ? "col-span-full " : ""}min-h-[72px] rounded-[18px] border-[3px] border-dashed border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800`}
           >
             + {t("sellItems.newItem")}
           </button>
-          {!products.length && <p className="col-span-2 sm:col-span-3 rounded-xl border-2 border-slate-300 bg-white p-3 font-semibold">{t("sellItems.noMatches")}</p>}
+          {/* Wiring 20 "Empty and search states": no items at all and nothing typed says how to add
+              the first one; "No items match that search." only when something typed matches nothing.
+              "+ New item" is a <strong> in the tile label's dark green; the rest is regular weight. */}
+          {!products.length && (
+            <p className="col-span-2 sm:col-span-3 rounded-xl border-2 border-slate-300 bg-white p-3">
+              {normalizedQuery ? t("sellItems.noMatches") : (
+                <>
+                  {t("sellItems.noItemsYetStart")}{" "}
+                  <strong className="font-extrabold text-emerald-900">+ {t("sellItems.newItem")}</strong>{" "}
+                  {t("sellItems.noItemsYetEnd")}
+                </>
+              )}
+            </p>
+          )}
         </div>
       )}
 

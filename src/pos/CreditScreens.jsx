@@ -25,6 +25,8 @@ import StillOwedRow from "./StillOwedRow.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { getCarriedPaymentParts, getMomoPickParams, getPaidPaymentPesewas } from "./paymentAmount.js";
 import { useBackBlock } from "./browserBack.js";
+import { useFormErrors } from "./formErrors.js";
+import AmountTextInput from "./AmountTextInput.jsx";
 import { confirmDirectMomoParts, describeSplitPart, isLockedMomoRow, isUnconfirmedDirectMomo } from "./splitTender.js";
 
 function CreditAmount({ amountPesewas }) {
@@ -187,11 +189,17 @@ function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
   const [name, setName] = useState(params.newPersonName ?? "");
   const [phone, setPhone] = useState(params.newPersonPhone ?? "");
   const [ghanaCardNumber, setGhanaCardNumber] = useState(params.newPersonGhanaCard ?? "");
-  const [error, setError] = useState("");
   // Someone who already owes under the name typed here: the debt is added to theirs (the writers
   // find it by name), so say so, and carry what they owe so 19 sizes the plan on the whole balance.
   const [existingDebtor, setExistingDebtor] = useState(null);
   const phoneInvalid = Boolean(phone.trim() && !normalizeWhatsAppPhone(phone));
+  // Wiring 34 "Error on 34" and rules_global.form_errors: there is no amount field here, so the box
+  // names only the name, phone or card; it shows after Next and goes as soon as that is fixed.
+  const formErrors = useFormErrors([
+    ["name", name.trim() ? "" : t("credit.nameRequired")],
+    ["phone", phoneInvalid ? t("contact.invalidPhone") : ""],
+    ["ghanaCard", isValidGhanaCardNumber(ghanaCardNumber) ? "" : t("credit.invalidGhanaCard")]
+  ]);
 
   useEffect(() => {
     const typedName = name.trim().toLowerCase();
@@ -217,18 +225,10 @@ function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
   function continueWithNewCustomer(event) {
     event.preventDefault();
     const cleanName = name.trim();
-    if (!cleanName || (!params.manualDebt && amountOwedPesewas <= 0)) {
-      setError(t("credit.nameAndAmountRequired"));
-      return;
-    }
-    if (phoneInvalid) {
-      setError(t("contact.invalidPhone"));
-      return;
-    }
-    if (!isValidGhanaCardNumber(ghanaCardNumber)) {
-      setError(t("credit.invalidGhanaCard"));
-      return;
-    }
+    if (!formErrors.check()) return;
+    // A sale always reaches 34 with its amount (Owe on 15 needs one); without it there is nothing to
+    // owe and nothing the owner can fix here, so Next does nothing.
+    if (!params.manualDebt && amountOwedPesewas <= 0) return;
     onNavigate(params.manualDebt ? "ManualDebtAmount" : "WhenWillTheyPay", {
       ...params,
       customer: {
@@ -262,7 +262,7 @@ function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
         </label>
         <label className="block">
           <span className="mb-1 block font-extrabold">{t("credit.phone")}</span>
-          <input type="tel" inputMode="tel" autoComplete="tel" placeholder={t("credit.phonePlaceholder")} value={phone} onChange={(event) => { setPhone(event.target.value); onUpdateParams?.({ newPersonPhone: event.target.value }); setError(""); }} aria-invalid={phoneInvalid} aria-describedby="new-person-phone-hint" className={`h-14 w-full rounded-2xl border-[3px] px-3 text-lg ${phoneInvalid ? "border-rose-900" : "border-slate-500"}`} />
+          <input type="tel" inputMode="tel" autoComplete="tel" placeholder={t("credit.phonePlaceholder")} value={phone} onChange={(event) => { setPhone(event.target.value); onUpdateParams?.({ newPersonPhone: event.target.value }); }} aria-invalid={phoneInvalid} aria-describedby="new-person-phone-hint" className={`h-14 w-full rounded-2xl border-[3px] px-3 text-lg ${phoneInvalid ? "border-rose-900" : "border-slate-500"}`} />
           <span id="new-person-phone-hint" className={`text-sm ${phoneInvalid ? "text-rose-900" : "text-slate-700"}`}>{phoneInvalid ? t("contact.invalidPhone") : t("credit.phoneHint")}</span>
         </label>
         <label className="block">
@@ -270,7 +270,7 @@ function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
           <input autoCapitalize="characters" maxLength="15" placeholder={t("credit.ghanaCardPlaceholder")} value={ghanaCardNumber} onChange={(event) => { const formatted = formatGhanaCard(event.target.value); setGhanaCardNumber(formatted); onUpdateParams?.({ newPersonGhanaCard: formatted }); }} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />
           <span className="text-sm text-slate-700">{t("credit.ghanaCardHint")}</span>
         </label>
-        {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
+        {formErrors.message && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{formErrors.message}</p>}
         <PosPrimaryButton type="submit" className="mt-auto">{t("credit.next")}</PosPrimaryButton>
       </form>
     </PosPage>
@@ -391,7 +391,7 @@ function RecordedPartRow({ part }) {
             : <span data-row-status="" className="block text-sm font-semibold text-slate-700 [overflow-wrap:anywhere]">{status}</span>)}
         </span>
       </span>
-      <span className="shrink-0 whitespace-nowrap">{formatGhs(part.amountPesewas)}</span>
+      <span data-paying-today-amount="" className="shrink-0 whitespace-nowrap tabular-nums">{formatGhs(part.amountPesewas)}</span>
     </div>
   );
 }
@@ -416,7 +416,8 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
   const [nextDueDate, setNextDueDate] = useState(params.nextDueDate ?? getNextCycleDate(today, params.frequency ?? "weekly"));
   const [paymentMethod, setPaymentMethod] = useState(params.paymentMethod ?? "cash");
   const [todayPaymentAmount, setTodayPaymentAmount] = useState(params.todayPaymentAmount ?? null);
-  const [todayPaymentSubmitAttempted, setTodayPaymentSubmitAttempted] = useState(false);
+  const [todayPaymentTyped, setTodayPaymentTyped] = useState(false);
+  const [installmentCapped, setInstallmentCapped] = useState(false);
   const [saving, setSaving] = useState(false);
   useBackBlock(saving);
   const [error, setError] = useState("");
@@ -473,6 +474,28 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
   const planReady = Number.isSafeInteger(installmentPesewas) && installmentPesewas > 0 &&
     dateValid &&
     (!startToday || paymentAlreadyMadeToday || validTodayPayment);
+  // rules_global.form_errors: Amount paid today is named under its field and the split check in the
+  // box, only after Save plan (or Split) is tapped, and each goes as soon as it is fixed.
+  const formErrors = useFormErrors([
+    ["todayAmount", startToday && !validTodayPayment
+      ? todayPaymentPesewas > maxCreditPesewas
+        ? t("credit.paymentTodayTooHigh", { amount: formatGhs(maxCreditPesewas) })
+        : t("credit.paymentTodayRequired")
+      : ""],
+    ["split", startToday && paymentMethod === "split" && splitParts.length === 0 ? t("credit.paymentSplitRequired") : ""]
+  ]);
+  // Save plan is grey while Amount paid today is wrong, so once something is typed the line under
+  // the field also says why (as before); the Split tap shows it when nothing was typed.
+  const todayAmountError = formErrors.field === "todayAmount"
+    ? formErrors.message
+    : todayPaymentTyped && startToday && !validTodayPayment
+      ? (todayPaymentPesewas > maxCreditPesewas
+        ? t("credit.paymentTodayTooHigh", { amount: formatGhs(maxCreditPesewas) })
+        : t("credit.paymentTodayRequired"))
+      : "";
+  const boxError = (formErrors.field === "split" ? formErrors.message : "") || error;
+  // Shown only while the field still holds the capped amount.
+  const installmentCappedShown = installmentCapped && installmentAmount === maxInstallmentAmount;
 
   // Back from a MoMo pick (61/62): returnRoute is stripped on return (E4), so use the method.
   useEffect(() => {
@@ -500,14 +523,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
 
   async function savePlan(confirmed = false) {
     if (savingRef.current) return;
-    if (startToday && !validTodayPayment) {
-      setTodayPaymentSubmitAttempted(true);
-      return;
-    }
-    if (startToday && paymentMethod === "split" && splitParts.length === 0) {
-      setError(t("credit.paymentSplitRequired"));
-      return;
-    }
+    if (!formErrors.check()) return;
     // Brief 3.12: a large plan asks first, once the entries are valid. In a split (16 saves) and for a
     // manual debt (a later extension) it does not ask here.
     if (!confirmed && params.flow !== "split" && !params.manualDebt &&
@@ -605,8 +621,8 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
       return;
     }
     if (!Number.isSafeInteger(todayPaymentPesewas) || todayPaymentPesewas <= 0) {
-      setTodayPaymentSubmitAttempted(true);
-      setError(t("credit.paymentTodayRequired"));
+      // Named once, under Amount paid today (it was also repeated in the box below).
+      formErrors.check(["todayAmount"]);
       return;
     }
     // Wiring 27: the parts kept after Back from 27 come back while Amount paid today is unchanged;
@@ -645,36 +661,31 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
         <span className="mb-1 block text-lg font-extrabold">{t("credit.howMuchEachTime")}</span>
         <span className="flex min-h-16 items-center gap-2 rounded-2xl border-[3px] border-slate-500 px-4">
           <span className="shrink-0 text-lg font-bold text-slate-700">GH₵</span>
-          <input
-            type="number"
-            min="0.01"
-            max={maxInstallmentAmount}
-            step="0.01"
-            inputMode="decimal"
-            autoComplete="off"
+          <AmountTextInput
             aria-label={t("credit.howMuchEachTime")}
             value={installmentAmount}
-            onChange={(event) => {
-              const nextValue = event.target.value;
+            onValue={(nextValue) => {
               const nextPesewas = toPesewas(nextValue);
-              if (Number.isSafeInteger(nextPesewas) && nextPesewas > maxInstallmentPesewas) {
-                setInstallmentAmount(maxInstallmentAmount);
-                onUpdateParams?.({ installmentAmount: maxInstallmentAmount });
-                setError(t("credit.installmentCapped"));
-              } else {
-                setInstallmentAmount(nextValue);
-                onUpdateParams?.({ installmentAmount: nextValue });
-                setError("");
-              }
+              const capped = Number.isSafeInteger(nextPesewas) && nextPesewas > maxInstallmentPesewas;
+              const shown = capped ? maxInstallmentAmount : nextValue;
+              setInstallmentAmount(shown);
+              onUpdateParams?.({ installmentAmount: shown });
+              setInstallmentCapped(capped);
+              setError("");
             }}
             aria-describedby="installment-amount-limit"
             placeholder="0.00"
-            className="w-full min-w-0 bg-transparent text-right text-2xl font-extrabold outline-none placeholder:text-slate-400 sm:text-3xl"
+            className="w-full min-w-0 bg-transparent text-2xl font-extrabold outline-none placeholder:text-slate-400 sm:text-3xl"
           />
         </span>
         <span id="installment-amount-limit" className="mt-1 block text-sm font-semibold text-slate-700">
           {t("credit.installmentMaximum", { amount: formatGhs(maxInstallmentPesewas) })}
         </span>
+        {/* Decided 16 Nov 2026: the capped notice is live under the field (not in the box) and goes as
+            soon as the amount is changed to one within the maximum. */}
+        {installmentCappedShown && (
+          <span role="status" data-installment-capped="" className="mt-1 block text-sm font-semibold text-rose-900">{t("credit.installmentCapped")}</span>
+        )}
       </label>
       <fieldset>
         <legend className="mb-1 text-lg font-extrabold">{t("credit.howOften")}</legend>
@@ -696,7 +707,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
             onClick={() => {
               if (paymentAlreadyMadeToday || alreadyPaidPesewas > 0) return;
               setStartToday(true);
-              setTodayPaymentSubmitAttempted(false);
+              setTodayPaymentTyped(false);
               const nextDate = getNextCycleDate(today, frequency);
               setNextDueDate(nextDate);
               const draftUpdates = { startToday: true, nextDueDate: nextDate };
@@ -715,7 +726,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
             // Received MoMo is locked: Next cycle would drop it, so it is not offered then.
             if (hasReceivedMomo) return;
             setStartToday(false);
-            setTodayPaymentSubmitAttempted(false);
+            setTodayPaymentTyped(false);
             const nextDate = getNextCycleDate(today, frequency);
             setNextDueDate(nextDate);
             const draftUpdates = { startToday: false, nextDueDate: nextDate };
@@ -731,25 +742,19 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
       {startToday && !paymentAlreadyMadeToday && (
         <label className="block">
           <span className="mb-1 block text-lg font-extrabold">{t("credit.amountPaidToday")}</span>
-          <span className={`flex min-h-14 items-center gap-2 rounded-2xl border-[3px] px-4 ${todayPaymentSubmitAttempted && !validTodayPayment ? "border-rose-800" : "border-slate-500"}`}>
+          <span className={`flex min-h-14 items-center gap-2 rounded-2xl border-[3px] px-4 ${todayAmountError ? "border-rose-800" : "border-slate-500"}`}>
             <span className="shrink-0 text-lg font-bold text-slate-700">GH₵</span>
-            <input
-              type="number"
-              min="0.01"
-              max={(maxCreditPesewas / 100).toFixed(2)}
-              step="0.01"
-              inputMode="decimal"
-              autoComplete="off"
+            <AmountTextInput
               aria-label={t("credit.amountPaidToday")}
               aria-describedby="today-payment-limit"
-              aria-invalid={todayPaymentSubmitAttempted && !validTodayPayment}
+              aria-invalid={Boolean(todayAmountError)}
               value={todayPaymentInput}
               disabled={recordedParts.length > 0}
-              onChange={(event) => {
-                setTodayPaymentAmount(event.target.value);
+              onValue={(value) => {
+                setTodayPaymentAmount(value);
                 // Kept in the route params, so Menu > Settings > Back > Close menu restores it.
-                onUpdateParams?.({ todayPaymentAmount: event.target.value });
-                setTodayPaymentSubmitAttempted(true);
+                onUpdateParams?.({ todayPaymentAmount: value });
+                setTodayPaymentTyped(true);
                 setError("");
               }}
               placeholder="0.00"
@@ -761,12 +766,8 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
               ? t("credit.paidTodayHint")
               : t("credit.paymentTodayMaximum", { amount: formatGhs(maxCreditPesewas) })}
           </span>
-          {todayPaymentSubmitAttempted && !validTodayPayment && (
-            <span role="alert" className="mt-1 block text-sm font-semibold text-rose-900">
-              {todayPaymentPesewas > maxCreditPesewas
-                ? t("credit.paymentTodayTooHigh", { amount: formatGhs(maxCreditPesewas) })
-                : t("credit.paymentTodayRequired")}
-            </span>
+          {todayAmountError && (
+            <span role="alert" className="mt-1 block text-sm font-semibold text-rose-900">{todayAmountError}</span>
           )}
         </label>
       )}
@@ -779,14 +780,14 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
         <fieldset>
           <legend className="mb-1 text-base font-extrabold">{t("credit.firstPaymentMethod")}</legend>
           {recordedParts.length > 0 ? (
-            <div className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
+            <div data-paying-today="" className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
               <p className="mb-2 font-extrabold text-emerald-950">{t("credit.payingToday")}</p>
               <div className="flex flex-col gap-2">
                 {paidOnly(recordedParts).map((part) => <RecordedPartRow key={`${part.paymentMethod}-${part.amountPesewas}`} part={part} />)}
               </div>
-              <div className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 pt-2 font-extrabold text-emerald-950">
+              <div data-total-today="" className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 px-3 pt-2 font-extrabold text-emerald-950">
                 <span>{t("credit.totalToday")}</span>
-                <span>{formatGhs(getPaidPaymentPesewas(recordedParts))}</span>
+                <span data-paying-today-amount="" className="shrink-0 whitespace-nowrap tabular-nums">{formatGhs(getPaidPaymentPesewas(recordedParts))}</span>
               </div>
               <StillOwedRow amountPesewas={stillOwedAfterTodayPesewas} customerName={params.customer?.name} />
             </div>
@@ -815,14 +816,14 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
               ))}
             </div>
             {singlePreviewParts.length > 0 && (
-              <div data-single-method-panel="" className="mt-3 rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
+              <div data-single-method-panel="" data-paying-today="" className="mt-3 rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
                 <p className="mb-2 font-extrabold text-emerald-950">{t("credit.payingToday")}</p>
                 <div className="flex flex-col gap-2">
                   {singlePreviewParts.map((part) => <RecordedPartRow key={part.paymentMethod} part={part} />)}
                 </div>
-                <div className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 pt-2 font-extrabold text-emerald-950">
+                <div data-total-today="" className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 px-3 pt-2 font-extrabold text-emerald-950">
                   <span>{t("credit.totalToday")}</span>
-                  <span>{formatGhs(todayPaymentPesewas)}</span>
+                  <span data-paying-today-amount="" className="shrink-0 whitespace-nowrap tabular-nums">{formatGhs(todayPaymentPesewas)}</span>
                 </div>
                 <StillOwedRow amountPesewas={Math.max(0, maxCreditPesewas - todayPaymentPesewas)} customerName={params.customer?.name} />
               </div>
@@ -832,24 +833,24 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
         </fieldset>
       )}
       {paymentAlreadyMadeToday && paidTodayPesewas > 0 && splitParts.length > 0 && (
-        <div className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
+        <div data-paying-today="" className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
         <p className="mb-2 font-extrabold text-emerald-950">{t("credit.payingToday")}</p>
         <div className="flex flex-col gap-2">
           {paidOnly(splitParts).map((part) => (
             <div key={`${part.paymentMethod}-${part.amountPesewas}`} className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 font-bold">
               <span>{t(`credit.method.${part.paymentMethod}`)}</span>
-              <span>{formatGhs(part.amountPesewas)}</span>
+              <span data-paying-today-amount="" className="shrink-0 whitespace-nowrap tabular-nums">{formatGhs(part.amountPesewas)}</span>
             </div>
           ))}
         </div>
-        <div className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 pt-2 font-extrabold text-emerald-950">
+        <div data-total-today="" className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 px-3 pt-2 font-extrabold text-emerald-950">
           <span>{t("credit.totalToday")}</span>
-          <span>{formatGhs(paidTodayPesewas)}</span>
+          <span data-paying-today-amount="" className="shrink-0 whitespace-nowrap tabular-nums">{formatGhs(paidTodayPesewas)}</span>
         </div>
         <StillOwedRow amountPesewas={stillOwedAfterTodayPesewas} customerName={params.customer?.name} />
         </div>
       )}
-      {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
+      {boxError && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{boxError}</p>}
       <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => void savePlan(true)} />
       <div className="mt-auto grid grid-cols-[auto_minmax(0,1fr)] gap-2">
         <PosBackButton onClick={onBack} className="h-14!" />
@@ -944,7 +945,7 @@ function CreditSaved({ params, onHome, onNavigate, shopName }) {
               </div>
             )}
           </div>
-          <div className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 pt-2 font-extrabold text-emerald-950">
+          <div data-total-today="" className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 px-3 pt-2 font-extrabold text-emerald-950">
             <span>{t("credit.paymentRecordedTotal")}</span>
             <span className="tabular-nums">{formatGhs(result.initialPaymentPesewas)}</span>
           </div>

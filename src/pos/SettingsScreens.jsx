@@ -6,6 +6,7 @@ import { posText as t } from "./i18n.js";
 import { getMerchantMomoSettings } from "./momoConfig.js";
 import { SHOW_PROFIT_PREFERENCE } from "./myMoneyReport.js";
 import { PosPage, PosPrimaryButton, PosBackButton } from "./PosComponents.jsx";
+import { useFormErrors } from "./formErrors.js";
 
 function SettingsGroup({ id, title, children }) {
   return (
@@ -78,6 +79,8 @@ export function SettingsProfitTools({
   const [momoSetUp, setMomoSetUp] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  // rules_global.form_errors: shown after Save with an empty name, gone at the first letter.
+  const shopNameErrors = useFormErrors([["shopName", draft.trim() ? "" : t("settings.shopNameRequired")]]);
 
   // A new saved name (from the header, or Save) resets the field; mounting again does not.
   useEffect(() => {
@@ -112,10 +115,8 @@ export function SettingsProfitTools({
   function saveShopName(event) {
     event.preventDefault();
     const cleanName = draft.trim();
-    if (!cleanName) {
-      setError(t("settings.shopNameRequired"));
-      return;
-    }
+    setError("");
+    if (!shopNameErrors.check()) return;
     try {
       localStorage.setItem("storekeeper-shop-name", cleanName);
       onShopNameChange(cleanName);
@@ -186,7 +187,7 @@ export function SettingsProfitTools({
         <LinkRow id="settings-backup" icon={Database} title={t("settings.backup")} detail={t("settings.backupDetail")} onClick={onOpenBackup} />
       </SettingsGroup>
 
-      {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
+      {(shopNameErrors.message || error) && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{shopNameErrors.message || error}</p>}
       <PosPrimaryButton type="button" onClick={onBack} className="mt-1">{t("credit.done")}</PosPrimaryButton>
     </PosPage>
   );

@@ -156,33 +156,42 @@ test("suppliers: Spent money refuses 1e2 and 0x10 (Save stays off)", async () =>
   assert.equal(saveOff("12.50"), false);
 });
 
-test("suppliers: the amount already paid on stock bought on credit refuses 1e2 and 0x10 (Save stays off)", async () => {
+// Since 16 Nov 2026 (rules_global.amount_entry) typed amount fields ignore 1e2 and 0x10 outright: the
+// field keeps what it had, so they are never read as 100 or 16.
+test("suppliers: the amount already paid on stock bought on credit ignores 1e2 and 0x10", async () => {
   const { StockOnCredit } = await loadJsx("src/pos/SupplierScreens.jsx");
   setLiveQuery(() => []);
-  const saveOff = (typed) => {
+  const typeIn = (typed) => {
     const view = render({ type: StockOnCredit, props: { params: { amountPesewas: 50000, category: "stock" }, onBack() {}, onSaveExpense: async () => {} } });
-    inputs(view.tree).find((node) => node.props?.type === "text").props.onChange({ target: { value: typed } });
+    const field = () => inputs(view.tree).find((node) => node.props?.inputMode === "decimal");
+    const before = field().props.value;
+    field().props.onChange({ target: { value: typed } });
     view.rerender();
-    return buttons(view.tree, "Save").at(-1).props.disabled;
+    return { before, value: field().props.value, saveOff: buttons(view.tree, "Save").at(-1).props.disabled };
   };
-  for (const typed of ["1e2", "0x10"]) assert.equal(saveOff(typed), true, typed);
-  assert.equal(saveOff("100"), false, "a plain amount that is the whole total");
+  for (const typed of ["1e2", "0x10"]) {
+    const result = typeIn(typed);
+    assert.equal(result.value, result.before, `${typed} is ignored: the field keeps what it had`);
+  }
+  const plain = typeIn("100");
+  assert.deepEqual([plain.value, plain.saveOff], ["100", false], "a plain amount");
   setLiveQuery(null);
 });
 
-test("suppliers: paying a supplier refuses 1e2 and 0x10 (Pay stays off)", async () => {
+test("suppliers: paying a supplier ignores 1e2 and 0x10", async () => {
   const { YouOweSuppliers } = await loadJsx("src/pos/SupplierScreens.jsx");
   setLiveQuery(() => [{ id: "s1", name: "Kofi", balancePesewas: 50000, dueStatus: "none" }]);
-  const payOff = (typed) => {
+  const typeIn = (typed) => {
     const view = render({ type: YouOweSuppliers, props: { onBack() {}, onPay: async () => {} } });
     buttons(view.tree, "Pay").at(0).props.onClick();
     view.rerender();
-    inputs(view.tree).at(-1).props.onChange({ target: { value: typed } });
+    const field = () => inputs(view.tree).filter((node) => node.props?.inputMode === "decimal").at(-1);
+    field().props.onChange({ target: { value: typed } });
     view.rerender();
-    return buttons(view.tree, "Record payment").at(-1).props.disabled;
+    return { value: field().props.value, payOff: buttons(view.tree, "Record payment").at(-1).props.disabled };
   };
-  for (const typed of ["1e2", "0x10"]) assert.equal(payOff(typed), true, typed);
-  assert.equal(payOff("100"), false);
+  for (const typed of ["1e2", "0x10"]) assert.equal(typeIn(typed).value, "500.00", `${typed} is ignored: the field keeps the balance`);
+  assert.deepEqual(typeIn("100"), { value: "100", payOff: false });
   setLiveQuery(null);
 });
 

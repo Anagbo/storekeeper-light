@@ -5,7 +5,7 @@ import { beforeEach, test } from "node:test";
 import { db } from "../src/db/db.js";
 import { recordCreditSale } from "../src/db/debts.js";
 import { getPreference } from "../src/db/preferences.js";
-import { formatGhs, formatGhsAmount } from "../src/lib/money.js";
+import { formatGhs } from "../src/lib/money.js";
 import { posText } from "../src/pos/i18n.js";
 import {
   MAX_PLAUSIBLE_PESEWAS,
@@ -269,7 +269,7 @@ test("3.11: the Estimated profit card shows the tag, the sum and the average of 
   assert.match(text, /Estimated profit/);
   assert.match(text, /Estimate/);
   assert.ok(text.includes(formatGhs(12000)));
-  assert.ok(text.includes(`Sales ${formatGhsAmount(30000)} − stock ${formatGhsAmount(15000)} − other costs ${formatGhsAmount(3000)}`));
+  assert.ok(text.includes(`Sales ${formatGhs(30000)} − stock ${formatGhs(15000)} − other costs ${formatGhs(3000)}`));
   assert.ok(text.includes(`Average of last 4 weeks: ${formatGhs(9500)}`));
   const noAverage = textOf((await mountMyMoney(reportFor({ averageProfitPesewas: null }))).view.tree);
   assert.doesNotMatch(noAverage, /Average of last/);

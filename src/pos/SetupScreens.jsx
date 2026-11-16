@@ -11,6 +11,7 @@ import { posText as t } from "./i18n.js";
 import AmountKeypad from "./AmountKeypad.jsx";
 import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
 import { useBackBlock } from "./browserBack.js";
+import { useFormErrors } from "./formErrors.js";
 
 export function HowDoYouWantToSell({ onNavigate, onCompleteSetup }) {
   const [sellMode, setSellMode] = useState(null);
@@ -215,13 +216,13 @@ export function HowMuchIsItem({ params, onBack, onReturnTo }) {
   useBackBlock(saving);
   const [error, setError] = useState("");
   const pricePesewas = amountTextToPesewas(priceText);
+  // rules_global.form_errors: shown after Save price with no price, gone once the price is above zero.
+  const priceErrors = useFormErrors([["price", Number.isSafeInteger(pricePesewas) && pricePesewas > 0 ? "" : t("sellItems.invalidPrice", { zero: formatGhs(0) })]]);
 
   async function savePrice() {
     if (!product || saving) return;
-    if (!Number.isSafeInteger(pricePesewas) || pricePesewas <= 0) {
-      setError(t("sellItems.invalidPrice", { zero: formatGhs(0) }));
-      return;
-    }
+    setError("");
+    if (!priceErrors.check()) return;
     setSaving(true);
     setError("");
     try {
@@ -253,7 +254,7 @@ export function HowMuchIsItem({ params, onBack, onReturnTo }) {
         <output aria-live="polite" className="block text-5xl font-extrabold">{formatGhs(pricePesewas)}</output>
       </PosCard>
       <AmountKeypad disabled={saving} onKey={(key) => { setPriceText((current) => pressAmountKey(current, key, MONEY_KEYPAD)); setError(""); }} />
-      {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
+      {(priceErrors.message || error) && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{priceErrors.message || error}</p>}
       <PosPrimaryButton type="button" disabled={saving || !product} onClick={() => void savePrice()} className="mt-auto">{saving ? t("items.saving") : t("sellItems.savePrice")}</PosPrimaryButton>
     </PosPage>
   );
