@@ -72,7 +72,9 @@ function RecordRow({ event }) {
     return (
       <Card kind="credit">
         <Row title={t("record.tookOnCredit")} amount={formatGhs(event.amountPesewas)} amountClass="text-rose-950" />
-        <p className="break-words text-lg text-slate-800">{rowWhen(event)} · {rowReason(event)}</p>
+        {/* Polish 16 Nov 2026: the date and the reason on their own lines, the same size, in 29's order. */}
+        <p data-when="" className="text-lg text-slate-800">{rowWhen(event)}</p>
+        <p data-reason="" className="break-words text-lg text-slate-800">{rowReason(event)}</p>
         <SignedTag signed={event.signed} />
       </Card>
     );

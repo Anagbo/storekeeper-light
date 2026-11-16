@@ -81,9 +81,9 @@ test("73 shows You owe, then every event newest first with its own card", async 
   assert.equal(corrected.dashed, true, "Balance corrected is a dashed card");
   assert.equal(corrected.text, `Balance corrected${formatGhs(9000)} → ${formatGhs(8000)}${when(T0 + 5 * DAY)} · Reason: Wrong amount typed`);
   assert.equal(paid.text, `Paid${formatGhs(1000)}${when(T0 + 4 * DAY)} · Cash ${formatGhs(600)}, MoMo ${formatGhs(400)}`);
-  assert.equal(noReason.text, `Took on credit${formatGhs(1000)}${when(T0 + 3 * DAY)} · No reason writtenNot signed`);
-  assert.equal(schoolFees.text, `Took on credit${formatGhs(3000)}${when(T0 + 2 * DAY)} · School feesNot signed`);
-  assert.equal(rice.text, `Took on credit${formatGhs(6000)}${when(T0 + DAY)} · RiceSigned ✓`);
+  assert.equal(noReason.text, `Took on credit${formatGhs(1000)}${when(T0 + 3 * DAY)}No reason writtenNot signed`);
+  assert.equal(schoolFees.text, `Took on credit${formatGhs(3000)}${when(T0 + 2 * DAY)}School feesNot signed`);
+  assert.equal(rice.text, `Took on credit${formatGhs(6000)}${when(T0 + DAY)}RiceSigned ✓`);
   assert.match(text, /Read only\. Please hand the phone back when you are done\./);
 });
 

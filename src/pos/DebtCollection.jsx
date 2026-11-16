@@ -944,7 +944,8 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                       <strong className="min-w-0 flex-1 truncate text-lg">{event.type === "addon" ? t("collect.creditAdded") : t("collect.creditTaken")}</strong>
                       <strong className="shrink-0 whitespace-nowrap text-lg text-rose-900">{formatGhs(event.amountPesewas)}</strong>
                     </span>
-                    <span className="block text-sm text-slate-800">{rowWhen(event)}</span>
+                    {/* Polish 16 Nov 2026: title and amount, then the date, then the reason (both 16px), then the tag; the same order as 73. */}
+                    <span data-when="" className="block text-base text-slate-800">{rowWhen(event)}</span>
                     <span data-reason="" className="block break-words text-base text-slate-900">{rowReason(event)}</span>
                     <span className="flex min-w-0 items-center justify-between gap-2">
                       <SignedTag signed={event.signed} />
