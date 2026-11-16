@@ -775,20 +775,18 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
     <PosPage className="!pb-6 mx-auto flex max-w-2xl flex-col gap-3 px-4 sm:px-6">
       {data === undefined ? <p role="status">{t("collect.loading")}</p> : !data ? <CollectionError>{t("collect.notFound")}</CollectionError> : (
         <>
-          {/* Wiring 29/43 Back (to BACK: the previous screen in history, so the place on 32 or 22 is kept),
-              top left on the name's row; it takes the place of the initial circle, so a long name still has
-              room at 340px. Edit contact (polish 16 Nov 2026) is on its own row under them, 48px high, its
-              left edge on Back's left edge. */}
-          <section data-row="debtor-header" className="flex flex-col items-start gap-2 rounded-[20px] border-2 border-slate-500 bg-white px-3 py-3">
-            <span className="flex w-full min-w-0 items-start gap-3">
-              <PosBackButton onClick={onBack} />
-              <span className="flex min-h-[52px] min-w-0 flex-1 flex-col justify-center">
-                <strong className="line-clamp-2 break-words text-[22px] leading-tight">{displayName(data.name)}</strong>
-                {data.ghanaCardNumber && <span className="text-base text-slate-800">{t("collect.customerId", { number: formatGhanaCard(data.ghanaCardNumber) })}</span>}
-              </span>
+          {/* Wiring "Header of 29/43" (final, 16 Nov 2026): Back (to BACK: the previous screen in history, so the
+              place on 32 or 22 is kept) is its own plain row above the contact card, left aligned. The card is
+              unchanged from before Back was added. */}
+          <PosBackButton onClick={onBack} className="self-start" />
+          <section data-row="debtor-header" className="flex items-center gap-3 rounded-[20px] border-2 border-slate-500 bg-white px-3 py-3">
+            <span className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full bg-emerald-900 text-2xl font-extrabold text-white">{displayName(data.name).slice(0, 1).toUpperCase()}</span>
+            <span className="min-w-0 flex-1">
+              <strong className="line-clamp-2 break-words text-[22px] leading-tight">{displayName(data.name)}</strong>
+              {data.ghanaCardNumber && <span className="text-base text-slate-800">{t("collect.customerId", { number: formatGhanaCard(data.ghanaCardNumber) })}</span>}
             </span>
-            <button type="button" data-edit-contact="" onClick={() => setContactEditorOpen(true)} className="flex h-12 items-center gap-1.5 whitespace-nowrap rounded-xl border-2 border-emerald-900 px-2 text-sm font-extrabold text-emerald-900">
-              <UserRoundPen size={20} className="shrink-0" aria-hidden="true" />{t("collect.editContact")}
+            <button type="button" onClick={() => setContactEditorOpen(true)} className="shrink-0 rounded-xl border-2 border-emerald-900 px-2 py-2 text-sm font-extrabold text-emerald-900">
+              <UserRoundPen size={20} className="mx-auto" aria-hidden="true" />{t("collect.editContact")}
             </button>
           </section>
           <section className="amount-fit-container rounded-[20px] bg-rose-200 px-4 py-3">
