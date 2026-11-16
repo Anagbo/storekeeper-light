@@ -28,6 +28,9 @@ import { useBackBlock } from "./browserBack.js";
 import { useFormErrors } from "./formErrors.js";
 import AmountTextInput from "./AmountTextInput.jsx";
 import { confirmDirectMomoParts, describeSplitPart, isLockedMomoRow, isUnconfirmedDirectMomo } from "./splitTender.js";
+import { CREDIT_REASON_MAX } from "../lib/creditReason.js";
+import { loadRecentCreditReasons } from "../db/recentReasons.js";
+import { getCreditReasonCase } from "./creditDraft.js";
 
 function CreditAmount({ amountPesewas }) {
   return (
@@ -294,6 +297,27 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onUpdateParams, onReturnT
     { value: "twoWeeks", label: t("credit.inTwoWeeks") }
   ];
   const totalAfterSalePesewas = (params.customer?.totalDebtPesewas ?? 0) + getCreditAmountOwedPesewas(params);
+  // Wiring 18 "Reason on 18": a field for a keypad sale or split, the items or the 53 note read-only.
+  const reasonCase = getCreditReasonCase(params);
+  const [reason, setReason] = useState(typeof params.creditReason === "string" ? params.creditReason.slice(0, CREDIT_REASON_MAX) : "");
+  const [recentReasons, setRecentReasons] = useState([]);
+  const reasonParams = reasonCase.kind === "field" ? { creditReason: reason } : {};
+
+  useEffect(() => {
+    if (reasonCase.kind !== "field") return undefined;
+    let active = true;
+    loadRecentCreditReasons().then((reasons) => { if (active) setRecentReasons(reasons); }, (loadError) => {
+      console.error("Could not load recent reasons.", loadError);
+    });
+    return () => { active = false; };
+  }, [reasonCase.kind]);
+
+  // Typing replaces the text; a chip fills it. Kept in the route params with the rest of the draft.
+  function changeReason(value) {
+    const next = value.slice(0, CREDIT_REASON_MAX);
+    setReason(next);
+    onUpdateParams?.({ creditReason: next });
+  }
 
   async function save(confirmed = false) {
     if (savingRef.current) return;
@@ -308,6 +332,7 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onUpdateParams, onReturnT
       const days = { today: 0, week: 7, twoWeeks: 14 }[dueChoice];
       const details = {
         ...params,
+        ...reasonParams,
         dueDate: addDueCycles(localDateString(), "weekly", days / 7),
         payBackLabel: choices.find((choice) => choice.value === dueChoice)?.label ?? t("credit.inOneWeek")
       };
@@ -326,26 +351,62 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onUpdateParams, onReturnT
     }
   }
 
+  // Wiring 18 "Reason on 18": the reason sits above the Pay by choices (60px). The page scrolls when it
+  // does not fit; Back and Save stay pinned in the bottom row (16px under it, no bottom bar here). The
+  // header is 75px, as on 15, so a page that fits ends exactly at the bottom of the screen.
   return (
-    <PosPage className="flex flex-col gap-3">
+    <PosPage style={{ minHeight: "calc(100dvh - 75px)" }} className="flex flex-col gap-3 overflow-visible! pb-4!">
       <h1 className="text-2xl font-extrabold">{t("credit.whenPay", { name: customerName })}</h1>
+      {reasonCase.kind === "field" ? (
+        <div className="flex flex-col gap-2">
+          <label htmlFor="credit-reason" className="-mb-0.5 text-[17px] font-extrabold text-slate-950">{t("credit.whatFor")}</label>
+          <input
+            id="credit-reason"
+            maxLength={CREDIT_REASON_MAX}
+            autoComplete="off"
+            placeholder={t("credit.whatForPlaceholder")}
+            value={reason}
+            onChange={(event) => changeReason(event.target.value)}
+            className="h-[52px] w-full min-w-0 rounded-[14px] border-2 border-slate-500 px-3 text-lg"
+          />
+          {recentReasons.length > 0 && (
+            <div role="group" aria-label={t("credit.recentReasons")} data-recent-reasons="" className="flex flex-wrap gap-2">
+              {recentReasons.map((recent) => (
+                <button key={recent} type="button" data-reason-chip="" onClick={() => changeReason(recent)} className="h-10 max-w-full truncate rounded-full border-2 border-slate-500 bg-white px-3.5 text-base font-bold text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800">
+                  {recent}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : reasonCase.text ? <ReasonForRow text={reasonCase.text} /> : null}
       {choices.map((choice) => (
-        <button key={choice.value} type="button" aria-pressed={dueChoice === choice.value} onClick={() => { setDueChoice(choice.value); onUpdateParams?.({ creditDueChoice: choice.value }); }} className={`min-h-[68px] rounded-2xl border-[3px] px-4 text-xl font-extrabold ${dueChoice === choice.value ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>
+        <button key={choice.value} type="button" aria-pressed={dueChoice === choice.value} onClick={() => { setDueChoice(choice.value); onUpdateParams?.({ creditDueChoice: choice.value }); }} className={`min-h-[60px] shrink-0 rounded-2xl border-[3px] px-4 text-xl font-extrabold ${dueChoice === choice.value ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>
           {choice.label}
         </button>
       ))}
-      <button type="button" onClick={() => onNavigate("ALittleAtATime", { ...params, creditDueChoice: dueChoice })} className="flex min-h-[68px] flex-col items-center justify-center rounded-2xl border-[3px] border-slate-500 px-4 text-lg font-extrabold">
+      <button type="button" onClick={() => onNavigate("ALittleAtATime", { ...params, ...reasonParams, creditDueChoice: dueChoice })} className="flex min-h-[60px] shrink-0 flex-col items-center justify-center rounded-2xl border-[3px] border-slate-500 px-4 text-lg font-extrabold leading-tight">
         {t("credit.aLittleAtATime")}
         <span className="text-sm font-semibold text-slate-700">{t("credit.installmentSubtitle")}</span>
       </button>
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
       <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => void save(true)} />
-      <div className="mt-auto grid grid-cols-[auto_minmax(0,1fr)] gap-2">
+      <div data-bottom-row="" className="sticky bottom-0 z-10 -mx-4 mt-auto grid grid-cols-[auto_minmax(0,1fr)] gap-2 bg-white px-4 pt-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         <PosBackButton onClick={onBack} className="h-14!" />
-        <PosPrimaryButton type="button" disabled={saving} onClick={() => void save()} className="h-14 px-2 text-base leading-tight">{saving ? t("credit.saving") : t("credit.saveAmount", { name: shortSaveName(customerName), amount: formatGhs(totalAfterSalePesewas) })}</PosPrimaryButton>
+        <PosPrimaryButton type="button" disabled={saving} onClick={() => void save()} className="h-auto min-h-14 px-2 py-1 text-base leading-tight">{saving ? t("credit.saving") : t("credit.saveAmount", { name: shortSaveName(customerName), amount: formatGhs(totalAfterSalePesewas) })}</PosPrimaryButton>
       </div>
       {largeAmount.dialog}
     </PosPage>
+  );
+}
+
+// Wiring 18 cases B and C, and 19: what the credit is for, read-only ("For" on the left).
+function ReasonForRow({ text }) {
+  return (
+    <p data-credit-for="" className="flex min-w-0 items-baseline gap-3 rounded-2xl bg-slate-100 px-3 py-2.5 text-lg">
+      <span className="shrink-0 font-extrabold text-slate-700">{t("signature.for")}</span>
+      <span className="min-w-0 font-bold text-slate-950 [overflow-wrap:anywhere]">{text}</span>
+    </p>
   );
 }
 
