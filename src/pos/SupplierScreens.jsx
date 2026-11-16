@@ -11,6 +11,7 @@ import { normalizeTypedAmount } from "./amountKeypad.js";
 import { PartyCard } from "./PartyCard.jsx";
 import { PosBackButton, PosCard, PosPage, PosPrimaryButton } from "./PosComponents.jsx";
 import { useBackBlock, useBackHandler } from "./browserBack.js";
+import { useFormErrors } from "./formErrors.js";
 
 const CATEGORY_LABELS = Object.freeze({
   stock: "expense.category.stock",
@@ -74,16 +75,15 @@ export function SpentMoney({ params = {}, onBack, onNavigate, onUpdateParams, on
   useBackBlock(saving);
   const [error, setError] = useState("");
   const amountPesewas = toPesewas(amount);
+  // rules_global.form_errors: shown after No with a problem, gone as soon as it is fixed.
+  const formErrors = useFormErrors([
+    ["amount", Number.isSafeInteger(amountPesewas) && amountPesewas > 0 ? "" : t("expense.enterAmount")],
+    ["category", category === "stock" ? "" : t("expense.creditStockOnly")]
+  ]);
 
   function continueToSupplierScreen() {
-    if (!Number.isSafeInteger(amountPesewas) || amountPesewas <= 0) {
-      setError(t("expense.enterAmount"));
-      return;
-    }
-    if (category !== "stock") {
-      setError(t("expense.creditStockOnly"));
-      return;
-    }
+    setError("");
+    if (!formErrors.check()) return;
     // 45's own draft kept from a Back comes back while the amount is the same (routes keptDrafts).
     onNavigate("StockOnCredit", { amountPesewas, category, note, ...(params.keptDrafts && { keptDrafts: params.keptDrafts }) });
   }
@@ -92,6 +92,7 @@ export function SpentMoney({ params = {}, onBack, onNavigate, onUpdateParams, on
     if (saving || !Number.isSafeInteger(amountPesewas) || amountPesewas <= 0) return;
     setSaving(true);
     setError("");
+    formErrors.clear();
     try {
       await onSave({ amountPesewas, paidAmountPesewas: amountPesewas, category, note, paidWith });
     } catch (saveError) {
@@ -118,7 +119,7 @@ export function SpentMoney({ params = {}, onBack, onNavigate, onUpdateParams, on
         <legend className="mb-1 text-lg font-extrabold">{t("expense.whatFor")}</legend>
         <div className="grid grid-cols-2 gap-2">
           {SUPPLIER_CATEGORIES.map((option) => (
-            <button key={option} type="button" aria-pressed={category === option} onClick={() => { setCategory(option); onUpdateParams?.({ expenseCategory: option }); setError(""); }} className={`min-h-12 rounded-xl border-2 px-3 text-left font-bold ${category === option ? "border-emerald-900 bg-emerald-100" : "border-slate-500 bg-white"}`}>
+            <button key={option} type="button" aria-pressed={category === option} onClick={() => { setCategory(option); onUpdateParams?.({ expenseCategory: option }); }} className={`min-h-12 rounded-xl border-2 px-3 text-left font-bold ${category === option ? "border-emerald-900 bg-emerald-100" : "border-slate-500 bg-white"}`}>
               {t(CATEGORY_LABELS[option])}
             </button>
           ))}
@@ -141,7 +142,7 @@ export function SpentMoney({ params = {}, onBack, onNavigate, onUpdateParams, on
       </fieldset>
       {/* Wiring 44: Paid with under Paid all now?, for Yes (Save). No asks it on 45 or at Pay on 46. */}
       <PaidWithChoice value={paidWith} onChange={(method) => { setPaidWith(method); onUpdateParams?.({ expensePaidWith: method }); }} />
-      {error && <p role="alert" className="rounded-xl bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
+      {(formErrors.message || error) && <p role="alert" className="rounded-xl bg-rose-100 p-3 font-semibold text-rose-950">{formErrors.message || error}</p>}
       <PosPrimaryButton type="button" onClick={() => void save()} disabled={saving || !Number.isSafeInteger(amountPesewas) || amountPesewas <= 0}>
         {saving ? t("expense.saving") : t("expense.save")}
       </PosPrimaryButton>
@@ -190,25 +191,24 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
   const isNew = newSupplier || noSuppliers;
   const listed = suppliers ?? [];
   const visible = showAll || listed.length <= 4 ? listed : listed.slice(0, 4);
+  // rules_global.form_errors: shown after Save with a problem, gone as soon as it is fixed (a supplier
+  // chosen, a name typed, or nothing left owed).
+  const formErrors = useFormErrors([
+    ["supplier", owedPesewas > 0 && !isNew && !supplierId ? t("expense.supplierRequired") : ""],
+    ["supplierName", owedPesewas > 0 && isNew && !supplierName.trim() ? t("expense.supplierNameRequired") : ""]
+  ]);
 
   function chooseSupplier(id) {
     // The new supplier fields are hidden, but what was typed in them is kept until Save.
     setNewSupplier(false);
     setSupplierId(id);
     onUpdateParams?.({ stockNewSupplier: false, stockSupplierId: id });
-    setError("");
   }
 
   async function save() {
     if (saving || !Number.isSafeInteger(paidPesewas) || paidPesewas < 0 || paidPesewas > amountPesewas) return;
-    if (owedPesewas > 0 && !isNew && !supplierId) {
-      setError(t("expense.supplierRequired"));
-      return;
-    }
-    if (owedPesewas > 0 && isNew && !supplierName.trim()) {
-      setError(t("expense.supplierNameRequired"));
-      return;
-    }
+    setError("");
+    if (!formErrors.check()) return;
     setSaving(true);
     setError("");
     try {
@@ -275,7 +275,7 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
                   {t("expense.showAllSuppliers", { count: listed.length })}
                 </button>
               )}
-              <SupplierRadio dashed checked={isNew} data-supplier-id="new" onSelect={() => { setNewSupplier(true); onUpdateParams?.({ stockNewSupplier: true }); setError(""); }}>
+              <SupplierRadio dashed checked={isNew} data-supplier-id="new" onSelect={() => { setNewSupplier(true); onUpdateParams?.({ stockNewSupplier: true }); }}>
                 <Plus size={24} aria-hidden="true" className="shrink-0" />
                 <b className="min-w-0 flex-1 text-lg">{t("expense.newSupplierRow")}</b>
               </SupplierRadio>
@@ -292,7 +292,7 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
           </section>
         </>
       )}
-      {error && <p role="alert" className="rounded-xl bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
+      {(formErrors.message || error) && <p role="alert" className="rounded-xl bg-rose-100 p-3 font-semibold text-rose-950">{formErrors.message || error}</p>}
       <PosPrimaryButton type="button" onClick={() => void save()} disabled={saving || !Number.isSafeInteger(amountPesewas) || amountPesewas <= 0 || !validPaidAmount}>
         {saving ? t("expense.saving") : t("expense.save")}
       </PosPrimaryButton>

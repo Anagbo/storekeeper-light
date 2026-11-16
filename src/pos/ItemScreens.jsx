@@ -10,6 +10,17 @@ import { posText as t } from "./i18n.js";
 import { shortSaveName } from "./saveLabel.js";
 import { PosBackButton, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { useBackBlock } from "./browserBack.js";
+import { useFormErrors } from "./formErrors.js";
+
+// What normalizeProductInput (the save's own check) says is wrong, or "".
+function productInputProblem(input) {
+  try {
+    normalizeProductInput(input);
+    return "";
+  } catch (validationError) {
+    return validationError.message;
+  }
+}
 
 function ScreenHeader({ title, onBack }) {
   return (
@@ -85,16 +96,18 @@ function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCom
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   useBackBlock(saving);
+  // rules_global.form_errors: the same checks as the save (normalizeProductInput), one per field, so
+  // a name problem goes once the name is fixed and a price problem once the price is.
+  const formErrors = useFormErrors([
+    ["name", productInputProblem({ name, price: "" })],
+    ["price", productInputProblem({ name: "x", price })]
+  ]);
 
   async function submit(event) {
     event.preventDefault();
     if (saving) return;
-    try {
-      normalizeProductInput({ name, price });
-    } catch (validationError) {
-      setError(validationError.message);
-      return;
-    }
+    setError("");
+    if (!formErrors.check()) return;
     setSaving(true);
     setError("");
     try {
@@ -125,7 +138,7 @@ function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCom
             <input type="text" inputMode="decimal" autoComplete="off" value={price} onChange={(event) => { setPrice(event.target.value); setError(""); }} placeholder="0.00" className="w-full min-w-0 bg-transparent text-right text-lg font-bold outline-none" />
           </span>
         </label>
-        {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
+        {(formErrors.message || error) && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{formErrors.message || error}</p>}
         <div className="mt-auto flex flex-col gap-2">
           {item && (
             <PosSecondaryButton type="button" disabled={saving} onClick={() => onNavigate("DeleteItem", { itemId: item.id, itemName: item.name })} className="border-rose-900 text-rose-900">

@@ -9,6 +9,7 @@ import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, P
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { useBackBlock } from "./browserBack.js";
+import { useFormErrors } from "./formErrors.js";
 
 const NETWORKS = ["MTN", "Telecel", "AirtelTigo"];
 
@@ -223,13 +224,12 @@ export function PaymentSettings({ params = {}, onBack, onNavigate, onUpdateParam
   const showPhoneFee = PHONE_REQUEST_ENABLED && MOMO_CONFIG.phoneRequestFeePesewas > 0;
   const normalizedNumber = enabled ? normalizeReceivingNumber(numberInput) : "";
   const numberChanged = enabled && normalizedNumber !== null && normalizedNumber !== settings.number;
+  // rules_global.form_errors: shown after Save with a bad number, gone once it is a Ghana number.
+  const numberErrors = useFormErrors([["number", enabled && normalizedNumber === null ? "Enter a Ghana mobile number, like 024 123 4567." : ""]]);
   async function save() {
     if (savingRef.current) return;
     setError("");
-    if (enabled && normalizedNumber === null) {
-      setError("Enter a Ghana mobile number, like 024 123 4567.");
-      return;
-    }
+    if (!numberErrors.check()) return;
     // A new or changed number is confirmed, masked, before it is saved.
     if (numberChanged && !confirming) {
       setConfirming(true);
@@ -274,7 +274,7 @@ export function PaymentSettings({ params = {}, onBack, onNavigate, onUpdateParam
         <PosSecondaryButton type="button" onClick={() => setConfirming(false)}>Change</PosSecondaryButton>
       </div>
     </PosCard>}
-    {error && <p role="alert" className="text-base font-bold text-rose-900">{error}</p>}
+    {(numberErrors.message || error) && <p role="alert" className="text-base font-bold text-rose-900">{numberErrors.message || error}</p>}
     <PosCard>
       <div data-row="phone-request" className="flex min-h-12 items-center justify-between gap-3">
         <div className="min-w-0">

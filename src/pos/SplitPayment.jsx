@@ -7,6 +7,7 @@ import { PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./
 import { useLargeAmountConfirm } from "./LargeAmountConfirm.jsx";
 import StillOwedRow from "./StillOwedRow.jsx";
 import { addRemainingToPart, isLockedMomoRow, removePart, setPartAmount } from "./splitTender.js";
+import { useFormErrors } from "./formErrors.js";
 
 const METHOD_ICONS = { cash: Banknote, momo: Smartphone, owe: UserRound };
 
@@ -38,7 +39,6 @@ export default function SplitPayment({
 }) {
   const [parts, setParts] = useState(initialParts);
   const [draft, setDraft] = useState(null);
-  const [draftError, setDraftError] = useState("");
   const largeAmount = useLargeAmountConfirm();
   // Every change of the parts is also reported, so the screen's owner can keep the draft in the
   // route params and it survives a trip to Settings (brief 3.8 rule 13).
@@ -52,6 +52,12 @@ export default function SplitPayment({
     partsTotalPesewas <= totalPesewas;
   // Integer math on the typed text (cleanup batch, 1a), not floating-point toPesewas.
   const draftPesewas = draft ? parseAmountToPesewas(draft.value) : 0;
+  // rules_global.form_errors: the editor's amount is named after Save with a problem, and the message
+  // goes as soon as the amount fits (more than zero, no more than Left to pay).
+  const draftFits = !draft ? true : draft.mode === "add"
+    ? Number.isSafeInteger(draftPesewas) && draftPesewas > 0 && draftPesewas <= leftPesewas
+    : Boolean(setPartAmount(parts, draft.paymentMethod, draftPesewas, totalPesewas));
+  const draftErrors = useFormErrors([["amount", draftFits ? "" : t("split.amountTooHigh")]]);
 
   // One row per mode, so while a MoMo row is locked (money received) the MoMo tile is hidden: a
   // second pick would grow a row that can no longer change.
@@ -65,38 +71,28 @@ export default function SplitPayment({
   // 61 and 62 ask the customer for.
   function startEdit(part) {
     setDraft({ paymentMethod: part.paymentMethod, value: formatDraft(part.amountPesewas), mode: "edit" });
-    setDraftError("");
+    draftErrors.clear();
   }
 
   function startMomoAdd() {
     setDraft({ paymentMethod: "momo", value: formatDraft(leftPesewas), mode: "add" });
-    setDraftError("");
+    draftErrors.clear();
   }
 
   // `confirmed` is true when Yes, save on the large-amount dialog continues this same Save.
   function confirmDraft(confirmed = false) {
+    if (!draftErrors.check()) return;
     if (draft.mode === "add") {
       // MoMo tile: the amount goes to 61 and 62; the row is added when 62 confirms it.
-      if (!Number.isSafeInteger(draftPesewas) || draftPesewas <= 0 || draftPesewas > leftPesewas) {
-        setDraftError(t("split.amountTooHigh"));
-        return;
-      }
       // Brief 3.12: a large MoMo amount asks before it goes to 61; Change amount leaves this editor as it is.
       if (!confirmed && largeAmount.guard(draftPesewas, () => confirmDraft(true), { momo: true })) return;
       setDraft(null);
-      setDraftError("");
       onMoMo(parts, draftPesewas);
       return;
     }
     // Only Cash and a MoMo row not yet confirmed get here; setPartAmount refuses a locked row.
-    const next = setPartAmount(parts, draft.paymentMethod, draftPesewas, totalPesewas);
-    if (!next) {
-      setDraftError(t("split.amountTooHigh"));
-      return;
-    }
-    commitParts(next);
+    commitParts(setPartAmount(parts, draft.paymentMethod, draftPesewas, totalPesewas));
     setDraft(null);
-    setDraftError("");
   }
 
   return (
@@ -208,13 +204,13 @@ export default function SplitPayment({
               autoComplete="off"
               autoFocus
               value={draft.value}
-              onChange={(event) => { setDraft({ ...draft, value: event.target.value }); setDraftError(""); }}
+              onChange={(event) => setDraft({ ...draft, value: event.target.value })}
               className="h-14 w-full min-w-0 bg-transparent text-right text-2xl font-extrabold outline-none"
             />
           </div>
-          {draftError && <p role="alert" className="font-semibold text-rose-900">{draftError}</p>}
+          {draftErrors.message && <p role="alert" className="font-semibold text-rose-900">{draftErrors.message}</p>}
           <div className="grid grid-cols-2 gap-2">
-            <PosSecondaryButton type="button" onClick={() => { setDraft(null); setDraftError(""); }}>{t("credit.cancel")}</PosSecondaryButton>
+            <PosSecondaryButton type="button" onClick={() => { setDraft(null); draftErrors.clear(); }}>{t("credit.cancel")}</PosSecondaryButton>
             <PosPrimaryButton type="button" onClick={() => confirmDraft()}>{t("split.save")}</PosPrimaryButton>
           </div>
         </section>

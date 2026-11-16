@@ -37,6 +37,7 @@ import { getDebtorItemDescription } from "../utils/debtorItemDescription.js";
 import { useBackBlock, useBackHandler } from "./browserBack.js";
 import { displayName } from "../lib/displayName.js";
 import { DueTag } from "./PartyCard.jsx";
+import { useFormErrors } from "./formErrors.js";
 
 const PAYMENT_METHODS = [
   { value: "cash", label: "collect.cash", icon: Banknote },
@@ -738,6 +739,16 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
     (correctionDebtSnapshot?.openDebtCount === 1 &&
       correctionDebtSnapshot.targetAmountPesewas === correctionDebtSnapshot.customerTotalPesewas &&
       correctionDebtSnapshot.targetAmountPesewas === correctionCurrentBalancePesewas);
+  // rules_global.form_errors: shown after Save correction with a problem, gone as soon as it is fixed.
+  const correctionAmountUsable = correctionAmount.trim() !== "" && Number.isSafeInteger(correctionNewBalancePesewas) && correctionNewBalancePesewas >= 0;
+  const correctionErrors = useFormErrors([
+    ["amount", correctionAmountUsable ? "" : "Enter a valid non-negative balance."],
+    ["increase", correctionAmountUsable && correctionNewBalancePesewas > correctionCurrentBalancePesewas ? "Corrections cannot increase debt. Use Add to debt." : ""],
+    ["lower", correctionAmountUsable && correctionNewBalancePesewas === correctionCurrentBalancePesewas ? "New balance must be lower." : ""],
+    ["target", correctionHasSingleDebtTarget ? "" : "Choose Correct this entry beside an individual debt before saving."],
+    ["reason", correctionReason ? "" : "Choose a reason for correcting the balance."],
+    ["note", correctionReason === "other" && !correctionNote.trim() ? "Add a note when the correction reason is Other." : ""]
+  ]);
 
   function openCorrection(targetDebt = data?.debt, individual = false) {
     const targetAmountPesewas = targetDebt?.amountPesewas ?? targetDebt?.total_owed ?? 0;
@@ -755,36 +766,15 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
     setCorrectionReason("");
     setCorrectionNote("");
     setCorrectionError("");
+    correctionErrors.clear();
     setCorrectionOpen(true);
   }
 
   async function saveCorrection(event) {
     event.preventDefault();
     const newBalancePesewas = correctionNewBalancePesewas;
-    if (correctionAmount.trim() === "" || !Number.isSafeInteger(newBalancePesewas) || newBalancePesewas < 0) {
-      setCorrectionError("Enter a valid non-negative balance.");
-      return;
-    }
-    if (newBalancePesewas > correctionCurrentBalancePesewas) {
-      setCorrectionError("Corrections cannot increase debt. Use Add to debt.");
-      return;
-    }
-    if (newBalancePesewas === correctionCurrentBalancePesewas) {
-      setCorrectionError("New balance must be lower.");
-      return;
-    }
-    if (!correctionHasSingleDebtTarget) {
-      setCorrectionError("Choose Correct this entry beside an individual debt before saving.");
-      return;
-    }
-    if (!correctionReason) {
-      setCorrectionError("Choose a reason for correcting the balance.");
-      return;
-    }
-    if (correctionReason === "other" && !correctionNote.trim()) {
-      setCorrectionError("Add a note when the correction reason is Other.");
-      return;
-    }
+    setCorrectionError("");
+    if (!correctionErrors.check()) return;
     setCorrectionSaving(true);
     setCorrectionError("");
     try {
@@ -1060,7 +1050,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               )}
               {!correctionHasSingleDebtTarget && <p className="rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-950">{correctionTargetGuidance}</p>}
               <p className="text-base text-slate-800">No cash moves. Use Collect for money received.</p>
-              {correctionError && <p role="alert" className="rounded-xl bg-rose-100 p-3 font-semibold text-rose-950">{correctionError}</p>}
+              {(correctionErrors.message || correctionError) && <p role="alert" className="rounded-xl bg-rose-100 p-3 font-semibold text-rose-950">{correctionErrors.message || correctionError}</p>}
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <PosPrimaryButton type="submit" disabled={!correctionCanSave || !correctionHasSingleDebtTarget}>{correctionSaving ? "Saving…" : "Save correction"}</PosPrimaryButton>
                 <PosSecondaryButton type="button" onClick={() => setCorrectionOpen(false)} disabled={correctionSaving}>Cancel</PosSecondaryButton>

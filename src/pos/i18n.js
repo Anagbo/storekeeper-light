@@ -360,7 +360,7 @@ const ENGLISH = Object.freeze({
   "credit.ghanaCard": "Ghana Card number",
   "credit.ghanaCardPlaceholder": "GHA-000000000-0",
   "credit.ghanaCardHint": "Optional. Helps you identify and find them later.",
-  "credit.nameAndAmountRequired": "Enter the customer's name and a valid amount.",
+  "credit.nameRequired": "Enter the customer's name.",
   "credit.invalidGhanaCard": "Enter a Ghana Card number like GHA-123456789-0 or 1234567890.",
   "credit.whenPay": "When will {name} pay?",
   "credit.today": "Today",

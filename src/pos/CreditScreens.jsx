@@ -25,6 +25,7 @@ import StillOwedRow from "./StillOwedRow.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { getCarriedPaymentParts, getMomoPickParams, getPaidPaymentPesewas } from "./paymentAmount.js";
 import { useBackBlock } from "./browserBack.js";
+import { useFormErrors } from "./formErrors.js";
 import { confirmDirectMomoParts, describeSplitPart, isLockedMomoRow, isUnconfirmedDirectMomo } from "./splitTender.js";
 
 function CreditAmount({ amountPesewas }) {
@@ -187,11 +188,17 @@ function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
   const [name, setName] = useState(params.newPersonName ?? "");
   const [phone, setPhone] = useState(params.newPersonPhone ?? "");
   const [ghanaCardNumber, setGhanaCardNumber] = useState(params.newPersonGhanaCard ?? "");
-  const [error, setError] = useState("");
   // Someone who already owes under the name typed here: the debt is added to theirs (the writers
   // find it by name), so say so, and carry what they owe so 19 sizes the plan on the whole balance.
   const [existingDebtor, setExistingDebtor] = useState(null);
   const phoneInvalid = Boolean(phone.trim() && !normalizeWhatsAppPhone(phone));
+  // Wiring 34 "Error on 34" and rules_global.form_errors: there is no amount field here, so the box
+  // names only the name, phone or card; it shows after Next and goes as soon as that is fixed.
+  const formErrors = useFormErrors([
+    ["name", name.trim() ? "" : t("credit.nameRequired")],
+    ["phone", phoneInvalid ? t("contact.invalidPhone") : ""],
+    ["ghanaCard", isValidGhanaCardNumber(ghanaCardNumber) ? "" : t("credit.invalidGhanaCard")]
+  ]);
 
   useEffect(() => {
     const typedName = name.trim().toLowerCase();
@@ -217,18 +224,10 @@ function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
   function continueWithNewCustomer(event) {
     event.preventDefault();
     const cleanName = name.trim();
-    if (!cleanName || (!params.manualDebt && amountOwedPesewas <= 0)) {
-      setError(t("credit.nameAndAmountRequired"));
-      return;
-    }
-    if (phoneInvalid) {
-      setError(t("contact.invalidPhone"));
-      return;
-    }
-    if (!isValidGhanaCardNumber(ghanaCardNumber)) {
-      setError(t("credit.invalidGhanaCard"));
-      return;
-    }
+    if (!formErrors.check()) return;
+    // A sale always reaches 34 with its amount (Owe on 15 needs one); without it there is nothing to
+    // owe and nothing the owner can fix here, so Next does nothing.
+    if (!params.manualDebt && amountOwedPesewas <= 0) return;
     onNavigate(params.manualDebt ? "ManualDebtAmount" : "WhenWillTheyPay", {
       ...params,
       customer: {
@@ -262,7 +261,7 @@ function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
         </label>
         <label className="block">
           <span className="mb-1 block font-extrabold">{t("credit.phone")}</span>
-          <input type="tel" inputMode="tel" autoComplete="tel" placeholder={t("credit.phonePlaceholder")} value={phone} onChange={(event) => { setPhone(event.target.value); onUpdateParams?.({ newPersonPhone: event.target.value }); setError(""); }} aria-invalid={phoneInvalid} aria-describedby="new-person-phone-hint" className={`h-14 w-full rounded-2xl border-[3px] px-3 text-lg ${phoneInvalid ? "border-rose-900" : "border-slate-500"}`} />
+          <input type="tel" inputMode="tel" autoComplete="tel" placeholder={t("credit.phonePlaceholder")} value={phone} onChange={(event) => { setPhone(event.target.value); onUpdateParams?.({ newPersonPhone: event.target.value }); }} aria-invalid={phoneInvalid} aria-describedby="new-person-phone-hint" className={`h-14 w-full rounded-2xl border-[3px] px-3 text-lg ${phoneInvalid ? "border-rose-900" : "border-slate-500"}`} />
           <span id="new-person-phone-hint" className={`text-sm ${phoneInvalid ? "text-rose-900" : "text-slate-700"}`}>{phoneInvalid ? t("contact.invalidPhone") : t("credit.phoneHint")}</span>
         </label>
         <label className="block">
@@ -270,7 +269,7 @@ function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
           <input autoCapitalize="characters" maxLength="15" placeholder={t("credit.ghanaCardPlaceholder")} value={ghanaCardNumber} onChange={(event) => { const formatted = formatGhanaCard(event.target.value); setGhanaCardNumber(formatted); onUpdateParams?.({ newPersonGhanaCard: formatted }); }} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />
           <span className="text-sm text-slate-700">{t("credit.ghanaCardHint")}</span>
         </label>
-        {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
+        {formErrors.message && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{formErrors.message}</p>}
         <PosPrimaryButton type="submit" className="mt-auto">{t("credit.next")}</PosPrimaryButton>
       </form>
     </PosPage>
@@ -416,7 +415,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
   const [nextDueDate, setNextDueDate] = useState(params.nextDueDate ?? getNextCycleDate(today, params.frequency ?? "weekly"));
   const [paymentMethod, setPaymentMethod] = useState(params.paymentMethod ?? "cash");
   const [todayPaymentAmount, setTodayPaymentAmount] = useState(params.todayPaymentAmount ?? null);
-  const [todayPaymentSubmitAttempted, setTodayPaymentSubmitAttempted] = useState(false);
+  const [todayPaymentTyped, setTodayPaymentTyped] = useState(false);
   const [saving, setSaving] = useState(false);
   useBackBlock(saving);
   const [error, setError] = useState("");
@@ -473,6 +472,26 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
   const planReady = Number.isSafeInteger(installmentPesewas) && installmentPesewas > 0 &&
     dateValid &&
     (!startToday || paymentAlreadyMadeToday || validTodayPayment);
+  // rules_global.form_errors: Amount paid today is named under its field and the split check in the
+  // box, only after Save plan (or Split) is tapped, and each goes as soon as it is fixed.
+  const formErrors = useFormErrors([
+    ["todayAmount", startToday && !validTodayPayment
+      ? todayPaymentPesewas > maxCreditPesewas
+        ? t("credit.paymentTodayTooHigh", { amount: formatGhs(maxCreditPesewas) })
+        : t("credit.paymentTodayRequired")
+      : ""],
+    ["split", startToday && paymentMethod === "split" && splitParts.length === 0 ? t("credit.paymentSplitRequired") : ""]
+  ]);
+  // Save plan is grey while Amount paid today is wrong, so once something is typed the line under
+  // the field also says why (as before); the Split tap shows it when nothing was typed.
+  const todayAmountError = formErrors.field === "todayAmount"
+    ? formErrors.message
+    : todayPaymentTyped && startToday && !validTodayPayment
+      ? (todayPaymentPesewas > maxCreditPesewas
+        ? t("credit.paymentTodayTooHigh", { amount: formatGhs(maxCreditPesewas) })
+        : t("credit.paymentTodayRequired"))
+      : "";
+  const boxError = (formErrors.field === "split" ? formErrors.message : "") || error;
 
   // Back from a MoMo pick (61/62): returnRoute is stripped on return (E4), so use the method.
   useEffect(() => {
@@ -500,14 +519,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
 
   async function savePlan(confirmed = false) {
     if (savingRef.current) return;
-    if (startToday && !validTodayPayment) {
-      setTodayPaymentSubmitAttempted(true);
-      return;
-    }
-    if (startToday && paymentMethod === "split" && splitParts.length === 0) {
-      setError(t("credit.paymentSplitRequired"));
-      return;
-    }
+    if (!formErrors.check()) return;
     // Brief 3.12: a large plan asks first, once the entries are valid. In a split (16 saves) and for a
     // manual debt (a later extension) it does not ask here.
     if (!confirmed && params.flow !== "split" && !params.manualDebt &&
@@ -605,8 +617,8 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
       return;
     }
     if (!Number.isSafeInteger(todayPaymentPesewas) || todayPaymentPesewas <= 0) {
-      setTodayPaymentSubmitAttempted(true);
-      setError(t("credit.paymentTodayRequired"));
+      // Named once, under Amount paid today (it was also repeated in the box below).
+      formErrors.check(["todayAmount"]);
       return;
     }
     // Wiring 27: the parts kept after Back from 27 come back while Amount paid today is unchanged;
@@ -696,7 +708,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
             onClick={() => {
               if (paymentAlreadyMadeToday || alreadyPaidPesewas > 0) return;
               setStartToday(true);
-              setTodayPaymentSubmitAttempted(false);
+              setTodayPaymentTyped(false);
               const nextDate = getNextCycleDate(today, frequency);
               setNextDueDate(nextDate);
               const draftUpdates = { startToday: true, nextDueDate: nextDate };
@@ -715,7 +727,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
             // Received MoMo is locked: Next cycle would drop it, so it is not offered then.
             if (hasReceivedMomo) return;
             setStartToday(false);
-            setTodayPaymentSubmitAttempted(false);
+            setTodayPaymentTyped(false);
             const nextDate = getNextCycleDate(today, frequency);
             setNextDueDate(nextDate);
             const draftUpdates = { startToday: false, nextDueDate: nextDate };
@@ -731,7 +743,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
       {startToday && !paymentAlreadyMadeToday && (
         <label className="block">
           <span className="mb-1 block text-lg font-extrabold">{t("credit.amountPaidToday")}</span>
-          <span className={`flex min-h-14 items-center gap-2 rounded-2xl border-[3px] px-4 ${todayPaymentSubmitAttempted && !validTodayPayment ? "border-rose-800" : "border-slate-500"}`}>
+          <span className={`flex min-h-14 items-center gap-2 rounded-2xl border-[3px] px-4 ${todayAmountError ? "border-rose-800" : "border-slate-500"}`}>
             <span className="shrink-0 text-lg font-bold text-slate-700">GH₵</span>
             <input
               type="number"
@@ -742,14 +754,14 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
               autoComplete="off"
               aria-label={t("credit.amountPaidToday")}
               aria-describedby="today-payment-limit"
-              aria-invalid={todayPaymentSubmitAttempted && !validTodayPayment}
+              aria-invalid={Boolean(todayAmountError)}
               value={todayPaymentInput}
               disabled={recordedParts.length > 0}
               onChange={(event) => {
                 setTodayPaymentAmount(event.target.value);
                 // Kept in the route params, so Menu > Settings > Back > Close menu restores it.
                 onUpdateParams?.({ todayPaymentAmount: event.target.value });
-                setTodayPaymentSubmitAttempted(true);
+                setTodayPaymentTyped(true);
                 setError("");
               }}
               placeholder="0.00"
@@ -761,12 +773,8 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
               ? t("credit.paidTodayHint")
               : t("credit.paymentTodayMaximum", { amount: formatGhs(maxCreditPesewas) })}
           </span>
-          {todayPaymentSubmitAttempted && !validTodayPayment && (
-            <span role="alert" className="mt-1 block text-sm font-semibold text-rose-900">
-              {todayPaymentPesewas > maxCreditPesewas
-                ? t("credit.paymentTodayTooHigh", { amount: formatGhs(maxCreditPesewas) })
-                : t("credit.paymentTodayRequired")}
-            </span>
+          {todayAmountError && (
+            <span role="alert" className="mt-1 block text-sm font-semibold text-rose-900">{todayAmountError}</span>
           )}
         </label>
       )}
@@ -849,7 +857,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
         <StillOwedRow amountPesewas={stillOwedAfterTodayPesewas} customerName={params.customer?.name} />
         </div>
       )}
-      {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
+      {boxError && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{boxError}</p>}
       <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => void savePlan(true)} />
       <div className="mt-auto grid grid-cols-[auto_minmax(0,1fr)] gap-2">
         <PosBackButton onClick={onBack} className="h-14!" />
