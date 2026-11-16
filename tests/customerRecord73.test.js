@@ -143,3 +143,10 @@ test("29 opens 73 with Show {Name} the record ›; Back and Back to shop return 
   await app.phoneBack();
   assert.equal(app.route, "DebtorDetail");
 });
+
+test("a Paid row lists Cash first, then MoMo, whatever order the parts were stored in", async () => {
+  const { paidParts } = await import("../src/pos/historyRows.js");
+  const momoFirst = { collectionParts: [{ method: "MoMo", amountPesewas: 400 }, { method: "Cash", amountPesewas: 600 }] };
+  assert.equal(paidParts(momoFirst), `Cash ${formatGhs(600)}, MoMo ${formatGhs(400)}`);
+  assert.equal(paidParts({ method: "MoMo", amountPesewas: 400 }), `MoMo ${formatGhs(400)}`);
+});

@@ -52,9 +52,16 @@ export function rowReason(event) {
   return event.reason?.trim() ? event.reason.trim() : t("proof.noReason");
 }
 
-// "Cash GH₵6.00, MoMo GH₵4.00" for a Paid row (one part: "Cash GH₵6.00").
+// "Cash GH₵6.00, MoMo GH₵4.00" for a Paid row (one part: "Cash GH₵6.00"). Always Cash first, then
+// MoMo: the parts come from the database in id order, which is random.
+const METHOD_ORDER = ["Cash", "MoMo"];
+const methodRank = (method) => (METHOD_ORDER.includes(method) ? METHOD_ORDER.indexOf(method) : METHOD_ORDER.length);
 export function paidParts(event) {
-  if (event.collectionParts?.length) return event.collectionParts.map((part) => `${part.method} ${formatGhs(part.amountPesewas)}`).join(", ");
+  if (event.collectionParts?.length) {
+    return [...event.collectionParts]
+      .sort((left, right) => methodRank(left.method) - methodRank(right.method))
+      .map((part) => `${part.method} ${formatGhs(part.amountPesewas)}`).join(", ");
+  }
   return `${event.method ?? "Cash"} ${formatGhs(event.amountPesewas)}`;
 }
 
