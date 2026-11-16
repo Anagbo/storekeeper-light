@@ -134,11 +134,13 @@ export default function SellWithItems({ params = {}, onBack, onNavigate, onUpdat
               </button>
             );
           })}
-          {/* With no item tiles "+ New item" spans the whole row; otherwise it is the last tile. */}
+          {/* "+ New item" never sits alone in a half-width row: with an even number of item tiles
+              (zero included, and a search that matches nothing) it spans the whole row; with an odd
+              number it is the last tile, beside the last item. One rule on the tile count. */}
           <button
             type="button"
             onClick={() => onNavigate("NewItem")}
-            className={`${products.length ? "" : "col-span-2 sm:col-span-3 "}min-h-[72px] rounded-[18px] border-[3px] border-dashed border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800`}
+            className={`${products.length % 2 === 0 ? "col-span-full " : ""}min-h-[72px] rounded-[18px] border-[3px] border-dashed border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800`}
           >
             + {t("sellItems.newItem")}
           </button>

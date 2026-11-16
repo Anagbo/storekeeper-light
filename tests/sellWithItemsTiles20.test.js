@@ -149,20 +149,25 @@ test("20 new item: a newly created item appears as a tile and selects like any o
   assert.equal(textOf(nodes(selected).find((node) => node.props["data-count-badge"] !== undefined)), "×1");
 });
 
-// Wiring 20 (16 Nov 2026): with no item tiles, "+ New item" spans the whole grid row (same 72px
-// height, dashed 3px border kept); with one or more tiles it stays the last tile of the grid.
+// Wiring 20 (16 Nov 2026): "+ New item" never sits alone in a half-width row. One rule on the item
+// tile count: even (zero included, or a search that matches nothing) spans the whole row; odd stays
+// one tile wide beside the last tile. Same 72px height and dashed 3px border either way.
 const classes = (node) => node.props.className.split(/\s+/);
 const SAME_LOOK = ["min-h-[72px]", "border-[3px]", "border-dashed", "border-emerald-900", "rounded-[18px]"];
+const SUGAR = { id: 3, name: "Sugar", default_price: 5 };
+const OIL = { id: 4, name: "Oil", default_price: 30 };
 
-test("20 no items: + New item spans the full grid width, same height and dashed border", async () => {
-  const { view } = await show({ products: [] });
-  const button = newItemButton(view.tree);
-  for (const cls of [...SAME_LOOK, "col-span-2", "sm:col-span-3"]) assert.ok(classes(button).includes(cls), `class ${cls}`);
-  setLiveQuery(null);
+test("20 even tile count (0, 2, 4, search with no match): + New item spans the full grid width, same height and dashed border", async () => {
+  for (const [products, query] of [[[]], [[BREAD, RICE]], [[BREAD, RICE, SUGAR, OIL]], [[BREAD, RICE, SUGAR], "zzz"]]) {
+    const { view } = await show({ products, query });
+    const button = newItemButton(view.tree);
+    for (const cls of [...SAME_LOOK, "col-span-full"]) assert.ok(classes(button).includes(cls), `${products.length} items${query ? ` + "${query}"` : ""}: class ${cls}`);
+    setLiveQuery(null);
+  }
 });
 
-test("20 with items: + New item stays the last grid tile, one column wide", async () => {
-  for (const products of [[BREAD], [BREAD, RICE]]) {
+test("20 odd tile count (1, 3): + New item stays the last grid tile, one column wide", async () => {
+  for (const products of [[BREAD], [BREAD, RICE, SUGAR]]) {
     const { view } = await show({ products });
     const button = newItemButton(view.tree);
     for (const cls of SAME_LOOK) assert.ok(classes(button).includes(cls), `class ${cls}`);
