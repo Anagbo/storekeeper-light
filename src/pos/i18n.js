@@ -354,7 +354,7 @@ const ENGLISH = Object.freeze({
   "credit.noDebtors": "No existing debtors yet. Add a new person to continue.",
   "credit.newPerson": "New person",
   "credit.next": "Next ›",
-  "credit.back": "‹ Back",
+  "credit.back": "Back",
   "credit.owesFromThisSale": "Owes from this sale:",
   "credit.name": "Name",
   "credit.namePlaceholder": "e.g. Kofi Mensah",
