@@ -407,7 +407,8 @@
     "The reason is optional and never blocks Save. Empty is saved as no reason and shown as \"No reason written\" on 29, 43, 72 and 73. A generated word such as \"Sale\" or \"Other amount\" is not a reason.",
     "The reason sits above the Pay by choices so the keyboard does not hide it. The Pay by choices are 60px high (down from 68px) so the screen still fits a 360x667 phone without scrolling; if it does not fit, the content area scrolls and Back and Save stay fixed in the bottom row.",
     "Split (flow=split): 18 and 19 save nothing, they return to 16. The reason is held in the draft (route params) and saved with the credit when Done is tapped on 16. It survives trips to 17, 19 and 16 and back. On 19 (A little at a time) the reason is carried and shown as a read-only \"For\" row.",
-    "Save button text: \"Save · {Name} owes GH₵x\" may wrap to two lines beside Back (built). It never wraps the amount (GH₵ and the figure stay together) and the button stays 56px or more."
+    "Save button text: \"Save · {Name} owes GH₵x\" may wrap to two lines beside Back (built). It never wraps the amount (GH₵ and the figure stay together) and the button stays 56px or more.",
+    "Save button on 18 (decided 16 Nov 2026): two lines inside the same button. Line 1 \"Save\" (800 weight, 18px); line 2 the detail \"{Name} owes GH₵{amount}\" (600 weight, 16px, single line, name cut at 10 characters with an ellipsis as now). The button is at least 56px high and grows only if a very large amount needs it. It must be two lines at 340, 360 and 393px, never three, and words are never split. The visible label for screen readers stays \"Save · {Name} owes GH₵{amount}\"."
    ]
   },
   "19": {
@@ -1195,7 +1196,7 @@
      "role": null,
      "disabled_initially": false,
      "type": "reuse_existing",
-     "effect": "Open the existing edit-contact form with its existing validation. No new screen."
+     "effect": "Person-with-pen icon above the words \"Edit contact\" (the existing button, unchanged), right side of the contact card, in line with the name. Open the existing edit-contact form with its existing validation. No new screen."
     },
     {
      "label": "Collect",
@@ -1254,7 +1255,8 @@
     "No open debt entries (decided 15 Nov 2026): when the person has no open debt entries, the \"Open debt entries\" heading and its line are not shown at all. With open entries the list and \"Correct this entry\" stay.",
     "Collection receipt (decided 15 Nov 2026): Receipt and Copy receipt on this screen cover the person's latest payment only, and the label says so (\"Receipt for GH₵30.00 payment\"). A person who has never paid has no receipt buttons. Receipt text: \"Receipt from {Shop}\", \"dd/mm/yyyy HH:mm\" (no comma), \"Received from {Name}: GH₵x (Cash|MoMo)\", \"Balance owed now: GH₵y\" (or \"Nothing owed now\" when zero), \"Thank you!\".",
     "Credit rows in the history show the reason line (items or reason) and a tag \"Signed ✓\" or \"Not signed\". Not signed rows at or above the signature threshold show a small \"Get signature\" action that opens 72 for that entry.",
-    "Balance corrected row (changed 16 Nov 2026, replaces the stacked old → new layout): line 1 is the title \"Balance corrected\" alone (never wraps). Line 2 is a two-column row: \"Was GH₵old\" on the left in grey regular weight, and the NEW balance on the right, bold, 24px, neutral dark colour (not red or green), ending at the same right edge as the amounts of the other rows. Line 3: date and \"Reason: …\" (reason label, plus the typed note for Other). An amount never breaks. A correction to zero shows GH₵0.00 on the right and \"Was GH₵105.00\" on the left."
+    "Balance corrected row (changed 16 Nov 2026, replaces the stacked old → new layout): line 1 is the title \"Balance corrected\" alone (never wraps). Line 2 is a two-column row: \"Was GH₵old\" on the left in grey regular weight, and the NEW balance on the right, bold, 24px, neutral dark colour (not red or green), ending at the same right edge as the amounts of the other rows. Line 3: date and \"Reason: …\" (reason label, plus the typed note for Other). An amount never breaks. A correction to zero shows GH₵0.00 on the right and \"Was GH₵105.00\" on the left.",
+    "Header of 29/43 (final, 16 Nov 2026; replaces all earlier versions): the contact card stays exactly as it was before Back was added: the initial circle, the name (22px bold, may wrap to two lines) and, on the right of the same row, the Edit contact button (the person-with-pen icon above the words \"Edit contact\", about 88px wide, 64px high). The ONLY change is a Back button (PosBackButton) added as its own plain row above the card, left aligned, 52px high, like the other screens. Nothing inside the card moves. At 340px the card never wraps sideways and the page never scrolls sideways."
    ]
   },
   "30": {
@@ -2314,7 +2316,7 @@
      "role": null,
      "disabled_initially": false,
      "type": "reuse_existing",
-     "effect": "Open the existing edit-contact form with its existing validation. No new screen."
+     "effect": "Person-with-pen icon above the words \"Edit contact\" (the existing button, unchanged), right side of the contact card, in line with the name. Open the existing edit-contact form with its existing validation. No new screen."
     },
     {
      "label": "Send reminder on WhatsApp",
@@ -2375,7 +2377,8 @@
     "No open debt entries (decided 15 Nov 2026): when the person has no open debt entries, the \"Open debt entries\" heading and its line are not shown at all. With open entries the list and \"Correct this entry\" stay.",
     "Collection receipt (decided 15 Nov 2026): Receipt and Copy receipt on this screen cover the person's latest payment only, and the label says so (\"Receipt for GH₵30.00 payment\"). A person who has never paid has no receipt buttons. Receipt text: \"Receipt from {Shop}\", \"dd/mm/yyyy HH:mm\" (no comma), \"Received from {Name}: GH₵x (Cash|MoMo)\", \"Balance owed now: GH₵y\" (or \"Nothing owed now\" when zero), \"Thank you!\".",
     "Credit rows in the history show the reason line (items or reason) and a tag \"Signed ✓\" or \"Not signed\". Not signed rows at or above the signature threshold show a small \"Get signature\" action that opens 72 for that entry.",
-    "Balance corrected row (changed 16 Nov 2026, replaces the stacked old → new layout): line 1 is the title \"Balance corrected\" alone (never wraps). Line 2 is a two-column row: \"Was GH₵old\" on the left in grey regular weight, and the NEW balance on the right, bold, 24px, neutral dark colour (not red or green), ending at the same right edge as the amounts of the other rows. Line 3: date and \"Reason: …\" (reason label, plus the typed note for Other). An amount never breaks. A correction to zero shows GH₵0.00 on the right and \"Was GH₵105.00\" on the left."
+    "Balance corrected row (changed 16 Nov 2026, replaces the stacked old → new layout): line 1 is the title \"Balance corrected\" alone (never wraps). Line 2 is a two-column row: \"Was GH₵old\" on the left in grey regular weight, and the NEW balance on the right, bold, 24px, neutral dark colour (not red or green), ending at the same right edge as the amounts of the other rows. Line 3: date and \"Reason: …\" (reason label, plus the typed note for Other). An amount never breaks. A correction to zero shows GH₵0.00 on the right and \"Was GH₵105.00\" on the left.",
+    "Header of 29/43 (final, 16 Nov 2026; replaces all earlier versions): the contact card stays exactly as it was before Back was added: the initial circle, the name (22px bold, may wrap to two lines) and, on the right of the same row, the Edit contact button (the person-with-pen icon above the words \"Edit contact\", about 88px wide, 64px high). The ONLY change is a Back button (PosBackButton) added as its own plain row above the card, left aligned, 52px high, like the other screens. Nothing inside the card moves. At 340px the card never wraps sideways and the page never scrolls sideways."
    ]
   },
   "44": {
@@ -4080,7 +4083,8 @@
    "stored": "On the credit event (the transactions row): items_json and itemDescription for items, note for typed text. Report first how the existing fields hold it.",
    "optional": "Always optional; never blocks Save.",
    "chips": "Up to three recent distinct reasons from the last 30 days, tap to fill. Hidden when none."
-  }
+  },
+  "shell_height": "Page shell (decided 16 Nov 2026): the area under the header must not use a hard-coded header height (it was 64px while the real header is 75px, so every screen scrolled by 11px at 360x667). Build the shell as a column of exactly the visible screen height (100dvh): header flex-none, page area flex-1 with min-height 0, so it adapts to any header height. A screen that fits must not scroll the page; a screen that does not fit scrolls inside the page area only, with Back and Save pinned."
  },
  "built_extras_kept": {
   "24": "row tags Collected Debt, Balance correction, Added to debt",
