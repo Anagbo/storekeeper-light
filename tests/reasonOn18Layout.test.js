@@ -10,7 +10,7 @@ import { build } from "esbuild";
 import { appCss, browser } from "./helpers/browserLayout.js";
 
 // Wiring 18 "Reason on 18" (16 Nov 2026), real browser: the real PosApp (header and all) in headless
-// Edge or Chrome at phone viewports. The "What for?" field, the recent chips, the four 60px options,
+// Edge or Chrome at phone viewports. The "What for?" field, the recent chips, the four 56px options,
 // Back and Save are all visible; Save wraps only between words; no sideways scroll. Back is the first
 // control, at the top beside the title (wiring "Save button and Back on 18", final); Save alone is pinned
 // at the bottom. The document never scrolls; the content above Save scrolls inside the page area when
@@ -197,7 +197,15 @@ const MEASURE = `(() => {
     bottomRowInner: (() => { const row = document.querySelector("[data-bottom-row]"); const cs = getComputedStyle(row); return row.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight); })(),
     header: rect(document.querySelector("header")),
     mainH: document.querySelector("main").getBoundingClientRect().height,
-    contentH: [...document.querySelector("main").children].reduce((s, c) => s + c.getBoundingClientRect().height, 0)
+    contentH: [...document.querySelector("main").children].reduce((s, c) => s + c.getBoundingClientRect().height, 0),
+    // What 18 needs (its blocks, the gaps between them and the page padding), whether or not it fits:
+    // when it fits, main is stretched to the page area, so scrollHeight cannot show the room to spare.
+    needed: (() => {
+      const main = document.querySelector("[data-page-area] main");
+      const cs = getComputedStyle(main);
+      const blocks = [...main.children].filter((c) => c.getClientRects().length);
+      return blocks.reduce((s, c) => s + c.getBoundingClientRect().height, 0) + (blocks.length - 1) * parseFloat(cs.rowGap) + parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+    })()
   };
 })()`;
 
@@ -228,7 +236,7 @@ function assertVisible(m, label, { saveTwoLines = true } = {}) {
   m.chips.forEach((chip, index) => inside(chip, `chip ${index + 1}`));
   m.options.forEach((option, index) => {
     inside(option, `option ${index + 1}`);
-    assert.ok(option.height >= 59.5, `${label}: option ${index + 1} is at least 60px (${option.height})`);
+    assert.ok(option.height >= 55.5, `${label}: option ${index + 1} is at least 56px (${option.height})`);
   });
   inside(m.back, "Back");
   inside(m.save, "Save");
@@ -291,11 +299,11 @@ async function with18Browser(run) {
 }
 
 // Wiring "Save button and Back on 18" (final, 16 Nov 2026): Back is at the top beside the title and only
-// Save is pinned. When 18 does not fit (long name, two rows of chips, 340x640, and with Segoe UI also a
-// short name at 360x667, 26px over) the content above Save scrolls inside the page area; the
+// Save is pinned. A short name fits 360x667 with at least 8px to spare. When 18 does not fit (long name,
+// two rows of chips, 340x640) the content above Save scrolls inside the page area; the
 // document never scrolls (rules_global.shell_height); at the top of that scroll the "What for?" field and
 // its chips are above Save, at the end the last option is.
-test("18: field, chips, 60px options, Back and Save at 340, 360 and 393px; at 360x667 and 340x640 only the page area scrolls", { skip: browser ? false : "no Chrome or Edge found (set HEADER_TEST_BROWSER)", timeout: 240_000 }, async () => {
+test("18: field, chips, 56px options, Back and Save at 340, 360 and 393px; at 360x667 and 340x640 only the page area scrolls", { skip: browser ? false : "no Chrome or Edge found (set HEADER_TEST_BROWSER)", timeout: 240_000 }, async () => {
   await with18Browser(async (session, base) => {
   for (const width of [340, 360, 393]) {
     assertVisible(await open18(session, `${base}?case=short`, width, 667), `short ${width}x667`);
@@ -313,10 +321,10 @@ test("18: field, chips, 60px options, Back and Save at 340, 360 and 393px; at 36
     for (const [what, r] of [["the What for field", top.field], ...top.chips.map((chip, index) => [`chip ${index + 1}`, chip])]) {
       assert.ok(r.top >= top.header.bottom - 0.5 && r.bottom <= top.bottomRow.top + 0.5, `${label}: ${what} is reachable above Save (${r.top}-${r.bottom}, Save's row from ${top.bottomRow.top})`);
     }
-    // The wiring hopes a short name fits 360x667 without scrolling; when it does not, the fallback above
-    // and below applies (the page area scrolls, Save stays pinned). Whether it fits is reported.
+    // A short name fits 360x667 without scrolling, with at least 8px to spare (16 Nov 2026).
     if (kind === "short" && width === 360) {
-      console.log(`${label}: ${top.area.scrollHeight <= top.area.clientHeight ? "fits" : "does not fit"} (content ${top.area.scrollHeight}px in a ${top.area.clientHeight}px page area)`);
+      assert.ok(top.needed <= top.area.clientHeight - 8, `${label}: 18 fits with 8px to spare (needs ${top.needed}px of a ${top.area.clientHeight}px page area)`);
+      assert.equal(top.area.scrollHeight, top.area.clientHeight, `${label}: the page area does not scroll`);
     }
     // At the top of the page area Back is on screen.
     assert.ok(top.back.top >= top.header.bottom - 0.5 && top.back.bottom <= top.bottomRow.top + 0.5, `${label}: Back is on screen at the top (${top.back.top}-${top.back.bottom})`);
@@ -330,7 +338,7 @@ test("18: field, chips, 60px options, Back and Save at 340, 360 and 393px; at 36
     }
     assert.equal(end.areaScrollTop > 0, top.area.scrollHeight > top.area.clientHeight, `${label}: the page area scrolls exactly when it must`);
     assert.ok(end.options[3].bottom <= end.bottomRow.top + 0.5, `${label}: A little at a time is not hidden under Save (${end.options[3].bottom} > ${end.bottomRow.top})`);
-    heights[label] = { header: top.header.height, area: top.area.clientHeight, content: top.area.scrollHeight, scrolls: end.areaScrollTop, pinned: top.bottomRow.height, titleLines: top.titleLines, chipRows: top.chipRows, back: top.back.height, save: top.save.height, document: top.scrollHeight };
+    heights[label] = { header: top.header.height, area: top.area.clientHeight, needed: top.needed, content: top.area.scrollHeight, scrolls: end.areaScrollTop, pinned: top.bottomRow.height, titleLines: top.titleLines, chipRows: top.chipRows, back: top.back.height, save: top.save.height, document: top.scrollHeight };
   }
   console.log(`18 heights (Segoe UI): ${JSON.stringify(heights)}`);
   });

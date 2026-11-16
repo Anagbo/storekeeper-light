@@ -351,19 +351,20 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onUpdateParams, onReturnT
     }
   }
 
-  // Wiring 18 "Reason on 18": the reason sits above the Pay by choices (60px). Wiring "Save button and
-  // Back on 18" (final): Back is at the top beside the title (the title wraps beside it) and scrolls
+  // Wiring 18 "Reason on 18": the reason sits above the Pay by choices. So that 18 fits 360x667 with a
+  // short name (16 Nov 2026): options 56px, 10px between blocks, 6px inside the field block and between
+  // chip rows, 16px top padding. Wiring "Save button and Back on 18" (final): Back is at the top beside the title (the title wraps beside it) and scrolls
   // with the content; Save alone stays pinned at the bottom (16px under it, no bottom bar here). The
   // page fills the shell's page area (rules_global.shell_height), so a page that fits ends exactly at
   // the bottom of the screen and a longer one scrolls inside the page area with Save stuck to it.
   return (
-    <PosPage className="flex flex-col gap-3 overflow-visible! pb-4!">
+    <PosPage className="flex flex-col gap-2.5 overflow-visible! pt-4! pb-4!">
       <div className="flex min-w-0 items-center gap-3">
         <PosBackButton onClick={onBack} />
         <h1 className="min-w-0 text-2xl font-extrabold leading-tight">{t("credit.whenPay", { name: customerName })}</h1>
       </div>
       {reasonCase.kind === "field" ? (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1.5">
           <label htmlFor="credit-reason" className="-mb-0.5 text-[17px] font-extrabold text-slate-950">{t("credit.whatFor")}</label>
           <input
             id="credit-reason"
@@ -375,7 +376,7 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onUpdateParams, onReturnT
             className="h-[52px] w-full min-w-0 rounded-[14px] border-2 border-slate-500 px-3 text-lg"
           />
           {recentReasons.length > 0 && (
-            <div role="group" aria-label={t("credit.recentReasons")} data-recent-reasons="" className="flex flex-wrap gap-2">
+            <div role="group" aria-label={t("credit.recentReasons")} data-recent-reasons="" className="flex flex-wrap gap-x-2 gap-y-1.5">
               {recentReasons.map((recent) => (
                 <button key={recent} type="button" data-reason-chip="" onClick={() => changeReason(recent)} className="h-10 max-w-full truncate rounded-full border-2 border-slate-500 bg-white px-3.5 text-base font-bold text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800">
                   {recent}
@@ -386,11 +387,11 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onUpdateParams, onReturnT
         </div>
       ) : reasonCase.text ? <ReasonForRow text={reasonCase.text} /> : null}
       {choices.map((choice) => (
-        <button key={choice.value} type="button" aria-pressed={dueChoice === choice.value} onClick={() => { setDueChoice(choice.value); onUpdateParams?.({ creditDueChoice: choice.value }); }} className={`min-h-[60px] shrink-0 rounded-2xl border-[3px] px-4 text-xl font-extrabold ${dueChoice === choice.value ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>
+        <button key={choice.value} type="button" aria-pressed={dueChoice === choice.value} onClick={() => { setDueChoice(choice.value); onUpdateParams?.({ creditDueChoice: choice.value }); }} className={`min-h-14 shrink-0 rounded-2xl border-[3px] px-4 text-xl font-extrabold ${dueChoice === choice.value ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>
           {choice.label}
         </button>
       ))}
-      <button type="button" onClick={() => onNavigate("ALittleAtATime", { ...params, ...reasonParams, creditDueChoice: dueChoice })} className="flex min-h-[60px] shrink-0 flex-col items-center justify-center rounded-2xl border-[3px] border-slate-500 px-4 text-lg font-extrabold leading-tight">
+      <button type="button" onClick={() => onNavigate("ALittleAtATime", { ...params, ...reasonParams, creditDueChoice: dueChoice })} className="flex min-h-14 shrink-0 flex-col items-center justify-center rounded-2xl border-[3px] border-slate-500 px-4 text-lg font-extrabold leading-tight">
         {t("credit.aLittleAtATime")}
         <span className="text-sm font-semibold text-slate-700">{t("credit.installmentSubtitle")}</span>
       </button>
