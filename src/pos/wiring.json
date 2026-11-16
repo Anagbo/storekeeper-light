@@ -1228,7 +1228,8 @@
     "Send another reminder? check: if a reminder to this person was recorded within the last 7 days, tapping the WhatsApp reminder button first opens a bottom sheet: \"You sent {Name} a reminder {today|yesterday|on dd/mm/yyyy} at HH:mm. Sending too many can annoy a customer.\" Buttons: \"Send again\" (strong, primary; opens WhatsApp and records a new reminder) and \"Not now\" (outlined; closes the sheet, nothing recorded). After 7 days or with no reminder the button opens WhatsApp directly. Sending a receipt never counts as a reminder and never triggers the check.",
     "No open debt entries (decided 15 Nov 2026): when the person has no open debt entries, the \"Open debt entries\" heading and its line are not shown at all. With open entries the list and \"Correct this entry\" stay.",
     "Collection receipt (decided 15 Nov 2026): Receipt and Copy receipt on this screen cover the person's latest payment only, and the label says so (\"Receipt for GH₵30.00 payment\"). A person who has never paid has no receipt buttons. Receipt text: \"Receipt from {Shop}\", \"dd/mm/yyyy HH:mm\" (no comma), \"Received from {Name}: GH₵x (Cash|MoMo)\", \"Balance owed now: GH₵y\" (or \"Nothing owed now\" when zero), \"Thank you!\".",
-    "Credit rows in the history show the reason line (items or reason) and a tag \"Signed ✓\" or \"Not signed\". Not signed rows at or above the signature threshold show a small \"Get signature\" action that opens 72 for that entry."
+    "Credit rows in the history show the reason line (items or reason) and a tag \"Signed ✓\" or \"Not signed\". Not signed rows at or above the signature threshold show a small \"Get signature\" action that opens 72 for that entry.",
+    "Balance corrected rows in What happened (decided 16 Nov 2026): the title \"Balance corrected\" is on its own line and never wraps to two lines at 340px; \"GH₵old → GH₵new\" goes on the next line, then the date and reason."
    ]
   },
   "30": {
@@ -2348,7 +2349,8 @@
     "Send another reminder? check: if a reminder to this person was recorded within the last 7 days, tapping the WhatsApp reminder button first opens a bottom sheet: \"You sent {Name} a reminder {today|yesterday|on dd/mm/yyyy} at HH:mm. Sending too many can annoy a customer.\" Buttons: \"Send again\" (strong, primary; opens WhatsApp and records a new reminder) and \"Not now\" (outlined; closes the sheet, nothing recorded). After 7 days or with no reminder the button opens WhatsApp directly. Sending a receipt never counts as a reminder and never triggers the check.",
     "No open debt entries (decided 15 Nov 2026): when the person has no open debt entries, the \"Open debt entries\" heading and its line are not shown at all. With open entries the list and \"Correct this entry\" stay.",
     "Collection receipt (decided 15 Nov 2026): Receipt and Copy receipt on this screen cover the person's latest payment only, and the label says so (\"Receipt for GH₵30.00 payment\"). A person who has never paid has no receipt buttons. Receipt text: \"Receipt from {Shop}\", \"dd/mm/yyyy HH:mm\" (no comma), \"Received from {Name}: GH₵x (Cash|MoMo)\", \"Balance owed now: GH₵y\" (or \"Nothing owed now\" when zero), \"Thank you!\".",
-    "Credit rows in the history show the reason line (items or reason) and a tag \"Signed ✓\" or \"Not signed\". Not signed rows at or above the signature threshold show a small \"Get signature\" action that opens 72 for that entry."
+    "Credit rows in the history show the reason line (items or reason) and a tag \"Signed ✓\" or \"Not signed\". Not signed rows at or above the signature threshold show a small \"Get signature\" action that opens 72 for that entry.",
+    "Balance corrected rows in What happened (decided 16 Nov 2026): the title \"Balance corrected\" is on its own line and never wraps to two lines at 340px; \"GH₵old → GH₵new\" goes on the next line, then the date and reason."
    ]
   },
   "44": {
@@ -3832,6 +3834,14 @@
    "component": "CustomerSignature",
    "controls": [
     {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "SIGNED",
+     "effect": "Acts as Skip for now (the credit stays saved as Not signed). The phone back button does the same. Uses PosBackButton."
+    },
+    {
      "label": "Clear",
      "role": null,
      "disabled_initially": false,
@@ -3870,7 +3880,8 @@
     "Done is disabled until ink exists. Skip for now is always available. Leaving by Back or closing the app counts as Skip for now.",
     "Storage: small vector strokes (or compressed PNG under 20 KB) saved on the debt event as signature plus signedAt. Local only, included in backup and restore. Never sent anywhere in this version.",
     "Honest limit: a signature shows the customer saw and accepted this amount; it is not a legal proof. Do not use the words legal, proof or guaranteed anywhere in the UI.",
-    "Snapshot: the signature record stores the credit amount and the reason as they were when signed. Anything changed afterwards is shown on 73 as a Balance corrected card; a signature never silently covers a different amount."
+    "Snapshot: the signature record stores the credit amount and the reason as they were when signed. Anything changed afterwards is shown on 73 as a Balance corrected card; a signature never silently covers a different amount.",
+    "Layout (built, 16 Nov 2026): Back and the title \"Please sign\" share the top row. Clear sits above Done, both full width, 60px; Skip for now stays an underlined link below. The header is the Home tile without the Menu button (as on 73)."
    ]
   },
   "73": {
@@ -3901,7 +3912,8 @@
     "Every credit row shows what it was for (items, or the reason typed on 54/53). A credit with no items and no reason shows \"No reason written\".",
     "Caption: \"Read only. Please hand the phone back when you are done.\"",
     "No private shop data on this screen: no profit, cost, other customers, totals or phone numbers.",
-    "Corrections are shown (decided 16 Nov 2026). Every balance correction made on 54 appears in \"What happened\" as its own dashed card: \"Balance corrected\", \"GH₵old → GH₵new\", date, and \"Reason: …\" (the reason entered on 54). A customer can therefore see if a signed amount was changed later. Corrections are never hidden or merged into the credit rows."
+    "Corrections are shown (decided 16 Nov 2026). Every balance correction made on 54 appears in \"What happened\" as its own dashed card: \"Balance corrected\", \"GH₵old → GH₵new\", date, and \"Reason: …\" (the reason entered on 54). A customer can therefore see if a signed amount was changed later. Corrections are never hidden or merged into the credit rows.",
+    "Balance corrected card layout: the title \"Balance corrected\" is on its own line and never wraps; \"GH₵old → GH₵new\" is on the next line, then the date and reason. Same layout in the 29/43 history rows."
    ]
   }
  },
@@ -4003,7 +4015,8 @@
    "limits": "Points are whole numbers 0..1000, at most 1,500 points (about 18 KB as JSON), thinned on Done if longer. A signature is written once and never replaced.",
    "sync": "Signature fields are stripped from any sync payload, and signing does not mark the event pending. The signature stays on this phone and in backup files.",
    "no_reason": "A keypad sale with no items, or a generated word like Sale or Other amount, counts as no reason: show \"No reason written\".",
-   "threshold_scope": "The threshold applies to each credit event on its own. Anything not signed stays visible as Not signed on 29, 43 and 73."
+   "threshold_scope": "The threshold applies to each credit event on its own. Anything not signed stays visible as Not signed on 29, 43 and 73.",
+   "paid_order": "Wherever a payment is split, list Cash first, then MoMo, on 29, 43 and 73. One shared helper."
   },
   "hide_amounts": {
    "decided": "16 Nov 2026",
