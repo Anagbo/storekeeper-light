@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Minus, Plus, Search, Trash2 } from "lucide-react";
 import { db } from "../db/db.js";
-import { formatGhs, formatGhsCompactAmount, toPesewas } from "../lib/money.js";
+import { formatGhs, toPesewas } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
 import { PosCard, PosPage, PosPrimaryButton, PosBackButton } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
@@ -102,22 +102,31 @@ export default function SellWithItems({ params = {}, onBack, onNavigate, onUpdat
           {products.map((product) => {
             const unitPrice = toPesewas(product.default_price);
             const hasPrice = Number.isSafeInteger(unitPrice) && unitPrice > 0;
+            const priceText = hasPrice ? formatGhs(unitPrice) : t("items.setPrice");
+            // Wiring 20 "Item tiles": a tile whose item is in the sale is selected (light green, 3px
+            // green border) with a ×n badge, never colour alone; the name says it too.
+            const inSale = cart.find((line) => line.productId === product.id)?.quantity ?? 0;
             return (
               <button
                 key={product.id}
                 type="button"
+                data-item-tile={product.name}
+                aria-label={inSale > 0
+                  ? t("sellItems.tileNameInSale", { name: product.name, price: priceText, count: inSale })
+                  : t("sellItems.tileName", { name: product.name, price: priceText })}
                 onClick={() => chooseProduct(product)}
-                className="flex min-h-[72px] items-center gap-2.5 rounded-[18px] border-2 border-slate-500 bg-white px-2.5 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800"
+                className={`flex min-h-[72px] items-center gap-2.5 rounded-[18px] px-2.5 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 ${inSale > 0 ? "border-[3px] border-emerald-900 bg-green-100" : "border-2 border-slate-500 bg-white"}`}
               >
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-emerald-900 text-lg font-extrabold text-white">
                   {product.name.charAt(0).toUpperCase()}
                 </span>
                 <span className="min-w-0 flex-1">
                   <strong className="block truncate text-base font-extrabold text-slate-900">{product.name}</strong>
-                  <span className="block whitespace-nowrap text-sm font-bold text-emerald-900">
-                    {hasPrice ? formatGhsCompactAmount(unitPrice) : t("items.setPrice")}
-                  </span>
+                  <span className="block whitespace-nowrap text-sm font-bold text-emerald-900">{priceText}</span>
                 </span>
+                {inSale > 0 && (
+                  <span data-count-badge="" className="shrink-0 self-start rounded-full bg-emerald-900 px-2 py-0.5 text-sm font-extrabold tabular-nums text-white">×{inSale}</span>
+                )}
               </button>
             );
           })}
@@ -128,7 +137,9 @@ export default function SellWithItems({ params = {}, onBack, onNavigate, onUpdat
           >
             + {t("sellItems.newItem")}
           </button>
-          {!products.length && <p className="col-span-2 sm:col-span-3 rounded-xl border-2 border-slate-300 bg-white p-3 font-semibold">{t("sellItems.noMatches")}</p>}
+          {/* Wiring 20 "Empty and search states": no items at all and nothing typed says how to add
+              the first one; "No items match that search." only when something typed matches nothing. */}
+          {!products.length && <p className="col-span-2 sm:col-span-3 rounded-xl border-2 border-slate-300 bg-white p-3 font-semibold">{normalizedQuery ? t("sellItems.noMatches") : t("sellItems.noItemsYet")}</p>}
         </div>
       )}
 
