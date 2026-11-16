@@ -710,6 +710,7 @@ const ENGLISH = Object.freeze({
   "record.youOwe": "You owe",
   "record.tookOnCredit": "Took on credit",
   "record.corrected": "Balance corrected",
+  "record.was": "Was {amount}",
   "record.reason": "Reason: {reason}",
   "record.caption": "Read only. Please hand the phone back when you are done.",
   "record.backToShop": "Back to shop",
