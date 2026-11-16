@@ -81,9 +81,12 @@ export default function BackupRestore({ onBack }) {
       const result = await importDatabaseFromJson(pending.file);
       // Only what the restore returns exactly: the records in the file and how many saved rows were kept.
       const kept = Number.isSafeInteger(result?.skippedLedgerRows) ? result.skippedLedgerRows : 0;
-      const total = Object.entries(result ?? {}).reduce((sum, [key, value]) => sum + (key !== "skippedLedgerRows" && Number.isSafeInteger(value) ? value : 0), 0);
+      const total = Object.entries(result ?? {}).reduce((sum, [key, value]) => sum + (key !== "skippedLedgerRows" && key !== "signaturesLeftOut" && Number.isSafeInteger(value) ? value : 0), 0);
       const parts = [t("backup.finished"), total === 1 ? t("backup.inFileOne") : t("backup.inFileMany", { total })];
       if (kept > 0) parts.push(kept === 1 ? t("backup.keptOne") : t("backup.keptMany", { kept }));
+      // Wiring 71 (16 Nov 2026): signatures that could not be read were left out; the rest restored.
+      const leftOut = Number.isSafeInteger(result?.signaturesLeftOut) ? result.signaturesLeftOut : 0;
+      if (leftOut > 0) parts.push(leftOut === 1 ? t("backup.signaturesLeftOutOne") : t("backup.signaturesLeftOutMany", { count: leftOut }));
       setPending(null);
       setMessage(parts.join(" "));
     } catch (restoreError) {

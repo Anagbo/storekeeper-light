@@ -1,3 +1,5 @@
+import { withoutSignatureFields } from "./signature.js";
+
 const TABLES = ["products", "transactions", "debts"];
 export const SYNC_REQUEST_TIMEOUT_MS = 30_000;
 
@@ -5,8 +7,9 @@ export function createSyncPayload(records) {
   const normalizedRecords = Object.fromEntries(
     TABLES.map((tableName) => [
       tableName,
+      // rules_global.customer_proof.sync: a signature stays on this phone and in backup files only.
       (records[tableName] || [])
-        .slice()
+        .map((record) => (tableName === "transactions" ? withoutSignatureFields(record) : record))
         .sort((left, right) => String(left.id).localeCompare(String(right.id)))
     ])
   );

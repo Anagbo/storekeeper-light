@@ -263,6 +263,8 @@ const ENGLISH = Object.freeze({
   "backup.inFileMany": "{total} records in the file.",
   "backup.keptOne": "1 saved sale, payment or debt was already on this phone and was kept.",
   "backup.keptMany": "{kept} saved sales, payments and debts were already on this phone and were kept.",
+  "backup.signaturesLeftOutOne": "1 signature in the file could not be read and was left out.",
+  "backup.signaturesLeftOutMany": "{count} signatures in the file could not be read and were left out.",
   "backup.badFile": "This file cannot be used. Choose a StoreKeeper backup file.",
   "backup.restoreFailed": "The restore could not finish. Nothing was changed. Try again.",
   "settings.saveFailed": "The shop name could not be saved. Check device storage and try again.",

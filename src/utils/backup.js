@@ -2,6 +2,8 @@ import { db } from "../db/db.js";
 import { recalculateCustomerDebtBalance } from "../db/debtLedger.js";
 import { HIDE_AMOUNTS_PREFERENCE, loadHideAmounts } from "../db/preferences.js";
 import { REMINDER_CHANNELS } from "../db/reminders.js";
+import { isCreditEvent } from "../lib/creditReason.js";
+import { hasSignatureFields, isValidSignatureRecord, pickSignatureFields, withoutSignatureFields } from "../lib/signature.js";
 
 const BACKUP_FORMAT_VERSION = 1;
 const BACKUP_TABLES = ["transactions", "customers", "debts", "products", "payments", "suppliers", "reminders"];
@@ -154,6 +156,20 @@ function withOptionalTables(data) {
   return { ...data, reminders: data.reminders ?? [] };
 }
 
+// Wiring 71 (16 Nov 2026): a signature that cannot be read (wrong shape, too many points, too large,
+// or on a row that is not a credit) is left out; that event restores as Not signed and the rest of
+// the file restores. Returns the cleaned transactions and how many signatures were left out.
+export function sanitizeBackupSignatures(transactions) {
+  let leftOut = 0;
+  const cleaned = transactions.map((record) => {
+    if (!hasSignatureFields(record)) return record;
+    if (isCreditEvent(record) && isValidSignatureRecord(record)) return record;
+    leftOut += 1;
+    return withoutSignatureFields(record);
+  });
+  return { transactions: cleaned, signaturesLeftOut: leftOut };
+}
+
 // The backup object: every table, plus the settings section. Format version stays 1 (the settings
 // section is optional on restore).
 export async function buildBackup(now = new Date()) {
@@ -203,9 +219,14 @@ export async function importDatabaseFromJson(jsonFile) {
   } catch {
     throw new TypeError("The selected file is not valid JSON.");
   }
-  const data = withOptionalTables(validateBackupData(backup));
+  const validated = withOptionalTables(validateBackupData(backup));
+  const { transactions: cleanTransactions, signaturesLeftOut } = sanitizeBackupSignatures(validated.transactions);
+  const data = { ...validated, transactions: cleanTransactions };
   const added = Object.fromEntries(BACKUP_TABLES.map((tableName) => [tableName, 0]));
   let skippedLedgerRows = 0;
+  // An event already on this phone without a signature takes ONLY the four signature fields from the
+  // backup; nothing else on it changes, and an existing signature is never replaced.
+  const signaturesToAdd = [];
 
   await db.transaction("rw", ...BACKUP_TABLES.map((tableName) => db.table(tableName)), db.settings, async () => {
     for (const tableName of BACKUP_TABLES) {
@@ -223,6 +244,10 @@ export async function importDatabaseFromJson(jsonFile) {
           if (isLedger && existingRecords[index]) {
             // The restore message names sales, payments and debts; a reminder already here is just kept.
             if (tableName !== "reminders") skippedLedgerRows += 1;
+            if (tableName === "transactions" && isValidSignatureRecord(record) &&
+              !hasSignatureFields(existingRecords[index]) && isCreditEvent(existingRecords[index])) {
+              signaturesToAdd.push({ id: record.id, fields: pickSignatureFields(record) });
+            }
             return false;
           }
           return shouldRestoreBackupRecord(existingRecords[index], record);
@@ -233,6 +258,7 @@ export async function importDatabaseFromJson(jsonFile) {
         added[tableName] = records.length;
       }
     }
+    for (const { id, fields } of signaturesToAdd) await db.transactions.update(id, fields);
     // A customer's total owed is derived from the debts on this phone, never taken
     // from the backup file (Batch 6b).
     const customerIds = new Set([
@@ -262,7 +288,8 @@ export async function importDatabaseFromJson(jsonFile) {
   });
   return {
     ...Object.fromEntries(BACKUP_TABLES.map((tableName) => [tableName, data[tableName].length])),
-    skippedLedgerRows
+    skippedLedgerRows,
+    signaturesLeftOut
   };
 }
 
