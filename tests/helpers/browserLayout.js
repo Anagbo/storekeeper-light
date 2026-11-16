@@ -23,6 +23,23 @@ const BROWSERS = [
 ];
 export const browser = process.env.HEADER_TEST_BROWSER || BROWSERS.find((path) => existsSync(path));
 
+// Edge on Windows sometimes fails to start under load ("LoadEnclaveImageW failed" on stderr, no page
+// output). That start-up failure is retried once, after a short wait, with a fresh profile; any other
+// failure (or the same one twice) is returned as it is and fails the test.
+const STARTUP_FAILURE = "LoadEnclaveImageW failed";
+const measured = (result) => /<pre id="out">[\s\S]*?<\/pre>/.test(result.stdout ?? "");
+export const isStartupFailure = (result) => !measured(result) && String(result.stderr ?? "").includes(STARTUP_FAILURE);
+
+// Opens `file` headless and returns the spawnSync result of --dump-dom (`dir` holds the profiles).
+export function dumpDom(file, dir, { run = spawnSync, wait = 2000 } = {}) {
+  const launch = (profile) => run(browser, ["--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check", `--user-data-dir=${join(dir, profile)}`, "--window-size=1400,900", "--virtual-time-budget=8000", "--dump-dom", pathToFileURL(file).href], { encoding: "utf8", timeout: 90_000, maxBuffer: 64 * 1024 * 1024 });
+  const first = launch("profile");
+  if (!isStartupFailure(first)) return first;
+  console.warn(`the browser did not start (${STARTUP_FAILURE}); trying once more`);
+  if (wait > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, wait);
+  return launch("profile-retry");
+}
+
 const VOID = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"]);
 const SVG = new Set(["svg", "path", "circle", "line", "rect", "polyline", "polygon", "g", "ellipse"]);
 const UNITLESS = new Set(["fontWeight", "lineHeight", "opacity", "zIndex", "flex", "flexGrow", "flexShrink", "order"]);
@@ -86,7 +103,7 @@ export function measureInFrames({ pages, css, widths, height = 900, measure }) {
   try {
     const file = join(dir, "page.html");
     writeFileSync(file, html);
-    const result = spawnSync(browser, ["--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check", `--user-data-dir=${join(dir, "profile")}`, "--window-size=1400,900", "--virtual-time-budget=8000", "--dump-dom", pathToFileURL(file).href], { encoding: "utf8", timeout: 90_000, maxBuffer: 64 * 1024 * 1024 });
+    const result = dumpDom(file, dir);
     const match = /<pre id="out">([\s\S]*?)<\/pre>/.exec(result.stdout ?? "");
     assert.ok(match, `the browser measured the page (status ${result.status}): ${String(result.stderr).slice(0, 400)}`);
     return JSON.parse(match[1].replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&"));

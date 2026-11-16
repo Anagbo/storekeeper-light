@@ -171,6 +171,12 @@ test("drawing on the signature box does not scroll the page (real browser, touch
   } finally {
     session?.close();
     await sleep(300);
-    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+    // A temp folder left behind (Edge still holding its profile: EPERM) is harmless; it must not fail a
+    // test whose checks passed (same as reasonOn18Layout).
+    try {
+      rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
+    } catch (error) {
+      console.warn(`could not remove ${dir}: ${error.code}`);
+    }
   }
 });

@@ -1,10 +1,9 @@
 import "fake-indexeddb/auto";
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { after, beforeEach, test } from "node:test";
 import { compile } from "@tailwindcss/node";
 import { Scanner } from "@tailwindcss/oxide";
@@ -12,6 +11,7 @@ import { db } from "../src/db/db.js";
 import { recordCreditSale } from "../src/db/debts.js";
 import { setPreference } from "../src/db/preferences.js";
 import { resetBrowserBack } from "../src/pos/browserBack.js";
+import { dumpDom } from "./helpers/browserLayout.js";
 import { openPosApp } from "./helpers/posAppHarness.js";
 import { setLiveQuery, walk } from "./helpers/renderJsx.js";
 
@@ -236,7 +236,7 @@ function runBrowser(html) {
   try {
     const file = join(dir, "page.html");
     writeFileSync(file, html);
-    const result = spawnSync(browser, ["--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check", `--user-data-dir=${join(dir, "profile")}`, "--window-size=1400,900", "--virtual-time-budget=8000", "--dump-dom", pathToFileURL(file).href], { encoding: "utf8", timeout: 90_000, maxBuffer: 64 * 1024 * 1024 });
+    const result = dumpDom(file, dir);
     const match = /<pre id="out">([\s\S]*?)<\/pre>/.exec(result.stdout ?? "");
     assert.ok(match, `the browser measured the page (status ${result.status}): ${String(result.stderr).slice(0, 400)}`);
     return JSON.parse(match[1].replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&"));
