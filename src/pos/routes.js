@@ -54,6 +54,7 @@ export const POS_ROUTES = Object.freeze({
   ,PlanPayMoMo: "PlanPayMoMo"
   ,PlanPayPhone: "PlanPayPhone"
   ,PlanPaymentResult: "PlanPaymentResult"
+  ,CustomerSignature: "CustomerSignature"
 });
 
 export const POS_LINKS = Object.freeze([
@@ -215,7 +216,19 @@ export const POS_LINKS = Object.freeze([
   { from: "PlanPayCash", action: "submitted", to: "PlanPaymentResult" },
   { from: "PlanPayMoMo", action: "submitted", to: "PlanPaymentResult" },
   { from: "PlanPayPhone", action: "submitted", to: "PlanPaymentResult" },
-  { from: "PlanPaymentResult", action: "done", to: "MyPlan" }
+  { from: "PlanPaymentResult", action: "done", to: "MyPlan" },
+  // Wiring 72 (SAVECREDIT, SIGNED): after a credit at or above the threshold is saved, 72 opens on a fresh
+  // stack; Done, Skip for now and Back continue to where the save would have gone.
+  { from: "WhenWillTheyPay", action: "saveSign", to: "CustomerSignature" },
+  { from: "ALittleAtATime", action: "saveSign", to: "CustomerSignature" },
+  { from: "ManualDebtAmount", action: "saveSign", to: "CustomerSignature" },
+  { from: "SplitPayment", action: "saveSign", to: "CustomerSignature" },
+  { from: "CustomerSignature", action: "signed", to: "CreditSaved" },
+  { from: "CustomerSignature", action: "signed", to: "SaleRecorded" },
+  { from: "CustomerSignature", action: "signed", to: "ManualDebtSaved" },
+  // Get signature on 29/43 pushes 72; Done, Skip for now and Back return there.
+  { from: "DebtorDetail", action: "getSignature", to: "CustomerSignature" },
+  { from: "CustomerSignature", action: "signed", to: "DebtorDetail", via: "history" }
 ]);
 
 export function createRouteState(route = POS_ROUTES.Home, params = {}) {
@@ -516,6 +529,9 @@ export const RESULT_ROUTES = Object.freeze([POS_ROUTES.SaleRecorded, POS_ROUTES.
 export function navigateState(state, route, params = {}) {
   if (route === POS_ROUTES.Home) return createRouteState(POS_ROUTES.Home);
   if (RESULT_ROUTES.includes(route)) return createRouteState(route, params);
+  // 72 right after a save (it carries where the save goes next) starts a fresh stack like a result
+  // screen; 72 from Get signature on 29/43 is pushed, so Back returns there.
+  if (route === POS_ROUTES.CustomerSignature && params.next?.route) return createRouteState(route, params);
   return pushRoute(state, route, withKeptDraft(route, params, state.params));
 }
 
@@ -527,5 +543,18 @@ const BACK_TO_HOME = new Set([POS_ROUTES.CollectPayment, POS_ROUTES.PeopleWhoOwe
 // a screen other than Home means Home.
 export function phoneBackState(state) {
   if (BACK_TO_HOME.has(state.current)) return createRouteState(POS_ROUTES.Home);
+  // 72: the phone back is Skip for now (SIGNED).
+  if (state.current === POS_ROUTES.CustomerSignature) return signedState(state);
+  return backRoute(state);
+}
+
+// SIGNED (wiring 72): Done, Skip for now or Back. After a save, on to where the save would have gone
+// (31, 30 or 31 after a split, ManualDebtSaved), a fresh stack with 72 dropped. Opened by Get signature
+// on 29/43: back to that screen.
+export function signedState(state) {
+  const next = state.params?.next;
+  if (state.current === POS_ROUTES.CustomerSignature && next?.route && POS_ROUTES[next.route]) {
+    return navigateState(state, next.route, next.params ?? {});
+  }
   return backRoute(state);
 }

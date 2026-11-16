@@ -3,7 +3,8 @@ import { recordCashSale } from "../db/sales.js";
 import { setPreference, shouldShowPosSetup } from "../db/preferences.js";
 import { useSync } from "../hooks/useSync.js";
 import { useSubscription } from "../hooks/useSubscription.js";
-import { FEATURE_FLAGS } from "../config/features.js";
+import { FEATURE_FLAGS, needsSignature } from "../config/features.js";
+import { getCreditEventAmountPesewas } from "../lib/creditReason.js";
 import { formatGhs } from "../lib/money.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import {
@@ -21,7 +22,8 @@ import {
   returnToMomoOrigin,
   showsBottomBar,
   navigateState,
-  phoneBackState
+  phoneBackState,
+  signedState
 } from "./routes.js";
 import { createBrowserBack, useBackHandler } from "./browserBack.js";
 import LeaveDraftDialog from "./LeaveDraftDialog.jsx";
@@ -49,6 +51,7 @@ import BackupRestore from "./BackupRestore.jsx";
 import { SettingsProfitTools } from "./SettingsScreens.jsx";
 import PeopleWhoOweYou from "./OwedScreens.jsx";
 import { ManualDebtAmount, ManualDebtSaved } from "./ManualDebtScreens.jsx";
+import CustomerSignature from "./CustomerSignature.jsx";
 import { PHONE_REQUEST_ENABLED, getMerchantMomoSettings } from "./momoConfig.js";
 import { MoMoChoice,MoMoCode, MoMoDirect, MoMoNotCompleted, MoMoPayment, MoMoSetup, MoMoWaiting, PaymentSettings } from "./MoMoScreens.jsx";
 import { MyPlan, PlanPayCash, PlanPayMethod, PlanPayMoMo, PlanPayPhone, PlanPaymentResult } from "./PlanScreens.jsx";
@@ -318,6 +321,23 @@ export default function PosApp() {
     return customer;
   }
 
+  // SAVECREDIT / SAVE19 signature step (16 Nov 2026): the credit is already saved. When the amount of
+  // THAT credit event is at or above the threshold, 72 opens first (a fresh stack), then SIGNED goes on
+  // to `route`. Below the threshold, straight to `route`.
+  function continueAfterCredit(event, route, params) {
+    if (event?.id && needsSignature(getCreditEventAmountPesewas(event))) {
+      navigate(POS_ROUTES.CustomerSignature, { transactionId: event.id, next: { route, params } });
+      return;
+    }
+    navigate(route, params);
+  }
+
+  // SIGNED: Done, Skip for now, Back or the phone back on 72.
+  function finishSignature() {
+    commit((current) => signedState(current));
+    setNotice("");
+  }
+
   async function saveCreditSale(details) {
     if (details.manualDebt) {
       const { recordManualDebt } = await import("../db/debtLedger.js");
@@ -339,7 +359,7 @@ export default function PosApp() {
         now: Date.now()
       });
       void requestBackgroundSync();
-      navigate(POS_ROUTES.ManualDebtSaved, { ...details, manualDebtResult });
+      continueAfterCredit(manualDebtResult.event, POS_ROUTES.ManualDebtSaved, { ...details, manualDebtResult });
       return;
     }
     const { recordCreditSale } = await import("../db/debts.js");
@@ -360,7 +380,7 @@ export default function PosApp() {
       attemptId: details.attemptId
     });
     void requestBackgroundSync();
-    navigate(POS_ROUTES.CreditSaved, { ...details, creditResult });
+    continueAfterCredit(creditResult.saleTransaction, POS_ROUTES.CreditSaved, { ...details, creditResult });
   }
 
   async function saveSplitSale(details) {
@@ -387,11 +407,13 @@ export default function PosApp() {
       // a split owed in full ends on 31 Saved as credit, as a plain credit sale from 15 does.
       // Both are result screens: the stack starts fresh, so the phone back goes Home.
       const receivedTodayPesewas = paidParts.reduce((sum, part) => sum + (part.amountPesewas > 0 ? part.amountPesewas : 0), 0);
+      // flow=split (16 Nov 2026): the credit is saved here, on Done on 16; 72 opens now when the Owe part
+      // is at or above the threshold, then 30 or 31 as before.
       if (receivedTodayPesewas === 0) {
-        navigate(POS_ROUTES.CreditSaved, { ...details, creditResult });
+        continueAfterCredit(creditResult.saleTransaction, POS_ROUTES.CreditSaved, { ...details, creditResult });
         return;
       }
-      navigate(POS_ROUTES.SaleRecorded, { transaction: creditResult.saleTransaction, creditResult });
+      continueAfterCredit(creditResult.saleTransaction, POS_ROUTES.SaleRecorded, { transaction: creditResult.saleTransaction, creditResult });
       return;
     }
     const transaction = await recordCashSale(details);
@@ -448,6 +470,9 @@ export default function PosApp() {
     (route === POS_ROUTES.YourStarterList && routeState.params.setupFlow === true) ||
     (route === POS_ROUTES.NewItem && routeState.params.setupFlow === true);
   const isCollectSheet = route === POS_ROUTES.CollectPayment;
+  // 72 and 73: the phone is in the customer's hand. No Menu button; the header keeps its Home tile,
+  // as on 29 and in the prototype. The side menu stays on wide screens.
+  const isCustomerScreen = route === POS_ROUTES.CustomerSignature;
   const isFocusedCollectionScreen = (route === POS_ROUTES.SplitPayment && Boolean(routeState.params.debtId)) || [
     POS_ROUTES.CollectPayPart,
     POS_ROUTES.PaymentReceived,
@@ -650,6 +675,8 @@ export default function PosApp() {
       onNavigate={navigate}
       shopName={shopName}
     />
+  ) : route === POS_ROUTES.CustomerSignature ? (
+    <CustomerSignature params={routeState.params} onFinish={finishSignature} shopName={shopName} />
   ) : route === POS_ROUTES.SpentMoney ? (
     <SpentMoney params={routeState.params} onBack={navigateBack} onNavigate={navigate} onUpdateParams={updateCurrentParams} onSave={saveExpense} />
   ) : route === POS_ROUTES.StockOnCredit ? (
@@ -706,7 +733,7 @@ export default function PosApp() {
         onMenu={openMenu}
         menuOpen={menuOpen}
         menuButtonRef={menuButtonRef}
-        hideMenu={isFocusedCollectionScreen || isSetupFlow || route === POS_ROUTES.PeopleWhoOweYou}
+        hideMenu={isFocusedCollectionScreen || isSetupFlow || isCustomerScreen || route === POS_ROUTES.PeopleWhoOweYou}
       />
       <div className="flex min-h-[calc(100vh-4rem)]">
         {!isSetupFlow && <PosSideNav current={route} onNavigate={switchTab} hideSaved={route === POS_ROUTES.MoMoDirect} />}

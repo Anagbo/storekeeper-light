@@ -685,7 +685,26 @@ const ENGLISH = Object.freeze({
   "debt.dueToday": "Due today",
   "debt.lateDays": "Late {days} day{plural}",
   "debt.inDays": "In {days} day{plural}",
-  "debt.dueLine": "Due {date} · {status}"
+  "debt.dueLine": "Due {date} · {status}",
+  // Wiring 72 / 73 and the credit rows on 29/43 (rules_global.customer_proof, 16 Nov 2026). Never the
+  // words legal, proof or guaranteed in what the customer reads.
+  "proof.noReason": "No reason written",
+  "proof.signed": "Signed ✓",
+  "proof.notSigned": "Not signed",
+  "signature.title": "Please sign",
+  "signature.owes": "{name} owes {shop}",
+  "signature.for": "For: {reason}",
+  "signature.taken": "Taken: {date}",
+  "signature.payBy": "Pay by: {date}",
+  "signature.box": "Signature box",
+  "signature.signHere": "Sign here with your finger",
+  "signature.clear": "Clear",
+  "signature.done": "Done",
+  "signature.saving": "Saving…",
+  "signature.skip": "Skip for now",
+  "signature.alreadySigned": "This credit is already signed.",
+  "signature.saveFailed": "The signature could not be saved. The credit is still saved. Try again, or tap Skip for now.",
+  "signature.notFound": "This credit could not be found here. It is still saved. Tap Skip for now."
 });
 
 // True when the string exists. Screens use this to fall back to plain words instead of
