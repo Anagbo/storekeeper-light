@@ -26,6 +26,7 @@ import { useSaveAttempt } from "./useSaveAttempt.js";
 import { getCarriedPaymentParts, getMomoPickParams, getPaidPaymentPesewas } from "./paymentAmount.js";
 import { useBackBlock } from "./browserBack.js";
 import { useFormErrors } from "./formErrors.js";
+import AmountTextInput from "./AmountTextInput.jsx";
 import { confirmDirectMomoParts, describeSplitPart, isLockedMomoRow, isUnconfirmedDirectMomo } from "./splitTender.js";
 
 function CreditAmount({ amountPesewas }) {
@@ -416,6 +417,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
   const [paymentMethod, setPaymentMethod] = useState(params.paymentMethod ?? "cash");
   const [todayPaymentAmount, setTodayPaymentAmount] = useState(params.todayPaymentAmount ?? null);
   const [todayPaymentTyped, setTodayPaymentTyped] = useState(false);
+  const [installmentCapped, setInstallmentCapped] = useState(false);
   const [saving, setSaving] = useState(false);
   useBackBlock(saving);
   const [error, setError] = useState("");
@@ -492,6 +494,8 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
         : t("credit.paymentTodayRequired"))
       : "";
   const boxError = (formErrors.field === "split" ? formErrors.message : "") || error;
+  // Shown only while the field still holds the capped amount.
+  const installmentCappedShown = installmentCapped && installmentAmount === maxInstallmentAmount;
 
   // Back from a MoMo pick (61/62): returnRoute is stripped on return (E4), so use the method.
   useEffect(() => {
@@ -657,36 +661,31 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
         <span className="mb-1 block text-lg font-extrabold">{t("credit.howMuchEachTime")}</span>
         <span className="flex min-h-16 items-center gap-2 rounded-2xl border-[3px] border-slate-500 px-4">
           <span className="shrink-0 text-lg font-bold text-slate-700">GH₵</span>
-          <input
-            type="number"
-            min="0.01"
-            max={maxInstallmentAmount}
-            step="0.01"
-            inputMode="decimal"
-            autoComplete="off"
+          <AmountTextInput
             aria-label={t("credit.howMuchEachTime")}
             value={installmentAmount}
-            onChange={(event) => {
-              const nextValue = event.target.value;
+            onValue={(nextValue) => {
               const nextPesewas = toPesewas(nextValue);
-              if (Number.isSafeInteger(nextPesewas) && nextPesewas > maxInstallmentPesewas) {
-                setInstallmentAmount(maxInstallmentAmount);
-                onUpdateParams?.({ installmentAmount: maxInstallmentAmount });
-                setError(t("credit.installmentCapped"));
-              } else {
-                setInstallmentAmount(nextValue);
-                onUpdateParams?.({ installmentAmount: nextValue });
-                setError("");
-              }
+              const capped = Number.isSafeInteger(nextPesewas) && nextPesewas > maxInstallmentPesewas;
+              const shown = capped ? maxInstallmentAmount : nextValue;
+              setInstallmentAmount(shown);
+              onUpdateParams?.({ installmentAmount: shown });
+              setInstallmentCapped(capped);
+              setError("");
             }}
             aria-describedby="installment-amount-limit"
             placeholder="0.00"
-            className="w-full min-w-0 bg-transparent text-right text-2xl font-extrabold outline-none placeholder:text-slate-400 sm:text-3xl"
+            className="w-full min-w-0 bg-transparent text-2xl font-extrabold outline-none placeholder:text-slate-400 sm:text-3xl"
           />
         </span>
         <span id="installment-amount-limit" className="mt-1 block text-sm font-semibold text-slate-700">
           {t("credit.installmentMaximum", { amount: formatGhs(maxInstallmentPesewas) })}
         </span>
+        {/* Decided 16 Nov 2026: the capped notice is live under the field (not in the box) and goes as
+            soon as the amount is changed to one within the maximum. */}
+        {installmentCappedShown && (
+          <span role="status" data-installment-capped="" className="mt-1 block text-sm font-semibold text-rose-900">{t("credit.installmentCapped")}</span>
+        )}
       </label>
       <fieldset>
         <legend className="mb-1 text-lg font-extrabold">{t("credit.howOften")}</legend>
@@ -745,22 +744,16 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
           <span className="mb-1 block text-lg font-extrabold">{t("credit.amountPaidToday")}</span>
           <span className={`flex min-h-14 items-center gap-2 rounded-2xl border-[3px] px-4 ${todayAmountError ? "border-rose-800" : "border-slate-500"}`}>
             <span className="shrink-0 text-lg font-bold text-slate-700">GH₵</span>
-            <input
-              type="number"
-              min="0.01"
-              max={(maxCreditPesewas / 100).toFixed(2)}
-              step="0.01"
-              inputMode="decimal"
-              autoComplete="off"
+            <AmountTextInput
               aria-label={t("credit.amountPaidToday")}
               aria-describedby="today-payment-limit"
               aria-invalid={Boolean(todayAmountError)}
               value={todayPaymentInput}
               disabled={recordedParts.length > 0}
-              onChange={(event) => {
-                setTodayPaymentAmount(event.target.value);
+              onValue={(value) => {
+                setTodayPaymentAmount(value);
                 // Kept in the route params, so Menu > Settings > Back > Close menu restores it.
-                onUpdateParams?.({ todayPaymentAmount: event.target.value });
+                onUpdateParams?.({ todayPaymentAmount: value });
                 setTodayPaymentTyped(true);
                 setError("");
               }}

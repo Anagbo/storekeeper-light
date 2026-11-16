@@ -74,3 +74,37 @@ export function normalizeTypedAmount(value, current = "", rules = MONEY_KEYPAD) 
   for (const character of cleaned) text = pressAmountKey(text, character, rules);
   return text;
 }
+
+// Typed amount fields (wiring rules_global.amount_entry, 16 Nov 2026: the split field on 16/27, 19 each
+// time and paid today, 44, 45, 46 and the balance correction). The new field text after one change:
+// - typed (one character put in, or some taken out): the keys are replayed as on the pad, so a third
+//   decimal is not accepted (4.00 then 2 stays 4.00), a second "." is ignored, digits only;
+// - pasted (more than one character put in at once, also over a selected amount): a plain amount is
+//   kept and more than two decimals round as before (a third digit of 5 or more rounds up: "4.005" and
+//   200.00 replaced by "1.005" give "4.01" and "1.01"); other pasted text is refused.
+// Text with anything but digits and "." (1e2, 0x10, signs, letters) is refused: the field keeps `current`.
+export function typeAmountText(next, current = "", rules = MONEY_KEYPAD) {
+  const now = typeof current === "string" ? current : "";
+  const cleaned = String(next ?? "").replace(/GH[S₵C]|₵|\s/gi, "").replace(/,/g, ".");
+  if (/[^\d.]/.test(cleaned)) return now;
+  // Pasted (several characters at once, also over a selected amount): a plain amount is kept and more
+  // than two decimals round; any other pasted text is refused.
+  if (insertedLength(cleaned, now) > 1) {
+    const pesewas = parseAmountToPesewas(cleaned);
+    if (pesewas === null) return now;
+    const decimals = /\.(\d*)$/.exec(cleaned)?.[1] ?? "";
+    return normalizeTypedAmount(decimals.length > 2 ? formatPesewasText(pesewas) : cleaned, now, rules);
+  }
+  return normalizeTypedAmount(cleaned, now, rules);
+}
+
+// How many characters one change put in: what is left of `next` once the text it shares with `now` at
+// the start and at the end is taken off. One key (also one key over a selection) puts in at most one.
+function insertedLength(next, now) {
+  let start = 0;
+  while (start < next.length && start < now.length && next[start] === now[start]) start += 1;
+  let end = 0;
+  while (end < next.length - start && end < now.length - start &&
+    next[next.length - 1 - end] === now[now.length - 1 - end]) end += 1;
+  return next.length - start - end;
+}

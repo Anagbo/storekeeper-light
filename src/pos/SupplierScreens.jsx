@@ -7,7 +7,7 @@ import { formatGhs, toPesewas } from "../lib/money.js";
 import { localDateString } from "../utils/installments.js";
 import { getSupplierBalances, orderSuppliersByRecentUse, SUPPLIER_CATEGORIES } from "../utils/suppliers.js";
 import { posText as t } from "./i18n.js";
-import { normalizeTypedAmount } from "./amountKeypad.js";
+import AmountTextInput from "./AmountTextInput.jsx";
 import { PartyCard } from "./PartyCard.jsx";
 import { PosBackButton, PosCard, PosPage, PosPrimaryButton } from "./PosComponents.jsx";
 import { useBackBlock, useBackHandler } from "./browserBack.js";
@@ -50,14 +50,11 @@ function AmountInput({ label, value, onChange }) {
       <span className="block text-base font-bold">{label}</span>
       <span className="flex items-center gap-2 text-3xl font-extrabold">
         <span aria-hidden="true">GH₵</span>
-        <input
-          type="text"
-          inputMode="decimal"
-          autoComplete="off"
+        <AmountTextInput
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onValue={onChange}
           placeholder="0.00"
-          className="w-full min-w-0 bg-transparent text-right outline-none"
+          className="w-full min-w-0 bg-transparent outline-none"
         />
       </span>
     </label>
@@ -109,9 +106,8 @@ export function SpentMoney({ params = {}, onBack, onNavigate, onUpdateParams, on
         <PosBackButton onClick={onBack} />
         <h1 className="text-2xl font-extrabold">{t("expense.title")}</h1>
       </div>
-      <AmountInput label={t("expense.amount")} value={amount} onChange={(typed) => {
-        // Wiring rules_global.amount_entry: the typed field follows the shared keypad rules.
-        const value = normalizeTypedAmount(typed, amount);
+      <AmountInput label={t("expense.amount")} value={amount} onChange={(value) => {
+        // Wiring rules_global.amount_entry: the typed field follows the shared rules (AmountTextInput).
         setAmount(value);
         onUpdateParams?.({ expenseAmount: value });
       }} />
@@ -245,7 +241,10 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
       <section data-card="paid-now" className={card}>
         <label className="block">
           <span className="mb-1.5 block text-base font-extrabold">{t("expense.paidNow")}</span>
-          <input type="text" inputMode="decimal" autoComplete="off" value={paidAmount} onChange={(event) => { setPaidAmount(event.target.value); onUpdateParams?.({ stockPaidNow: event.target.value }); }} placeholder="0.00" className="h-14 w-full min-w-0 rounded-[14px] border-2 border-slate-500 bg-white px-3.5 text-right text-2xl font-extrabold" />
+          <span className="flex h-14 items-center gap-2 rounded-[14px] border-2 border-slate-500 bg-white px-3.5">
+            <span className="shrink-0 text-lg font-bold text-slate-700">GH₵</span>
+            <AmountTextInput value={paidAmount} onValue={(value) => { setPaidAmount(value); onUpdateParams?.({ stockPaidNow: value }); }} placeholder="0.00" className="h-full w-full min-w-0 bg-transparent text-2xl font-extrabold outline-none" />
+          </span>
         </label>
       </section>
       {validPaidAmount && paidPesewas > 0 && (

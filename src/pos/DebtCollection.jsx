@@ -38,6 +38,7 @@ import { useBackBlock, useBackHandler } from "./browserBack.js";
 import { displayName } from "../lib/displayName.js";
 import { DueTag } from "./PartyCard.jsx";
 import { useFormErrors } from "./formErrors.js";
+import AmountTextInput from "./AmountTextInput.jsx";
 
 const PAYMENT_METHODS = [
   { value: "cash", label: "collect.cash", icon: Banknote },
@@ -1017,8 +1018,12 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               </button>
             </div>
             <form onSubmit={saveCorrection} className="space-y-3">
-              <label className="block text-[19px] font-extrabold" htmlFor="pos-correction-amount">New balance (GH₵)
-                <input id="pos-correction-amount" inputMode="decimal" min="0" value={correctionAmount} onChange={(event) => { setCorrectionAmount(event.target.value); setCorrectionError(""); }} className="mt-1 h-14 w-full rounded-[14px] border-[3px] border-emerald-900 px-3 text-[28px] font-extrabold outline-none focus:ring-2 focus:ring-emerald-900/20" />
+              <label className="block text-[19px] font-extrabold" htmlFor="pos-correction-amount">New balance
+                {/* rules_global.amount_entry: right-aligned, GH₵ on the left, focus selects the amount. */}
+                <span className="mt-1 flex h-14 items-center gap-2 rounded-[14px] border-[3px] border-emerald-900 px-3 focus-within:ring-2 focus-within:ring-emerald-900/20">
+                  <span className="shrink-0 text-lg font-bold text-slate-700">GH₵</span>
+                  <AmountTextInput id="pos-correction-amount" value={correctionAmount} onValue={(value) => { setCorrectionAmount(value); setCorrectionError(""); }} className="h-full w-full min-w-0 bg-transparent text-[28px] font-extrabold outline-none" />
+                </span>
               </label>
               <p className={`text-lg font-extrabold ${correctionNewBalancePesewas < correctionCurrentBalancePesewas ? "text-emerald-900" : "text-slate-700"}`}>
                 {correctionAmount.trim() !== "" && Number.isSafeInteger(correctionNewBalancePesewas) && correctionNewBalancePesewas < correctionCurrentBalancePesewas

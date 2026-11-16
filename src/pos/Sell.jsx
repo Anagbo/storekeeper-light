@@ -44,7 +44,11 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
   const canSave = Number.isSafeInteger(amountPesewas) && amountPesewas > 0 &&
     (!hasSaleItems || amountPesewas === itemTotalPesewas);
   // rules_global.form_errors: shown after MoMo or Owe with no amount, gone once there is one.
-  const amountErrors = useFormErrors([["amount", canSave ? "" : t("sell.enterAmountFirst")]]);
+  // The message names what the tap needed: credit (Owe) or MoMo (decided 16 Nov 2026).
+  const amountErrors = useFormErrors([
+    ["credit", canSave ? "" : t("sell.enterAmountFirst")],
+    ["momo", canSave ? "" : t("sell.enterAmountBeforeMomo")]
+  ]);
 
   // An amount that arrives from outside (not the one typed here) replaces what is on the pad.
   useEffect(() => {
@@ -151,10 +155,10 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
                 aria-pressed={paymentMethod === value}
                 onClick={() => {
                   if (value === "credit") {
-                    if (amountErrors.check() && !busy) onNavigate("WhoOwesYou", { amountPesewas, saleItems });
+                    if (amountErrors.check(["credit"]) && !busy) onNavigate("WhoOwesYou", { amountPesewas, saleItems });
                   } else if (value === "momo") {
                     // Brief 3.12: a large MoMo amount asks before 61 (before the customer is asked to pay).
-                    if (amountErrors.check() && !busy) {
+                    if (amountErrors.check(["momo"]) && !busy) {
                       if (!largeAmount.guard(amountPesewas, () => onNavigate("MoMoChoice", { amountPesewas, saleItems }), { momo: true })) onNavigate("MoMoChoice", { amountPesewas, saleItems });
                     }
                   } else setPaymentMethod(value);

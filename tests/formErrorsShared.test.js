@@ -125,7 +125,7 @@ test("New item: the name error goes once a name is typed; a price error stays un
   assert.deepEqual(alerts(view.tree), ["Enter an item name."]);
   type(view, inputs(view.tree)[0], "Bread");
   assert.deepEqual(alerts(view.tree), []);
-  type(view, inputs(view.tree)[1], "0");
+  type(view, inputs(view.tree)[1], "0.00");
   submit(view);
   assert.deepEqual(alerts(view.tree), ["Enter a valid item price greater than GH₵0.00."]);
   type(view, inputs(view.tree)[0], "Bread rolls");
@@ -201,12 +201,12 @@ test("37 How much is {item}?: \"Enter a valid price\" after Save price, gone onc
   assert.deepEqual(alerts(view.tree), []);
 });
 
-test("15 Sell: \"Enter a sale amount\" after MoMo with no amount, gone at the first digit", async () => {
+test("15 Sell: \"Enter a sale amount before taking MoMo.\" after MoMo with no amount, gone at the first digit", async () => {
   const { default: Sell } = await loadJsx("src/pos/Sell.jsx");
   const view = render({ type: Sell, props: { params: {}, onNavigate() {}, onUpdateParams() {} } });
   assert.deepEqual(alerts(view.tree), []);
   tap(view, "MoMo");
-  assert.deepEqual(alerts(view.tree), ["Enter a sale amount before recording credit."]);
+  assert.deepEqual(alerts(view.tree), ["Enter a sale amount before taking MoMo."]);
   tap(view, "5");
   assert.deepEqual(alerts(view.tree), []);
 });

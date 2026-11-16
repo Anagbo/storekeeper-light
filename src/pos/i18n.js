@@ -284,6 +284,7 @@ const ENGLISH = Object.freeze({
   "sell.addItems": "Add items",
   "sell.split": "Split payment",
   "sell.enterAmountFirst": "Enter a sale amount before recording credit.",
+  "sell.enterAmountBeforeMomo": "Enter a sale amount before taking MoMo.",
   "leaveDraft.receivedMomo": "{amount} MoMo was already received and will not be recorded. Leave anyway?",
   "leaveDraft.stay": "Stay",
   "leaveDraft.leave": "Leave",

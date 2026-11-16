@@ -69,7 +69,22 @@ test("more than two decimals: the third digit decides, exactly (floating point g
 
 test("text that is not a plain amount is refused, not read as a number", async () => {
   // "1e2" and "0x10" are valid JavaScript numbers; they are not amounts a merchant typed.
-  for (const typed of ["", " ", ".", "0", "0.00", "0.001", "-1", "1e2", "0x10", "abc", "1.2.3", "1 000", "Infinity", "200.01", "99999999999999999999", "9007199254740993"]) {
+  // Since 16 Nov 2026 (rules_global.amount_entry) the field itself ignores them: it keeps the amount
+  // it had, so nothing is ever read from them.
+  for (const typed of ["-1", "1e2", "0x10", "abc", "1.2.3", "Infinity", "99999999999999999999", "9007199254740993"]) {
+    const { default: SplitPayment } = await loadJsx("src/pos/SplitPayment.jsx");
+    const view = render({ type: SplitPayment, props: {
+      totalPesewas: 20000, totalLabel: "Total", doneLabel: "Done", onBack() {}, onDone() {},
+      initialParts: [{ paymentMethod: "cash", amountPesewas: 20000 }]
+    } });
+    findButton(view.tree, "Cash").props.onClick();
+    view.rerender();
+    editorInput(view.tree).props.onChange({ target: { value: typed } });
+    view.rerender();
+    assert.equal(editorInput(view.tree).props.value, "200.00", `"${typed}" is ignored by the field`);
+  }
+  // What the field takes but is not an amount that fits shows the message and changes nothing.
+  for (const typed of ["", " ", ".", "0", "0.00", "0.001", "1 000", "200.01"]) {
     const result = await editCashRowTo(typed);
     assert.equal(result.changes.length, 0, `"${typed}" changes nothing`);
     assert.notEqual(result.alert, "", `"${typed}" shows the message`);

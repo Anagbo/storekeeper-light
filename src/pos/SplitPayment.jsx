@@ -8,6 +8,7 @@ import { useLargeAmountConfirm } from "./LargeAmountConfirm.jsx";
 import StillOwedRow from "./StillOwedRow.jsx";
 import { addRemainingToPart, isLockedMomoRow, removePart, setPartAmount } from "./splitTender.js";
 import { useFormErrors } from "./formErrors.js";
+import AmountTextInput from "./AmountTextInput.jsx";
 
 const METHOD_ICONS = { cash: Banknote, momo: Smartphone, owe: UserRound };
 
@@ -197,15 +198,12 @@ export default function SplitPayment({
           <label className="block text-lg font-extrabold" htmlFor="split-draft-amount">{t("split.howMuch", { method: t(`sell.${draft.paymentMethod}`) })}</label>
           <div className="flex items-center gap-2 rounded-xl border-2 border-slate-500 px-3">
             <span className="font-bold text-slate-700">GH₵</span>
-            <input
+            <AmountTextInput
               id="split-draft-amount"
-              type="text"
-              inputMode="decimal"
-              autoComplete="off"
               autoFocus
               value={draft.value}
-              onChange={(event) => setDraft({ ...draft, value: event.target.value })}
-              className="h-14 w-full min-w-0 bg-transparent text-right text-2xl font-extrabold outline-none"
+              onValue={(value) => setDraft({ ...draft, value })}
+              className="h-14 w-full min-w-0 bg-transparent text-2xl font-extrabold outline-none"
             />
           </div>
           {draftErrors.message && <p role="alert" className="font-semibold text-rose-900">{draftErrors.message}</p>}

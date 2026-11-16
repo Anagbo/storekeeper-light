@@ -24,7 +24,8 @@ function makeApp(route, params) {
   };
   return app;
 }
-const byLabel = (tree, label) => [...walk(tree)].find((node) => node.props?.["aria-label"] === label);
+// The input itself (19's amount fields are drawn by AmountTextInput, which also carries the label).
+const byLabel = (tree, label) => [...walk(tree)].find((node) => typeof node.type === "string" && node.props?.["aria-label"] === label);
 const dateInput = (tree) => [...walk(tree)].find((node) => node.type === "input" && node.props?.type === "date");
 const pressed = (tree, label) => [...walk(tree)].find((node) => node.type === "button" && "aria-pressed" in (node.props ?? {}) && textOf(node).startsWith(label));
 const settle = async () => { for (let index = 0; index < 5; index += 1) await new Promise((resolve) => setImmediate(resolve)); };
