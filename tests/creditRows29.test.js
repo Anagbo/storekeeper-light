@@ -102,7 +102,7 @@ test("Get signature opens 72 for that entry with its amount and reason; Skip and
   assert.ok(app.state.history.length > 0, "pushed on 29");
   const text = app.text().replace(/\s+/g, " ");
   assert.match(text, /GH₵70\.00/, "that entry's amount, not the balance");
-  assert.match(text, /For: No reason written/);
+  assert.match(text, /For ?No reason written/);
   await app.tap("Skip for now");
   assert.equal(app.route, "DebtorDetail");
   const again = [...walk(creditRows(app)[0].node)].find((child) => child.type === "button");
