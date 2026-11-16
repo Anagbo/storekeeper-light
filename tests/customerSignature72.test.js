@@ -268,7 +268,7 @@ test("72 is built for the customer's hand: text 18px or more, buttons 52px or mo
   for (const size of source.matchAll(/text-(xs|sm|base|\[1[0-7]px\])\b/g)) assert.fail(`small text ${size[0]} on 72`);
   for (const size of box.matchAll(/text-(xs|sm|base|\[1[0-7]px\])\b/g)) assert.fail(`small text ${size[0]} in the signature box`);
   assert.match(source, /h-\[60px\] w-full[^"]*">\s*\{saving \? t\("signature\.saving"\) : t\("signature\.done"\)\}/, "Done full width, 60px");
-  assert.match(source, /h-\[52px\][^"]*">\s*\{t\("signature\.clear"\)\}/, "Clear 52px");
+  assert.match(source, /h-\[60px\] w-full[^"]*">\s*\{t\("signature\.clear"\)\}/, "Clear full width, 60px");
   assert.match(source, /min-h-\[52px\][^"]*underline[^"]*">\s*\{t\("signature\.skip"\)\}/, "Skip for now: underlined link, 52px");
   assert.match(box, /h-\[190px\][^"]*border-dashed/, "dashed 190px box");
   assert.equal((box.match(/touchAction: "none"/g) ?? []).length, 2, "touch-action none on the box and the canvas");
