@@ -6,7 +6,7 @@ import { recordCreditSale, recordDebtCollection } from "../src/db/debts.js";
 import { correctDebtBalance, recordManualDebt } from "../src/db/debtLedger.js";
 import { saveHideAmounts, setPreference } from "../src/db/preferences.js";
 import { signCreditEvent } from "../src/db/signatures.js";
-import { formatDate, formatTime } from "../src/lib/formatDate.js";
+import { formatDate } from "../src/lib/formatDate.js";
 import { formatGhs } from "../src/lib/formatGhs.js";
 import { resetBrowserBack } from "../src/pos/browserBack.js";
 import { openPosApp } from "./helpers/posAppHarness.js";
@@ -70,7 +70,8 @@ async function renderRecord(env = {}) {
 }
 
 const rows = (view) => [...walk(view.tree)].filter((node) => node.props?.["data-record-row"]).map((node) => ({ kind: node.props["data-record-row"], text: textOf(node), dashed: /border-dashed/.test(node.props.className) }));
-const when = (time) => `${formatDate(time)} ${formatTime(time)}`;
+// The Time row (final 16 Nov 2026): these days are in the past, so the day only.
+const when = (time) => formatDate(time);
 
 test("73 shows You owe, then every event newest first with its own card", async () => {
   const { view, text } = await renderRecord();
@@ -79,11 +80,11 @@ test("73 shows You owe, then every event newest first with its own card", async 
   assert.deepEqual(rows(view).map((row) => row.kind), ["corrected", "paid", "credit", "credit", "credit"]);
   const [corrected, paid, noReason, schoolFees, rice] = rows(view);
   assert.equal(corrected.dashed, true, "Balance corrected is a dashed card");
-  assert.equal(corrected.text, `Balance correctedWas ${formatGhs(9000)}${formatGhs(8000)}${when(T0 + 5 * DAY)} · Reason: Wrong amount typed`);
-  assert.equal(paid.text, `Paid${formatGhs(1000)}${when(T0 + 4 * DAY)} · Cash ${formatGhs(600)}, MoMo ${formatGhs(400)}`);
-  assert.equal(noReason.text, `Took on credit${formatGhs(1000)}${when(T0 + 3 * DAY)}No reason writtenNot signed`);
-  assert.equal(schoolFees.text, `Took on credit${formatGhs(3000)}${when(T0 + 2 * DAY)}School feesNot signed`);
-  assert.equal(rice.text, `Took on credit${formatGhs(6000)}${when(T0 + DAY)}RiceSigned ✓`);
+  assert.equal(corrected.text, `Balance correctedWas${formatGhs(9000)}New balance${formatGhs(8000)}Time${when(T0 + 5 * DAY)}ReasonWrong amount typed`);
+  assert.equal(paid.text, `Paid${formatGhs(1000)}Time${when(T0 + 4 * DAY)}Paid withCash ${formatGhs(600)}, MoMo ${formatGhs(400)}`);
+  assert.equal(noReason.text, `Took on credit${formatGhs(1000)}Time${when(T0 + 3 * DAY)}ReasonNo reason writtenSignatureNot signed`);
+  assert.equal(schoolFees.text, `Took on credit${formatGhs(3000)}Time${when(T0 + 2 * DAY)}ReasonSchool feesSignatureNot signed`);
+  assert.equal(rice.text, `Took on credit${formatGhs(6000)}Time${when(T0 + DAY)}ReasonRiceSignatureSigned ✓`);
   assert.match(text, /You owe ?GH₵80\.00 ?Nothing can be changed here\./, "the notice is right under You owe");
   assert.doesNotMatch(text, /read only|hand the phone back/i);
 });
@@ -92,7 +93,7 @@ test("the signed amount stays GH₵60.00 after a later correction, and 73 shows 
   const sale = (await db.transactions.toArray()).find((row) => row.customerName === "Kofi" && row.paymentType === "credit");
   assert.equal(sale.signedAmountPesewas, 6000);
   const { text } = await renderRecord();
-  assert.match(text, /RiceSigned ✓/);
+  assert.match(text, /ReasonRiceSignatureSigned ✓/);
   assert.match(text, /Balance corrected/);
 });
 

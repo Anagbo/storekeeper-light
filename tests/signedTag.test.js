@@ -9,11 +9,14 @@ import { creditRow, proofPages } from "./helpers/proofPages.js";
 
 const skip = browser ? false : "no Chrome or Edge found (set HEADER_TEST_BROWSER)";
 
-test("29/43 (DebtCollection) and 73 (CustomerRecordView) draw the tag only through SignedTag", () => {
+test("29/43 (DebtCollection) and 73 (CustomerRecordView) draw the tag only through SignedTag (in EventRows)", () => {
+  const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
+  assert.match(read("src/pos/EventRows.jsx"), /<SignedTag signed=\{event\.signed\} \/>/, "EventRows uses SignedTag");
+  for (const file of ["src/pos/DebtCollection.jsx", "src/pos/CustomerRecordView.jsx", "src/pos/EventRows.jsx"]) {
+    assert.doesNotMatch(read(file), /creditRow\.(signed|notSigned)/, `${file} draws no tag of its own`);
+  }
   for (const file of ["src/pos/DebtCollection.jsx", "src/pos/CustomerRecordView.jsx"]) {
-    const source = readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
-    assert.match(source, /<SignedTag signed=\{event\.signed\} \/>/, `${file} uses SignedTag`);
-    assert.doesNotMatch(source, /creditRow\.(signed|notSigned)/, `${file} draws no tag of its own`);
+    assert.match(read(file), /<EventRows\b/, `${file} uses EventRows`);
   }
 });
 

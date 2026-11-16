@@ -38,10 +38,9 @@ import { displayName } from "../lib/displayName.js";
 import { DueTag } from "./PartyCard.jsx";
 import { useFormErrors } from "./formErrors.js";
 import AmountTextInput from "./AmountTextInput.jsx";
-import { CREDIT_ROW_TYPES, formatHistoryRowTimestamp, groupCollectionHistory, paidParts, rowReason, rowWhen } from "./historyRows.js";
+import { formatHistoryRowTimestamp, groupCollectionHistory } from "./historyRows.js";
 import { needsSignature } from "../config/features.js";
-import CorrectionLines from "./CorrectionLines.jsx";
-import SignedTag from "./SignedTag.jsx";
+import EventRows from "./EventRows.jsx";
 
 const PAYMENT_METHODS = [
   { value: "cash", label: "collect.cash", icon: Banknote },
@@ -935,46 +934,23 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               </button>
             </div>
             {data.history.length ? (
-              <ul className="overflow-hidden rounded-[18px] border-2 border-slate-500 bg-white">
-                {data.history.map((event) => (CREDIT_ROW_TYPES.has(event.type) ? (
-                  // rules_global.customer_proof (16 Nov 2026): every credit row says what it was for ("No reason
-                  // written" when nothing was given) and whether the customer signed it. An unsigned credit at or
-                  // above the threshold offers Get signature, which opens 72 for that entry; 72 returns here.
-                  <li key={event.id} data-credit-row="" className="flex min-w-0 flex-col gap-1 border-b-2 border-slate-300 px-3.5 py-3 last:border-b-0">
-                    <span className="flex min-w-0 items-center gap-3">
-                      <strong className="min-w-0 flex-1 truncate text-lg">{event.type === "addon" ? t("collect.creditAdded") : t("collect.creditTaken")}</strong>
-                      <strong className="shrink-0 whitespace-nowrap text-lg text-rose-900">{formatGhs(event.amountPesewas)}</strong>
-                    </span>
-                    {/* Polish 16 Nov 2026: title and amount, then the date, then the reason (both 16px), then the tag; the same order as 73. */}
-                    <span data-when="" className="block text-base text-slate-800">{rowWhen(event)}</span>
-                    <span data-reason="" className="block break-words text-base text-slate-900">{rowReason(event)}</span>
-                    <span className="flex min-w-0 items-center justify-between gap-2">
-                      <SignedTag signed={event.signed} />
-                      {!event.signed && event.transactionId && needsSignature(event.amountPesewas) && (
-                        <button type="button" onClick={() => onNavigate("CustomerSignature", { transactionId: event.transactionId })} className="min-h-12 shrink-0 whitespace-nowrap rounded-xl border-2 border-emerald-900 bg-white px-3 text-base font-extrabold text-emerald-900">
-                          {t("creditRow.getSignature")}
-                        </button>
-                      )}
-                    </span>
-                  </li>
-                ) : event.type === "adjustment" ? (
-                  // Wiring 29/43 (16 Nov 2026): Balance corrected on its own line, then old → new, then date and reason.
-                  <li key={event.id} data-correction-row="" className="flex min-w-0 flex-col gap-1 border-b-2 border-slate-300 px-3.5 py-3 last:border-b-0">
-                    <CorrectionLines event={event} />
-                  </li>
-                ) : (
-                  <li key={event.id} className="flex min-h-12 items-center gap-3 border-b-2 border-slate-300 px-3.5 py-3 last:border-b-0">
-                    <span className="min-w-0 flex-1">
-                      <strong className="block text-lg">{t("collect.paid")}</strong>
-                      <span className="block text-sm text-slate-800">
-                        {formatHistoryRowTimestamp(event.timestamp)}
-                        {/* rules_global.customer_proof.paid_order: Cash first, then MoMo (the shared helper 73 uses). */}
-                        <> · {paidParts(event)}</>
-                      </span>
-                    </span>
-                    <strong className="shrink-0 text-lg text-emerald-900">+ {formatGhs(event.amountPesewas)}</strong>
-                  </li>
-                )))}
+              // Wiring "What happened cards" (final, 16 Nov 2026): the same cards as 73 (EventRows). An unsigned
+              // credit at or above the threshold offers Get signature next to its pill; it opens 72 for that
+              // entry and 72 returns here.
+              <ul className="flex min-w-0 flex-col gap-2.5">
+                {data.history.map((event) => (
+                  <EventRows
+                    key={event.id}
+                    event={event}
+                    creditTitle={event.type === "addon" ? t("collect.creditAdded") : t("collect.creditTaken")}
+                    paidPrefix="+ "
+                    signatureAction={!event.signed && event.transactionId && needsSignature(event.amountPesewas) ? (
+                      <button type="button" onClick={() => onNavigate("CustomerSignature", { transactionId: event.transactionId })} className="min-h-12 shrink-0 whitespace-nowrap rounded-xl border-2 border-emerald-900 bg-white px-3 text-base font-extrabold text-emerald-900">
+                        {t("creditRow.getSignature")}
+                      </button>
+                    ) : null}
+                  />
+                ))}
               </ul>
             ) : <p className="mt-2 text-slate-700">{t("collect.noPaymentHistory")}</p>}
           </section>

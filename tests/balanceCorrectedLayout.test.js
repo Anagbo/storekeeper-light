@@ -3,10 +3,10 @@ import { test } from "node:test";
 import { appCss, browser, measureInFrames } from "./helpers/browserLayout.js";
 import { correctionRow, creditRow, paidRow, proofPages } from "./helpers/proofPages.js";
 
-// Wiring 29/43 and 73 "Balance corrected row" (changed 16 Nov 2026), real browser at 340, 360 and 393px:
-// line 1 the title alone, one line; line 2 "Was GH₵old" on the left (grey, regular weight) and the NEW
-// balance on the right (bold, 24px, neutral dark), ending on the same right edge as the amounts of the
-// other rows; line 3 the date and "Reason: …". No amount ever breaks; nothing scrolls sideways.
+// Wiring "What happened cards" (final, 16 Nov 2026; replaces the "Balance corrected row" layout), real
+// browser at 340, 360 and 393px on 29, 43 and 73: Balance corrected is a dashed card, the title alone on
+// its first line (one line), then the label-value rows Was (GH₵old), New balance (bold), Time and Reason.
+// Labels never wrap; no amount ever breaks; nothing scrolls sideways.
 
 const skip = browser ? false : "no Chrome or Edge found (set HEADER_TEST_BROWSER)";
 // The owner's two examples: a new balance of GH₵1,234,567.89, and GH₵105.00 corrected to GH₵0.00.
@@ -16,29 +16,24 @@ const MEASURE = `(frame, win, doc) => {
   const textLines = (el) => { const tops = new Set(); const walker = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT); while (walker.nextNode()) { const node = walker.currentNode; if (!node.textContent.trim()) continue; const range = doc.createRange(); range.selectNodeContents(node); for (const r of range.getClientRects()) if (r.width > 0) tops.add(Math.round(r.top)); } return tops.size; };
   const box = (el) => { const r = el.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right }; };
   const title = doc.querySelector("[data-correction-title]");
-  const holder = title.parentElement;
-  const was = holder.querySelector("[data-correction-was]");
-  const now = holder.querySelector("[data-correction-new]");
-  const when = holder.querySelector("[data-correction-when]");
-  const list = holder.closest("ul");
-  const others = [...list.querySelectorAll("li")].filter((li) => li !== holder && !li.contains(holder))
-    .map((li) => [...li.querySelectorAll("strong")].filter((el) => /GH₵[\\d,]+\\.\\d\\d$/.test(el.textContent.trim())).pop())
-    .filter(Boolean);
-  const style = win.getComputedStyle(now);
-  const wasStyle = win.getComputedStyle(was);
+  const card = title.closest("li");
+  const cardStyle = win.getComputedStyle(card);
+  const rows = [...card.querySelectorAll("[data-event-detail]")].map((row) => {
+    const label = row.querySelector("dt");
+    const value = row.querySelector("dd");
+    return { name: row.dataset.eventDetail, label: label.textContent, labelLines: textLines(label), value: value.textContent, valueLines: textLines(value), weight: win.getComputedStyle(value).fontWeight, top: box(row).top, valueRight: box(value).right };
+  });
   return {
     pageOverflow: doc.scrollingElement.scrollWidth > win.innerWidth,
-    rowCount: doc.querySelectorAll("[data-correction-title]").length,
+    count: doc.querySelectorAll("[data-correction-title]").length,
+    dashed: cardStyle.borderTopStyle,
     title: { text: title.textContent, lines: textLines(title), ...box(title) },
-    was: { text: was.textContent, lines: textLines(was), weight: wasStyle.fontWeight, color: wasStyle.color, ...box(was) },
-    now: { text: now.textContent, lines: textLines(now), size: style.fontSize, weight: style.fontWeight, color: style.color, ...box(now) },
-    when: { text: when.textContent, ...box(when) },
-    holderRight: holder.getBoundingClientRect().right,
-    others: others.map((el) => ({ text: el.textContent.trim(), right: el.getBoundingClientRect().right }))
+    contentRight: box(card).right - parseFloat(cardStyle.paddingRight) - parseFloat(cardStyle.borderRightWidth),
+    rows
   };
 }`;
 
-test("Balance corrected on 29, 43 and 73 at 340, 360 and 393px: title, Was GH₵old with the new balance on the amounts' right edge, then date and reason", { skip }, async () => {
+test("Balance corrected on 29, 43 and 73 at 340, 360 and 393px: dashed card, title alone, then Was, New balance, Time, Reason rows", { skip }, async () => {
   const pages = [];
   for (const [previous, next] of CASES) {
     const history = [correctionRow(`a${previous}`, previous, next), creditRow("c1", 123456789, "Rice", true), paidRow("p1", 10500)];
@@ -48,35 +43,28 @@ test("Balance corrected on 29, 43 and 73 at 340, 360 and 393px: title, Was GH₵
   assert.equal(results.length, pages.length * 3);
   for (const result of results) {
     const where = `${result.page} at ${result.width}px`;
-    const [previous] = CASES.find(([old]) => result.page.endsWith(`|${old}`));
-    const next = CASES.find(([old]) => old === previous)[1];
-    const { title, was, now, when } = result;
+    const [previous, next] = CASES.find(([old]) => result.page.endsWith(`|${old}`));
+    const { title, rows } = result;
     assert.equal(result.innerWidth, result.width, `${where}: the frame is that wide`);
     assert.equal(result.pageOverflow, false, `${where}: no sideways scroll`);
-    assert.equal(result.rowCount, 1, `${where}: one correction row`);
-    // Line 1: the title alone, one line.
+    assert.equal(result.count, 1, `${where}: one correction card`);
+    assert.equal(result.dashed, "dashed", `${where}: the card is dashed`);
     assert.equal(title.text, "Balance corrected");
     assert.equal(title.lines, 1, `${where}: "Balance corrected" is one line`);
-    // Line 2: Was GH₵old on the left, the new balance on the right.
-    assert.equal(was.text, previous === 10500 ? "Was GH₵105.00" : "Was GH₵1,500,000.00");
-    assert.equal(now.text, next === 0 ? "GH₵0.00" : "GH₵1,234,567.89");
-    assert.ok(was.top >= title.bottom - 0.5 && now.top >= title.bottom - 0.5, `${where}: Was and the new balance are under the title`);
-    assert.ok(Math.abs(was.left - title.left) < 0.5, `${where}: Was starts on the left edge`);
-    assert.equal(was.lines, 1, `${where}: "${was.text}" never breaks`);
-    assert.equal(now.lines, 1, `${where}: "${now.text}" never breaks`);
-    assert.equal(was.weight, "400", `${where}: Was is regular weight`);
-    assert.notEqual(was.color, now.color, `${where}: Was is grey`);
-    assert.equal(now.size, "24px", `${where}: the new balance is 24px`);
-    assert.equal(now.weight, "700", `${where}: the new balance is bold`);
-    assert.equal(now.color, "oklch(0.208 0.042 265.755)", `${where}: the new balance is neutral dark (slate-900), not red or green`);
-    assert.ok(result.others.length >= 2, `${where}: the other rows' amounts are measured (${JSON.stringify(result.others)})`);
-    for (const other of result.others) {
-      assert.ok(Math.abs(now.right - other.right) < 0.5, `${where}: the new balance ends on the right edge of "${other.text}" (${now.right} vs ${other.right})`);
+    assert.deepEqual(rows.map((row) => row.label), ["Was", "New balance", "Time", "Reason"], `${where}: the rows in order`);
+    assert.deepEqual(rows.map((row) => row.name), ["was", "new-balance", "time", "reason"]);
+    assert.ok(rows[0].top >= title.bottom - 0.5, `${where}: the rows come under the title`);
+    for (let index = 1; index < rows.length; index += 1) assert.ok(rows[index].top > rows[index - 1].top, `${where}: ${rows[index].label} under ${rows[index - 1].label}`);
+    assert.equal(rows[0].value, previous === 10500 ? "GH₵105.00" : "GH₵1,500,000.00");
+    assert.equal(rows[1].value, next === 0 ? "GH₵0.00" : "GH₵1,234,567.89");
+    assert.equal(rows[1].weight, "700", `${where}: the new balance is bold`);
+    assert.match(rows[2].value, /^\d{2}\/\d{2}\/\d{4}$/, `${where}: an older day shows dd/mm/yyyy`);
+    assert.equal(rows[3].value, "Wrong amount typed", `${where}: the reason entered on 54, no "Reason:" prefix`);
+    for (const row of rows) {
+      assert.equal(row.labelLines, 1, `${where}: the label "${row.label}" never wraps`);
+      assert.ok(Math.abs(row.valueRight - result.contentRight) < 0.5, `${where}: "${row.value}" ends on the card's right edge`);
     }
-    assert.ok(now.right <= result.holderRight + 0.5, `${where}: the new balance stays inside the row`);
-    // Line 3: the date and the reason.
-    assert.ok(when.top >= Math.max(was.bottom, now.bottom) - 0.5, `${where}: the date and reason come after line 2`);
-    assert.match(when.text, /^\d{2}\/\d{2}\/\d{4} 16:40 · Reason: Wrong amount typed$/);
-    if (next === 0) assert.ok(Math.abs(now.top - was.top) < 12, `${where}: GH₵105.00 to GH₵0.00 fits on one line`);
+    assert.equal(rows[0].valueLines, 1, `${where}: Was never breaks`);
+    assert.equal(rows[1].valueLines, 1, `${where}: the new balance never breaks`);
   }
 });

@@ -43,7 +43,8 @@ test("the strings 72, 73 and the credit rows show", () => {
     "signature.title", "signature.owes", "signature.for", "signature.taken", "signature.payBy", "signature.box", "signature.signHere",
     "signature.clear", "signature.done", "signature.skip", "signature.alreadySigned", "signature.saveFailed", "signature.notFound",
     "creditRow.noReason", "creditRow.signed", "creditRow.notSigned", "creditRow.getSignature",
-    "record.show", "record.youOwe", "record.tookOnCredit", "record.corrected", "record.reason", "record.notice", "record.backToShop",
+    "record.show", "record.youOwe", "record.tookOnCredit", "record.corrected", "record.notice",
+    "event.time", "event.reason", "event.signature", "event.paidWith", "event.was", "event.newBalance", "record.backToShop",
     "record.nothingYet", "record.notFound", "backup.signaturesLeftOutOne", "backup.signaturesLeftOutMany"
   ];
   for (const key of keys) {

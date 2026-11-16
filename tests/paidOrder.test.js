@@ -43,10 +43,13 @@ for (const [screen, text] of [["29", () => detailText(false)], ["43", () => deta
   });
 }
 
-test("one shared helper: 29/43 and 73 both use paidParts and neither joins the parts itself", () => {
+test("one shared helper: 29/43 and 73 both draw Paid through EventRows, which uses paidParts; none joins the parts itself", () => {
+  const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
+  assert.match(read("src/pos/EventRows.jsx"), /\bpaidParts\(event\)/, "EventRows uses paidParts");
+  for (const file of ["src/pos/DebtCollection.jsx", "src/pos/CustomerRecordView.jsx", "src/pos/EventRows.jsx"]) {
+    assert.doesNotMatch(read(file), /collectionParts\s*\.map\(/, `${file} does not join the parts itself`);
+  }
   for (const file of ["src/pos/DebtCollection.jsx", "src/pos/CustomerRecordView.jsx"]) {
-    const code = readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
-    assert.match(code, /\bpaidParts\(event\)/, `${file} uses paidParts`);
-    assert.doesNotMatch(code, /collectionParts\s*\.map\(/, `${file} does not join the parts itself`);
+    assert.match(read(file), /<EventRows\b/, `${file} uses EventRows`);
   }
 });

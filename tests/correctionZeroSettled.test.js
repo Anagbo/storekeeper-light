@@ -12,7 +12,7 @@ import { resetBrowserBack } from "../src/pos/browserBack.js";
 import { openPosApp } from "./helpers/posAppHarness.js";
 import { setLiveQuery, textOf, walk } from "./helpers/renderJsx.js";
 
-// A Balance corrected row (16 Nov 2026 layout): "Was GH₵old" on the left, the new balance on the right.
+// A Balance corrected card (final 16 Nov 2026 layout): the "Was" row (GH₵old) and the "New balance" row.
 const correctionParts = (node) => {
   const part = (name) => textOf([...walk(node)].find((child) => child.props?.[name] !== undefined) ?? "");
   return { was: part("data-correction-was"), now: part("data-correction-new") };
@@ -129,7 +129,7 @@ test("54 single debt with a plan and a reminder, corrected to 0: settled exactly
   const row = nodes(app.view.tree).find((node) => node.props["data-correction-row"] !== undefined);
   assert.ok(row, "a correction row in the history");
   assert.match(textOf(row), /Balance corrected/);
-  assert.deepEqual(correctionParts(row), { was: "Was GH₵200.00", now: "GH₵0.00" });
+  assert.deepEqual(correctionParts(row), { was: "GH₵200.00", now: "GH₵0.00" });
   assert.match(textOf(row), /Debt forgiven/);
   const amaShape = detailShape(app, "Ama");
 
@@ -156,7 +156,7 @@ test("54 single debt with a plan and a reminder, corrected to 0: settled exactly
   const card = nodes(app.view.tree).find((node) => /correct/i.test(String(node.props["data-record-row"] ?? "")));
   assert.ok(card, "73: a correction card");
   assert.match(textOf(card), /Balance corrected/);
-  assert.deepEqual(correctionParts(card), { was: "Was GH₵200.00", now: "GH₵0.00" });
+  assert.deepEqual(correctionParts(card), { was: "GH₵200.00", now: "GH₵0.00" });
   assert.match(textOf(card), /Debt forgiven/);
 });
 
@@ -184,7 +184,7 @@ test("54 one entry among several corrected to 0: that entry is settled, the rest
 
   await app.settle();
   const row = nodes(app.view.tree).find((node) => node.props["data-correction-row"] !== undefined);
-  assert.deepEqual(correctionParts(row), { was: "Was GH₵50.00", now: "GH₵0.00" }, "Was is that entry's balance");
+  assert.deepEqual(correctionParts(row), { was: "GH₵50.00", now: "GH₵0.00" }, "Was is that entry's balance");
   assert.match(textOf(row), /Debt forgiven/);
   assert.doesNotMatch(app.text(), /Open debt entries/, "one open entry left: no entries list");
   assert.match(app.text(), /GH₵150\.00/);
