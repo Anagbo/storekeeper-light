@@ -617,6 +617,13 @@
    "component": "Home",
    "controls": [
     {
+     "label": "Hide amounts",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Eye icon button, 48px, top right of the screen's title row. Toggles Hide amounts / Show amounts (accessible name changes). No navigation."
+    },
+    {
      "label": "Menu",
      "role": null,
      "disabled_initially": false,
@@ -688,7 +695,8 @@
     "Owed card on Home (redesign 11 Nov 2026, layout and wording only): a white card with a 2px light grey border and a thicker red left edge (the same style as the debt tiles on My money), not a pink block. Top: the label \"Owed to you\" (17px, grey), the total in bold dark text (30px, never red or pink), a quiet line \"{n} people · {m} late\" (\"1 person\"; leave out \"· {m} late\" when none is late), and \"See all ›\" in green on the right. The whole top part is one tappable area that opens 32 (accessible name \"Owed to you, see all\"). Under a thin line and the small heading \"Collect first\": the most urgent debtor (same ordering as today) with the name (bold 19px, up to 2 lines, capital first letter), the amount (bold 22px, never clipped, at the right), and the due tag under the name in the same wording and colours as the Owed list (\"Late 1 day\" red, \"Due today\" and \"Due in n days\" amber, grey when far). Then one row of buttons: a green \"Collect\" button with a small cash icon and the word Collect (52px, takes the remaining width, accessible name \"Collect payment from {name}\", opens 25), a square WhatsApp button (52px, green outline) and a square Call button (52px, dark outline) shown only when the person has a valid phone number (never a greyed disabled Call button). Icon-only buttons keep their accessible names.",
     "Header (decided 14 Nov 2026): the Menu button is on the left (hamburger icon + the word Menu, 48px), then the shop name, then the connection status. It opens the Menu drawer (see 23) over this page; the page and any draft stay as they are. The bottom bar is covered by the dimmed layer while the drawer is open.",
     "Nobody owes (decided 14 Nov 2026 from a phone test where a corrected balance of zero still showed 'Owed to you GHS 0.00' and a Collect button): a person counts as owing only with a balance above zero. When nobody owes, the Owed to you card is not shown at all; Home goes from Spent money straight to the Today's transactions link, and the Owed tab in the bottom bar stays. Collect first, the people count and the total use only people with a balance above zero, so a person whose balance was corrected to zero or paid in full disappears from all three.",
-    "Reminder check (rules_global.reminders): this button runs the shared 7-day check for the person. A reminder recorded in the last 7 days opens the Send another reminder? sheet first (Send again strong, Not now outlined; Back and Escape act as Not now; after Not now the merchant stays on this screen). Otherwise WhatsApp opens directly. Tapping records a reminder event. No Last reminder text is shown on this screen."
+    "Reminder check (rules_global.reminders): this button runs the shared 7-day check for the person. A reminder recorded in the last 7 days opens the Send another reminder? sheet first (Send again strong, Not now outlined; Back and Escape act as Not now; after Not now the merchant stays on this screen). Otherwise WhatsApp opens directly. Tapping records a reminder event. No Last reminder text is shown on this screen.",
+    "Hide amounts (decided 16 Nov 2026): the eye button hides every shop figure on this screen (sales, profit, money in, money spent, what you should have left, owed to you, you owe suppliers) and shows \"GH₵ ••••\" of fixed width instead, so the length of the number is not leaked. See rules_global.hide_amounts."
    ]
   },
   "23": {
@@ -1496,6 +1504,13 @@
    "component": "MyMoney",
    "controls": [
     {
+     "label": "Hide amounts",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Eye icon button, 48px, top right of the screen's title row. Toggles Hide amounts / Show amounts (accessible name changes). No navigation."
+    },
+    {
      "label": "Back",
      "role": null,
      "disabled_initially": false,
@@ -1556,7 +1571,8 @@
     "Owed to you and You owe suppliers are balances right now and do not change with the period.",
     "Estimated profit follows the period (Today: sales − stock − other costs for today). The line \"Average of last 4 weeks\" shows only for This week and only with at least 4 weeks of data.",
     "Wide layout (D7): same content. Selector top right with three options; row of three cards: Money in, Money spent, What you should have left.",
-    "\"Debts paid\" is the debt payments collected in the period. It is already inside Cash and MoMo and is never added again. Cash + MoMo = Money in."
+    "\"Debts paid\" is the debt payments collected in the period. It is already inside Cash and MoMo and is never added again. Cash + MoMo = Money in.",
+    "Hide amounts (decided 16 Nov 2026): the eye button hides every shop figure on this screen (sales, profit, money in, money spent, what you should have left, owed to you, you owe suppliers) and shows \"GH₵ ••••\" of fixed width instead, so the length of the number is not leaked. See rules_global.hide_amounts."
    ]
   },
   "34": {
@@ -3979,6 +3995,16 @@
    "what_for": "Every credit shows its reason on 29, 43 and 73.",
    "stored": "signature (vector strokes) and signedAt live on the debt event, local, in backup and restore. Dexie version bump only if a new table is needed; prefer fields on the existing event.",
    "deferred": "Customer confirmation by link on WhatsApp with a server timestamp waits for the backend. Codes generated on the phone are NOT used: they prove nothing and conflict with MoMo anti-fraud advice."
+  },
+  "hide_amounts": {
+   "decided": "16 Nov 2026",
+   "why": "The merchant often hands the phone to a customer. Profit and totals should not be readable by accident.",
+   "where": "Eye button on Home (22) and My money (33). One shared setting: hiding on one hides on both.",
+   "hidden": "Home and My money figures only: sales, profit, money in/out, what you should have left, owed to you, you owe suppliers. Always replaced by \"GH₵ ••••\" (fixed width).",
+   "not_hidden": "Amounts the owner is working with: the Sell keypad, Review and pay, Collect, debtor pages, Transactions, receipts, and the customer record 73. Those are about one sale or one person, not the shop's overall figures. On Home the Collect first row (one person's amount, with Collect, WhatsApp and Call) stays visible: it is the owner's working row. The Owed to you total above it is hidden.",
+   "default": "Amounts shown. The choice is remembered on this phone (local setting, in backup and restore as a setting) and survives restarting the app.",
+   "accessibility": "Button 48px, accessible name \"Hide amounts\" or \"Show amounts\" with the current state, icon eye / eye-off, never colour alone.",
+   "shared_component": "One AmountVisibility setting and one HiddenAmount rendering used by every hidden figure, so no figure can forget it (a test scans 22 and 33)."
   }
  },
  "built_extras_kept": {
