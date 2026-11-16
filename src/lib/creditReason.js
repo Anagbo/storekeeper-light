@@ -35,8 +35,26 @@ export function isCreditEvent(record) {
   return ["sale", "credit_sale"].includes(record.type) && record.paymentType === "credit";
 }
 
+// rules_global.credit_reason (16 Nov 2026): the reason typed on 18 for a keypad sale or the Owe part of a
+// split. Optional, trimmed, at most 60 characters. Kept exactly as typed (" · " included).
+export const CREDIT_REASON_MAX = 60;
+
+export function cleanCreditReason(text) {
+  if (typeof text !== "string") return "";
+  return text.trim().slice(0, CREDIT_REASON_MAX).trim();
+}
+
+// The reason saved in its own field (creditReason), or "" when it is missing or a generated word.
+function typedReason(record) {
+  const reason = cleanCreditReason(record.creditReason);
+  return reason && !isGenerated(reason) ? reason : "";
+}
+
 export function getCreditReason(record) {
   if (!record) return "";
+  // Events saved since 16 Nov 2026 carry the reason in creditReason; older ones fall back to note/items.
+  const typed = typedReason(record);
+  if (typed) return typed;
   if (record.type === "manual_debt") return cleanText(record.note);
   const items = itemNames(record);
   if (items.length) return items.join(", ");

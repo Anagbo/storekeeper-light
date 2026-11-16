@@ -155,7 +155,7 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
                 aria-pressed={paymentMethod === value}
                 onClick={() => {
                   if (value === "credit") {
-                    if (amountErrors.check(["credit"]) && !busy) onNavigate("WhoOwesYou", { amountPesewas, saleItems });
+                    if (amountErrors.check(["credit"]) && !busy) onNavigate("WhoOwesYou", { amountPesewas, saleItems, ...(typeof params.creditReason === "string" && { creditReason: params.creditReason }) });
                   } else if (value === "momo") {
                     // Brief 3.12: a large MoMo amount asks before 61 (before the customer is asked to pay).
                     if (amountErrors.check(["momo"]) && !busy) {

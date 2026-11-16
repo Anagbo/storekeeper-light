@@ -277,7 +277,20 @@ export function backRoute(state, fallback = POS_ROUTES.Home) {
     params = { ...params, collectSplitDraft: getCollectSplitDraft(state.params) };
   }
   params = keepDraftOnBack(state, params);
+  params = carryCreditReasonBack(state, params);
   return { current: previous.current, params, history: state.history.slice(0, -1) };
+}
+
+// Wiring 18 (16 Nov 2026): the reason typed on 18 is part of the sale's draft, not of one customer's
+// terms: Back hands it to the screen below (17, 34, 16, 15 or Review and pay), so it comes back when the owner
+// returns to 18, also with another customer (only the due choice is dropped then).
+const CREDIT_REASON_SCREENS = new Set([POS_ROUTES.WhenWillTheyPay, POS_ROUTES.ALittleAtATime, POS_ROUTES.NewPerson, POS_ROUTES.WhoOwesYou, POS_ROUTES.SplitPayment, POS_ROUTES.Sell, POS_ROUTES.ReviewAndPay]);
+function carryCreditReasonBack(state, previousParams = {}) {
+  const reason = state.params?.creditReason;
+  if (typeof reason !== "string" || state.params?.manualDebt) return previousParams;
+  if (!CREDIT_REASON_SCREENS.has(state.current) || !CREDIT_REASON_SCREENS.has(state.history.at(-1)?.current)) return previousParams;
+  if (state.current === POS_ROUTES.SplitPayment && !isSaleSplitHub(state.params ?? {})) return previousParams;
+  return { ...previousParams, creditReason: reason };
 }
 
 // The parts on 27 opened from 19, with the amount they split. Nothing typed: no draft.

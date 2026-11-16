@@ -5,6 +5,7 @@ import { useSync } from "../hooks/useSync.js";
 import { useSubscription } from "../hooks/useSubscription.js";
 import { FEATURE_FLAGS, needsSignature } from "../config/features.js";
 import { getCreditEventAmountPesewas } from "../lib/creditReason.js";
+import { getSaleCreditReason } from "./creditDraft.js";
 import { formatGhs } from "../lib/money.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import {
@@ -378,6 +379,7 @@ export default function PosApp() {
         item.quantity > 1 ? `${item.name} × ${item.quantity}` : item.name
       ).join(", ") ?? "Sale",
       saleItems: details.saleItems,
+      creditReason: getSaleCreditReason(details),
       attemptId: details.attemptId
     });
     void requestBackgroundSync();
@@ -401,6 +403,8 @@ export default function PosApp() {
         paymentMethod: paidParts.some((part) => part.paymentMethod === "momo") ? "momo" : "cash",
         note: details.saleItems?.map((item) => item.name).join(", ") || "Sale",
         saleItems: details.saleItems ?? [],
+        // Wiring 18 split: the reason held in the draft is saved with the credit on Done on 16.
+        creditReason: getSaleCreditReason(details),
         attemptId: details.attemptId
       });
       void requestBackgroundSync();

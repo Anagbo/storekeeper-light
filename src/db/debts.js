@@ -8,6 +8,7 @@ import { PLAN_ERROR, planError } from "../lib/planErrors.js";
 import { isValidGhanaCardNumber } from "../lib/ghanaCardNumber.js";
 import { formatGhs } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
+import { cleanCreditReason as cleanCreditReasonText } from "../lib/creditReason.js";
 import { getMomoConfirmedPesewas, getMomoDetails, getMomoVerification, MOMO_VERIFICATION } from "../pos/momoMapping.js";
 import {
   assertInstallmentAmountWithinBalance,
@@ -280,6 +281,7 @@ export async function recordCreditSale({
   quantity = 1,
   transactionNote = "",
   saleItems = [],
+  creditReason = "",
   attemptId,
   now = Date.now()
 }) {
@@ -287,7 +289,10 @@ export async function recordCreditSale({
   const cleanPhone = phone.trim();
   const cleanNote = note.trim() || "Sale";
   const cleanItemDescription = itemDescription.trim() || cleanNote;
-  const cleanTransactionNote = transactionNote.trim() || `${cleanNote} · ${cleanName}`;
+  // rules_global.credit_reason: the reason typed on 18 is saved in its own field; the transaction note
+  // reads "{reason} · {Name}" and the debt note is the reason. items_json and itemDescription stay.
+  const cleanCreditReason = cleanCreditReasonText(creditReason);
+  const cleanTransactionNote = transactionNote.trim() || `${cleanCreditReason || cleanNote} · ${cleanName}`;
   const cleanGhanaCardNumber = ghanaCardNumber.trim().toUpperCase();
   const cleanSaleItems = normalizeSaleItems(saleItems);
   if (!cleanName) throw new TypeError("A customer name is required to record a credit sale.");
@@ -336,7 +341,7 @@ export async function recordCreditSale({
   const attemptContent = {
     amountPesewas, name: cleanName, phone: cleanPhone, ghanaCardNumber: cleanGhanaCardNumber, dueDate, installmentPlan,
     initialPaymentPesewas, initialPaymentParts, paymentMethod, note: cleanNote, itemDescription: cleanItemDescription,
-    quantity, transactionNote: cleanTransactionNote, saleItems: cleanSaleItems
+    quantity, transactionNote: cleanTransactionNote, saleItems: cleanSaleItems, creditReason: cleanCreditReason
   };
   return runIdempotentSave({ db, tables: [db.debts, db.customers, db.transactions, db.payments], attemptId, content: attemptContent, now }, async () => {
     const previousDebtPesewas = await getUnpaidCustomerBalance(cleanName);
@@ -388,7 +393,7 @@ export async function recordCreditSale({
       ghanaCardNumber: cleanGhanaCardNumber,
       customerId: customer?.id,
       amountPesewas,
-      note: cleanNote,
+      note: cleanCreditReason || cleanNote,
       dueDate,
       transactionId,
       now
@@ -568,6 +573,7 @@ export async function recordCreditSale({
         ? cleanSaleItems
         : [{ name: cleanItemDescription, quantity, total_amount: amountPesewas }]),
       itemDescription: cleanItemDescription,
+      ...(cleanCreditReason && { creditReason: cleanCreditReason }),
       quantity,
       pricePesewas: amountPesewas,
       note: cleanTransactionNote,
