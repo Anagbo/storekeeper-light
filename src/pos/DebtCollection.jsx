@@ -37,7 +37,7 @@ import { displayName } from "../lib/displayName.js";
 import { DueTag } from "./PartyCard.jsx";
 import { useFormErrors } from "./formErrors.js";
 import AmountTextInput from "./AmountTextInput.jsx";
-import { CREDIT_ROW_TYPES, formatHistoryRowTimestamp, groupCollectionHistory, rowReason, rowWhen } from "./historyRows.js";
+import { CREDIT_ROW_TYPES, formatHistoryRowTimestamp, groupCollectionHistory, paidParts, rowReason, rowWhen } from "./historyRows.js";
 import { needsSignature } from "../config/features.js";
 import CorrectionLines from "./CorrectionLines.jsx";
 
@@ -964,11 +964,8 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                       <strong className="block text-lg">{t("collect.paid")}</strong>
                       <span className="block text-sm text-slate-800">
                         {formatHistoryRowTimestamp(event.timestamp)}
-                        {event.type === "payment" && (
-                          <> · {event.collectionParts
-                            ? event.collectionParts.map((part) => `${part.method} ${formatGhs(part.amountPesewas)}`).join(", ")
-                            : event.method ?? event.detail}</>
-                        )}
+                        {/* rules_global.customer_proof.paid_order: Cash first, then MoMo (the shared helper 73 uses). */}
+                        <> · {paidParts(event)}</>
                       </span>
                     </span>
                     <strong className="shrink-0 text-lg text-emerald-900">+ {formatGhs(event.amountPesewas)}</strong>

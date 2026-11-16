@@ -53,7 +53,8 @@ export function rowReason(event) {
 }
 
 // "Cash GH₵6.00, MoMo GH₵4.00" for a Paid row (one part: "Cash GH₵6.00"). Always Cash first, then
-// MoMo: the parts come from the database in id order, which is random.
+// MoMo: the parts come from the database in id order, which is random. The one helper for every Paid
+// row on 29, 43 and 73 (rules_global.customer_proof.paid_order).
 const METHOD_ORDER = ["Cash", "MoMo"];
 const methodRank = (method) => (METHOD_ORDER.includes(method) ? METHOD_ORDER.indexOf(method) : METHOD_ORDER.length);
 export function paidParts(event) {
