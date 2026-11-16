@@ -49,7 +49,7 @@ export function rowWhen(event) {
 
 // What a credit row was for, or "No reason written".
 export function rowReason(event) {
-  return event.reason?.trim() ? event.reason.trim() : t("proof.noReason");
+  return event.reason?.trim() ? event.reason.trim() : t("creditRow.noReason");
 }
 
 // "Cash GH₵6.00, MoMo GH₵4.00" for a Paid row (one part: "Cash GH₵6.00"). Always Cash first, then

@@ -75,7 +75,7 @@ export default function CustomerSignature({ params = {}, onFinish, shopName }) {
         <section data-sign-card="" className="min-w-0 rounded-[18px] bg-[#FFE4E9] px-3.5 py-3">
           <p className="break-words text-[19px] font-bold">{t("signature.owes", { name: displayName(event.customer_name ?? event.customerName ?? ""), shop: shopName })}</p>
           <p data-sign-amount="" className="text-[40px] font-extrabold leading-tight text-rose-950">{formatGhs(getCreditEventAmountPesewas(event))}</p>
-          <p className="mt-1.5 break-words text-lg">{t("signature.for", { reason: reason || t("proof.noReason") })}</p>
+          <p className="mt-1.5 break-words text-lg">{t("signature.for", { reason: reason || t("creditRow.noReason") })}</p>
           <p className="text-lg">{t("signature.taken", { date: takenDate(event) })}</p>
           {payBy && <p className="text-lg">{t("signature.payBy", { date: payBy })}</p>}
         </section>

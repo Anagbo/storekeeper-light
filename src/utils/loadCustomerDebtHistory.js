@@ -12,7 +12,7 @@ import {
 
 // rules_global.customer_proof: every credit row knows its event, what it was for ("" = no reason
 // written) and whether the customer signed it.
-function creditProof(transaction) {
+function creditSignedFields(transaction) {
   const signed = isSignedEvent(transaction);
   return {
     transactionId: transaction.id,
@@ -115,7 +115,7 @@ export async function loadCustomerHistory(customerId, customerName) {
           amountPesewas: creditAmount,
           detail: "Added to debt",
           note: transaction.note?.trim() || "",
-          ...creditProof(transaction)
+          ...creditSignedFields(transaction)
         });
       }
       continue;
@@ -150,7 +150,7 @@ export async function loadCustomerHistory(customerId, customerName) {
           detail: transaction.itemDescription?.trim() ||
             transaction.note?.split(" · ")[0]?.trim() ||
             (transaction.type === "installment_addon" ? "Debt add-on" : "Credit extended"),
-          ...creditProof(transaction)
+          ...creditSignedFields(transaction)
         });
       }
 
@@ -182,7 +182,7 @@ export async function loadCustomerHistory(customerId, customerName) {
           timestamp,
           amountPesewas: creditAmount,
           detail: transaction.itemDescription?.trim() || transaction.note?.split(" · ")[0]?.trim() || "Credit extended",
-          ...creditProof(transaction)
+          ...creditSignedFields(transaction)
         });
       }
       continue;

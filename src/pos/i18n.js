@@ -688,9 +688,9 @@ const ENGLISH = Object.freeze({
   "debt.dueLine": "Due {date} · {status}",
   // Wiring 72 / 73 and the credit rows on 29/43 (rules_global.customer_proof, 16 Nov 2026). Never the
   // words legal, proof or guaranteed in what the customer reads.
-  "proof.noReason": "No reason written",
-  "proof.signed": "Signed ✓",
-  "proof.notSigned": "Not signed",
+  "creditRow.noReason": "No reason written",
+  "creditRow.signed": "Signed ✓",
+  "creditRow.notSigned": "Not signed",
   "signature.title": "Please sign",
   "signature.owes": "{name} owes {shop}",
   "signature.for": "For: {reason}",
@@ -705,7 +705,7 @@ const ENGLISH = Object.freeze({
   "signature.alreadySigned": "This credit is already signed.",
   "signature.saveFailed": "The signature could not be saved. The credit is still saved. Try again, or tap Skip for now.",
   "signature.notFound": "This credit could not be found here. It is still saved. Tap Skip for now.",
-  "proof.getSignature": "Get signature",
+  "creditRow.getSignature": "Get signature",
   "record.show": "Show {name} the record ›",
   "record.youOwe": "You owe",
   "record.tookOnCredit": "Took on credit",

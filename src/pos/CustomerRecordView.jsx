@@ -76,7 +76,7 @@ function RecordRow({ event }) {
         <Row title={t("record.tookOnCredit")} amount={formatGhs(event.amountPesewas)} amountClass="text-rose-950" />
         <p className="break-words text-lg text-slate-800">{rowWhen(event)} · {rowReason(event)}</p>
         <p data-signed={event.signed ? "yes" : "no"} className={`text-lg font-extrabold ${event.signed ? "text-emerald-900" : "text-slate-600"}`}>
-          {event.signed ? t("proof.signed") : t("proof.notSigned")}
+          {event.signed ? t("creditRow.signed") : t("creditRow.notSigned")}
         </p>
       </Card>
     );
