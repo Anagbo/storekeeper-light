@@ -32,13 +32,13 @@ import { getInitialPaymentParts } from "./paymentAmount.js";
 import { confirmDirectMomoParts, describeSplitPart, isUnconfirmedDirectMomo } from "./splitTender.js";
 import { getMomoDisplayLabel } from "./momoMapping.js";
 import { secondsUntil } from "../lib/countdown.js";
-import { getDebtorItemDescription } from "../utils/debtorItemDescription.js";
 import { useBackBlock, useBackHandler } from "./browserBack.js";
 import { displayName } from "../lib/displayName.js";
 import { DueTag } from "./PartyCard.jsx";
 import { useFormErrors } from "./formErrors.js";
 import AmountTextInput from "./AmountTextInput.jsx";
-import { formatHistoryRowTimestamp, groupCollectionHistory } from "./historyRows.js";
+import { CREDIT_ROW_TYPES, formatHistoryRowTimestamp, groupCollectionHistory, rowReason, rowWhen } from "./historyRows.js";
+import { needsSignature } from "../config/features.js";
 
 const PAYMENT_METHODS = [
   { value: "cash", label: "collect.cash", icon: Banknote },
@@ -930,28 +930,38 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
             </div>
             {data.history.length ? (
               <ul className="overflow-hidden rounded-[18px] border-2 border-slate-500 bg-white">
-                {data.history.map((event) => (
+                {data.history.map((event) => (CREDIT_ROW_TYPES.has(event.type) ? (
+                  // rules_global.customer_proof (16 Nov 2026): every credit row says what it was for ("No reason
+                  // written" when nothing was given) and whether the customer signed it. An unsigned credit at or
+                  // above the threshold offers Get signature, which opens 72 for that entry; 72 returns here.
+                  <li key={event.id} data-credit-row="" className="flex min-w-0 flex-col gap-1 border-b-2 border-slate-300 px-3.5 py-3 last:border-b-0">
+                    <span className="flex min-w-0 items-center gap-3">
+                      <strong className="min-w-0 flex-1 truncate text-lg">{event.type === "addon" ? t("collect.creditAdded") : t("collect.creditTaken")}</strong>
+                      <strong className="shrink-0 whitespace-nowrap text-lg text-rose-900">{formatGhs(event.amountPesewas)}</strong>
+                    </span>
+                    <span className="block text-sm text-slate-800">{rowWhen(event)}</span>
+                    <span data-reason="" className="block break-words text-base text-slate-900">{rowReason(event)}</span>
+                    <span className="flex min-w-0 items-center justify-between gap-2">
+                      <span data-signed={event.signed ? "yes" : "no"} className={`inline-flex min-h-8 shrink-0 items-center whitespace-nowrap rounded-lg border-2 px-2 text-base font-extrabold ${event.signed ? "border-emerald-900 bg-green-100 text-emerald-900" : "border-slate-400 bg-slate-100 text-slate-700"}`}>
+                        {event.signed ? t("proof.signed") : t("proof.notSigned")}
+                      </span>
+                      {!event.signed && event.transactionId && needsSignature(event.amountPesewas) && (
+                        <button type="button" onClick={() => onNavigate("CustomerSignature", { transactionId: event.transactionId })} className="min-h-12 shrink-0 whitespace-nowrap rounded-xl border-2 border-emerald-900 bg-white px-3 text-base font-extrabold text-emerald-900">
+                          {t("proof.getSignature")}
+                        </button>
+                      )}
+                    </span>
+                  </li>
+                ) : (
                   <li key={event.id} className="flex min-h-12 items-center gap-3 border-b-2 border-slate-300 px-3.5 py-3 last:border-b-0">
                     <span className="min-w-0 flex-1">
                       <strong className="block text-lg">
-                        {event.type === "payment"
-                          ? t("collect.paid")
-                          : event.type === "adjustment"
-                            ? "Balance corrected"
-                            : event.type === "manual_debt"
-                              ? "Added to debt"
-                            : event.type === "addon" ? t("collect.creditAdded") : t("collect.creditTaken")}
+                        {event.type === "payment" ? t("collect.paid") : "Balance corrected"}
                       </strong>
                       <span className="block text-sm text-slate-800">
                         {event.type === "adjustment"
                           ? `${event.reasonLabel} · ${formatHistoryRowTimestamp(event.timestamp)}`
-                          : event.dateOnly ? formatDate(event.timestamp) : formatHistoryRowTimestamp(event.timestamp)}
-                        {event.type === "manual_debt" && event.note && <> · {event.note}</>}
-                        {["credit", "addon"].includes(event.type) && (
-                          <> · {getDebtorItemDescription(event)
-                            ? `Item: ${getDebtorItemDescription(event)}`
-                            : "Item description unavailable"}</>
-                        )}
+                          : formatHistoryRowTimestamp(event.timestamp)}
                         {event.type === "payment" && (
                           <> · {event.collectionParts
                             ? event.collectionParts.map((part) => `${part.method} ${formatGhs(part.amountPesewas)}`).join(", ")
@@ -959,7 +969,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                         )}
                       </span>
                     </span>
-                    <strong className={`shrink-0 text-lg ${event.type === "payment" ? "text-emerald-900" : event.type === "adjustment" ? "text-slate-800" : "text-rose-900"}`}>
+                    <strong className={`shrink-0 text-lg ${event.type === "payment" ? "text-emerald-900" : "text-slate-800"}`}>
                       {event.type === "payment"
                         ? "+"
                         : ""} {event.type === "adjustment"
@@ -967,7 +977,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                         : formatGhs(event.amountPesewas)}
                     </strong>
                   </li>
-                ))}
+                )))}
               </ul>
             ) : <p className="mt-2 text-slate-700">{t("collect.noPaymentHistory")}</p>}
           </section>

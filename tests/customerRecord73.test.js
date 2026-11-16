@@ -61,7 +61,8 @@ async function renderRecord(env = {}) {
   const { default: CustomerRecordView } = await loadJsx("src/pos/CustomerRecordView.jsx", env);
   const backs = [];
   const view = render({ type: CustomerRecordView, props: { params: { customerId: kofi.id, customerName: "Kofi" }, onBack: () => backs.push(1) } });
-  for (let index = 0; index < 40 && /Loading/.test(textOf(view.tree)); index += 1) {
+  // Wait for the record to load (up to about 10 seconds: the full suite runs many files at once).
+  for (let index = 0; index < 5000 && /Loading/.test(textOf(view.tree)); index += 1) {
     await tick();
     view.rerender();
   }
