@@ -108,9 +108,12 @@ async function launch(dir) {
     if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description ?? result.exceptionDetails.text);
     return result.result.value;
   };
-  const close = () => {
+  // Waits until the browser has exited, so its profile folder can be removed.
+  const exited = new Promise((resolve) => child.once("exit", resolve));
+  const close = async () => {
     try { socket.close(); } catch { /* already closed */ }
     child.kill();
+    await Promise.race([exited, sleep(5000)]);
   };
   return { send, evaluate, close };
 }
@@ -279,10 +282,14 @@ test("18: field, chips, 60px options, Back and Save at 340, 360 and 393px; 360x6
     }
     console.log(JSON.stringify({ longSaveLines }), JSON.stringify(Object.fromEntries(Object.entries(results).map(([key, m]) => [key, { page: m.scrollHeight, screen: m.innerHeight, saveLines: m.saveLines }]))));
   } finally {
-    session?.close();
+    await session?.close();
     server.close();
-    await sleep(300);
-    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+    // A temp folder left behind is harmless; it must not fail a test whose checks passed.
+    try {
+      rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
+    } catch (error) {
+      console.warn(`could not remove ${dir}: ${error.code}`);
+    }
   }
 });
 
