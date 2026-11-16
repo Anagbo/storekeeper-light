@@ -1,4 +1,5 @@
 import { db as defaultDb } from "../db/db.js";
+import { HIDE_AMOUNTS_PREFERENCE } from "../db/preferences.js";
 import { getFinancialTransactions, isSaleRecord, splitCountableTransactions, summarizeFinancialTransactions, summarizePosMoney } from "../lib/money.js";
 import { getMoneyPeriodRange, getOutstandingDebtPesewas, getPreviousMoneyPeriodRange } from "./money.js";
 import { getSupplierBalances } from "../utils/suppliers.js";
@@ -155,17 +156,19 @@ export function buildMyMoneyReport({ currentTransactions, previousTransactions, 
 export async function loadMyMoneyReport({ period, now = new Date(), database = defaultDb }) {
   const current = getMoneyPeriodRange(period, now);
   const previous = getPreviousMoneyPeriodRange(period, now);
-  const [currentTransactions, previousTransactions, debts, allTransactions, suppliers, profitSetting] = await Promise.all([
+  // rules_global.hide_amounts: the setting is read with the figures, so 33 never shows them before it is known.
+  const [currentTransactions, previousTransactions, debts, allTransactions, suppliers, profitSetting, hideSetting] = await Promise.all([
     getFinancialTransactions(current, database),
     getFinancialTransactions(previous, database),
     database.debts.where("status").equals("unpaid").toArray(),
     database.transactions.toArray(),
     database.suppliers.toArray(),
-    database.settings.get(SHOW_PROFIT_PREFERENCE)
+    database.settings.get(SHOW_PROFIT_PREFERENCE),
+    database.settings.get(HIDE_AMOUNTS_PREFERENCE)
   ]);
   const showProfit = profitSetting?.value !== false;
   const averageProfitPesewas = showProfit && period === "week" ? await loadAverageWeeklyProfit(current, database) : null;
-  return buildMyMoneyReport({ currentTransactions, previousTransactions, debts, allTransactions, suppliers, showProfit, averageProfitPesewas });
+  return { ...buildMyMoneyReport({ currentTransactions, previousTransactions, debts, allTransactions, suppliers, showProfit, averageProfitPesewas }), hideAmounts: hideSetting?.value === true };
 }
 
 export async function loadAverageWeeklyProfit(currentRange, database = defaultDb) {

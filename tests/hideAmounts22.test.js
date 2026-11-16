@@ -5,6 +5,7 @@ import { db } from "../src/db/db.js";
 import { recordCreditSale } from "../src/db/debts.js";
 import { loadHideAmounts, saveHideAmounts, setPreference } from "../src/db/preferences.js";
 import { formatGhs } from "../src/lib/money.js";
+import { hostShape, moneyPieces } from "./helpers/hiddenAmountScan.js";
 import { loadJsx, render, setLiveQuery, textOf, walk } from "./helpers/renderJsx.js";
 
 // Wiring 22 "Hide amounts" and rules_global.hide_amounts: an eye button (48px) on the title row of the
@@ -37,37 +38,8 @@ beforeEach(async () => {
 });
 
 const DAY = 86_400_000;
-const AMOUNT = /\d\.\d{2}(?!\d)|GH₵\s*-?\d/;
-
-// Every visible text piece and accessible name, skipping the subtree a predicate excludes.
-export function moneyPieces(tree, skip = () => false) {
-  const out = [];
-  const visit = (node) => {
-    if (Array.isArray(node)) return node.forEach(visit);
-    if (node == null || typeof node !== "object") return;
-    if (skip(node)) return;
-    for (const name of ["aria-label", "title"]) if (typeof node.props?.[name] === "string") out.push(node.props[name]);
-    if ("rendered" in node) return visit(node.rendered);
-    const children = node.props?.children;
-    for (const child of [children].flat(Infinity)) {
-      if (typeof child === "string" || typeof child === "number") out.push(String(child));
-      else visit(child);
-    }
-  };
-  visit(tree);
-  return out.filter((piece) => AMOUNT.test(piece));
-}
-
 const isUrgentRow = (node) => node.props?.["data-urgent-debtor"] !== undefined;
 const hiddenNodes = (tree) => [...walk(tree)].filter((node) => node.props?.["data-hidden-amount"] !== undefined);
-// What reaches the screen: host elements only (component props hold the raw amount, the page does not).
-export function hostShape(node) {
-  if (Array.isArray(node)) return node.map(hostShape);
-  if (node == null || typeof node !== "object") return node;
-  if ("rendered" in node) return hostShape(node.rendered);
-  const { children, ...props } = node.props ?? {};
-  return { type: String(node.type), props: Object.fromEntries(Object.entries(props).filter(([, value]) => typeof value !== "function")), children: hostShape(children) };
-}
 const eyeButton = (tree) => [...walk(tree)].find((node) => node.type === "button" && node.props?.["data-hide-amounts"] !== undefined);
 
 async function seed() {

@@ -29,16 +29,18 @@ export function amountText(key, amounts, hidden) {
 }
 
 // The eye button on the title row of 22 and 33: 48px, icon eye / eye-off, the accessible name says
-// what a tap does ("Hide amounts" while shown, "Show amounts" while hidden). No navigation.
-export function HideAmountsButton({ hidden, onToggle, className = "" }) {
+// what a tap does ("Hide amounts" while shown, "Show amounts" while hidden). No navigation. Disabled
+// while the setting is still loading.
+export function HideAmountsButton({ hidden, onToggle, disabled = false, className = "" }) {
   const Icon = hidden ? EyeOff : Eye;
   return (
     <button
       type="button"
       data-hide-amounts=""
       onClick={onToggle}
+      disabled={disabled}
       aria-label={hidden ? t("amounts.show") : t("amounts.hide")}
-      className={`grid h-12 w-12 shrink-0 place-items-center rounded-[14px] border-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 ${className}`}
+      className={`grid h-12 w-12 shrink-0 place-items-center rounded-[14px] border-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:opacity-50 ${className}`}
     >
       <Icon size={26} strokeWidth={2.2} aria-hidden="true" />
     </button>
