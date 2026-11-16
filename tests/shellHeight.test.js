@@ -13,8 +13,8 @@ import { appCss, browser } from "./helpers/browserLayout.js";
 // (100dvh): header flex-none, page area flex-1 with min-height 0 that scrolls by itself. Nothing
 // depends on a header height. Real browser (headless Edge or Chrome, Segoe UI, not a phone font), the
 // real PosApp at 360x667 and 340x640 on 1, 15, 16, 17, 18, 29 and 72: the document never scrolls; a
-// screen longer than the page area scrolls inside it, with the header on screen and the pinned Back and
-// Save row (18) on screen. At 393x852 the header, the bottom bar and the Menu stay on screen.
+// screen longer than the page area scrolls inside it, with the header on screen and the pinned Save
+// row (18) on screen. At 393x852 the header, the bottom bar and the Menu stay on screen.
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 
@@ -130,7 +130,7 @@ const MEASURE = `(async () => {
   const area = document.querySelector("[data-page-area]");
   const buttons = () => [...area.querySelectorAll("button")].filter((b) => b.getClientRects().length);
   const back = () => buttons().find((b) => /Back$/.test(b.textContent.trim()));
-  const save = () => buttons().find((b) => /^Save( ·|$)/.test(b.textContent.trim()));
+  const save = () => buttons().find((b) => /^Save( ·|$)/.test(b.getAttribute("aria-label") ?? b.textContent.trim()));
   const snap = () => ({
     docScrollHeight: document.documentElement.scrollHeight,
     docScrollY: scrollY,
@@ -198,7 +198,7 @@ function checkScreen(label, m) {
     assert.equal(s.docScrollHeight, m.innerHeight, `${label} (${when}): the document is exactly the screen high (${s.docScrollHeight} vs ${m.innerHeight})`);
     assert.equal(s.docScrollY, 0, `${label} (${when}): the document never scrolls`);
     assert.ok(s.header && s.header.top === 0 && s.header.bottom > 0, `${label} (${when}): the header is at the top of the screen`);
-    if (s.pinned) assert.ok(s.pinned.top >= 0 && s.pinned.bottom <= m.innerHeight + 0.5, `${label} (${when}): the pinned Back and Save row is on screen (${s.pinned.top}-${s.pinned.bottom})`);
+    if (s.pinned) assert.ok(s.pinned.top >= 0 && s.pinned.bottom <= m.innerHeight + 0.5, `${label} (${when}): the pinned Save row is on screen (${s.pinned.top}-${s.pinned.bottom})`);
     if (s.nav) assert.ok(s.nav.bottom <= m.innerHeight + 0.5 && s.nav.top >= 0, `${label} (${when}): the bottom bar is on screen`);
   }
   if (m.scrolls) assert.ok(m.end.areaScrollTop > 0, `${label}: a longer screen scrolls inside the page area`);

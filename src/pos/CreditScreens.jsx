@@ -351,13 +351,17 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onUpdateParams, onReturnT
     }
   }
 
-  // Wiring 18 "Reason on 18": the reason sits above the Pay by choices (60px). The page scrolls when it
-  // does not fit; Back and Save stay pinned in the bottom row (16px under it, no bottom bar here). The
+  // Wiring 18 "Reason on 18": the reason sits above the Pay by choices (60px). Wiring "Save button and
+  // Back on 18" (final): Back is at the top beside the title (the title wraps beside it) and scrolls
+  // with the content; Save alone stays pinned at the bottom (16px under it, no bottom bar here). The
   // page fills the shell's page area (rules_global.shell_height), so a page that fits ends exactly at
-  // the bottom of the screen and a longer one scrolls inside the page area with the row stuck to it.
+  // the bottom of the screen and a longer one scrolls inside the page area with Save stuck to it.
   return (
     <PosPage className="flex flex-col gap-3 overflow-visible! pb-4!">
-      <h1 className="text-2xl font-extrabold">{t("credit.whenPay", { name: customerName })}</h1>
+      <div className="flex min-w-0 items-center gap-3">
+        <PosBackButton onClick={onBack} />
+        <h1 className="min-w-0 text-2xl font-extrabold leading-tight">{t("credit.whenPay", { name: customerName })}</h1>
+      </div>
       {reasonCase.kind === "field" ? (
         <div className="flex flex-col gap-2">
           <label htmlFor="credit-reason" className="-mb-0.5 text-[17px] font-extrabold text-slate-950">{t("credit.whatFor")}</label>
@@ -392,11 +396,10 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onUpdateParams, onReturnT
       </button>
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
       <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => void save(true)} />
-      {/* Wiring "Save button on 18" (final): two pinned rows. Row 1 Back (52px, left); row 2 Save, full
-          width, at least 56px: line 1 "Save" (800, 18px), line 2 "{Name} owes GH₵x" (600, 16px, one
-          line); the name for screen readers stays "Save · {Name} owes GH₵x". */}
-      <div data-bottom-row="" className="sticky bottom-0 z-10 -mx-4 mt-auto flex flex-col items-stretch gap-2 bg-white px-4 pt-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <PosBackButton onClick={onBack} className="self-start" />
+      {/* Wiring "Save button and Back on 18" (final): Save is the only pinned element, full width, at
+          least 56px: line 1 "Save" (800, 18px), line 2 "{Name} owes GH₵x" (600, 16px, one line); the
+          name for screen readers stays "Save · {Name} owes GH₵x". */}
+      <div data-bottom-row="" className="sticky bottom-0 z-10 -mx-4 mt-auto flex flex-col items-stretch bg-white px-4 pt-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         <PosPrimaryButton type="button" disabled={saving} onClick={() => void save()} aria-label={saving ? undefined : t("credit.saveAmount", { name: shortSaveName(customerName), amount: formatGhs(totalAfterSalePesewas) })} data-save-18="" className="h-auto min-h-14 flex-col gap-0 px-3 py-1.5 leading-tight">
           {saving ? t("credit.saving") : (
             <>
