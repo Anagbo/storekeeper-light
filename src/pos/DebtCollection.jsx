@@ -803,15 +803,20 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
     <PosPage className="!min-h-[calc(100vh-4rem)] !pb-6 mx-auto flex max-w-2xl flex-col gap-3 px-4 sm:px-6">
       {data === undefined ? <p role="status">{t("collect.loading")}</p> : !data ? <CollectionError>{t("collect.notFound")}</CollectionError> : (
         <>
-          <section className="flex items-center gap-3 rounded-[20px] border-2 border-slate-500 bg-white px-3 py-3">
-            <span className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full bg-emerald-900 text-2xl font-extrabold text-white">{displayName(data.name).slice(0, 1).toUpperCase()}</span>
-            <span className="min-w-0 flex-1">
-              <strong className="line-clamp-2 break-words text-[22px] leading-tight">{displayName(data.name)}</strong>
-              {data.ghanaCardNumber && <span className="text-base text-slate-800">{t("collect.customerId", { number: formatGhanaCard(data.ghanaCardNumber) })}</span>}
+          {/* Wiring 29/43 Back (to BACK: the previous screen in history, so the place on 32 or 22 is kept),
+              top left on the name's row; it takes the place of the initial circle and Edit contact sits
+              under the name (owner's choice, 16 Nov 2026), so a long name still has room at 340px. */}
+          <section data-row="debtor-header" className="flex items-start gap-3 rounded-[20px] border-2 border-slate-500 bg-white px-3 py-3">
+            <PosBackButton onClick={onBack} />
+            <span className="flex min-w-0 flex-1 flex-col items-start gap-2">
+              <span className="flex min-h-[52px] w-full min-w-0 flex-col justify-center">
+                <strong className="line-clamp-2 break-words text-[22px] leading-tight">{displayName(data.name)}</strong>
+                {data.ghanaCardNumber && <span className="text-base text-slate-800">{t("collect.customerId", { number: formatGhanaCard(data.ghanaCardNumber) })}</span>}
+              </span>
+              <button type="button" onClick={() => setContactEditorOpen(true)} className="flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-xl border-2 border-emerald-900 px-2 text-sm font-extrabold text-emerald-900">
+                <UserRoundPen size={20} className="shrink-0" aria-hidden="true" />{t("collect.editContact")}
+              </button>
             </span>
-            <button type="button" onClick={() => setContactEditorOpen(true)} className="shrink-0 rounded-xl border-2 border-emerald-900 px-2 py-2 text-sm font-extrabold text-emerald-900">
-              <UserRoundPen size={20} className="mx-auto" aria-hidden="true" />{t("collect.editContact")}
-            </button>
           </section>
           <section className="amount-fit-container rounded-[20px] bg-rose-200 px-4 py-3">
             <p className="text-lg font-bold text-rose-950">{t("collect.balanceOwed", { name: displayName(data.name) })}</p>
