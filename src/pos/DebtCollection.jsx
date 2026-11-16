@@ -579,6 +579,8 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
   const [correctionDebtSnapshot, setCorrectionDebtSnapshot] = useState(null);
   const [correctionError, setCorrectionError] = useState("");
   const [correctionSaving, setCorrectionSaving] = useState(false);
+  // Wiring 54 "When the sheet first opens": no message until the owner changes the pre-filled value.
+  const [correctionChanged, setCorrectionChanged] = useState(false);
   useBackBlock(correctionSaving);
   useBackHandler(correctionOpen, () => setCorrectionOpen(false));
   const data = useLiveQuery(async () => {
@@ -732,6 +734,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
     setCorrectionDebtSnapshot(debtSnapshot);
     setCorrectionAmount(debtSnapshot ? (debtSnapshot.amountPesewas / 100).toFixed(2) : "");
     setCorrectionReason("");
+    setCorrectionChanged(false);
     setCorrectionNote("");
     setCorrectionError("");
     correctionErrors.clear();
@@ -1009,11 +1012,13 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                 {/* rules_global.amount_entry: right-aligned, GH₵ on the left, focus selects the amount. */}
                 <span className="mt-1 flex h-14 items-center gap-2 rounded-[14px] border-[3px] border-emerald-900 px-3 focus-within:ring-2 focus-within:ring-emerald-900/20">
                   <span className="shrink-0 text-lg font-bold text-slate-700">GH₵</span>
-                  <AmountTextInput id="pos-correction-amount" value={correctionAmount} onValue={(value) => { setCorrectionAmount(value); setCorrectionError(""); }} className="h-full w-full min-w-0 bg-transparent text-[28px] font-extrabold outline-none" />
+                  {/* Focused on open, so the shared field selects the pre-filled balance (the first digit replaces it). */}
+                  <AmountTextInput id="pos-correction-amount" autoFocus value={correctionAmount} onValue={(value) => { setCorrectionAmount(value); setCorrectionChanged(true); setCorrectionError(""); }} className="h-full w-full min-w-0 bg-transparent text-[28px] font-extrabold outline-none" />
                 </span>
               </label>
-              {/* Wiring 54 (16 Nov 2026): an empty field shows no line at all; Save correction is only disabled. */}
-              {correctionAmount.trim() !== "" && (
+              {/* Wiring 54 (16 Nov 2026): no line when the sheet first opens (until the value changes) and
+                  none for an empty field; Save correction is only disabled. */}
+              {correctionChanged && correctionAmount.trim() !== "" && (
                 <p className={`text-lg font-extrabold ${correctionNewBalancePesewas < correctionCurrentBalancePesewas ? "text-emerald-900" : "text-slate-700"}`}>
                   {Number.isSafeInteger(correctionNewBalancePesewas) && correctionNewBalancePesewas < correctionCurrentBalancePesewas
                     ? `This lowers the debt by ${formatGhs(correctionCurrentBalancePesewas - correctionNewBalancePesewas)}`

@@ -117,4 +117,33 @@ for (const several of [false, true]) {
     assert.equal(await sheet.type("-5"), "5", "a sign is refused: the field keeps what it had");
     assert.equal(await sheet.type("-0"), "5");
   });
+
+  // Wiring 54 "When the sheet first opens" (16 Nov 2026): pre-filled with the current balance,
+  // selected, and no message until the owner changes the value; Save correction disabled.
+  test(`54 on ${where}: opens pre-filled and selected with no message; equal, lower and increase once typed`, async () => {
+    const sheet = await openSheet({ several });
+    const current = several ? "50.00" : "200.00";
+    assert.equal(sheet.field().props.value, current, "pre-filled with the current balance");
+    assert.equal(sheet.field().props.autoFocus, true, "focused on open, so the field's focus selects the amount");
+    assert.equal(sheet.line(), "", "no message on open");
+    assert.equal(nodes(sheet.sheet()).filter((node) => node.props.role === "alert").length, 0);
+    assert.equal(sheet.save().props.disabled, true);
+    await sheet.app.tap("Debt forgiven");
+    assert.equal(sheet.line(), "", "choosing a reason does not change the value: still no message");
+    assert.equal(sheet.save().props.disabled, true);
+
+    await sheet.type(current.replace(/\.00$/, ""));
+    assert.equal(sheet.line(), "New balance must be lower.", "typed equal to the current balance");
+    assert.equal(sheet.save().props.disabled, true);
+    await sheet.type(current);
+    assert.equal(sheet.line(), "New balance must be lower.", "typed equal, with decimals");
+
+    await sheet.type("20");
+    assert.equal(sheet.line(), `This lowers the debt by ${several ? "GH₵30.00" : "GH₵180.00"}`);
+    assert.equal(sheet.save().props.disabled, false);
+
+    await sheet.type("999");
+    assert.equal(sheet.line(), "Corrections cannot increase debt. Use Add to debt.");
+    assert.equal(sheet.save().props.disabled, true);
+  });
 }
