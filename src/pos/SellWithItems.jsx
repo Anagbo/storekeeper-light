@@ -115,17 +115,21 @@ export default function SellWithItems({ params = {}, onBack, onNavigate, onUpdat
                   ? t("sellItems.tileNameInSale", { name: product.name, price: priceText, count: inSale })
                   : t("sellItems.tileName", { name: product.name, price: priceText })}
                 onClick={() => chooseProduct(product)}
-                className={`flex min-h-[72px] items-center gap-2.5 rounded-[18px] px-2.5 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 ${inSale > 0 ? "border-[3px] border-emerald-900 bg-green-100" : "border-2 border-slate-500 bg-white"}`}
+                className={`relative flex min-h-[72px] flex-col justify-center gap-1 rounded-[18px] px-2.5 pb-2 pt-5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 ${inSale > 0 ? "border-[3px] border-emerald-900 bg-green-100" : "border-2 border-slate-500 bg-white"}`}
               >
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-emerald-900 text-lg font-extrabold text-white">
-                  {product.name.charAt(0).toUpperCase()}
+                {/* Row 1: the letter and the name (the name wraps to two lines rather than squeeze the
+                    price). Row 2: the price on one line across the whole tile (a four-digit price fits at 340px). */}
+                <span className="flex min-w-0 items-center gap-2.5">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-emerald-900 text-lg font-extrabold text-white">
+                    {product.name.charAt(0).toUpperCase()}
+                  </span>
+                  <strong data-tile-name="" className="line-clamp-2 min-w-0 flex-1 break-words text-base font-extrabold leading-tight text-slate-900">{product.name}</strong>
                 </span>
-                <span className="min-w-0 flex-1">
-                  <strong className="block truncate text-base font-extrabold text-slate-900">{product.name}</strong>
-                  <span className="block whitespace-nowrap text-sm font-bold text-emerald-900">{priceText}</span>
-                </span>
+                <span data-tile-price="" className="block whitespace-nowrap text-sm font-bold tabular-nums text-emerald-900">{priceText}</span>
+                {/* The badge sits on the top-right corner, over the edge, so it never covers the name
+                    or the price (the tile's top padding keeps the name below it). */}
                 {inSale > 0 && (
-                  <span data-count-badge="" className="shrink-0 self-start rounded-full bg-emerald-900 px-2 py-0.5 text-sm font-extrabold tabular-nums text-white">×{inSale}</span>
+                  <span data-count-badge="" className="absolute -right-1.5 -top-1.5 grid h-6 min-w-6 place-items-center rounded-full bg-emerald-900 px-1.5 text-sm font-bold leading-none tabular-nums text-white ring-2 ring-white">×{inSale}</span>
                 )}
               </button>
             );
