@@ -1012,13 +1012,16 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                   <AmountTextInput id="pos-correction-amount" value={correctionAmount} onValue={(value) => { setCorrectionAmount(value); setCorrectionError(""); }} className="h-full w-full min-w-0 bg-transparent text-[28px] font-extrabold outline-none" />
                 </span>
               </label>
-              <p className={`text-lg font-extrabold ${correctionNewBalancePesewas < correctionCurrentBalancePesewas ? "text-emerald-900" : "text-slate-700"}`}>
-                {correctionAmount.trim() !== "" && Number.isSafeInteger(correctionNewBalancePesewas) && correctionNewBalancePesewas < correctionCurrentBalancePesewas
-                  ? `This lowers the debt by ${formatGhs(correctionCurrentBalancePesewas - correctionNewBalancePesewas)}`
-                  : correctionNewBalancePesewas > correctionCurrentBalancePesewas
-                    ? "Corrections cannot increase debt. Use Add to debt."
-                    : "New balance must be lower."}
-              </p>
+              {/* Wiring 54 (16 Nov 2026): an empty field shows no line at all; Save correction is only disabled. */}
+              {correctionAmount.trim() !== "" && (
+                <p className={`text-lg font-extrabold ${correctionNewBalancePesewas < correctionCurrentBalancePesewas ? "text-emerald-900" : "text-slate-700"}`}>
+                  {Number.isSafeInteger(correctionNewBalancePesewas) && correctionNewBalancePesewas < correctionCurrentBalancePesewas
+                    ? `This lowers the debt by ${formatGhs(correctionCurrentBalancePesewas - correctionNewBalancePesewas)}`
+                    : correctionNewBalancePesewas > correctionCurrentBalancePesewas
+                      ? "Corrections cannot increase debt. Use Add to debt."
+                      : "New balance must be lower."}
+                </p>
+              )}
               <fieldset>
                 <legend className="text-[19px] font-extrabold">Reason</legend>
                 <div className="mt-1 flex flex-wrap gap-2">
