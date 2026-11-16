@@ -392,9 +392,19 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onUpdateParams, onReturnT
       </button>
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
       <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => void save(true)} />
-      <div data-bottom-row="" className="sticky bottom-0 z-10 -mx-4 mt-auto grid grid-cols-[auto_minmax(0,1fr)] gap-2 bg-white px-4 pt-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <PosBackButton onClick={onBack} className="h-14!" />
-        <PosPrimaryButton type="button" disabled={saving} onClick={() => void save()} className="h-auto min-h-14 px-2 py-1 text-base leading-tight">{saving ? t("credit.saving") : t("credit.saveAmount", { name: shortSaveName(customerName), amount: formatGhs(totalAfterSalePesewas) })}</PosPrimaryButton>
+      {/* Wiring "Save button on 18" (final): two pinned rows. Row 1 Back (52px, left); row 2 Save, full
+          width, at least 56px: line 1 "Save" (800, 18px), line 2 "{Name} owes GH₵x" (600, 16px, one
+          line); the name for screen readers stays "Save · {Name} owes GH₵x". */}
+      <div data-bottom-row="" className="sticky bottom-0 z-10 -mx-4 mt-auto flex flex-col items-stretch gap-2 bg-white px-4 pt-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <PosBackButton onClick={onBack} className="self-start" />
+        <PosPrimaryButton type="button" disabled={saving} onClick={() => void save()} aria-label={saving ? undefined : t("credit.saveAmount", { name: shortSaveName(customerName), amount: formatGhs(totalAfterSalePesewas) })} data-save-18="" className="h-auto min-h-14 flex-col gap-0 px-3 py-1.5 leading-tight">
+          {saving ? t("credit.saving") : (
+            <>
+              <span data-save-line="1" className="text-[18px] font-extrabold">{t("credit.saveWord")}</span>
+              <span data-save-line="2" className="max-w-full whitespace-nowrap text-base font-semibold">{t("credit.saveDetail", { name: shortSaveName(customerName), amount: formatGhs(totalAfterSalePesewas) })}</span>
+            </>
+          )}
+        </PosPrimaryButton>
       </div>
       {largeAmount.dialog}
     </PosPage>

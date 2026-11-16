@@ -376,6 +376,8 @@ const ENGLISH = Object.freeze({
   "credit.aLittleAtATime": "A little at a time",
   "credit.installmentSubtitle": "Pay small amounts again and again",
   "credit.saveAmount": "Save · {name} owes {amount}",
+  "credit.saveWord": "Save",
+  "credit.saveDetail": "{name} owes {amount}",
   "credit.whatFor": "What for? (optional)",
   "credit.whatForPlaceholder": "e.g. Rice, school fees",
   "credit.recentReasons": "Recent reasons",
