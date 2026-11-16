@@ -54,6 +54,19 @@ test("20 empty: no items and nothing typed says how to add the first one, never 
   setLiveQuery(null);
 });
 
+test("20 empty: \"+ New item\" in the message is a <strong> (bold, dark green); the rest is regular weight", async () => {
+  const { view } = await show({ products: [] });
+  const message = nodes(view.tree).find((node) => node.type === "p" && /You have no items yet/.test(textOf(node)));
+  assert.ok(message, "the empty message is shown");
+  const strong = [...walk(message)].find((node) => node.props && node.type === "strong");
+  assert.ok(strong, "the message contains a <strong>");
+  assert.equal(textOf(strong).replace(/\s+/g, " ").trim(), "+ New item");
+  assert.match(strong.props.className, /font-extrabold/);
+  assert.match(strong.props.className, /text-emerald-900/, "same dark green as the + New item tile label");
+  assert.doesNotMatch(message.props.className, /font-(semibold|bold|extrabold)/, "the rest of the sentence is regular weight");
+  setLiveQuery(null);
+});
+
 test("20 search: \"No items match that search.\" only when something is typed and nothing matches", async () => {
   const listed = await show({ products: [BREAD, RICE] });
   assert.doesNotMatch(shown(listed.view.tree), /No items match|You have no items yet/, "items and nothing typed: no message");

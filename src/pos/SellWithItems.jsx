@@ -142,8 +142,19 @@ export default function SellWithItems({ params = {}, onBack, onNavigate, onUpdat
             + {t("sellItems.newItem")}
           </button>
           {/* Wiring 20 "Empty and search states": no items at all and nothing typed says how to add
-              the first one; "No items match that search." only when something typed matches nothing. */}
-          {!products.length && <p className="col-span-2 sm:col-span-3 rounded-xl border-2 border-slate-300 bg-white p-3 font-semibold">{normalizedQuery ? t("sellItems.noMatches") : t("sellItems.noItemsYet")}</p>}
+              the first one; "No items match that search." only when something typed matches nothing.
+              "+ New item" is a <strong> in the tile label's dark green; the rest is regular weight. */}
+          {!products.length && (
+            <p className="col-span-2 sm:col-span-3 rounded-xl border-2 border-slate-300 bg-white p-3">
+              {normalizedQuery ? t("sellItems.noMatches") : (
+                <>
+                  {t("sellItems.noItemsYetStart")}{" "}
+                  <strong className="font-extrabold text-emerald-900">+ {t("sellItems.newItem")}</strong>{" "}
+                  {t("sellItems.noItemsYetEnd")}
+                </>
+              )}
+            </p>
+          )}
         </div>
       )}
 
