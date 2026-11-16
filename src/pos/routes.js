@@ -1,6 +1,7 @@
 import { applyMomoPick, getCarriedPaymentParts, getInitialPaymentParts } from "./paymentAmount.js";
 import { toPesewas } from "../lib/money.js";
 import { isLockedMomoRow } from "./splitTender.js";
+import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
 
 export const POS_ROUTES = Object.freeze({
   Sell: "Sell",
@@ -295,8 +296,38 @@ export const KEPT_ON_BACK = Object.freeze({
   [POS_ROUTES.MoMoPayment]: ["requestNetwork", "requestPhone"],
   [POS_ROUTES.ManualDebtAmount]: ["debtAmountText", "note", "takenOn"],
   [POS_ROUTES.StockOnCredit]: ["stockPaidNow", "stockSupplierId", "stockNewSupplier", "stockSupplierName", "stockSupplierPhone", "stockPayBy"],
-  [POS_ROUTES.ALittleAtATime]: ["installmentAmount", "frequency", "startToday", "nextDueDate", "todayPaymentAmount", "paymentMethod", "momoMethod", "installmentSplitDraft"]
+  [POS_ROUTES.ALittleAtATime]: ["installmentAmount", "frequency", "startToday", "nextDueDate", "todayPaymentAmount", "paymentMethod", "momoMethod", "installmentSplitDraft"],
+  // 20: the item lines of the cart (decided 16 Nov 2026). Kept in 15's params only, never in 15's own
+  // saleItems: 15 keeps its typed amount, no item list and its keypad. See restoreKeptCart.
+  [POS_ROUTES.SellWithItems]: ["saleItems"]
 });
+
+// 20's kept cart has its own task key: 20 rewrites amountPesewas with the cart total, and 15's amount
+// may change (or be cleared) while the cart is kept. There is one sale on 15 at a time, and a fresh
+// stack (saved sale, header Home, another tab, Leave) has no kept drafts, so one key is enough.
+const DRAFT_TASK_KEYS = Object.freeze({
+  [POS_ROUTES.SellWithItems]: () => "sale-cart"
+});
+
+function taskKeyFor(route, params = {}) {
+  return (DRAFT_TASK_KEYS[route] ?? draftTaskKey)(params);
+}
+
+const OTHER_AMOUNT_LINE = Object.freeze({ productId: null, name: "Other amount", subtitle: "From Sell", quantity: 1 });
+
+// Reopening 20 from 15: the kept item lines come back and the "Other amount" line follows 15's
+// CURRENT amount (changed, cleared or unchanged). A cart 15 already hands over wins.
+function restoreKeptCart(params, draft) {
+  if (Array.isArray(params.saleItems) && params.saleItems.length) return params;
+  const amount = params.amountPesewas;
+  const other = Number.isSafeInteger(amount) && amount > 0 ? [{ ...OTHER_AMOUNT_LINE, unitPricePesewas: amount }] : [];
+  const saleItems = [...other, ...draft.saleItems];
+  try {
+    return { ...params, saleItems: normalizeSaleItems(saleItems), amountPesewas: totalSaleItemsPesewas(saleItems) };
+  } catch {
+    return params;
+  }
+}
 
 // The same task: the same amount and customer, the same kind of flow. A different customer or
 // amount starts the screen empty, as 16 does when the total changed.
@@ -308,6 +339,11 @@ function draftTaskKey(params = {}) {
 function pickDraft(route, params = {}) {
   const draft = {};
   for (const key of KEPT_ON_BACK[route] ?? []) if (params[key] !== undefined) draft[key] = params[key];
+  // 20 keeps only its item lines; the "Other amount" line is 15's amount and is rebuilt from it.
+  if (route === POS_ROUTES.SellWithItems) {
+    const items = Array.isArray(draft.saleItems) ? draft.saleItems.filter((line) => line?.productId !== null) : [];
+    return items.length ? { saleItems: items } : {};
+  }
   // 19's own MoMo choice once received is locked and never travels in a kept draft (Back from 19
   // with it asks first and Leave drops the draft).
   if (route === POS_ROUTES.ALittleAtATime && draft.paymentMethod === "momo" && isLockedMomoRow({ paymentMethod: "momo", verification: params.verification })) {
@@ -322,7 +358,7 @@ function keepDraftOnBack(state, previousParams = {}) {
   const kept = { ...(previousParams.keptDrafts ?? {}), ...(leaving.keptDrafts ?? {}) };
   if (KEPT_ON_BACK[state.current]) {
     const draft = pickDraft(state.current, leaving);
-    if (Object.keys(draft).length) kept[state.current] = { key: draftTaskKey(leaving), draft };
+    if (Object.keys(draft).length) kept[state.current] = { key: taskKeyFor(state.current, leaving), draft };
     else delete kept[state.current];
   }
   if (!Object.keys(kept).length) return previousParams;
@@ -333,7 +369,8 @@ function keepDraftOnBack(state, previousParams = {}) {
 // are looked up in the new params, or on the screen it is opened from (63 opens 60 with no params).
 export function withKeptDraft(route, params = {}, fromParams = {}) {
   const kept = (params.keptDrafts ?? fromParams?.keptDrafts)?.[route];
-  if (!kept || kept.key !== draftTaskKey(params)) return params;
+  if (!kept || kept.key !== taskKeyFor(route, params)) return params;
+  if (route === POS_ROUTES.SellWithItems) return restoreKeptCart(params, kept.draft);
   return { ...params, ...kept.draft };
 }
 
