@@ -3889,7 +3889,7 @@
     "Storage: small vector strokes (or compressed PNG under 20 KB) saved on the debt event as signature plus signedAt. Local only, included in backup and restore. Never sent anywhere in this version.",
     "Honest limit: a signature shows the customer saw and accepted this amount; it is not a legal proof. Do not use the words legal, proof or guaranteed anywhere in the UI.",
     "Snapshot: the signature record stores the credit amount and the reason as they were when signed. Anything changed afterwards is shown on 73 as a Balance corrected card; a signature never silently covers a different amount.",
-    "Layout (built, 16 Nov 2026): Back and the title \"Please sign\" share the top row. Clear sits above Done, both full width, 60px; Skip for now is a grey-outline button below (button_system). The header is the Home tile without the Menu button (as on 73).",
+    "Layout (updated 16 Nov 2026): Back and the title \"Please sign\" share the top row. The three bottom buttons are full width, in this order: Done (solid green, 60px, disabled until ink), Clear (outlined, 60px), Skip for now (grey outline, 52px). The header is the Home tile without the Menu button (as on 73).",
     "Order of the three bottom buttons: Done (solid green, disabled until ink), then Clear (outlined), then Skip for now (grey outline). Clear erases the drawing; Skip leaves without signing."
    ]
   },
