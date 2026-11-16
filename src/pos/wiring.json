@@ -330,7 +330,7 @@
      "to": "34"
     },
     {
-     "label": "Next ›",
+     "label": "Next",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -602,7 +602,7 @@
      "to": "35"
     },
     {
-     "label": "Continue ›",
+     "label": "Continue",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -666,7 +666,7 @@
      "effect": "tel: link to the person's valid phone number."
     },
     {
-     "label": "Today’s transactions ›",
+     "label": "Today’s transactions",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -692,7 +692,7 @@
    "rules": [
     "Tapping the debtor name opens 43 (brief line 122).",
     "Built extras kept: People-who-owe link, Add contact.",
-    "Owed card on Home (redesign 11 Nov 2026, layout and wording only): a white card with a 2px light grey border and a thicker red left edge (the same style as the debt tiles on My money), not a pink block. Top: the label \"Owed to you\" (17px, grey), the total in bold dark text (30px, never red or pink), a quiet line \"{n} people · {m} late\" (\"1 person\"; leave out \"· {m} late\" when none is late), and \"See all ›\" in green on the right. The whole top part is one tappable area that opens 32 (accessible name \"Owed to you, see all\"). Under a thin line and the small heading \"Collect first\": the most urgent debtor (same ordering as today) with the name (bold 19px, up to 2 lines, capital first letter), the amount (bold 22px, never clipped, at the right), and the due tag under the name in the same wording and colours as the Owed list (\"Late 1 day\" red, \"Due today\" and \"Due in n days\" amber, grey when far). Then one row of buttons: a green \"Collect\" button with a small cash icon and the word Collect (52px, takes the remaining width, accessible name \"Collect payment from {name}\", opens 25), a square WhatsApp button (52px, green outline) and a square Call button (52px, dark outline) shown only when the person has a valid phone number (never a greyed disabled Call button). Icon-only buttons keep their accessible names.",
+    "Owed card on Home (redesign 11 Nov 2026, layout and wording only): a white card with a 2px light grey border and a thicker red left edge (the same style as the debt tiles on My money), not a pink block. Top: the label \"Owed to you\" (17px, grey), the total in bold dark text (30px, never red or pink), a quiet line \"{n} people · {m} late\" (\"1 person\"; leave out \"· {m} late\" when none is late), and \"See all\" in green on the right. The whole top part is one tappable area that opens 32 (accessible name \"Owed to you, see all\"). Under a thin line and the small heading \"Collect first\": the most urgent debtor (same ordering as today) with the name (bold 19px, up to 2 lines, capital first letter), the amount (bold 22px, never clipped, at the right), and the due tag under the name in the same wording and colours as the Owed list (\"Late 1 day\" red, \"Due today\" and \"Due in n days\" amber, grey when far). Then one row of buttons: a green \"Collect\" button with a small cash icon and the word Collect (52px, takes the remaining width, accessible name \"Collect payment from {name}\", opens 25), a square WhatsApp button (52px, green outline) and a square Call button (52px, dark outline) shown only when the person has a valid phone number (never a greyed disabled Call button). Icon-only buttons keep their accessible names.",
     "Header (decided 14 Nov 2026): the Menu button is on the left (hamburger icon + the word Menu, 48px), then the shop name, then the connection status. It opens the Menu drawer (see 23) over this page; the page and any draft stay as they are. The bottom bar is covered by the dimmed layer while the drawer is open.",
     "Nobody owes (decided 14 Nov 2026 from a phone test where a corrected balance of zero still showed 'Owed to you GHS 0.00' and a Collect button): a person counts as owing only with a balance above zero. When nobody owes, the Owed to you card is not shown at all; Home goes from Spent money straight to the Today's transactions link, and the Owed tab in the bottom bar stays. Collect first, the people count and the total use only people with a balance above zero, so a person whose balance was corrected to zero or paid in full disappears from all three.",
     "Reminder check (rules_global.reminders): this button runs the shared 7-day check for the person. A reminder recorded in the last 7 days opens the Send another reminder? sheet first (Send again strong, Not now outlined; Back and Escape act as Not now; after Not now the merchant stays on this screen). Otherwise WhatsApp opens directly. Tapping records a reminder event. No Last reminder text is shown on this screen.",
@@ -905,7 +905,7 @@
      "to": "28"
     },
     {
-     "label": "See Amoto’s details ›",
+     "label": "See Amoto’s details",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -1131,7 +1131,7 @@
      "effect": "Open WhatsApp with the existing reminder template (reminders) or the new receipt template (receipts, after approval). The merchant reviews and sends. Nothing is sent automatically."
     },
     {
-     "label": "See Amoto’s details ›",
+     "label": "See Amoto’s details",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -1209,7 +1209,7 @@
      "to_rule": "Start the add-debt-for-a-person flow (flow=add_debt_person) and go to 53."
     },
     {
-     "label": "Show {Name} the record ›",
+     "label": "Show {Name} the record",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -1271,7 +1271,7 @@
    "component": "SavedAsCredit",
    "controls": [
     {
-     "label": "See Amoto’s details ›",
+     "label": "See Amoto’s details",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -1290,7 +1290,7 @@
    "rules": [
     "Never list a payment part with GH₵0.00 (for example no \"MoMo GH₵0.00\" row after a cash-only payment): only parts above zero are shown.",
     "Receipts offline (decided 12 Nov 2026): the sale or collection is already saved before the receipt button is shown, and a receipt never blocks Done or New sale. Send receipt opens WhatsApp through the installed app or the phone's share sheet (not a wa.me web page that fails offline), with the receipt text filled in. When the phone is offline, one quiet line appears directly under the Send receipt button (8px below it, above Copy receipt; it explains what Send receipt does, so it never sits under Copy receipt or further down): \"You are offline. WhatsApp will send it when you are back online.\" A secondary outlined button \"Copy receipt\" copies the same text (shows \"Copied\" for two seconds). Receipt buttons only exist when VITE_ENABLE_POS_RECEIPTS is \"true\". Amounts in the receipt text and in the panel above it always use formatGhs (GH₵5.00), also the Sale line.",
-    "No reminder button on 31 (decided 14 Nov 2026): the old 'WhatsApp {Name}' reminder button is removed. This screen appears seconds after the sale and the receipt already tells the customer what they owe; reminders live on the debtor detail page (29/43), the Home Collect first tile and the Owed list. The buttons are, top to bottom: Send receipt, the offline line (offline only), Copy receipt (these three only with the receipts flag on), See {Name}'s details ›, Done."
+    "No reminder button on 31 (decided 14 Nov 2026): the old 'WhatsApp {Name}' reminder button is removed. This screen appears seconds after the sale and the receipt already tells the customer what they owe; reminders live on the debtor detail page (29/43), the Home Collect first tile and the Owed list. The buttons are, top to bottom: Send receipt, the offline line (offline only), Copy receipt (these three only with the receipts flag on), See {Name}'s details, Done."
    ]
   },
   "32": {
@@ -1540,14 +1540,14 @@
      "effect": "Choose the period. One of the three is selected at all times (aria-pressed). Default: Today. Changes every figure on the screen except Owed to you and You owe suppliers."
     },
     {
-     "label": "Owed to youGH₵93.00See who ›",
+     "label": "Owed to youGH₵93.00See who",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
      "to": "32"
     },
     {
-     "label": "You owe suppliersGH₵280.00See list ›",
+     "label": "You owe suppliersGH₵280.00See list",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -1557,11 +1557,11 @@
    "inputs": [],
    "bottom_bar": false,
    "rules": [
-    "Layout, top to bottom: (0) period selector Today / This week / This month (three equal buttons, 16px, one line each at 340px, default Today); (1) one strong green block \"Money left today\" / \"Money left this week\" / \"Money left this month\" with one calm line \"GH₵X more than yesterday / last week / last month\" or \"GH₵X less than ...\" (never a green card with a red or alarming drop) and \"Money in minus money spent\"; (2) Money in card (Cash and MoMo rows; then, under a thicker line, two rows \"Debts paid\" in dark green text and \"On credit\" in dark crimson text: plain bold labels with no fill and no border, amounts in the same right-hand column and size as Cash and MoMo; each of the two rows is hidden when its amount is zero); (3) Money spent card (Paid in cash, Paid by MoMo); (4) What you should have left card (Cash, MoMo); (5) the profit card; (6) Owed to you and You owe suppliers as two white tiles with a coloured left edge and a clear \"See who ›\" / \"See list ›\" link. The screen scrolls.",
+    "Layout, top to bottom: (0) period selector Today / This week / This month (three equal buttons, 16px, one line each at 340px, default Today); (1) one strong green block \"Money left today\" / \"Money left this week\" / \"Money left this month\" with one calm line \"GH₵X more than yesterday / last week / last month\" or \"GH₵X less than ...\" (never a green card with a red or alarming drop) and \"Money in minus money spent\"; (2) Money in card (Cash and MoMo rows; then, under a thicker line, two rows \"Debts paid\" in dark green text and \"On credit\" in dark crimson text: plain bold labels with no fill and no border, amounts in the same right-hand column and size as Cash and MoMo; each of the two rows is hidden when its amount is zero); (3) Money spent card (Paid in cash, Paid by MoMo); (4) What you should have left card (Cash, MoMo); (5) the profit card; (6) Owed to you and You owe suppliers as two white tiles with a coloured left edge and a clear \"See who\" / \"See list\" link. The screen scrolls.",
     "The big heading says \"Money left\", not \"Cash left\", because Money in includes MoMo.",
     "Only one strong colour block on the screen. The other cards are white with a thin border.",
     "Profit card (Estimate, version A): Estimated profit = Sales − stock bought − other costs for the selected week or month, from the Spent money categories. Shown with an \"Estimate\" tag, the line \"Sales 300.00 − stock 150.00 − other costs 30.00\", and \"Average of last 4 weeks\" only when there are at least 4 weeks of data. A credit sale counts when it is sold. Shown by default; Settings has one switch to hide it. No nudge card pointing to Settings.",
-    "Item-level profit (version B, \"Based on 8 of 10 items\" and Add costs ›) stays deferred until items have cost prices.",
+    "Item-level profit (version B, \"Based on 8 of 10 items\" and Add costs) stays deferred until items have cost prices.",
     "The comparison with last week uses integer pesewas through the shared formatter. A value that cannot be real (for example more than a million cedis) must be checked as a possible unit bug.",
     "Built and kept: no Open Settings or Add costs controls on 33. The profit card is hidden with the one switch in Settings (47); there is no nudge card.",
     "One bad or inconsistent record must never stop the screen loading. A record whose parts do not add up (for example a credit sale whose cash and credit parts do not match the sale amount) is left out of the totals, logged with its id to the console, and the screen shows one quiet line: \"1 sale is not counted because its amounts do not match.\" (plural: \"{n} sales are not counted...\"). The same must hold on every screen that sums money (22 and others), not only 33.",
@@ -1588,7 +1588,7 @@
      "to": "17"
     },
     {
-     "label": "Next ›",
+     "label": "Next",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -1662,7 +1662,7 @@
      "effect": "Selects or edits a value on this screen. No navigation."
     },
     {
-     "label": "More categories ›",
+     "label": "More categories",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -1676,7 +1676,7 @@
      "effect": "Selects or edits a value on this screen. No navigation."
     },
     {
-     "label": "Continue ›",
+     "label": "Continue",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -2328,7 +2328,7 @@
      "to_rule": "Start the add-debt-for-a-person flow (flow=add_debt_person) and go to 53."
     },
     {
-     "label": "Show {Name} the record ›",
+     "label": "Show {Name} the record",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -2488,7 +2488,7 @@
     "After saving stock bought on credit, Home shows a calm message in words the owner uses: \"Stock of GH₵80.00 saved. You still owe GH₵80.00.\" (when part is paid now: \"Stock of GH₵80.00 saved. You paid GH₵30.00 and still owe GH₵50.00.\"; when all is paid now: \"Stock of GH₵80.00 saved. Paid in full.\"). The word \"Expense\" is not used for this. Spent money (other costs) keeps \"Spent GH₵x saved.\"",
     "The Supplier select shows no stray marks or text other than the chosen name or \"Choose supplier\". The pay-by date uses the phone's own date picker; the saved date is shown as dd/mm/yyyy everywhere else.",
     "Supplier picker (replaces the dropdown, decision 11 Nov 2026): inside one card headed \"Who do you owe?\" the suppliers are a vertical list of selectable rows (role radio, 60px tall, a circle on the left, the supplier name in bold, long names wrap). The chosen row has a green border, a light green background and a filled circle. The last row is a dashed green \"+ New supplier\" row. Tapping it selects it (solid green border, light green background) and shows the fields \"Supplier name\" and \"Phone (optional)\" below the list inside the same card. Choosing a supplier hides those fields and keeps what was typed until Save.",
-    "More than 4 suppliers: show the 4 most recently used, then a row \"Show all {n} suppliers ›\" that shows the whole list. With no suppliers yet, only the \"+ New supplier\" row is shown, already selected, with its fields open. No native dropdown (select) anywhere in the POS for choosing a supplier or customer.",
+    "More than 4 suppliers: show the 4 most recently used, then a row \"Show all {n} suppliers\" that shows the whole list. With no suppliers yet, only the \"+ New supplier\" row is shown, already selected, with its fields open. No native dropdown (select) anywhere in the POS for choosing a supplier or customer.",
     "Layout: Stock total and Still owed in one card at the top (Still owed in dark red); Paid now in its own card with the amount right-aligned; the supplier card; Pay by (optional) in its own card with the phone's date picker; a green Save button at the end of the list."
    ]
   },
@@ -2832,7 +2832,7 @@
      "effect": "Selects or edits a value on this screen. No navigation."
     },
     {
-     "label": "Done ›",
+     "label": "Done",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -3042,7 +3042,7 @@
      "effect": "Selects or edits a value on this screen. No navigation."
     },
     {
-     "label": "Next ›",
+     "label": "Next",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -3141,7 +3141,12 @@
    "inputs": [
     "nb"
    ],
-   "bottom_bar": false
+   "bottom_bar": false,
+   "rules": [
+    "Zero is a valid new balance (decided 16 Nov 2026). The only limits are: no negative amount and no increase from this screen (use Add debt). Typing 0 (or 0.00) is accepted, shows \"This lowers the debt by GH₵{all of it}\", and Save correction works once a reason is chosen. It records an adjustment to GH₵0.00 and the person then owes nothing. An empty field is the only invalid-looking state (Save correction stays disabled).",
+    "With several open entries (Correct this entry), the same rule applies to that entry: 0 settles that entry only; old → new in the history is that entry's balance.",
+    "The history row and the customer record 73 show \"Balance corrected\", \"GH₵old → GH₵0.00\" and the reason, so a debt set to zero is never silent."
+   ]
   },
   "55": {
    "name": "Review and pay",
@@ -3489,7 +3494,7 @@
      "to": "BACK"
     },
     {
-     "label": "Phone request: set up ›",
+     "label": "Phone request: set up",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -3550,7 +3555,7 @@
     "Change request 2026-11-09: number and network inputs added to complete 'Customer sends to my number (on or off, number, network)'.",
     "Redesign (layout only, no behaviour change). Title \"MoMo payments\" (same words as the Settings row).",
     "Card 1 \"Customer sends to my number\": the title with a switch (role switch, not a tick box). When on: field \"My MoMo number\", then \"Network\" as three equal buttons in one row (MTN, Telecel, AirtelTigo; the selected one is green), then one green line \"Customers will send to 059•••8442 · MTN\". When off, the number and network fields are hidden.",
-    "Card 2 \"Phone request\": one row, \"Confirmed by itself. Fee GH₵0.25 per payment.\" with \"Set up ›\" on the right (opens 60) when the phone-request flag is on. When the flag is off the row shows a grey \"Coming soon\" tag instead and is not tappable. No disabled button.",
+    "Card 2 \"Phone request\": one row, \"Confirmed by itself. Fee GH₵0.25 per payment.\" with \"Set up\" on the right (opens 60) when the phone-request flag is on. When the flag is off the row shows a grey \"Coming soon\" tag instead and is not tappable. No disabled button.",
     "Section \"When I tap MoMo\": one card with radio rows (role radio, a circle on the left, the chosen one filled green with a light green row background): \"Ask me each time\", \"Always: customer sends to my number\". \"Always: phone request\" is shown only when the phone-request flag is on. If phone request is not set up yet it is shown greyed, not selectable, with the line \"Set up phone request first\". When the flag is off it is not shown at all. No person icons.",
     "Save is pinned at the bottom (always visible), 60px, green, with a check icon."
    ]
@@ -3907,7 +3912,7 @@
    "inputs": [],
    "bottom_bar": false,
    "rules": [
-    "Read only. No edit, collect, correct, reminder or delete controls exist on this screen. Opened from 29 and 43 by \"Show {Name} the record ›\".",
+    "Read only. No edit, collect, correct, reminder or delete controls exist on this screen. Opened from 29 and 43 by \"Show {Name} the record\".",
     "Top: {Name}, then pink card \"You owe GH₵x\" (balance, wording for the customer). Below: \"What happened\", newest first, one card per event: Paid (amount, \"dd/mm/yyyy or Today HH:mm · Cash GH₵x, MoMo GH₵y\"), Took on credit (amount in dark red, date/time, what for, tag \"Signed ✓\" green or \"Not signed\" grey).",
     "Every credit row shows what it was for (items, or the reason typed on 54/53). A credit with no items and no reason shows \"No reason written\".",
     "Caption: \"Read only. Please hand the phone back when you are done.\"",
@@ -4027,7 +4032,8 @@
    "default": "Amounts shown. The choice is remembered on this phone (local setting, in backup and restore as a setting) and survives restarting the app.",
    "accessibility": "Button 48px, accessible name \"Hide amounts\" or \"Show amounts\" with the current state, icon eye / eye-off, never colour alone.",
    "shared_component": "One AmountVisibility setting and one HiddenAmount rendering used by every hidden figure, so no figure can forget it (a test scans 22 and 33)."
-  }
+  },
+  "no_text_chevrons": "No chevron characters (›, >, ») anywhere in the app text, labels, i18n strings or tests (decided 16 Nov 2026). The Back arrow is a drawn icon; other buttons and links are written as words only (for example \"See all\", \"Show {Name} the record\", \"Next\"). A scan test fails if any chevron character appears in src/pos. The arrow → between two amounts (GH₵old → GH₵new) is not a chevron and stays."
  },
  "built_extras_kept": {
   "24": "row tags Collected Debt, Balance correction, Added to debt",
