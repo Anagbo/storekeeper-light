@@ -22,10 +22,10 @@
   "DIRECT": "From 61: go to 62. Needs no setup beyond the merchant's own MoMo number. Records the MoMo part as 'you confirmed'.",
   "PHONE": "From 61: if the Paystack payout account is not set up go to 60 (Save and verify continues to 56); otherwise go to 56.",
   "MOMOPICK": "MoMo tile on 16 (split): first ask how much (amount editor prefilled with Left to pay, can be lowered), then go to 61 with pick16 set and that amount. DIRECT or PHONE then records the method on the MoMo part and returns to 16. With a direct MoMo row already present, the tile raises it and only the extra goes to 61/62. Nothing is requested yet.",
-  "SAVECREDIT": "Save on 18 or 19. If flow=split, mark the Owe part complete and return to 16 (drop the screens in between from history). Otherwise go to 31. NEW (decided 16 Nov 2026): before continuing, if the amount just added is at or above VITE_SIGNATURE_THRESHOLD_PESEWAS go to 72 first, then continue to the destination above. Below the threshold, no signature step.",
-  "SAVE19": "Save plan on 19. If today's payment includes MoMo: confirm it first (Direct: 62; Phone request: 56 then 57, 60 for setup, 61 when the method is not chosen yet). Then commit once (debt or sale credit, plan, collection of the amount paid today) and go to 31. In flow=split return to 16 with the Owe part complete. If the request fails go to 59 and stay on 19, nothing saved. Same signature step as SAVECREDIT (go to 72 first when the total credit is at or above the threshold).",
+  "SAVECREDIT": "Save on 18 or 19. If flow=split, mark the Owe part complete and return to 16 (drop the screens in between from history). Otherwise go to 31. Signature step (decided 16 Nov 2026): the credit is saved first, then 72 opens when the amount of THAT credit event (the Owe part for a sale, the amount added for a manual debt; older balance is not counted) is at or above VITE_SIGNATURE_THRESHOLD_PESEWAS, then continue through SIGNED. Applies to sale on credit, plan on 19 (sale), Add debt 53 (also the inherited-terms save) and the split sale. Below the threshold there is no signature step. flow=split: nothing is saved on 18/19 (they only return to 16); the credit is saved on Done on 16, then 72 opens, then continue to 30 or 31 as before.",
+  "SAVE19": "Same as SAVECREDIT (including the signature step after the save).",
   "MOMOPICK19": "MoMo on 19: go to 61 with pick19 set. The chosen method returns to 19.",
-  "SIGNED": "Done or Skip for now on 72. Continue to the destination SAVECREDIT would have used: 31 for a sale on credit or add debt, return to 16 when flow=split, ManualDebtSaved for a manual debt. Drop 72 from history."
+  "SIGNED": "Done, Skip for now or Back on 72. Continue to where the save would have gone: 31 for a sale on credit or add debt, 30 or 31 after a split sale, ManualDebtSaved for a manual debt. 72 after a save starts a fresh history stack (like the result screens), and both the on-screen Back and the phone back act as Skip for now. When 72 was opened by Get signature on 29 or 43, Done, Skip for now and Back return to that screen (29 or 43)."
  },
  "flows_and_flags": {
   "flow=add_debt": "Set by Add debt on 32. Hides the Owed banner on 17. Cleared on arriving at 22 or 15.",
@@ -3815,7 +3815,8 @@
     "Existing backup and restore logic is not changed, only the screen around it.",
     "Exact text and order, top to bottom: (1) intro line under the title: \"Keep a copy of your sales, debts and items. It works without internet.\" (2) Card \"Save a backup\" with a green download icon before the heading, text \"Saves one file on this phone with all your records.\", green button \"Download backup\", and \"Last backup: dd/mm/yyyy\" only if stored. (3) Card \"Restore from a backup\" with a green upload icon before the heading, text \"Adds the records from a backup file to this phone. Matching records are updated. Nothing here is deleted.\", button \"Choose backup file\".",
     "Look: heading 19px bold, card text 16px grey (#475569), both buttons 56px tall with bold (800) 18px text. Download backup is solid green (#03543F, white text). Choose backup file is white with a dark (#0F172A) 2px outline and dark text, not green. Cards have a 2px light grey (#CBD5E1) border, 18px corners, 16px padding, 14px gap between cards.",
-    "After a restore the message says only what the app knows exactly: \"Restore finished. {total} record(s) in the file. {kept} saved sale(s), payment(s) and debt(s) were already on this phone and were kept.\" Use the singular for 1 (\"1 record\", \"1 saved sale, payment or debt was\"). Do not say \"added or updated\" unless the restore returns an exact count of them."
+    "After a restore the message says only what the app knows exactly: \"Restore finished. {total} record(s) in the file. {kept} saved sale(s), payment(s) and debt(s) were already on this phone and were kept.\" Use the singular for 1 (\"1 record\", \"1 saved sale, payment or debt was\"). Do not say \"added or updated\" unless the restore returns an exact count of them.",
+    "Restore and signatures (decided 16 Nov 2026): if a backup holds a signature that cannot be read (wrong shape, too many points, too large), the event restores as Not signed and the result says \"1 signature in the file could not be read and was left out.\" (plural: \"{n} signatures in the file could not be read and were left out.\"). The rest of the file restores. If the phone already has the same event unsigned, restore adds only the signature fields (signature, signedAt, signedAmountPesewas, signedReason) from the backup, nothing else; it never replaces an existing signature."
    ]
   },
   "ManualDebtSaved": {
@@ -3997,7 +3998,12 @@
    "what_for": "Every credit shows its reason on 29, 43 and 73.",
    "stored": "signature (vector strokes) and signedAt live on the debt event, local, in backup and restore. Dexie version bump only if a new table is needed; prefer fields on the existing event.",
    "deferred": "Customer confirmation by link on WhatsApp with a server timestamp waits for the backend. Codes generated on the phone are NOT used: they prove nothing and conflict with MoMo anti-fraud advice.",
-   "corrections": "Balance corrections after a signature stay visible on 73 (Balance corrected, old → new, reason), so a signed amount cannot be quietly changed."
+   "corrections": "Balance corrections after a signature stay visible on 73 (Balance corrected, old → new, reason), so a signed amount cannot be quietly changed.",
+   "fields": "On the transactions row of the credit event: signature, signedAt, signedAmountPesewas, signedReason. No Dexie version bump.",
+   "limits": "Points are whole numbers 0..1000, at most 1,500 points (about 18 KB as JSON), thinned on Done if longer. A signature is written once and never replaced.",
+   "sync": "Signature fields are stripped from any sync payload, and signing does not mark the event pending. The signature stays on this phone and in backup files.",
+   "no_reason": "A keypad sale with no items, or a generated word like Sale or Other amount, counts as no reason: show \"No reason written\".",
+   "threshold_scope": "The threshold applies to each credit event on its own. Anything not signed stays visible as Not signed on 29, 43 and 73."
   },
   "hide_amounts": {
    "decided": "16 Nov 2026",
