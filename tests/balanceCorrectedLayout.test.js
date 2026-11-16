@@ -58,7 +58,7 @@ test("Balance corrected on 29, 43 and 73 at 340, 360 and 393px: dashed card, tit
     assert.equal(rows[0].value, previous === 10500 ? "GH₵105.00" : "GH₵1,500,000.00");
     assert.equal(rows[1].value, next === 0 ? "GH₵0.00" : "GH₵1,234,567.89");
     assert.equal(rows[1].weight, "700", `${where}: the new balance is bold`);
-    assert.match(rows[2].value, /^\d{2}\/\d{2}\/\d{4}$/, `${where}: an older day shows dd/mm/yyyy`);
+    assert.match(rows[2].value, /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/, `${where}: an older day shows dd/mm/yyyy HH:mm`);
     assert.equal(rows[3].value, "Wrong amount typed", `${where}: the reason entered on 54, no "Reason:" prefix`);
     for (const row of rows) {
       assert.equal(row.labelLines, 1, `${where}: the label "${row.label}" never wraps`);

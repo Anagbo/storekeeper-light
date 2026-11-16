@@ -6,7 +6,7 @@ import { recordCreditSale, recordDebtCollection } from "../src/db/debts.js";
 import { correctDebtBalance, recordManualDebt } from "../src/db/debtLedger.js";
 import { saveHideAmounts, setPreference } from "../src/db/preferences.js";
 import { signCreditEvent } from "../src/db/signatures.js";
-import { formatDate } from "../src/lib/formatDate.js";
+import { formatDate, formatTime } from "../src/lib/formatDate.js";
 import { formatGhs } from "../src/lib/formatGhs.js";
 import { resetBrowserBack } from "../src/pos/browserBack.js";
 import { openPosApp } from "./helpers/posAppHarness.js";
@@ -70,8 +70,8 @@ async function renderRecord(env = {}) {
 }
 
 const rows = (view) => [...walk(view.tree)].filter((node) => node.props?.["data-record-row"]).map((node) => ({ kind: node.props["data-record-row"], text: textOf(node), dashed: /border-dashed/.test(node.props.className) }));
-// The Time row (final 16 Nov 2026): these days are in the past, so the day only.
-const when = (time) => formatDate(time);
+// The Time row (decision (1), 16 Nov 2026): these days are in the past, so "dd/mm/yyyy HH:mm".
+const when = (time) => `${formatDate(time)} ${formatTime(time)}`;
 
 test("73 shows You owe, then every event newest first with its own card", async () => {
   const { view, text } = await renderRecord();

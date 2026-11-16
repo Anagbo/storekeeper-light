@@ -42,13 +42,12 @@ export function formatHistoryRowTimestamp(timestamp) {
 
 export const CREDIT_ROW_TYPES = new Set(["credit", "addon", "manual_debt"]);
 
-// The "Time" value on a What happened card (wiring "What happened cards", final 16 Nov 2026): "Today HH:mm"
-// for today, otherwise the day only, "dd/mm/yyyy" (formatDate / formatTime). A debt entered with an
-// earlier Taken on date always shows the day only.
+// The "Time" value on a What happened card (wiring "What happened cards", decision (1), 16 Nov 2026):
+// "Today HH:mm" for today, otherwise "dd/mm/yyyy HH:mm" (formatDate then formatTime). A debt entered
+// with an earlier Taken on date has no real time and always shows the day only.
 export function rowTime(event) {
   if (event.dateOnly) return formatDate(event.timestamp);
-  const when = formatHistoryRowTimestamp(event.timestamp);
-  return when.startsWith("Today ") ? when : when.replace(/ \d{2}:\d{2}$/, "");
+  return formatHistoryRowTimestamp(event.timestamp);
 }
 
 // What a credit row was for, or "No reason written".
