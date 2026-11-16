@@ -130,7 +130,7 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
   }, [amount, canSave, busy, paymentMethod, largeAmount.open]);
 
   return (
-    <PosPage style={{ minHeight: "calc(100dvh - 75px)", paddingTop: 14, paddingBottom: 96 }} className="flex flex-col gap-3 pb-32 lg:max-w-5xl lg:justify-center lg:pb-10">
+    <PosPage style={{ paddingTop: 14, paddingBottom: 96 }} className="flex flex-col gap-3 pb-32 lg:max-w-5xl lg:justify-center lg:pb-10">
       <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.9fr)] lg:items-start lg:gap-6">
         <div className="flex flex-col gap-3">
           <PosCard className="amount-fit-container rounded-[20px] px-4 py-3 text-right lg:px-6 lg:py-5">

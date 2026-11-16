@@ -54,7 +54,7 @@ export function HowDoYouWantToSell({ onNavigate, onCompleteSetup }) {
   }
 
   return (
-    <main className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-[28rem] flex-col gap-3 px-5 py-4">
+    <main className="mx-auto flex flex-[1_0_auto] w-full max-w-[28rem] flex-col gap-3 px-5 py-4">
       <h1 className="text-[26px] font-extrabold">{t("setup.sellTitle")}</h1>
       <button
         type="button"

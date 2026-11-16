@@ -386,7 +386,7 @@ function CollectPayPartScreen({ params, onBack, onNavigate, onUpdateParams, onRe
   }
 
   return (
-    <PosPage className="!min-h-[calc(100vh-4rem)] !pb-6 mx-auto flex max-w-2xl flex-col gap-3 px-4 sm:px-6 lg:justify-center">
+    <PosPage className="!pb-6 mx-auto flex max-w-2xl flex-col gap-3 px-4 sm:px-6 lg:justify-center">
       {debt === undefined ? <p role="status">{t("collect.loading")}</p> : !debt ? <CollectionError>{t("collect.notFound")}</CollectionError> : (
         <>
           <div className="flex items-center gap-2">
@@ -509,7 +509,7 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
   }
 
   return (
-    <PosPage className="!min-h-[calc(100vh-4rem)] !pb-6 mx-auto flex max-w-xl flex-col gap-3 px-4 sm:px-6">
+    <PosPage className="!pb-6 mx-auto flex max-w-xl flex-col gap-3 px-4 sm:px-6">
       <section className="amount-fit-container pt-2 text-center">
         <div className="mx-auto mb-2 grid h-24 w-24 place-items-center rounded-full bg-emerald-900 text-white">
           <Check size={56} strokeWidth={2.2} aria-hidden="true" />
@@ -772,7 +772,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
   }
 
   return (
-    <PosPage className="!min-h-[calc(100vh-4rem)] !pb-6 mx-auto flex max-w-2xl flex-col gap-3 px-4 sm:px-6">
+    <PosPage className="!pb-6 mx-auto flex max-w-2xl flex-col gap-3 px-4 sm:px-6">
       {data === undefined ? <p role="status">{t("collect.loading")}</p> : !data ? <CollectionError>{t("collect.notFound")}</CollectionError> : (
         <>
           {/* Wiring 29/43 Back (to BACK: the previous screen in history, so the place on 32 or 22 is kept),

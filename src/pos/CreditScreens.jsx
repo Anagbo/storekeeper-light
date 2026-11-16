@@ -353,9 +353,10 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onUpdateParams, onReturnT
 
   // Wiring 18 "Reason on 18": the reason sits above the Pay by choices (60px). The page scrolls when it
   // does not fit; Back and Save stay pinned in the bottom row (16px under it, no bottom bar here). The
-  // header is 75px, as on 15, so a page that fits ends exactly at the bottom of the screen.
+  // page fills the shell's page area (rules_global.shell_height), so a page that fits ends exactly at
+  // the bottom of the screen and a longer one scrolls inside the page area with the row stuck to it.
   return (
-    <PosPage style={{ minHeight: "calc(100dvh - 75px)" }} className="flex flex-col gap-3 overflow-visible! pb-4!">
+    <PosPage className="flex flex-col gap-3 overflow-visible! pb-4!">
       <h1 className="text-2xl font-extrabold">{t("credit.whenPay", { name: customerName })}</h1>
       {reasonCase.kind === "field" ? (
         <div className="flex flex-col gap-2">

@@ -159,6 +159,7 @@ const MEASURE = `(() => {
     scrollWidth: document.documentElement.scrollWidth,
     scrollHeight: document.documentElement.scrollHeight,
     scrollY,
+    areaScrollTop: document.querySelector("[data-page-area]").scrollTop,
     titleLines,
     field: rect(document.getElementById("credit-reason")),
     chips: chips.map(rect),
@@ -257,12 +258,11 @@ test("18: field, chips, 60px options, Back and Save at 340, 360 and 393px; 360x6
     const fit = results["short 360"];
     assert.equal(fit.titleLines, 1);
     assert.equal(fit.chipRows, 1);
-    // 18 itself (header + page) ends at the bottom of the screen. The app shell under the header is
-    // still min-height 100vh - 4rem with a 75px header (11px more than a 667px screen on every page);
-    // that is outside 18 and reported, not asserted here.
+    // 18 itself (header + page) ends at the bottom of the screen, and so does the document
+    // (rules_global.shell_height: no header number, the shell is exactly the screen high).
     assert.ok(fit.header.height + fit.mainH <= fit.innerHeight + 0.5, `360x667: 18 fits without scrolling (header ${fit.header.height}px + page ${fit.mainH}px, screen ${fit.innerHeight}px)`);
     assert.ok(fit.contentH + 12 * 7 <= fit.mainH, "the content fits in the page with its gaps");
-    console.log(`shell document height at 360x667: ${fit.scrollHeight}px`);
+    assert.equal(fit.scrollHeight, fit.innerHeight, `360x667: the document is the screen high (${fit.scrollHeight}px)`);
 
     for (const width of [340, 360, 393]) {
       const m = await open18(session, `${base}?case=long`, width, 667);
@@ -271,12 +271,15 @@ test("18: field, chips, 60px options, Back and Save at 340, 360 and 393px; 360x6
       if (width === 360) {
         assert.equal(m.titleLines, 2, "the long name puts the title on two lines");
         assert.equal(m.chipRows, 2, "the long reasons put the chips on two rows");
-        // The content scrolls; at the end of the scroll the last option sits above the pinned row.
-        await session.evaluate("window.scrollTo(0, document.documentElement.scrollHeight)");
+        // The content scrolls inside the page area (never the document); at the end of the scroll the
+        // last option sits above the pinned row.
+        await session.evaluate("(() => { const area = document.querySelector('[data-page-area]'); area.scrollTop = area.scrollHeight; })()");
         await sleep(200);
         const end = await session.evaluate(MEASURE);
         assertVisible(end, `long scrolled 360x667`, { saveTwoLines: false });
-        assert.ok(end.scrollY > 0, "the page scrolls when it does not fit");
+        assert.ok(end.areaScrollTop > 0, "the page area scrolls when it does not fit");
+        assert.equal(end.scrollY, 0, "the document does not scroll");
+        assert.equal(end.scrollHeight, end.innerHeight, "the document is the screen high");
         assert.ok(end.options[3].bottom <= end.bottomRow.top + 0.5, `A little at a time is not hidden under Back and Save (${end.options[3].bottom} > ${end.bottomRow.top})`);
       }
     }

@@ -730,7 +730,10 @@ export default function PosApp() {
   );
 
   return (
-    <div className="pos-app min-h-screen max-w-full overflow-x-clip bg-white text-slate-950" style={POS_THEME.cssVariables}>
+    // rules_global.shell_height: a column exactly the visible screen high (100dvh, in theme.css). The
+    // header takes what it needs; the page area takes the rest (min-height 0) and scrolls by itself, so
+    // no screen depends on a header height and a screen that fits never scrolls the document.
+    <div className="pos-app flex max-w-full flex-col overflow-x-clip bg-white text-slate-950" style={POS_THEME.cssVariables}>
       <PosHeader
         shopName={shopName}
         // Wiring 62: never "Saved" on Customer sends (nothing is recorded before Money received).
@@ -742,9 +745,9 @@ export default function PosApp() {
         menuButtonRef={menuButtonRef}
         hideMenu={isFocusedCollectionScreen || isSetupFlow || isCustomerScreen || route === POS_ROUTES.PeopleWhoOweYou}
       />
-      <div className="flex min-h-[calc(100vh-4rem)]">
+      <div className="flex min-h-0 flex-1">
         {!isSetupFlow && <PosSideNav current={route} onNavigate={switchTab} hideSaved={route === POS_ROUTES.MoMoDirect} />}
-        <div className="min-w-0 flex-1">
+        <div data-page-area="" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
           <PosErrorBoundary key={`${route}:${pickRemount}`} onBack={navigateBack}>
             <Suspense fallback={<PosPage><p role="status">{t("app.loadingScreen")}</p></PosPage>}>
                   {setupReady ? content : <PosPage><p role="status">{t("app.loadingScreen")}</p></PosPage>}
