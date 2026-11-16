@@ -84,13 +84,13 @@ export default function CustomerSignature({ params = {}, onFinish, shopName }) {
       )}
       <SignatureBox strokes={strokes} onChange={setStrokes} disabled={saving || !event} />
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 text-lg font-semibold text-rose-950">{error}</p>}
-      {/* Wiring 72 layout (16 Nov 2026): Clear above Done, both full width, 60px. */}
-      <button type="button" onClick={() => { setStrokes([]); setError(""); }} disabled={saving} className="h-[60px] w-full rounded-2xl border-[3px] border-slate-500 bg-white px-2 text-xl font-extrabold text-slate-900 disabled:opacity-50">
-        {t("signature.clear")}
-      </button>
-      {/* Done: disabled until there is ink. */}
+      {/* Wiring 72 rules.8 (owner's choice, 16 Nov 2026): Done, then Clear, both full width, 60px.
+          Done: disabled until there is ink. */}
       <button type="button" onClick={() => void done()} disabled={!hasInk || saving || !event} className="h-[60px] w-full rounded-2xl border-[3px] border-emerald-900 bg-emerald-900 px-2 text-xl font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-45">
         {saving ? t("signature.saving") : t("signature.done")}
+      </button>
+      <button type="button" onClick={() => { setStrokes([]); setError(""); }} disabled={saving} className="h-[60px] w-full rounded-2xl border-[3px] border-slate-500 bg-white px-2 text-xl font-extrabold text-slate-900 disabled:opacity-50">
+        {t("signature.clear")}
       </button>
       <button type="button" onClick={skip} disabled={saving} className="min-h-[52px] self-center px-3 text-[19px] font-bold text-slate-800 underline underline-offset-4">
         {t("signature.skip")}

@@ -48,7 +48,7 @@ const MEASURE = `(frame, win, doc) => {
   };
 }`;
 
-test("72 at 340, 360 and 393px: Back and title on top, Clear above Done, both full width and 60px", { skip }, async () => {
+test("72 at 340, 360 and 393px: Back and title on top, Done above Clear, both full width and 60px", { skip }, async () => {
   const results = measureInFrames({ pages: [{ name: "72", html: await signatureHtml() }], css: await appCss(), widths: [340, 360, 393], height: 1400, measure: MEASURE });
   assert.equal(results.length, 3);
   for (const result of results) {
@@ -64,16 +64,16 @@ test("72 at 340, 360 and 393px: Back and title on top, Clear above Done, both fu
     assert.equal(title.text, "Please sign");
     assert.equal(title.lines, 1, `${where}: the title is one line`);
     assert.ok(back.bottom <= pad.top, `${where}: the top row is above the signature box`);
-    // Clear above Done, both full width and 60px.
+    // Done above Clear (rules.8, owner's choice 16 Nov 2026), both full width and 60px.
     for (const [name, button] of [["Clear", clear], ["Done", done]]) {
       assert.ok(Math.abs(button.height - 60) < 0.5, `${where}: ${name} is 60px (${button.height})`);
       assert.ok(Math.abs(button.left - content.left) < 1 && Math.abs(button.right - content.right) < 1, `${where}: ${name} is full width (${button.left}..${button.right}, content ${content.left}..${content.right})`);
       assert.equal(button.lines, 1, `${where}: ${name} is one line`);
     }
-    assert.ok(clear.top >= pad.bottom, `${where}: Clear is below the signature box`);
-    assert.ok(done.top >= clear.bottom, `${where}: Clear is above Done`);
-    // Skip for now: an underlined link below Done, 52px or more.
-    assert.ok(skipLink.top >= done.bottom, `${where}: Skip for now is below Done`);
+    assert.ok(done.top >= pad.bottom, `${where}: Done is below the signature box`);
+    assert.ok(clear.top >= done.bottom, `${where}: Done is above Clear`);
+    // Skip for now: an underlined link below Clear, 52px or more.
+    assert.ok(skipLink.top >= clear.bottom, `${where}: Skip for now is below Clear`);
     assert.ok(skipLink.height >= 52, `${where}: Skip for now is 52px or more (${skipLink.height})`);
     assert.match(skipLink.underline, /underline/, `${where}: Skip for now is underlined`);
     assert.equal(result.amountLines, 1, `${where}: the amount is one line`);
