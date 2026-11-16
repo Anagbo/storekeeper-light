@@ -348,6 +348,21 @@
    "component": "WhenWillTheyPay",
    "controls": [
     {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen (17, or 53 in the add-debt flow). The draft, including the reason, is kept. Bottom row, left of Save (built, kept)."
+    },
+    {
+     "label": "Recent reason chip",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Up to three of the owner's most recent distinct reasons (last 30 days). Tapping one fills the What for field; tapping the field and typing replaces it. Hidden when there are none."
+    },
+    {
      "label": "Today",
      "role": null,
      "disabled_initially": false,
@@ -383,8 +398,17 @@
      "to": "SAVECREDIT"
     }
    ],
-   "inputs": [],
-   "bottom_bar": false
+   "inputs": [
+    "What for? (optional)"
+   ],
+   "bottom_bar": false,
+   "rules": [
+    "Reason on 18 (decided 16 Nov 2026). 18 is the one step every credit path passes through, so the reason is entered or shown here. Three cases: (A) keypad sale on credit, and the Owe part of a split: a \"What for? (optional)\" text field above the Pay by choices, 52px, max 60 characters, with up to three recent-reason chips under it. (B) Sale with items: no field; a read-only \"For\" row showing the items (for example \"Rice ×2, Water ×3\"). (C) Add debt or + Add to debt (reason typed on 53): no field; a read-only \"For\" row with what was typed on 53, or no row when nothing was typed.",
+    "The reason is optional and never blocks Save. Empty is saved as no reason and shown as \"No reason written\" on 29, 43, 72 and 73. A generated word such as \"Sale\" or \"Other amount\" is not a reason.",
+    "The reason sits above the Pay by choices so the keyboard does not hide it. The Pay by choices are 60px high (down from 68px) so the screen still fits a 360x667 phone without scrolling; if it does not fit, the content area scrolls and Back and Save stay fixed in the bottom row.",
+    "Split (flow=split): 18 and 19 save nothing, they return to 16. The reason is held in the draft (route params) and saved with the credit when Done is tapped on 16. It survives trips to 17, 19 and 16 and back. On 19 (A little at a time) the reason is carried and shown as a read-only \"For\" row.",
+    "Save button text: \"Save · {Name} owes GH₵x\" may wrap to two lines beside Back (built). It never wraps the amount (GH₵ and the figure stay together) and the button stays 56px or more."
+   ]
   },
   "19": {
    "name": "A little at a time",
@@ -3145,8 +3169,8 @@
    "bottom_bar": false,
    "rules": [
     "Zero is a valid new balance (decided 16 Nov 2026). The only limits are: no negative amount and no increase from this screen (use Add debt). Typing 0 (or 0.00) is accepted, shows \"This lowers the debt by GH₵{all of it}\", and Save correction works once a reason is chosen. It records an adjustment to GH₵0.00 and the person then owes nothing. An empty field is the only invalid-looking state (Save correction stays disabled).",
-    "With several open entries (Correct this entry), the same rule applies to that entry: 0 settles that entry only; old → new in the history is that entry's balance.",
-    "The history row and the customer record 73 show \"Balance corrected\", \"GH₵old → GH₵0.00\" and the reason, so a debt set to zero is never silent.",
+    "With several open entries (Correct this entry), the same rule applies to that entry: 0 settles that entry only; the history shows that entry's balance: \"Was GH₵old\" and the new balance.",
+    "The history row and the customer record 73 show \"Balance corrected\", the new balance GH₵0.00 with \"Was GH₵old\", and the reason, so a debt set to zero is never silent (layout: \"Balance corrected row\" rule on 29, 43 and 73).",
     "Empty field on 54: no message at all (not \"New balance must be lower.\"). Save correction is only disabled. Messages appear only for an increase (\"Corrections cannot increase debt\") or a value that is not allowed.",
     "When the sheet first opens (decided 16 Nov 2026): the field is pre-filled with the current balance, selected, and NO message is shown until the owner changes the value. Save correction is disabled. If the owner then types a value equal to the current balance, show \"New balance must be lower.\"; for an increase \"Corrections cannot increase debt\"."
    ]
@@ -3916,13 +3940,14 @@
    "inputs": [],
    "bottom_bar": false,
    "rules": [
-    "Read only. No edit, collect, correct, reminder or delete controls exist on this screen. Opened from 29 and 43 by \"Show {Name} the record\".",
+    "Look-only screen (see the notice rule). No edit, collect, correct, reminder or delete controls exist on this screen. Opened from 29 and 43 by \"Show {Name} the record\".",
     "Top: {Name}, then pink card \"You owe GH₵x\" (balance, wording for the customer). Below: \"What happened\", newest first, one card per event: Paid (amount, \"dd/mm/yyyy or Today HH:mm · Cash GH₵x, MoMo GH₵y\"), Took on credit (amount in dark red, date/time, what for, tag \"Signed ✓\" green or \"Not signed\" grey).",
     "Every credit row shows what it was for (items, or the reason typed on 54/53). A credit with no items and no reason shows \"No reason written\".",
-    "Caption: \"Read only. Please hand the phone back when you are done.\"",
     "No private shop data on this screen: no profit, cost, other customers, totals or phone numbers.",
-    "Corrections are shown (decided 16 Nov 2026). Every balance correction made on 54 appears in \"What happened\" as its own dashed card: \"Balance corrected\", \"GH₵old → GH₵new\", date, and \"Reason: …\" (the reason entered on 54). A customer can therefore see if a signed amount was changed later. Corrections are never hidden or merged into the credit rows.",
-    "Balance corrected row (changed 16 Nov 2026, replaces the stacked old → new layout): line 1 is the title \"Balance corrected\" alone (never wraps). Line 2 is a two-column row: \"Was GH₵old\" on the left in grey regular weight, and the NEW balance on the right, bold, 24px, neutral dark colour (not red or green), ending at the same right edge as the amounts of the other rows. Line 3: date and \"Reason: …\" (reason label, plus the typed note for Other). An amount never breaks. A correction to zero shows GH₵0.00 on the right and \"Was GH₵105.00\" on the left."
+    "Corrections are shown (decided 16 Nov 2026). Every balance correction made on 54 appears in \"What happened\" as its own dashed card (layout in the \"Balance corrected row\" rule below), with the date and \"Reason: …\" (the reason entered on 54). A customer can therefore see if a signed amount was changed later. Corrections are never hidden or merged into the credit rows.",
+    "Balance corrected row (changed 16 Nov 2026, replaces the stacked old → new layout): line 1 is the title \"Balance corrected\" alone (never wraps). Line 2 is a two-column row: \"Was GH₵old\" on the left in grey regular weight, and the NEW balance on the right, bold, 24px, neutral dark colour (not red or green), ending at the same right edge as the amounts of the other rows. Line 3: date and \"Reason: …\" (reason label, plus the typed note for Other). An amount never breaks. A correction to zero shows GH₵0.00 on the right and \"Was GH₵105.00\" on the left.",
+    "Notice (changed 16 Nov 2026): one plain line right under the \"You owe\" card, 16px grey: \"Nothing can be changed here.\" It is not at the bottom (a long history would push it off screen), and there is no \"Read only\" and no \"Please hand the phone back\" text anywhere on 73. The Back to shop button stays.",
+    "Text size on 73 (built, accepted 16 Nov 2026): date and reason lines are 18px on 73 because the customer reads it; they stay 16px on 29 and 43. Date and reason are on two lines, as on 29."
    ]
   }
  },
@@ -4047,6 +4072,14 @@
    "sizes": "Full width, 52px high or more (60px on 72 and 73); the compact add button (44px) only on 15.",
    "no_link_buttons": "Underlined text is never used as a button. It appears only inside a sentence, for example Learn more. Every former underlined-link button becomes the right look above.",
    "shared": "One shared component per look (PrimaryButton, SecondaryButton, AddButton, LeaveButton), and a scan test fails if a screen draws its own."
+  },
+  "credit_reason": {
+   "decided": "16 Nov 2026",
+   "why": "A keypad sale or a split on credit had no place to say what the credit was for; only sales with items and Add debt had one. Customer proof needs a reason on every credit.",
+   "where": "Screen 18 for every credit path (see the 18 rules).",
+   "stored": "On the credit event (the transactions row): items_json and itemDescription for items, note for typed text. Report first how the existing fields hold it.",
+   "optional": "Always optional; never blocks Save.",
+   "chips": "Up to three recent distinct reasons from the last 30 days, tap to fill. Hidden when none."
   }
  },
  "built_extras_kept": {
