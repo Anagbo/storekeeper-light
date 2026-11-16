@@ -39,6 +39,7 @@ import { useFormErrors } from "./formErrors.js";
 import AmountTextInput from "./AmountTextInput.jsx";
 import { CREDIT_ROW_TYPES, formatHistoryRowTimestamp, groupCollectionHistory, rowReason, rowWhen } from "./historyRows.js";
 import { needsSignature } from "../config/features.js";
+import CorrectionLines from "./CorrectionLines.jsx";
 
 const PAYMENT_METHODS = [
   { value: "cash", label: "collect.cash", icon: Banknote },
@@ -952,16 +953,17 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                       )}
                     </span>
                   </li>
+                ) : event.type === "adjustment" ? (
+                  // Wiring 29/43 (16 Nov 2026): Balance corrected on its own line, then old → new, then date and reason.
+                  <li key={event.id} data-correction-row="" className="flex min-w-0 flex-col gap-1 border-b-2 border-slate-300 px-3.5 py-3 last:border-b-0">
+                    <CorrectionLines event={event} />
+                  </li>
                 ) : (
                   <li key={event.id} className="flex min-h-12 items-center gap-3 border-b-2 border-slate-300 px-3.5 py-3 last:border-b-0">
                     <span className="min-w-0 flex-1">
-                      <strong className="block text-lg">
-                        {event.type === "payment" ? t("collect.paid") : "Balance corrected"}
-                      </strong>
+                      <strong className="block text-lg">{t("collect.paid")}</strong>
                       <span className="block text-sm text-slate-800">
-                        {event.type === "adjustment"
-                          ? `${event.reasonLabel} · ${formatHistoryRowTimestamp(event.timestamp)}`
-                          : formatHistoryRowTimestamp(event.timestamp)}
+                        {formatHistoryRowTimestamp(event.timestamp)}
                         {event.type === "payment" && (
                           <> · {event.collectionParts
                             ? event.collectionParts.map((part) => `${part.method} ${formatGhs(part.amountPesewas)}`).join(", ")
@@ -969,13 +971,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                         )}
                       </span>
                     </span>
-                    <strong className={`shrink-0 text-lg ${event.type === "payment" ? "text-emerald-900" : "text-slate-800"}`}>
-                      {event.type === "payment"
-                        ? "+"
-                        : ""} {event.type === "adjustment"
-                        ? `${formatGhs(event.previousBalancePesewas ?? event.newBalancePesewas ?? 0)} → ${formatGhs(event.newBalancePesewas ?? 0)}`
-                        : formatGhs(event.amountPesewas)}
-                    </strong>
+                    <strong className="shrink-0 text-lg text-emerald-900">+ {formatGhs(event.amountPesewas)}</strong>
                   </li>
                 )))}
               </ul>

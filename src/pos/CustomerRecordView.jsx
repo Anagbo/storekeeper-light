@@ -3,7 +3,8 @@ import { db } from "../db/db.js";
 import { displayName } from "../lib/displayName.js";
 import { formatGhs, getOutstandingDebtPesewas } from "../lib/money.js";
 import { loadCustomerHistory } from "../utils/loadCustomerDebtHistory.js";
-import { CREDIT_ROW_TYPES, correctionReason, groupCollectionHistory, paidParts, rowReason, rowWhen } from "./historyRows.js";
+import { CREDIT_ROW_TYPES, groupCollectionHistory, paidParts, rowReason, rowWhen } from "./historyRows.js";
+import CorrectionLines from "./CorrectionLines.jsx";
 import { posText as t } from "./i18n.js";
 import { PosBackButton, PosPage } from "./PosComponents.jsx";
 
@@ -62,11 +63,7 @@ function RecordRow({ event }) {
   if (event.type === "adjustment") {
     return (
       <Card kind="corrected" dashed>
-        <strong className="text-[20px] leading-tight">{t("record.corrected")}</strong>
-        <p data-record-change="" className="whitespace-nowrap text-[20px] font-extrabold leading-tight">
-          {formatGhs(event.previousBalancePesewas ?? 0)} → {formatGhs(event.newBalancePesewas ?? 0)}
-        </p>
-        <p className="break-words text-lg text-slate-800">{rowWhen(event)} · {t("record.reason", { reason: correctionReason(event) })}</p>
+        <CorrectionLines event={event} size="card" />
       </Card>
     );
   }
