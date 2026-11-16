@@ -177,9 +177,9 @@ test("MoMo screens 56 and 57 match the prototype layout contract", () => {
 
   assert.match(paymentSource, /Customer pays/);
   assert.match(paymentSource, /You receive/);
-  assert.match(paymentSource, /Customer[&']apos;s network|Customer's network/);
+  assert.match(paymentSource, /Customer’s network/);
   assert.match(paymentSource, /aria-label=\{`Network \$\{item\}`\}/);
-  assert.match(paymentSource, /Customer[&']apos;s MoMo number|Customer's MoMo number/);
+  assert.match(paymentSource, /Customer’s MoMo number/);
   assert.match(paymentSource, /Customer already paid me directly/);
   assert.match(paymentSource, /<Smartphone size=\{24\} aria-hidden="true" \/>Send request/);
   assert.match(waitingSource, /Clock3/);

@@ -66,12 +66,12 @@ test("shared helpers: the first problem is shown, and only while it is still a p
   assert.equal(shownMessage(null, problems), "", "nothing tapped yet");
 });
 
-test("34 New person (sale flow): \"Enter the customer's name.\" only after Next, gone at the first letter", async () => {
+test("34 New person (sale flow): \"Enter the customer’s name.\" only after Next, gone at the first letter", async () => {
   const { default: CreditScreens } = await loadJsx("src/pos/CreditScreens.jsx");
   const view = render({ type: CreditScreens, props: { route: "NewPerson", params: { amountPesewas: 800 }, onBack() {}, onNavigate() {}, onUpdateParams() {} } });
   assert.deepEqual(alerts(view.tree), [], "fresh form: no error");
   submit(view);
-  assert.deepEqual(alerts(view.tree), ["Enter the customer's name."]);
+  assert.deepEqual(alerts(view.tree), ["Enter the customer’s name."]);
   assert.doesNotMatch(textOf(view.tree), /valid amount/, "no amount is mentioned");
   type(view, inputs(view.tree)[0], "K");
   assert.deepEqual(alerts(view.tree), [], "typing a name hides it at once");
@@ -92,7 +92,7 @@ test("34 New person (returning form, add-debt flow): no error box on a returning
   const view = render({ type: CreditScreens, props: { route: "NewPerson", params: { manualDebt: true, newPersonName: "", newPersonPhone: "024" }, onBack() {}, onNavigate() {}, onUpdateParams() {} } });
   assert.deepEqual(alerts(view.tree), []);
   submit(view);
-  assert.deepEqual(alerts(view.tree), ["Enter the customer's name."]);
+  assert.deepEqual(alerts(view.tree), ["Enter the customer’s name."]);
 });
 
 test("44 Spent money: \"Enter an amount\" after No, gone once an amount is typed", async () => {
