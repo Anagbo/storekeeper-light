@@ -103,9 +103,10 @@ test("threshold on: GH₵50.00 is saved BEFORE 72 opens; 72 starts a fresh stack
   assert.match(text, /Please sign/);
   assert.match(text, /Juju owes My shop/);
   assert.match(text, /GH₵50\.00/);
-  assert.match(text, /For: No reason written/, "a keypad sale has no reason");
-  assert.match(text, new RegExp(`Taken: ${formatDate(event.createdAt).replace(/\//g, "\\/")}`));
-  assert.match(text, /Pay by: \d{2}\/\d{2}\/\d{4}/, "18 Save sets a due date");
+  assert.match(text, /For ?No reason written/, "a keypad sale has no reason");
+  assert.doesNotMatch(text, /For: /, "a label-value row, not \"For: …\"");
+  assert.match(text, new RegExp(`Taken ?${formatDate(event.createdAt).replace(/\//g, "\\/")}`));
+  assert.match(text, /Pay by ?\d{2}\/\d{2}\/\d{4}/, "18 Save sets a due date");
   assert.match(text, /Sign here with your finger/);
   assert.doesNotMatch(text, /legal|proof|guaranteed/i);
 });
@@ -235,7 +236,7 @@ test("Add debt 53 > 18: 72 shows the amount added and the reason, then ManualDeb
   assert.equal(app.route, "CustomerSignature");
   const text = shown(app);
   assert.match(text, /GH₵70\.00/, "the amount added, not the balance of GH₵80.00");
-  assert.match(text, /For: Cement/);
+  assert.match(text, /For ?Cement/);
   await drawStroke(app);
   await app.tap("Done");
   assert.equal(app.route, "ManualDebtSaved");

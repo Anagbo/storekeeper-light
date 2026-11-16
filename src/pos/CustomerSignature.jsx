@@ -26,6 +26,15 @@ function payByDate(event, debt) {
   return due ? formatDate(due) : "";
 }
 
+function SignDetail({ label, value }) {
+  return (
+    <div data-sign-detail="" className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-3">
+      <dt className="whitespace-nowrap font-normal text-slate-700">{label}</dt>
+      <dd className="min-w-0 text-right font-bold [overflow-wrap:anywhere]">{value}</dd>
+    </div>
+  );
+}
+
 export default function CustomerSignature({ params = {}, onFinish, shopName }) {
   const data = useLiveQuery(async () => {
     const event = params.transactionId ? await db.transactions.get(params.transactionId) : null;
@@ -75,9 +84,14 @@ export default function CustomerSignature({ params = {}, onFinish, shopName }) {
         <section data-sign-card="" className="min-w-0 rounded-[18px] bg-[#FFE4E9] px-3.5 py-3">
           <p className="break-words text-[19px] font-bold">{t("signature.owes", { name: displayName(event.customer_name ?? event.customerName ?? ""), shop: shopName })}</p>
           <p data-sign-amount="" className="text-[40px] font-extrabold leading-tight text-rose-950">{formatGhs(getCreditEventAmountPesewas(event))}</p>
-          <p className="mt-1.5 break-words text-lg">{t("signature.for", { reason: reason || t("creditRow.noReason") })}</p>
-          <p className="text-lg">{t("signature.taken", { date: takenDate(event) })}</p>
-          {payBy && <p className="text-lg">{t("signature.payBy", { date: payBy })}</p>}
+          {/* Wiring 72 rules.1 (16 Nov 2026): three label-value rows under a thin line. The label is grey,
+              regular weight, on the left; the value is bold and right-aligned, and wraps inside its own
+              column (even one long word), so it never pushes the label. */}
+          <dl data-sign-details="" className="mt-2 flex flex-col gap-1.5 border-t border-rose-900/30 pt-2 text-lg">
+            <SignDetail label={t("signature.for")} value={reason || t("creditRow.noReason")} />
+            <SignDetail label={t("signature.taken")} value={takenDate(event)} />
+            {payBy && <SignDetail label={t("signature.payBy")} value={payBy} />}
+          </dl>
         </section>
       ) : (
         <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 text-lg font-semibold text-rose-950">{t("signature.notFound")}</p>
