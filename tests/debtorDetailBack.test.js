@@ -40,7 +40,9 @@ for (const screen of ["29", "43"]) {
     const header = nodes.find((node) => node.props?.["data-row"] === "debtor-header");
     assert.ok(header, "the header row");
     const headerChildren = [header.props.children].flat(Infinity).filter((child) => child && typeof child === "object");
-    assert.equal(headerChildren[0], backs_[0], "Back is the first thing in the header row (top left)");
+    // Polish 16 Nov 2026: the card's first row is Back and the name; Edit contact is the row under it.
+    const nameRow = [headerChildren[0].props.children].flat(Infinity).filter((child) => child && typeof child === "object");
+    assert.equal(nameRow[0], backs_[0], "Back is the first thing in the header row (top left)");
     assert.match(textOf(header), /Ama/, "the name is on the same row");
     assert.match(textOf(header), /Edit contact/, "Edit contact stays in the header");
     // The rendered Back: the shared button's label and look.
