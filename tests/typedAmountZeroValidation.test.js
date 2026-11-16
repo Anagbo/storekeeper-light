@@ -111,4 +111,27 @@ for (const zero of ["0", "0.00"]) {
     view.rerender();
     assert.deepEqual(alerts(view.tree), ["Enter a valid item price greater than GH₵0.00."]);
   });
+
+  // Wiring 19 "Paid today with Start today" (decided 16 Nov 2026): the amount must be above 0. Paying
+  // nothing today is what Next cycle is for, so 0 stays refused with "Enter the amount being paid today."
+  test(`19 Amount paid today with Start today: ${zero} is refused; paying nothing today is Next cycle`, async () => {
+    const { default: CreditScreens } = await loadJsx("src/pos/CreditScreens.jsx");
+    const params = { amountPesewas: 800, customer: { name: "Kofi" }, startToday: true, installmentAmount: "4.00" };
+    const view = render({ type: CreditScreens, props: { route: "ALittleAtATime", params, onBack() {}, onNavigate() {}, onUpdateParams() {}, onSaveCredit: async () => {} } });
+    const field = () => nodes(view.tree).find((node) => node.type === "input" && node.props["aria-label"] === "Amount paid today");
+    const savePlan = () => nodes(view.tree).filter((node) => node.type === "button" && /Save plan/.test(textOf(node))).at(-1);
+    assert.equal(await type(view, field, "2"), "2");
+    assert.equal(savePlan().props.disabled, false, "control: GH₵2 paid today can be saved");
+    assert.deepEqual(alerts(view.tree), []);
+
+    assert.equal(await type(view, field, zero), zero, `${zero} stays in the field`);
+    assert.deepEqual(alerts(view.tree), ["Enter the amount being paid today."]);
+    assert.equal(savePlan().props.disabled, true);
+
+    nodes(view.tree).find((node) => node.type === "button" && /Next cycle/.test(textOf(node))).props.onClick();
+    view.rerender();
+    assert.equal(field(), undefined, "Next cycle hides Amount paid today");
+    assert.deepEqual(alerts(view.tree), []);
+    assert.equal(savePlan().props.disabled, false, "nothing paid today: Next cycle saves");
+  });
 }
