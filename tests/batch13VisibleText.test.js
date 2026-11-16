@@ -34,7 +34,7 @@ test("47: no profit text while the profit switches are deferred", async () => {
 // Owner decision (Batch 14): "Money in" includes MoMo (cash + MoMo received), so 22 no longer says "Cash".
 test("22: the money card uses the owner's headings (Money left today, Money in, Spent)", async () => {
   const { default: Home } = await loadJsx("src/pos/Home.jsx");
-  setLiveQuery(() => ({ totals: { cashLeft: 0, moneyIn: 0, moneySpent: 0 }, debtPesewas: 0, urgentDebt: null }));
+  setLiveQuery(() => ({ hideAmounts: false, totals: { cashLeft: 0, moneyIn: 0, moneySpent: 0 }, debtPesewas: 0, urgentDebt: null }));
   try {
     const view = render({ type: Home, props: { onNavigate() {} } });
     const card = [...(function* walkAll(node) {

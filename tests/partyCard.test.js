@@ -90,7 +90,7 @@ test("PartyCard: Call only with a valid phone number, never a greyed disabled Ca
 
 async function renderHome(data) {
   const { default: Home } = await loadJsx("src/pos/Home.jsx");
-  setLiveQuery(() => ({ totals: { cashLeft: 0, moneyIn: 0, moneySpent: 0 }, debtPesewas: 282281, urgentDebt: null, ...data }));
+  setLiveQuery(() => ({ hideAmounts: false, totals: { cashLeft: 0, moneyIn: 0, moneySpent: 0 }, debtPesewas: 282281, urgentDebt: null, ...data }));
   const navigated = [];
   try {
     const view = render({ type: Home, props: { onNavigate: (...args) => navigated.push(args) } });
