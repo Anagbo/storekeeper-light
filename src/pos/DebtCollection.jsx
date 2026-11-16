@@ -40,6 +40,7 @@ import AmountTextInput from "./AmountTextInput.jsx";
 import { CREDIT_ROW_TYPES, formatHistoryRowTimestamp, groupCollectionHistory, paidParts, rowReason, rowWhen } from "./historyRows.js";
 import { needsSignature } from "../config/features.js";
 import CorrectionLines from "./CorrectionLines.jsx";
+import SignedTag from "./SignedTag.jsx";
 
 const PAYMENT_METHODS = [
   { value: "cash", label: "collect.cash", icon: Banknote },
@@ -946,9 +947,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                     <span className="block text-sm text-slate-800">{rowWhen(event)}</span>
                     <span data-reason="" className="block break-words text-base text-slate-900">{rowReason(event)}</span>
                     <span className="flex min-w-0 items-center justify-between gap-2">
-                      <span data-signed={event.signed ? "yes" : "no"} className={`inline-flex min-h-8 shrink-0 items-center whitespace-nowrap rounded-lg border-2 px-2 text-base font-extrabold ${event.signed ? "border-emerald-900 bg-green-100 text-emerald-900" : "border-slate-400 bg-slate-100 text-slate-700"}`}>
-                        {event.signed ? t("creditRow.signed") : t("creditRow.notSigned")}
-                      </span>
+                      <SignedTag signed={event.signed} />
                       {!event.signed && event.transactionId && needsSignature(event.amountPesewas) && (
                         <button type="button" onClick={() => onNavigate("CustomerSignature", { transactionId: event.transactionId })} className="min-h-12 shrink-0 whitespace-nowrap rounded-xl border-2 border-emerald-900 bg-white px-3 text-base font-extrabold text-emerald-900">
                           {t("creditRow.getSignature")}

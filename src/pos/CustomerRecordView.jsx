@@ -7,6 +7,7 @@ import { CREDIT_ROW_TYPES, groupCollectionHistory, paidParts, rowReason, rowWhen
 import CorrectionLines from "./CorrectionLines.jsx";
 import { posText as t } from "./i18n.js";
 import { PosBackButton, PosPage } from "./PosComponents.jsx";
+import SignedTag from "./SignedTag.jsx";
 
 // Wiring 73 "Show {Name} the record" (rules_global.customer_proof, 16 Nov 2026). Read only, for the
 // customer to read: the balance as "You owe", then what happened, newest first. Paid rows, credit rows
@@ -72,9 +73,7 @@ function RecordRow({ event }) {
       <Card kind="credit">
         <Row title={t("record.tookOnCredit")} amount={formatGhs(event.amountPesewas)} amountClass="text-rose-950" />
         <p className="break-words text-lg text-slate-800">{rowWhen(event)} · {rowReason(event)}</p>
-        <p data-signed={event.signed ? "yes" : "no"} className={`text-lg font-extrabold ${event.signed ? "text-emerald-900" : "text-slate-600"}`}>
-          {event.signed ? t("creditRow.signed") : t("creditRow.notSigned")}
-        </p>
+        <SignedTag signed={event.signed} />
       </Card>
     );
   }
