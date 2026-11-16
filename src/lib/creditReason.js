@@ -67,3 +67,11 @@ export function getCreditEventAmountPesewas(record) {
   if (Number.isSafeInteger(record?.creditExtendedPesewas) && record.creditExtendedPesewas >= 0) return record.creditExtendedPesewas;
   return getHistoryCreditAmount(record ?? {});
 }
+
+// 29/43 "Open debt entries" (16 Nov 2026): what one open debt entry is for. The debt's note holds the
+// reasons of the credits added to it, joined with ", "; generated words ("Sale", "Other amount", …)
+// are dropped, so "Sale, Sale" is "" and the screen shows "No reason written".
+export function getDebtEntryReason(debt) {
+  if (!debt) return "";
+  return cleanText(debt.note) || cleanText(debt.description) || cleanText(debt.itemDescription);
+}

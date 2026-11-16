@@ -22,6 +22,7 @@ import { getDebtDueLabel, getDebtDueLine } from "./money.js";
 import { getInstallmentsLeft, getPlanProgress } from "../utils/installments.js";
 import { getCustomerLedgerRecords, getPlanPaidPesewas } from "../utils/debtLedgerMath.js";
 import { posText as t } from "./i18n.js";
+import { getDebtEntryReason } from "../lib/creditReason.js";
 import { PosBackButton, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, SplitIcons } from "./PosComponents.jsx";
 import CustomerContactEditor from "./CustomerContactEditor.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
@@ -894,7 +895,8 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               <ul className="overflow-hidden rounded-[18px] border-2 border-slate-500 bg-white">
                 {data.unpaidDebts.map((debt) => {
                   const amountPesewas = debt.amountPesewas ?? debt.total_owed ?? 0;
-                  const detail = debt.note ?? debt.description ?? debt.itemDescription ?? "Credit entry";
+                  // Each entry shows its own reason, generated words hidden, or "No reason written".
+                  const detail = getDebtEntryReason(debt) || t("creditRow.noReason");
                   return (
                     <li key={debt.id} className="flex flex-wrap items-center gap-3 border-b-2 border-slate-300 px-3.5 py-3 last:border-b-0">
                       <span className="min-w-0 flex-1">
