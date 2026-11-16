@@ -489,7 +489,8 @@
     "Draft survives Back (decided 12 Nov 2026, reported on the phone): in the sale-on-credit flow (15 → 17 → 34/18 → 19 → 27) everything the owner has typed or chosen is kept when they go Back and return, until the sale is saved (Done or Save plan) or the owner leaves with header Home or another tab. Nothing is lost by going one step back and forward. Kept values live in the route parameters, like 15 and 16. On 19 that means How much each time, How often, First payment (Today or Next cycle), Amount paid today, Next payment date and the chosen method or split parts. Opening Split payment (27) from 19 and coming back with Back keeps the 19 values; opening 27 again reopens it with the same Cash and MoMo parts.",
     "Still owed row, all flows (clarified 12 Nov 2026 after a phone test): the pink \"Still owed · {Name}\" row under \"Total today\" is shown whenever the Paying today panel is shown and something remains owed after today's payment, in every flow, not only when an Owe part sits in a split draft. Amount = the Owed figure at the top of 19 minus the amount paid today (the customer's balance after this sale and today's payment, the same figure screen 31 shows as \"owes\"). Example: sale GH₵8.00 on credit, GH₵2.00 paid today (Cash 1.00 + MoMo 1.00) shows the rows Cash 1.00, MoMo 1.00, Total today GH₵2.00, then the pink row \"Still owed · Kofi Mensah GH₵6.00\". If today's payment settles the whole balance, the pink row is absent.",
     "Paying today panel with one method (decided 12 Nov 2026): the panel is shown whenever Amount paid today is above zero and a method is chosen, also for Cash only or MoMo only (one row, then Total today, then the pink Still owed row). Hidden for Next cycle or when nothing is paid today. This keeps the unpaid balance visible in every flow.",
-    "Paying today alignment (decided 16 Nov 2026, found on a real phone): in the panel every amount shares one right edge: Cash, MoMo, Total today and the Still owed row. Total today and its amount use the same inner padding as the Cash and MoMo rows, so GH₵6.00 ends exactly under GH₵4.00 and GH₵2.00. Equal-width digits (tabular-nums). A render test measures the right edges of the amounts at 340, 360 and 393px."
+    "Paying today alignment (decided 16 Nov 2026, found on a real phone): in the panel every amount shares one right edge: Cash, MoMo, Total today and the Still owed row. Total today and its amount use the same inner padding as the Cash and MoMo rows, so GH₵6.00 ends exactly under GH₵4.00 and GH₵2.00. Equal-width digits (tabular-nums). A render test measures the right edges of the amounts at 340, 360 and 393px.",
+    "Paid today with Start today (decided 16 Nov 2026): the amount must be above 0. Paying nothing today is what Next cycle is for, so 0 stays refused with \"Enter the amount being paid today.\""
    ]
   },
   "20": {
@@ -1229,7 +1230,7 @@
     "No open debt entries (decided 15 Nov 2026): when the person has no open debt entries, the \"Open debt entries\" heading and its line are not shown at all. With open entries the list and \"Correct this entry\" stay.",
     "Collection receipt (decided 15 Nov 2026): Receipt and Copy receipt on this screen cover the person's latest payment only, and the label says so (\"Receipt for GH₵30.00 payment\"). A person who has never paid has no receipt buttons. Receipt text: \"Receipt from {Shop}\", \"dd/mm/yyyy HH:mm\" (no comma), \"Received from {Name}: GH₵x (Cash|MoMo)\", \"Balance owed now: GH₵y\" (or \"Nothing owed now\" when zero), \"Thank you!\".",
     "Credit rows in the history show the reason line (items or reason) and a tag \"Signed ✓\" or \"Not signed\". Not signed rows at or above the signature threshold show a small \"Get signature\" action that opens 72 for that entry.",
-    "Balance corrected rows in What happened (decided 16 Nov 2026): the title \"Balance corrected\" is on its own line and never wraps to two lines at 340px; \"GH₵old → GH₵new\" goes on the next line, then the date and reason."
+    "Balance corrected row (changed 16 Nov 2026, replaces the stacked old → new layout): line 1 is the title \"Balance corrected\" alone (never wraps). Line 2 is a two-column row: \"Was GH₵old\" on the left in grey regular weight, and the NEW balance on the right, bold, 24px, neutral dark colour (not red or green), ending at the same right edge as the amounts of the other rows. Line 3: date and \"Reason: …\" (reason label, plus the typed note for Other). An amount never breaks. A correction to zero shows GH₵0.00 on the right and \"Was GH₵105.00\" on the left."
    ]
   },
   "30": {
@@ -2350,7 +2351,7 @@
     "No open debt entries (decided 15 Nov 2026): when the person has no open debt entries, the \"Open debt entries\" heading and its line are not shown at all. With open entries the list and \"Correct this entry\" stay.",
     "Collection receipt (decided 15 Nov 2026): Receipt and Copy receipt on this screen cover the person's latest payment only, and the label says so (\"Receipt for GH₵30.00 payment\"). A person who has never paid has no receipt buttons. Receipt text: \"Receipt from {Shop}\", \"dd/mm/yyyy HH:mm\" (no comma), \"Received from {Name}: GH₵x (Cash|MoMo)\", \"Balance owed now: GH₵y\" (or \"Nothing owed now\" when zero), \"Thank you!\".",
     "Credit rows in the history show the reason line (items or reason) and a tag \"Signed ✓\" or \"Not signed\". Not signed rows at or above the signature threshold show a small \"Get signature\" action that opens 72 for that entry.",
-    "Balance corrected rows in What happened (decided 16 Nov 2026): the title \"Balance corrected\" is on its own line and never wraps to two lines at 340px; \"GH₵old → GH₵new\" goes on the next line, then the date and reason."
+    "Balance corrected row (changed 16 Nov 2026, replaces the stacked old → new layout): line 1 is the title \"Balance corrected\" alone (never wraps). Line 2 is a two-column row: \"Was GH₵old\" on the left in grey regular weight, and the NEW balance on the right, bold, 24px, neutral dark colour (not red or green), ending at the same right edge as the amounts of the other rows. Line 3: date and \"Reason: …\" (reason label, plus the typed note for Other). An amount never breaks. A correction to zero shows GH₵0.00 on the right and \"Was GH₵105.00\" on the left."
    ]
   },
   "44": {
@@ -3146,7 +3147,8 @@
     "Zero is a valid new balance (decided 16 Nov 2026). The only limits are: no negative amount and no increase from this screen (use Add debt). Typing 0 (or 0.00) is accepted, shows \"This lowers the debt by GH₵{all of it}\", and Save correction works once a reason is chosen. It records an adjustment to GH₵0.00 and the person then owes nothing. An empty field is the only invalid-looking state (Save correction stays disabled).",
     "With several open entries (Correct this entry), the same rule applies to that entry: 0 settles that entry only; old → new in the history is that entry's balance.",
     "The history row and the customer record 73 show \"Balance corrected\", \"GH₵old → GH₵0.00\" and the reason, so a debt set to zero is never silent.",
-    "Empty field on 54: no message at all (not \"New balance must be lower.\"). Save correction is only disabled. Messages appear only for an increase (\"Corrections cannot increase debt\") or a value that is not allowed."
+    "Empty field on 54: no message at all (not \"New balance must be lower.\"). Save correction is only disabled. Messages appear only for an increase (\"Corrections cannot increase debt\") or a value that is not allowed.",
+    "When the sheet first opens (decided 16 Nov 2026): the field is pre-filled with the current balance, selected, and NO message is shown until the owner changes the value. Save correction is disabled. If the owner then types a value equal to the current balance, show \"New balance must be lower.\"; for an increase \"Corrections cannot increase debt\"."
    ]
   },
   "55": {
@@ -3868,7 +3870,7 @@
      "disabled_initially": false,
      "type": "navigate",
      "to": "SIGNED",
-     "effect": "Underlined text link, never a button-looking primary. The credit stays saved as Not signed. Continues exactly as Done does."
+     "effect": "Grey-outline button (button_system: leave), full width, 52px, below Done and Clear. The credit stays saved as Not signed. Continues exactly as Done does."
     }
    ],
    "inputs": [
@@ -3881,13 +3883,14 @@
    "bottom_bar": false,
    "rules": [
     "Shown after saving a credit of GH₵50.00 or more (VITE_SIGNATURE_THRESHOLD_PESEWAS, default 5000, read only in src/config/features.js). The credit is ALREADY saved before this screen opens; nothing here can block or undo it.",
-    "Title \"Please sign\". Pink card, read-only: \"{Name} owes {Shop} GH₵x\", \"For: {items or reason}\", \"Taken: dd/mm/yyyy\", \"Pay by: dd/mm/yyyy\" (only when a due date exists). Amount through formatGhs, dates through formatDate.",
+    "Title \"Please sign\". Pink card, read-only: first line \"{Name} owes {Shop}\", then the amount (formatGhs, large), then three label-value rows under a thin line (decided 16 Nov 2026): \"For\" with the items or reason, \"Taken\" with the date (dd/mm/yyyy), and \"Pay by\" with the due date (only when a due date exists). The label is on the left in grey regular weight, the value is on the right, bold and right-aligned; a long value wraps inside its own column and never pushes the label. With no reason the value is \"No reason written\" (not \"For: No reason written\").",
     "The phone is handed to the customer. Text at least 18px, buttons 52px or more, Done full width.",
     "Done is disabled until ink exists. Skip for now is always available. Leaving by Back or closing the app counts as Skip for now.",
     "Storage: small vector strokes (or compressed PNG under 20 KB) saved on the debt event as signature plus signedAt. Local only, included in backup and restore. Never sent anywhere in this version.",
     "Honest limit: a signature shows the customer saw and accepted this amount; it is not a legal proof. Do not use the words legal, proof or guaranteed anywhere in the UI.",
     "Snapshot: the signature record stores the credit amount and the reason as they were when signed. Anything changed afterwards is shown on 73 as a Balance corrected card; a signature never silently covers a different amount.",
-    "Layout (built, 16 Nov 2026): Back and the title \"Please sign\" share the top row. Clear sits above Done, both full width, 60px; Skip for now stays an underlined link below. The header is the Home tile without the Menu button (as on 73)."
+    "Layout (built, 16 Nov 2026): Back and the title \"Please sign\" share the top row. Clear sits above Done, both full width, 60px; Skip for now is a grey-outline button below (button_system). The header is the Home tile without the Menu button (as on 73).",
+    "Order of the three bottom buttons: Done (solid green, disabled until ink), then Clear (outlined), then Skip for now (grey outline). Clear erases the drawing; Skip leaves without signing."
    ]
   },
   "73": {
@@ -3919,7 +3922,7 @@
     "Caption: \"Read only. Please hand the phone back when you are done.\"",
     "No private shop data on this screen: no profit, cost, other customers, totals or phone numbers.",
     "Corrections are shown (decided 16 Nov 2026). Every balance correction made on 54 appears in \"What happened\" as its own dashed card: \"Balance corrected\", \"GH₵old → GH₵new\", date, and \"Reason: …\" (the reason entered on 54). A customer can therefore see if a signed amount was changed later. Corrections are never hidden or merged into the credit rows.",
-    "Balance corrected card layout: the title \"Balance corrected\" is on its own line and never wraps; \"GH₵old → GH₵new\" is on the next line, then the date and reason. Same layout in the 29/43 history rows."
+    "Balance corrected row (changed 16 Nov 2026, replaces the stacked old → new layout): line 1 is the title \"Balance corrected\" alone (never wraps). Line 2 is a two-column row: \"Was GH₵old\" on the left in grey regular weight, and the NEW balance on the right, bold, 24px, neutral dark colour (not red or green), ending at the same right edge as the amounts of the other rows. Line 3: date and \"Reason: …\" (reason label, plus the typed note for Other). An amount never breaks. A correction to zero shows GH₵0.00 on the right and \"Was GH₵105.00\" on the left."
    ]
   }
  },
@@ -4034,7 +4037,17 @@
    "accessibility": "Button 48px, accessible name \"Hide amounts\" or \"Show amounts\" with the current state, icon eye / eye-off, never colour alone.",
    "shared_component": "One AmountVisibility setting and one HiddenAmount rendering used by every hidden figure, so no figure can forget it (a test scans 22 and 33)."
   },
-  "no_text_chevrons": "No chevron characters (›, >, ») anywhere in the app text, labels, i18n strings or tests (decided 16 Nov 2026). The Back arrow is a drawn icon; other buttons and links are written as words only (for example \"See all\", \"Show {Name} the record\", \"Next\"). A scan test fails if any chevron character appears in src/pos. The arrow → between two amounts (GH₵old → GH₵new) is not a chevron and stays."
+  "no_text_chevrons": "No chevron characters (›, >, ») anywhere in the app text, labels, i18n strings or tests (decided 16 Nov 2026). The Back arrow is a drawn icon; other buttons and links are written as words only (for example \"See all\", \"Show {Name} the record\", \"Next\"). A scan test fails if any chevron character appears in src/pos. The arrow → between two amounts (GH₵old → GH₵new) is not a chevron and stays.",
+  "button_system": {
+   "decided": "16 Nov 2026",
+   "main": "Solid green, white bold text: Done, Next, Save, Collect and other main actions.",
+   "other": "Outlined, 2px dark (#0F172A) border, dark bold text, white fill: Back, Clear, Cancel, Show {Name} the record, Correct balance.",
+   "add": "Dashed 2px dark-green border, bold dark-green \"+ Label\", no fill: every action that adds something (+ New item, + Add items, + Add debt, + Add to debt).",
+   "leave": "Grey outline (2px #64748B border, #334155 bold text, white fill): leave without doing it (Skip for now, Not now). Lower priority than the main action but a real button.",
+   "sizes": "Full width, 52px high or more (60px on 72 and 73); the compact add button (44px) only on 15.",
+   "no_link_buttons": "Underlined text is never used as a button. It appears only inside a sentence, for example Learn more. Every former underlined-link button becomes the right look above.",
+   "shared": "One shared component per look (PrimaryButton, SecondaryButton, AddButton, LeaveButton), and a scan test fails if a screen draws its own."
+  }
  },
  "built_extras_kept": {
   "24": "row tags Collected Debt, Balance correction, Added to debt",
