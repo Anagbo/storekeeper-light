@@ -72,6 +72,8 @@ test("What happened cards on 29, 43 and 73 at 340, 360 and 393px: title row, the
     const [corrected, paid, longCredit, shortCredit] = result.cards;
     assert.equal(corrected.amount, null, `${where}: Balance corrected has the title alone`);
     assert.equal(corrected.title.lines, 1, `${where}: "Balance corrected" never wraps`);
+    // Decision (4) after the build (16 Nov 2026): no "+" before the Paid amount on any of the three.
+    assert.equal(paid.amount.text, "GH₵13,579.00", `${where}: the Paid amount has no "+"`);
     assert.equal(paid.rows[1].value, "Cash GH₵1,234.00, MoMo GH₵12,345.00", `${where}: Paid with, Cash first`);
     assert.equal(longCredit.rows[1].value, LONG);
     assert.equal(corrected.rows[3].value, LONG);

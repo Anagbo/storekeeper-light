@@ -46,11 +46,12 @@ function Details({ children }) {
 }
 
 // `signatureAction`: an extra control next to the Signature pill (29/43 "Get signature"); none on 73.
-export default function EventRows({ event, creditTitle, paidPrefix = "", signatureAction = null }) {
+// The Paid amount has no "+" on any screen (decision (4), 16 Nov 2026: the title says Paid).
+export default function EventRows({ event, creditTitle, signatureAction = null }) {
   if (event.type === "payment") {
     return (
       <Card kind="paid">
-        <TitleRow title={t("collect.paid")} amount={`${paidPrefix}${formatGhs(event.amountPesewas)}`} amountClass="text-emerald-900" />
+        <TitleRow title={t("collect.paid")} amount={formatGhs(event.amountPesewas)} amountClass="text-emerald-900" />
         <Details>
           <EventDetail label={t("event.time")} name="time" valueProps={{ "data-when": "" }}>{rowTime(event)}</EventDetail>
           {/* rules_global.customer_proof.paid_order: Cash first, then MoMo (paidParts). */}

@@ -943,7 +943,6 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                     key={event.id}
                     event={event}
                     creditTitle={event.type === "addon" ? t("collect.creditAdded") : t("collect.creditTaken")}
-                    paidPrefix="+ "
                     signatureAction={!event.signed && event.transactionId && needsSignature(event.amountPesewas) ? (
                       <button type="button" onClick={() => onNavigate("CustomerSignature", { transactionId: event.transactionId })} className="min-h-12 shrink-0 whitespace-nowrap rounded-xl border-2 border-emerald-900 bg-white px-3 text-base font-extrabold text-emerald-900">
                         {t("creditRow.getSignature")}
