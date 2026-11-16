@@ -22,9 +22,10 @@
   "DIRECT": "From 61: go to 62. Needs no setup beyond the merchant's own MoMo number. Records the MoMo part as 'you confirmed'.",
   "PHONE": "From 61: if the Paystack payout account is not set up go to 60 (Save and verify continues to 56); otherwise go to 56.",
   "MOMOPICK": "MoMo tile on 16 (split): first ask how much (amount editor prefilled with Left to pay, can be lowered), then go to 61 with pick16 set and that amount. DIRECT or PHONE then records the method on the MoMo part and returns to 16. With a direct MoMo row already present, the tile raises it and only the extra goes to 61/62. Nothing is requested yet.",
-  "SAVECREDIT": "Save on 18 or 19. If flow=split, mark the Owe part complete and return to 16 (drop the screens in between from history). Otherwise go to 31.",
-  "SAVE19": "Save plan on 19. If today's payment includes MoMo: confirm it first (Direct: 62; Phone request: 56 then 57, 60 for setup, 61 when the method is not chosen yet). Then commit once (debt or sale credit, plan, collection of the amount paid today) and go to 31. In flow=split return to 16 with the Owe part complete. If the request fails go to 59 and stay on 19, nothing saved.",
-  "MOMOPICK19": "MoMo on 19: go to 61 with pick19 set. The chosen method returns to 19."
+  "SAVECREDIT": "Save on 18 or 19. If flow=split, mark the Owe part complete and return to 16 (drop the screens in between from history). Otherwise go to 31. NEW (decided 16 Nov 2026): before continuing, if the amount just added is at or above VITE_SIGNATURE_THRESHOLD_PESEWAS go to 72 first, then continue to the destination above. Below the threshold, no signature step.",
+  "SAVE19": "Save plan on 19. If today's payment includes MoMo: confirm it first (Direct: 62; Phone request: 56 then 57, 60 for setup, 61 when the method is not chosen yet). Then commit once (debt or sale credit, plan, collection of the amount paid today) and go to 31. In flow=split return to 16 with the Owe part complete. If the request fails go to 59 and stay on 19, nothing saved. Same signature step as SAVECREDIT (go to 72 first when the total credit is at or above the threshold).",
+  "MOMOPICK19": "MoMo on 19: go to 61 with pick19 set. The chosen method returns to 19.",
+  "SIGNED": "Done or Skip for now on 72. Continue to the destination SAVECREDIT would have used: 31 for a sale on credit or add debt, return to 16 when flow=split, ManualDebtSaved for a manual debt. Drop 72 from history."
  },
  "flows_and_flags": {
   "flow=add_debt": "Set by Add debt on 32. Hides the Owed banner on 17. Cleared on arriving at 22 or 15.",
@@ -1198,6 +1199,14 @@
      "type": "navigate",
      "to": "ADDP",
      "to_rule": "Start the add-debt-for-a-person flow (flow=add_debt_person) and go to 53."
+    },
+    {
+     "label": "Show {Name} the record ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "73",
+     "effect": "Text-style button under the Last reminder line. Opens 73."
     }
    ],
    "inputs": [],
@@ -1210,7 +1219,8 @@
     "Last reminder line: under the action buttons and above Correct balance, one line \"Last reminder: today 14:05\", \"yesterday 14:05\" or \"dd/mm/yyyy HH:mm\" (formatTime, 24-hour); \"No reminder sent yet\" when none. It is per person. It is recorded when the merchant taps the WhatsApp reminder button and the app hands over to WhatsApp; it works offline and never claims the message was delivered.",
     "Send another reminder? check: if a reminder to this person was recorded within the last 7 days, tapping the WhatsApp reminder button first opens a bottom sheet: \"You sent {Name} a reminder {today|yesterday|on dd/mm/yyyy} at HH:mm. Sending too many can annoy a customer.\" Buttons: \"Send again\" (strong, primary; opens WhatsApp and records a new reminder) and \"Not now\" (outlined; closes the sheet, nothing recorded). After 7 days or with no reminder the button opens WhatsApp directly. Sending a receipt never counts as a reminder and never triggers the check.",
     "No open debt entries (decided 15 Nov 2026): when the person has no open debt entries, the \"Open debt entries\" heading and its line are not shown at all. With open entries the list and \"Correct this entry\" stay.",
-    "Collection receipt (decided 15 Nov 2026): Receipt and Copy receipt on this screen cover the person's latest payment only, and the label says so (\"Receipt for GH₵30.00 payment\"). A person who has never paid has no receipt buttons. Receipt text: \"Receipt from {Shop}\", \"dd/mm/yyyy HH:mm\" (no comma), \"Received from {Name}: GH₵x (Cash|MoMo)\", \"Balance owed now: GH₵y\" (or \"Nothing owed now\" when zero), \"Thank you!\"."
+    "Collection receipt (decided 15 Nov 2026): Receipt and Copy receipt on this screen cover the person's latest payment only, and the label says so (\"Receipt for GH₵30.00 payment\"). A person who has never paid has no receipt buttons. Receipt text: \"Receipt from {Shop}\", \"dd/mm/yyyy HH:mm\" (no comma), \"Received from {Name}: GH₵x (Cash|MoMo)\", \"Balance owed now: GH₵y\" (or \"Nothing owed now\" when zero), \"Thank you!\".",
+    "Credit rows in the history show the reason line (items or reason) and a tag \"Signed ✓\" or \"Not signed\". Not signed rows at or above the signature threshold show a small \"Get signature\" action that opens 72 for that entry."
    ]
   },
   "30": {
@@ -2299,6 +2309,14 @@
      "type": "navigate",
      "to": "ADDP",
      "to_rule": "Start the add-debt-for-a-person flow (flow=add_debt_person) and go to 53."
+    },
+    {
+     "label": "Show {Name} the record ›",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "73",
+     "effect": "Text-style button under the Last reminder line. Opens 73."
     }
    ],
    "inputs": [],
@@ -2313,7 +2331,8 @@
     "Last reminder line: under the action buttons and above Correct balance, one line \"Last reminder: today 14:05\", \"yesterday 14:05\" or \"dd/mm/yyyy HH:mm\" (formatTime, 24-hour); \"No reminder sent yet\" when none. It is per person. It is recorded when the merchant taps the WhatsApp reminder button and the app hands over to WhatsApp; it works offline and never claims the message was delivered.",
     "Send another reminder? check: if a reminder to this person was recorded within the last 7 days, tapping the WhatsApp reminder button first opens a bottom sheet: \"You sent {Name} a reminder {today|yesterday|on dd/mm/yyyy} at HH:mm. Sending too many can annoy a customer.\" Buttons: \"Send again\" (strong, primary; opens WhatsApp and records a new reminder) and \"Not now\" (outlined; closes the sheet, nothing recorded). After 7 days or with no reminder the button opens WhatsApp directly. Sending a receipt never counts as a reminder and never triggers the check.",
     "No open debt entries (decided 15 Nov 2026): when the person has no open debt entries, the \"Open debt entries\" heading and its line are not shown at all. With open entries the list and \"Correct this entry\" stay.",
-    "Collection receipt (decided 15 Nov 2026): Receipt and Copy receipt on this screen cover the person's latest payment only, and the label says so (\"Receipt for GH₵30.00 payment\"). A person who has never paid has no receipt buttons. Receipt text: \"Receipt from {Shop}\", \"dd/mm/yyyy HH:mm\" (no comma), \"Received from {Name}: GH₵x (Cash|MoMo)\", \"Balance owed now: GH₵y\" (or \"Nothing owed now\" when zero), \"Thank you!\"."
+    "Collection receipt (decided 15 Nov 2026): Receipt and Copy receipt on this screen cover the person's latest payment only, and the label says so (\"Receipt for GH₵30.00 payment\"). A person who has never paid has no receipt buttons. Receipt text: \"Receipt from {Shop}\", \"dd/mm/yyyy HH:mm\" (no comma), \"Received from {Name}: GH₵x (Cash|MoMo)\", \"Balance owed now: GH₵y\" (or \"Nothing owed now\" when zero), \"Thank you!\".",
+    "Credit rows in the history show the reason line (items or reason) and a tag \"Signed ✓\" or \"Not signed\". Not signed rows at or above the signature threshold show a small \"Get signature\" action that opens 72 for that entry."
    ]
   },
   "44": {
@@ -3790,6 +3809,81 @@
    "inputs": [],
    "bottom_bar": false,
    "note": "Stands in for 31 after the add-debt flow (53 NEXT53). Built; kept."
+  },
+  "72": {
+   "name": "Customer signs",
+   "component": "CustomerSignature",
+   "controls": [
+    {
+     "label": "Clear",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Erases the drawing. Done goes back to disabled."
+    },
+    {
+     "label": "Done",
+     "role": null,
+     "disabled_initially": true,
+     "type": "navigate",
+     "to": "SIGNED",
+     "effect": "Disabled until at least one stroke is drawn. Saves the signature on the credit entry with signedAt, then continues as the save would have (31, or the split/ManualDebtSaved destination)."
+    },
+    {
+     "label": "Skip for now",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "SIGNED",
+     "effect": "Underlined text link, never a button-looking primary. The credit stays saved as Not signed. Continues exactly as Done does."
+    }
+   ],
+   "inputs": [
+    {
+     "label": "Signature box",
+     "type": "drawing",
+     "effect": "Dashed 190px box, text 'Sign here with your finger' disappears on the first stroke. Touch and pen only drawing, no scrolling while drawing (touch-action none)."
+    }
+   ],
+   "bottom_bar": false,
+   "rules": [
+    "Shown after saving a credit of GH₵50.00 or more (VITE_SIGNATURE_THRESHOLD_PESEWAS, default 5000, read only in src/config/features.js). The credit is ALREADY saved before this screen opens; nothing here can block or undo it.",
+    "Title \"Please sign\". Pink card, read-only: \"{Name} owes {Shop} GH₵x\", \"For: {items or reason}\", \"Taken: dd/mm/yyyy\", \"Pay by: dd/mm/yyyy\" (only when a due date exists). Amount through formatGhs, dates through formatDate.",
+    "The phone is handed to the customer. Text at least 18px, buttons 52px or more, Done full width.",
+    "Done is disabled until ink exists. Skip for now is always available. Leaving by Back or closing the app counts as Skip for now.",
+    "Storage: small vector strokes (or compressed PNG under 20 KB) saved on the debt event as signature plus signedAt. Local only, included in backup and restore. Never sent anywhere in this version.",
+    "Honest limit: a signature shows the customer saw and accepted this amount; it is not a legal proof. Do not use the words legal, proof or guaranteed anywhere in the UI."
+   ]
+  },
+  "73": {
+   "name": "Show {Name} the record",
+   "component": "CustomerRecordView",
+   "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK"
+    },
+    {
+     "label": "Back to shop",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "effect": "Same as Back. Large button at the bottom so the merchant can take the phone back."
+    }
+   ],
+   "inputs": [],
+   "bottom_bar": false,
+   "rules": [
+    "Read only. No edit, collect, correct, reminder or delete controls exist on this screen. Opened from 29 and 43 by \"Show {Name} the record ›\".",
+    "Top: {Name}, then pink card \"You owe GH₵x\" (balance, wording for the customer). Below: \"What happened\", newest first, one card per event: Paid (amount, \"dd/mm/yyyy or Today HH:mm · Cash GH₵x, MoMo GH₵y\"), Took on credit (amount in dark red, date/time, what for, tag \"Signed ✓\" green or \"Not signed\" grey).",
+    "Every credit row shows what it was for (items, or the reason typed on 54/53). A credit with no items and no reason shows \"No reason written\".",
+    "Caption: \"Read only. Please hand the phone back when you are done.\"",
+    "No private shop data on this screen: no profit, cost, other customers, totals or phone numbers."
+   ]
   }
  },
  "integration": {
@@ -3826,7 +3920,8 @@
    }
   },
   "back_button": {
-   "rule": "Every POS screen with a Back button uses the one shared PosBackButton: label \"‹ Back\", bold (800) 18px, 52px tall, 2px #0F172A border, accessible name \"Back\". Where Back sits in a bottom row beside a main button, both have the same height (56px). Button text is bold as in the prototype. Text must never wrap to a third line on a 360px-wide phone; shorten the label or reduce the side padding instead of letting the button grow."
+   "rule": "Every POS screen with a Back button uses the one shared PosBackButton: label \"Back\" with an arrow-left icon before it (decided 16 Nov 2026; replaces the small ‹ character), bold (800) 18px, 52px tall, 2px #0F172A border, accessible name \"Back\". Where Back sits in a bottom row beside a main button, both have the same height (56px). Button text is bold as in the prototype. Text must never wrap to a third line on a 360px-wide phone; shorten the label or reduce the side padding instead of letting the button grow.",
+   "icon": "Arrow-left SVG, 24x24 viewBox, stroke currentColor, stroke width 2.6, round caps and joins, path \"M19 12H5M11 5l-7 7 7 7\", drawn 24px, 6px gap to the word, aria-hidden. The word stays: never an icon-only Back. The text character ‹ is not used anywhere. Every Back goes through PosBackButton; a test fails if any screen renders its own Back."
   },
   "person_names": "Person names (customers and suppliers) are shown capitalised everywhere (Juju, Kofi Mensah, Kofi Wholesale) through one shared displayName helper, without changing the stored name. Rule: when the stored name is all lower case or all upper case, show it in Title Case (first letter of every word capital, the rest lower case): \"kofi mensah\" and \"KOFI MENSAH\" both show \"Kofi Mensah\". A name typed in mixed case (for example \"Nana Yaa\" or \"Kofi McDonald\") is shown as typed with the first letter capital. Applies to 16 Owe row, 17, 18, 19, 24 chips, 30, 31, 43, 32, Home cards, buttons such as \"WhatsApp Kofi Mensah\" and \"See Kofi Mensah's details\", messages, sheets, and the WhatsApp and receipt text. Title Case also capitalises the letter after a hyphen: \"FRIMPOMAA-BOATENG\" shows \"Frimpomaa-Boateng\".",
   "draft_survives_trip_away": "Draft survives a trip away (decided 12 Nov 2026), for every form or multi-step task: when the owner goes from a screen to another screen of the same task (to pick, set up, confirm or review something) and returns with Back or the phone back button, everything typed or chosen on the screen they left is still there. This applies to 15, 16, 17 (search text), 19, 20 (items in the cart), 25/26 (collect amount and method), 27, 34, 35 (chosen businesses and categories, also after 51), 44 and 45 (amount, category, stock total, paid now, chosen or typed supplier, pay-by date), 47 (an unsaved Shop name when going to 63, 64 or 71), 53, 55, 60 and 63 (unsaved choices when going to 60). Kept values live in the route parameters. Cleared only by saving or finishing (Done, Save, Save plan), the header Home, another bottom-bar tab, or Leave in the leave question. Not applicable where Back deliberately cancels a standalone form with no trip away (closing a sheet, Cancel on 54, Back from 41 New item with nothing sent elsewhere): those discard as designed.",
@@ -3874,7 +3969,17 @@
    "check": "Within 7 days of the last reminder the Send another reminder? sheet appears; Send again is the strong button.",
    "wording": "today HH:mm, yesterday HH:mm, else dd/mm/yyyy HH:mm; 'No reminder sent yet' when none. Never says delivered."
   },
-  "form_errors": "Errors on every form (decided 16 Nov 2026): a message appears only after the owner taps the main button with a problem, names only what is wrong, and disappears as soon as that problem is fixed (no second tap needed). A fresh or returning form never shows an error. One shared behaviour; a test per form that has an error box."
+  "form_errors": "Errors on every form (decided 16 Nov 2026): a message appears only after the owner taps the main button with a problem, names only what is wrong, and disappears as soon as that problem is fixed (no second tap needed). A fresh or returning form never shows an error. One shared behaviour; a test per form that has an error box.",
+  "customer_proof": {
+   "decided": "16 Nov 2026",
+   "why": "A merchant could add credit without the customer knowing, and a customer could deny real credit. A tap-only I agree can be tapped by the merchant, so the customer signs with a finger instead.",
+   "show_the_customer": "29 and 43 have Show {Name} the record, a read-only screen 73 the customer can read.",
+   "signature": "Credits of GH₵50.00 or more open 72 after saving. Skip for now always allowed; the credit is never blocked. Unsigned credits are tagged Not signed and can be signed later with Get signature.",
+   "threshold": "VITE_SIGNATURE_THRESHOLD_PESEWAS, default 5000, read only in src/config/features.js.",
+   "what_for": "Every credit shows its reason on 29, 43 and 73.",
+   "stored": "signature (vector strokes) and signedAt live on the debt event, local, in backup and restore. Dexie version bump only if a new table is needed; prefer fields on the existing event.",
+   "deferred": "Customer confirmation by link on WhatsApp with a server timestamp waits for the backend. Codes generated on the phone are NOT used: they prove nothing and conflict with MoMo anti-fraud advice."
+  }
  },
  "built_extras_kept": {
   "24": "row tags Collected Debt, Balance correction, Added to debt",
