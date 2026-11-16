@@ -232,7 +232,7 @@ const NUMBER_ALLOWED = [
   ["lib/formatDate.js", "Number(match[", "digits of an ISO date"],
   ["lib/formatGhs.js", "Number(pesewas)", "shows whole pesewas, nothing is parsed"],
   ["lib/subscriptionTrial.js", "Number(value)", "trial length from the build environment"],
-  ["pos/DebtCollection.jsx", "Number(timestamp)", "a timestamp"],
+  ["pos/historyRows.js", "Number(timestamp)", "a timestamp (moved from DebtCollection.jsx, 16 Nov 2026)"],
   ["pos/DebtCollection.jsx", "Number(debt.lastReminderAt)", "a timestamp"],
   ["pos/momoConfig.js", "Number(text)", "fee from the build environment, checked as digits first"],
   ["pos/planPayments.js", "Number(payment.createdAt)", "a timestamp"],

@@ -7,10 +7,9 @@ import { correctDebtBalance } from "../db/debtLedger.js";
 import { formatLastReminder } from "./reminderLabel.js";
 import { useReminderCheck } from "./ReminderCheck.jsx";
 import { latestReminderAt, loadReminderEvents } from "../db/reminders.js";
-import { formatDate, formatTime } from "../lib/formatDate.js";
+import { formatDate } from "../lib/formatDate.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { formatGhanaCard } from "../utils/formatters.js";
-import { formatHistoryTimestamp } from "../utils/customerDebtHistory.js";
 import { loadCustomerHistory } from "../utils/loadCustomerDebtHistory.js";
 import { getOutstandingDebtPesewas } from "../lib/money.js";
 import { buildWhatsAppReminderText, generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
@@ -39,6 +38,7 @@ import { displayName } from "../lib/displayName.js";
 import { DueTag } from "./PartyCard.jsx";
 import { useFormErrors } from "./formErrors.js";
 import AmountTextInput from "./AmountTextInput.jsx";
+import { formatHistoryRowTimestamp, groupCollectionHistory } from "./historyRows.js";
 
 const PAYMENT_METHODS = [
   { value: "cash", label: "collect.cash", icon: Banknote },
@@ -65,40 +65,6 @@ function latestPaymentReceiptOrNull(details) {
     console.error("Could not build the receipt for the latest payment.", error);
     return null;
   }
-}
-
-function groupCollectionHistory(events) {
-  const rows = new Map();
-  for (const event of events) {
-    if (event.type !== "payment" || !event.collectionId) {
-      rows.set(event.id, event);
-      continue;
-    }
-    const id = `collection-${event.collectionId}`;
-    const row = rows.get(id) ?? {
-      id,
-      type: "payment",
-      timestamp: event.timestamp,
-      amountPesewas: 0,
-      collectionParts: []
-    };
-    row.amountPesewas += event.amountPesewas;
-    row.collectionParts.push({ method: event.method, amountPesewas: event.amountPesewas });
-    rows.set(id, row);
-  }
-  return [...rows.values()].sort((left, right) => right.timestamp - left.timestamp);
-}
-
-function formatHistoryRowTimestamp(timestamp) {
-  const value = timestamp instanceof Date ? timestamp.getTime() : Number(timestamp);
-  if (!Number.isFinite(value) || value <= 0) return formatHistoryTimestamp(timestamp).date;
-  const date = new Date(value);
-  const today = new Date();
-  const isToday = date.getFullYear() === today.getFullYear() &&
-    date.getMonth() === today.getMonth() &&
-    date.getDate() === today.getDate();
-  const time = formatTime(date);
-  return isToday ? `Today ${time}` : `${formatDate(date)} ${time}`;
 }
 
 function useCollectionDebt(debtId, customerName) {
@@ -859,6 +825,19 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
           {/* Wiring 29/43: Last reminder, under the action buttons and above Correct balance. Per
               person; it says when the reminder was handed to WhatsApp, never that it was delivered. */}
           <p data-last-reminder="" className="text-center text-base text-slate-800">{lastReminderLabel}</p>
+          {/* Wiring 29/43 (16 Nov 2026): "Show {Name} the record ›" under the Last reminder line opens 73,
+              read only, for the customer to read. One line: a long name is cut, never the words around it. */}
+          <button
+            type="button"
+            data-show-record=""
+            aria-label={t("record.show", { name: displayName(data.name) })}
+            onClick={() => onNavigate("CustomerRecordView", { customerId: data.customerId, customerName: data.name })}
+            className="flex h-[52px] w-full min-w-0 items-center justify-center gap-1 whitespace-nowrap rounded-[14px] border-2 border-[#0F172A] bg-white px-3 text-lg font-extrabold text-[#0F172A]"
+          >
+            <span className="shrink-0">Show</span>{" "}
+            <span className="min-w-0 truncate">{displayName(data.name)}</span>{" "}
+            <span className="shrink-0">the record ›</span>
+          </button>
           {balanceReceiptText && (
             <>
               <div className="flex flex-col gap-2">

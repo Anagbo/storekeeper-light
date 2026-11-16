@@ -52,6 +52,7 @@ import { SettingsProfitTools } from "./SettingsScreens.jsx";
 import PeopleWhoOweYou from "./OwedScreens.jsx";
 import { ManualDebtAmount, ManualDebtSaved } from "./ManualDebtScreens.jsx";
 import CustomerSignature from "./CustomerSignature.jsx";
+import CustomerRecordView from "./CustomerRecordView.jsx";
 import { PHONE_REQUEST_ENABLED, getMerchantMomoSettings } from "./momoConfig.js";
 import { MoMoChoice,MoMoCode, MoMoDirect, MoMoNotCompleted, MoMoPayment, MoMoSetup, MoMoWaiting, PaymentSettings } from "./MoMoScreens.jsx";
 import { MyPlan, PlanPayCash, PlanPayMethod, PlanPayMoMo, PlanPayPhone, PlanPaymentResult } from "./PlanScreens.jsx";
@@ -472,7 +473,7 @@ export default function PosApp() {
   const isCollectSheet = route === POS_ROUTES.CollectPayment;
   // 72 and 73: the phone is in the customer's hand. No Menu button; the header keeps its Home tile,
   // as on 29 and in the prototype. The side menu stays on wide screens.
-  const isCustomerScreen = route === POS_ROUTES.CustomerSignature;
+  const isCustomerScreen = route === POS_ROUTES.CustomerSignature || route === POS_ROUTES.CustomerRecordView;
   const isFocusedCollectionScreen = (route === POS_ROUTES.SplitPayment && Boolean(routeState.params.debtId)) || [
     POS_ROUTES.CollectPayPart,
     POS_ROUTES.PaymentReceived,
@@ -677,6 +678,8 @@ export default function PosApp() {
     />
   ) : route === POS_ROUTES.CustomerSignature ? (
     <CustomerSignature params={routeState.params} onFinish={finishSignature} shopName={shopName} />
+  ) : route === POS_ROUTES.CustomerRecordView ? (
+    <CustomerRecordView params={routeState.params} onBack={navigateBack} />
   ) : route === POS_ROUTES.SpentMoney ? (
     <SpentMoney params={routeState.params} onBack={navigateBack} onNavigate={navigate} onUpdateParams={updateCurrentParams} onSave={saveExpense} />
   ) : route === POS_ROUTES.StockOnCredit ? (

@@ -93,7 +93,9 @@ test("at 340, 360 and 393px (29 and 43, short and long name): Back is 52px, one 
     }
   }
   const widths = [340, 360, 393];
-  const results = measureInFrames({ pages, css: await appCss(), widths, measure: MEASURE });
+  // 1300px tall frames: the whole page fits, so no desktop scrollbar (a phone's scrollbar overlays the page)
+  // takes width from the header. Show {Name} the record (16 Nov 2026) made 29/43 taller than 900px.
+  const results = measureInFrames({ pages, css: await appCss(), widths, height: 1300, measure: MEASURE });
   assert.equal(results.length, pages.length * widths.length);
   for (const result of results) {
     const where = `${result.page} at ${result.width}px`;

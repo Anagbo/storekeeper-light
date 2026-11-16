@@ -7,8 +7,8 @@ import { NOT_BUILT_YET, isNotBuiltYetControl, isNotBuiltYetScreen } from "./help
 
 // customer proof feature, remove when built: the allow-list used by batch16BottomBar, routeScreens
 // and wp5.contract holds only 72, 73 and the one control on 29/43, and nothing else.
-test("the not-built-yet allow-list holds only 73 and the Show {Name} the record control (72 is built)", () => {
-  assert.deepEqual([...NOT_BUILT_YET.screens], ["73"]);
+test("the not-built-yet allow-list holds only the Show {Name} the record control (72 and 73 are built)", () => {
+  assert.deepEqual([...NOT_BUILT_YET.screens], []);
   assert.deepEqual(NOT_BUILT_YET.controls.map((entry) => ({ ...entry, on: [...entry.on] })),
     [{ label: "Show {Name} the record ›", to: "73", on: ["29", "43"] }]);
   assert.deepEqual(Object.keys(NOT_BUILT_YET).sort(), ["controls", "screens"]);
@@ -29,7 +29,7 @@ test("the allow-list entries are the customer proof screens in the wiring, and t
 
 test("the allow-list matches nothing else: other screens and controls are still checked", () => {
   for (const id of Object.keys(wiring.screens)) {
-    assert.equal(isNotBuiltYetScreen(id), id === "73", `screen ${id}`);
+    assert.equal(isNotBuiltYetScreen(id), false, `screen ${id}`);
   }
   const skipped = Object.entries(wiring.screens).flatMap(([id, screen]) =>
     screen.controls.filter((control) => isNotBuiltYetControl(id, control)).map((control) => `${id}:${control.label}`));

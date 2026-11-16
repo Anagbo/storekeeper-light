@@ -704,7 +704,17 @@ const ENGLISH = Object.freeze({
   "signature.skip": "Skip for now",
   "signature.alreadySigned": "This credit is already signed.",
   "signature.saveFailed": "The signature could not be saved. The credit is still saved. Try again, or tap Skip for now.",
-  "signature.notFound": "This credit could not be found here. It is still saved. Tap Skip for now."
+  "signature.notFound": "This credit could not be found here. It is still saved. Tap Skip for now.",
+  "proof.getSignature": "Get signature",
+  "record.show": "Show {name} the record ›",
+  "record.youOwe": "You owe",
+  "record.tookOnCredit": "Took on credit",
+  "record.corrected": "Balance corrected",
+  "record.reason": "Reason: {reason}",
+  "record.caption": "Read only. Please hand the phone back when you are done.",
+  "record.backToShop": "Back to shop",
+  "record.nothingYet": "Nothing recorded yet.",
+  "record.notFound": "This record could not be found."
 });
 
 // True when the string exists. Screens use this to fall back to plain words instead of

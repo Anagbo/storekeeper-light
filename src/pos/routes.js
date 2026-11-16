@@ -55,6 +55,7 @@ export const POS_ROUTES = Object.freeze({
   ,PlanPayPhone: "PlanPayPhone"
   ,PlanPaymentResult: "PlanPaymentResult"
   ,CustomerSignature: "CustomerSignature"
+  ,CustomerRecordView: "CustomerRecordView"
 });
 
 export const POS_LINKS = Object.freeze([
@@ -228,7 +229,10 @@ export const POS_LINKS = Object.freeze([
   { from: "CustomerSignature", action: "signed", to: "ManualDebtSaved" },
   // Get signature on 29/43 pushes 72; Done, Skip for now and Back return there.
   { from: "DebtorDetail", action: "getSignature", to: "CustomerSignature" },
-  { from: "CustomerSignature", action: "signed", to: "DebtorDetail", via: "history" }
+  { from: "CustomerSignature", action: "signed", to: "DebtorDetail", via: "history" },
+  // Wiring 73: "Show {Name} the record ›" on 29/43; Back and Back to shop return there.
+  { from: "DebtorDetail", action: "showRecord", to: "CustomerRecordView" },
+  { from: "CustomerRecordView", action: "back", to: "DebtorDetail", via: "history" }
 ]);
 
 export function createRouteState(route = POS_ROUTES.Home, params = {}) {

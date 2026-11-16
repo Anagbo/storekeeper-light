@@ -5,7 +5,7 @@
 // exactly these; any other missing screen or control still fails. notBuiltYet.test.js checks this
 // list holds only these entries and fails once any of them is built.
 export const NOT_BUILT_YET = Object.freeze({
-  screens: Object.freeze(["73"]),
+  screens: Object.freeze([]),
   controls: Object.freeze([Object.freeze({ label: "Show {Name} the record ›", to: "73", on: Object.freeze(["29", "43"]) })])
 });
 
