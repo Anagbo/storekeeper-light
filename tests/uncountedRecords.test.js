@@ -155,7 +155,7 @@ async function mountMyMoney(report) {
 function baseReport(uncounted) {
   return {
     summary: { moneyIn: 8000, cashIn: 5000, momoIn: 3000, moneySpent: 0, spentStock: 0, spentOther: 0, moneyLeft: 8000, sales: 8000, stockBought: 0, otherCosts: 0, profit: 8000 },
-    comparison: null, showProfit: true, averageProfitPesewas: null, debtPesewas: 0, supplierBalancePesewas: 0, uncounted
+    comparison: null, hideAmounts: false, showProfit: true, averageProfitPesewas: null, debtPesewas: 0, supplierBalancePesewas: 0, uncounted
   };
 }
 

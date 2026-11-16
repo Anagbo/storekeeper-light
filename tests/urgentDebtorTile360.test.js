@@ -12,7 +12,7 @@ const LONG_NAME = "Nana Akosua Frimpomaa-Boateng Asantewaa of Kejetia Market";
 
 async function renderTile(debt) {
   const { default: Home } = await loadJsx("src/pos/Home.jsx");
-  setLiveQuery(() => ({ totals: { cashLeft: 0, moneyIn: 0, moneySpent: 0 }, debtPesewas: debt.amountPesewas, urgentDebt: debt }));
+  setLiveQuery(() => ({ hideAmounts: false, totals: { cashLeft: 0, moneyIn: 0, moneySpent: 0 }, debtPesewas: debt.amountPesewas, urgentDebt: debt }));
   try {
     const view = render({ type: Home, props: { onNavigate() {} } });
     return [...walk(view.tree)];

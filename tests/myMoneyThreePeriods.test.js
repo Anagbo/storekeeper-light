@@ -185,7 +185,7 @@ function screenReport(summaryOverrides = {}) {
       cashShouldHave: 2500, momoShouldHave: 2000, moneyLeft: 4200, sales: 5000, stockBought: 0, otherCosts: 1800, profit: 3200,
       ...summaryOverrides
     },
-    comparison: null, uncounted: { sales: 0, other: 0 }, showProfit: true, averageProfitPesewas: 1000, debtPesewas: 9300, supplierBalancePesewas: 28000
+    comparison: null, uncounted: { sales: 0, other: 0 }, hideAmounts: false, showProfit: true, averageProfitPesewas: 1000, debtPesewas: 9300, supplierBalancePesewas: 28000
   };
 }
 async function mount(report) {

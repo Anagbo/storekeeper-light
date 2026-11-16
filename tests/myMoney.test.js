@@ -180,6 +180,7 @@ function reportFor(overrides = {}) {
       moneyLeft: 4000, sales: 30000, stockBought: 15000, otherCosts: 3000, profit: 12000
     },
     comparison: { kind: "more", amountPesewas: 2500 },
+    hideAmounts: false,
     showProfit: true,
     averageProfitPesewas: 9500,
     debtPesewas: 9300,
@@ -314,7 +315,11 @@ test("3.11: only one strong colour block; the other cards are white with a thin 
 test("3.11: amounts come from the formatter, not typed in the screen", () => {
   const source = readFileSync(new URL("../src/pos/MyMoney.jsx", import.meta.url), "utf8");
   assert.doesNotMatch(source, /GH₵|toFixed\(|\/ 100/);
-  assert.match(source, /formatGhs/);
+  // Every figure goes through the shared Amount / amountText (rules_global.hide_amounts), which
+  // format with formatGhs; no figure bypasses the shared hidden rendering.
+  assert.match(source, /<Amount |amountText\(/);
+  assert.doesNotMatch(source, /formatGhs/);
+  assert.match(readFileSync(new URL("../src/pos/HiddenAmount.jsx", import.meta.url), "utf8"), /formatGhs\(pesewas\)/);
 });
 
 // ---- Settings: one switch ---------------------------------------------------------------------

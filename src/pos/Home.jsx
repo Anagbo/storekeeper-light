@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Banknote, CirclePlus, ShoppingCart, UserRoundPen } from "lucide-react";
 import { db } from "../db/db.js";
+import { loadHideAmounts, saveHideAmounts } from "../db/preferences.js";
 import { latestReminderAt, loadReminderEvents } from "../db/reminders.js";
 import {
   formatGhs,
@@ -18,6 +19,7 @@ import {
   getMostUrgentCustomerDebt,
   summarizeOwedPeople,
 } from "./money.js";
+import { Amount, HideAmountsButton } from "./HiddenAmount.jsx";
 import { callHrefFor, PartyCard } from "./PartyCard.jsx";
 import { PosCard, PosPage } from "./PosComponents.jsx";
 import { useReminderCheck } from "./ReminderCheck.jsx";
@@ -46,10 +48,12 @@ export function countUncountedInPeriod(skipped = [], range, transactions = []) {
 export default function Home({ onNavigate, notice = "" }) {
   const range = useMemo(() => getMoneyPeriodRange("day"), []);
   const data = useLiveQuery(async () => {
-    const [transactions, debts, reminderEvents] = await Promise.all([
+    // rules_global.hide_amounts: the setting loads with the figures, so they never show before it is known.
+    const [transactions, debts, reminderEvents, hideAmounts] = await Promise.all([
       getFinancialTransactions(range),
       db.debts.where("status").equals("unpaid").toArray(),
-      loadReminderEvents()
+      loadReminderEvents(),
+      loadHideAmounts()
     ]);
     // A record that cannot be counted is left out and logged; it must not stop Home loading.
     const { totals, skipped } = summarizePosMoneySafely(transactions);
@@ -60,6 +64,7 @@ export default function Home({ onNavigate, notice = "" }) {
       name: urgentDebt.customerName
     } : null;
     return {
+      hideAmounts,
       totals,
       debtPesewas: getOutstandingDebtPesewas(debts),
       urgentDebt,
@@ -92,6 +97,9 @@ export default function Home({ onNavigate, notice = "" }) {
   ].filter(Boolean).join(" · ");
   const uncountedSales = data?.uncounted?.sales ?? 0;
   const uncountedOther = data?.uncounted?.other ?? 0;
+  // Hidden until the setting is known to be false (wiring 22 Hide amounts): a real amount never flashes.
+  const hidden = data?.hideAmounts !== false;
+  const toggleHidden = () => saveHideAmounts(!hidden).catch(() => {});
 
   return (
     <PosPage style={{ paddingTop: 14 }} className="flex flex-col gap-3 px-4 sm:px-6 lg:min-h-0 lg:grid lg:grid-cols-2 lg:content-start lg:items-start lg:gap-5">
@@ -101,16 +109,19 @@ export default function Home({ onNavigate, notice = "" }) {
       ) : (
         <>
           <section aria-label={t("home.cashLeftToday")} className="amount-fit-container rounded-3xl bg-emerald-900 p-[18px] text-white lg:col-span-2 lg:p-7">
-            <p className="text-lg font-bold">{t("home.cashLeftToday")}</p>
-            <p className="amount-fit mt-0.5 font-extrabold tracking-tight">{formatGhs(data.totals.cashLeft)}</p>
+            <div className="-my-1.5 flex items-center justify-between gap-2">
+              <p className="min-w-0 text-lg font-bold">{t("home.cashLeftToday")}</p>
+              <HideAmountsButton hidden={hidden} onToggle={toggleHidden} className="border-white/70 bg-white/10 text-white" />
+            </div>
+            <p className="amount-fit mt-0.5 font-extrabold tracking-tight"><Amount hidden={hidden} pesewas={data.totals.cashLeft} /></p>
             <div className="mt-2.5 flex gap-2 lg:mt-5 lg:max-w-2xl lg:gap-4">
               <div className="amount-fit-container min-w-0 flex-1 rounded-[14px] bg-white/20 px-3 py-2 lg:px-5 lg:py-4">
                 <p className="text-base font-bold lg:text-lg">{t("home.moneyIn")}</p>
-                <p className="amount-fit font-extrabold">{formatGhs(data.totals.moneyIn)}</p>
+                <p className="amount-fit font-extrabold"><Amount hidden={hidden} pesewas={data.totals.moneyIn} /></p>
               </div>
               <div className="amount-fit-container min-w-0 flex-1 rounded-[14px] bg-white/20 px-3 py-2 lg:px-5 lg:py-4">
                 <p className="text-base font-bold lg:text-lg">{t("home.moneySpent")}</p>
-                <p className="amount-fit font-extrabold">{formatGhs(data.totals.moneySpent)}</p>
+                <p className="amount-fit font-extrabold"><Amount hidden={hidden} pesewas={data.totals.moneySpent} /></p>
               </div>
             </div>
           </section>
@@ -138,7 +149,7 @@ export default function Home({ onNavigate, notice = "" }) {
             <button type="button" onClick={() => onNavigate("PeopleWhoOweYou")} aria-label={t("home.owedSeeAllAria")} className="flex w-full min-w-0 flex-wrap items-start justify-between gap-x-2 gap-y-1 text-left text-[#0F172A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800">
               <span className="min-w-0">
                 <span className="block text-[17px] font-bold text-slate-600">{t("home.owedToYou")}</span>
-                <b data-owed-total="" className="block whitespace-nowrap text-[30px] font-extrabold leading-tight text-[#0F172A]">{formatGhs(data.debtPesewas)}</b>
+                <b data-owed-total="" className="block whitespace-nowrap text-[30px] font-extrabold leading-tight text-[#0F172A]"><Amount hidden={hidden} pesewas={data.debtPesewas} /></b>
                 {owedPeople > 0 && <span data-owed-count="" className="mt-0.5 block text-[15px] text-slate-600">{owedCountLine}</span>}
               </span>
               <span className="shrink-0 whitespace-nowrap pt-0.5 text-[17px] font-extrabold text-emerald-900">{t("home.seeAll")}</span>
