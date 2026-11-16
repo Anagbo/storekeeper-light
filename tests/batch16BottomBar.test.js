@@ -74,7 +74,6 @@ const hasContractExit = (screen) => screen.controls.some((control) => control.to
 const EXIT_IN_CODE_ONLY = {
   "16": { file: "src/pos/SplitPayment.jsx", fn: "SplitPayment", needle: "onClick={onBack}" },
   "17": { file: "src/pos/CreditScreens.jsx", fn: "WhoOwesYou", needle: "onClick={onBack}" },
-  "18": { file: "src/pos/CreditScreens.jsx", fn: "WhenWillTheyPay", needle: "onClick={onBack}" },
   "20": { file: "src/pos/SellWithItems.jsx", fn: "SellWithItems", needle: "onClick={onBack}" },
   ManualDebtSaved: { file: "src/pos/ManualDebtScreens.jsx", fn: "ManualDebtSaved", needle: "onClick={onDone}" }
 };
