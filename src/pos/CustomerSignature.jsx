@@ -106,7 +106,8 @@ export default function CustomerSignature({ params = {}, onFinish, shopName }) {
       <button type="button" onClick={() => { setStrokes([]); setError(""); }} disabled={saving} className="h-[60px] w-full rounded-2xl border-[3px] border-slate-500 bg-white px-2 text-xl font-extrabold text-slate-900 disabled:opacity-50">
         {t("signature.clear")}
       </button>
-      <button type="button" onClick={skip} disabled={saving} className="min-h-[52px] self-center px-3 text-[19px] font-bold text-slate-800 underline underline-offset-4">
+      {/* Skip for now: grey outline (rules_global.button_system.leave), full width, 52px, below Clear. */}
+      <button type="button" onClick={skip} disabled={saving} className="h-[52px] w-full rounded-2xl border-2 border-[#64748B] bg-white px-2 text-[19px] font-bold text-[#334155] disabled:opacity-50">
         {t("signature.skip")}
       </button>
     </PosPage>

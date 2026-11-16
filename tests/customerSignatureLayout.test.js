@@ -4,8 +4,8 @@ import { appCss, browser, measureInFrames, toHtml } from "./helpers/browserLayou
 import { loadJsx, render, setLiveQuery } from "./helpers/renderJsx.js";
 
 // Wiring 72 layout (16 Nov 2026), real browser at 340, 360 and 393px: Back (PosBackButton) and the title
-// "Please sign" on the top row; Clear above Done, both full width and 60px; Skip for now an underlined
-// link below; nothing wraps or scrolls sideways, with a long name, shop, amount and reason.
+// "Please sign" on the top row; Done, then Clear, both full width and 60px; then Skip for now, a
+// grey-outline full-width 52px button (button_system.leave); nothing wraps or scrolls sideways, with a long name, shop, amount and reason.
 
 const skip = browser ? false : "no Chrome or Edge found (set HEADER_TEST_BROWSER)";
 
@@ -41,7 +41,7 @@ const MEASURE = `(frame, win, doc) => {
     title: { ...box(title), lines: textLines(title), text: title.textContent },
     clear: { ...box(byText("Clear")), lines: textLines(byText("Clear")) },
     done: { ...box(byText("Done")), lines: textLines(byText("Done")) },
-    skip: { ...box(skipLink), lines: textLines(skipLink), underline: win.getComputedStyle(skipLink).textDecorationLine },
+    skip: { ...box(skipLink), lines: textLines(skipLink), border: win.getComputedStyle(skipLink).borderTopColor, borderWidth: win.getComputedStyle(skipLink).borderTopWidth, color: win.getComputedStyle(skipLink).color, fill: win.getComputedStyle(skipLink).backgroundColor, weight: win.getComputedStyle(skipLink).fontWeight },
     pad: box(doc.querySelector("[data-signature-box]")),
     amountLines: textLines(doc.querySelector("[data-sign-amount]")),
     buttons: [...doc.querySelectorAll("button")].map((el) => ({ name: (el.getAttribute("aria-label") || el.textContent).trim(), lines: textLines(el), left: el.getBoundingClientRect().left, right: el.getBoundingClientRect().right, clipped: el.scrollWidth > el.clientWidth + 1 }))
@@ -72,10 +72,15 @@ test("72 at 340, 360 and 393px: Back and title on top, Done above Clear, both fu
     }
     assert.ok(done.top >= pad.bottom, `${where}: Done is below the signature box`);
     assert.ok(clear.top >= done.bottom, `${where}: Done is above Clear`);
-    // Skip for now: an underlined link below Clear, 52px or more.
+    // Skip for now: grey outline (2px #64748B border, #334155 bold text, white fill), full width, 52px, below Clear.
     assert.ok(skipLink.top >= clear.bottom, `${where}: Skip for now is below Clear`);
-    assert.ok(skipLink.height >= 52, `${where}: Skip for now is 52px or more (${skipLink.height})`);
-    assert.match(skipLink.underline, /underline/, `${where}: Skip for now is underlined`);
+    assert.ok(Math.abs(skipLink.height - 52) < 0.5, `${where}: Skip for now is 52px (${skipLink.height})`);
+    assert.ok(Math.abs(skipLink.left - content.left) < 1 && Math.abs(skipLink.right - content.right) < 1, `${where}: Skip for now is full width`);
+    assert.deepEqual(
+      { border: skipLink.border, borderWidth: skipLink.borderWidth, color: skipLink.color, fill: skipLink.fill, weight: skipLink.weight },
+      { border: "rgb(100, 116, 139)", borderWidth: "2px", color: "rgb(51, 65, 85)", fill: "rgb(255, 255, 255)", weight: "700" },
+      `${where}: Skip for now is the grey-outline button`
+    );
     assert.equal(result.amountLines, 1, `${where}: the amount is one line`);
     for (const button of result.buttons) {
       assert.equal(button.lines, 1, `${where}: "${button.name}" is one line`);
