@@ -45,6 +45,19 @@ test("shared rule: typing replays the keys, a pasted third decimal rounds", () =
   assert.equal(typeAmountText("-1", "200.00"), "200.00", "a sign is refused");
   assert.equal(typeAmountText("GH₵ 12.50", ""), "12.50", "the sign and spaces are dropped");
   assert.equal(typeAmountText("1e2", "1"), "1", "exponent text is refused");
+  // Zero (amount_entry, 16 Nov 2026): a lone 0 stays visible; 05 is 5; 0.5 and 0.00 are kept.
+  assert.equal(typeAmountText("0", ""), "0", "a lone 0 typed into an empty field");
+  assert.equal(typeAmountText("0", "200.00"), "0", "0 over the selected amount");
+  assert.equal(typeAmountText("05", "0"), "5", "a digit after a lone 0 replaces it");
+  assert.equal(typeAmountText("50", "5"), "50", "a zero after a digit is kept");
+  assert.equal(typeAmountText("00", "0"), "0", "a second leading zero is dropped");
+  assert.equal(typeAmountText("0.", "0"), "0.");
+  assert.equal(typeAmountText("0.5", "0."), "0.5");
+  assert.equal(typeAmountText("0.00", "0.0"), "0.00");
+  assert.equal(typeAmountText("0.000", "0.00"), "0.00", "two decimals at most");
+  assert.equal(typeAmountText("0.00", ""), "0.00", "pasted 0.00");
+  assert.equal(typeAmountText("007", ""), "7", "pasted leading zeros go");
+  assert.equal(typeAmountText("-0", "200.00"), "200.00", "a sign is refused, also with 0");
 });
 
 // One field, through its own screen: GH₵ on the left, right-aligned, focus selects, and the rules.
@@ -72,6 +85,20 @@ async function checkField(name, getField, rerender, { start } = {}) {
   assert.equal(await type("2.50x"), "2.50", `${name}: digits only`);
   assert.equal(await type(""), "");
   assert.equal(await type("1.005"), "1.01", `${name}: pasted text still rounds`);
+
+  // Zero in a typed field (amount_entry, 16 Nov 2026): a lone 0 stays visible, 05 is 5, 0.5 and 0.00 stay.
+  assert.equal(await type(""), "");
+  assert.equal(await type("0"), "0", `${name}: a lone 0 typed into an empty field stays visible`);
+  assert.equal(await type("05"), "5", `${name}: a leading zero before a digit is dropped`);
+  assert.equal(await type("0"), "0", `${name}: 0 replacing a selected amount stays visible`);
+  assert.equal(await type("0."), "0.");
+  assert.equal(await type("0.5"), "0.5", `${name}: 0.5 is kept`);
+  assert.equal(await type("0.50"), "0.50");
+  assert.equal(await type("0.5"), "0.5");
+  assert.equal(await type("0."), "0.");
+  assert.equal(await type("0.0"), "0.0");
+  assert.equal(await type("0.00"), "0.00", `${name}: 0.00 is kept`);
+  assert.equal(await type("0.000"), "0.00", `${name}: still two decimals at most`);
 }
 
 // The GH₵ label sits before the field in the same box (on its left).

@@ -65,14 +65,23 @@ export function pesewasToAmountText(pesewas) {
 
 // A typed amount field (44 Spent money, the field on 26) follows the same rules as the pad: the new
 // text is replayed key by key, so "," counts as ".", a second "." and a third decimal are ignored, and
-// leading zeros go. A currency word or symbol and spaces are dropped (6,50 typed after it is 6.50). Any other
+// leading zeros go (05 is 5), but a lone 0 stays "0" (see typeAmountKey). A currency word or symbol and spaces are dropped (6,50 typed after it is 6.50). Any other
 // character (1e2, 0x10, signs) is refused: the field keeps what it had (`current`).
 export function normalizeTypedAmount(value, current = "", rules = MONEY_KEYPAD) {
   const cleaned = String(value ?? "").replace(/GH[S₵C]|₵|\s/gi, "").replace(/,/g, ".");
   if (/[^\d.]/.test(cleaned)) return typeof current === "string" ? current : "";
   let text = "";
-  for (const character of cleaned) text = pressAmountKey(text, character, rules);
+  for (const character of cleaned) text = typeAmountKey(text, character, rules);
   return text;
+}
+
+// One typed character in a typed field: the pad rules, except for zero (amount_entry, 16 Nov 2026):
+// a lone 0 stays visible as "0" (the pad ignores it on an empty pad, which made 0 look empty), and a
+// digit typed after that lone 0 replaces it, so a leading zero before another digit goes (05 is 5,
+// 00 is 0). "0." and the decimals after it follow the pad rules (0.5 and 0.00 are kept).
+function typeAmountKey(text, key, rules) {
+  if (/^[0-9]$/.test(key) && (text === "" || text === "0")) return key === "0" ? "0" : pressAmountKey("", key, rules);
+  return pressAmountKey(text, key, rules);
 }
 
 // Typed amount fields (wiring rules_global.amount_entry, 16 Nov 2026: the split field on 16/27, 19 each
