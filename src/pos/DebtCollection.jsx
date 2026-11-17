@@ -23,7 +23,7 @@ import { getInstallmentsLeft, getPlanProgress } from "../utils/installments.js";
 import { getCustomerLedgerRecords, getPlanPaidPesewas } from "../utils/debtLedgerMath.js";
 import { posText as t } from "./i18n.js";
 import { getDebtEntryReason } from "../lib/creditReason.js";
-import { PosBackButton, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, SplitIcons } from "./PosComponents.jsx";
+import { AddButton, PosBackButton, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, SplitIcons } from "./PosComponents.jsx";
 import CustomerContactEditor from "./CustomerContactEditor.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
@@ -112,15 +112,10 @@ function PaymentMethodPicker({ value, onChange, onSplit, splitDisabled = false }
             <span className="w-full min-w-0 truncate text-center">{t(label)}</span>
           </button>
         ))}
-        <button
-          type="button"
-          disabled={splitDisabled}
-          onClick={onSplit}
-          className="flex min-h-14 min-w-0 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-2xl border-[3px] border-emerald-900 bg-white px-1 text-xs font-extrabold text-emerald-900 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-16 sm:gap-1 sm:px-2 sm:text-base"
-        >
-          <SplitIcons size={16} />
+        {/* open_text_sweep (17 Nov 2026): "+ Split payment" adds a second way to pay, so it is the add look. */}
+        <AddButton disabled={splitDisabled} onClick={onSplit} className="min-h-14 flex-col gap-0.5! overflow-hidden px-1! text-xs! sm:min-h-16 sm:px-2! sm:text-base! [&>span:first-child]:text-xl!">
           <span className="w-full min-w-0 truncate text-center">{t("collect.splitPayment")}</span>
-        </button>
+        </AddButton>
       </div>
     </fieldset>
   );
@@ -239,9 +234,9 @@ function CollectionSheet({ debt, params = {}, onClose, onNavigate, onUpdateParam
         <PosPrimaryButton type="button" onClick={() => void receivePayment()} disabled={busy || amountPesewas <= 0} className="mt-4 h-[68px] min-h-0 rounded-[20px] text-2xl">
           <Check size={28} aria-hidden="true" /> {busy ? t("collect.saving") : t("collect.received")}
         </PosPrimaryButton>
-        <button type="button" onClick={() => onNavigate("DebtorDetail", { debtId: debt.id, customerName: debt.customerName })} className="mt-2 min-h-12 w-full text-center text-lg font-extrabold text-emerald-900 underline">
+        <PosSecondaryButton type="button" onClick={() => onNavigate("DebtorDetail", { debtId: debt.id, customerName: debt.customerName })} className="mt-2 w-full">
           {t("collect.seeDetails", { name: displayName(debt.customerName) })}
-        </button>
+        </PosSecondaryButton>
       </section>
     </div>
   );
@@ -531,7 +526,7 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
 
       <CollectionError>{error}</CollectionError>
       <div className={`grid gap-2 ${receiptsOn ? "grid-cols-2" : "grid-cols-1"}`}>
-        <PosSecondaryButton type="button" disabled={busy || remainingSeconds <= 0 || undone} onClick={() => void undo()} className="h-14 min-h-0 rounded-2xl border-rose-900 text-[17px] text-rose-900">
+        <PosSecondaryButton type="button" disabled={busy || remainingSeconds <= 0 || undone} onClick={() => void undo()} tone="danger">
           <Undo2 size={22} aria-hidden="true" /> {t("collect.undo")}
         </PosSecondaryButton>
         {/* Without a valid phone, Send receipt opens the share sheet (receiptShare.sendReceipt). Only the Undo window holds it back. */}
@@ -545,18 +540,18 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
       )}
       {receiptsOn && !receiptPhone && !undone && (
         <div className="text-center">
-          <button type="button" onClick={() => setContactEditorOpen(true)} className="min-h-11 text-center font-extrabold text-emerald-900 underline">
+          <AddButton onClick={() => setContactEditorOpen(true)}>
             {t("collect.addPhoneForReceipt")}
-          </button>
+          </AddButton>
           <p className="text-sm font-semibold text-slate-700">{t("collect.addPhoneForReceiptHint")}</p>
         </div>
       )}
       <p className="text-center text-[17px] text-slate-800">
         <Clock3 size={16} className="mr-1 inline" aria-hidden="true" />{t("collect.undoWindow", { seconds: Math.floor(COLLECTION_UNDO_WINDOW_MS / 1000) })}
       </p>
-      <button type="button" onClick={() => onNavigate("DebtorDetail", { debtId: result.debtId, customerName: result.customerName })} className="min-h-12 text-center text-lg font-extrabold text-emerald-900 underline">
+      <PosSecondaryButton type="button" onClick={() => onNavigate("DebtorDetail", { debtId: result.debtId, customerName: result.customerName })} className="w-full">
         {t("collect.seeDetails", { name: displayName(result.customerName) })}
-      </button>
+      </PosSecondaryButton>
       <div className="flex-1" />
       <PosPrimaryButton type="button" onClick={onHome} className="h-[68px] min-h-0 rounded-[20px] text-2xl">{t("collect.done")}</PosPrimaryButton>
       {contactEditorOpen && (
@@ -831,17 +826,17 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
           <p data-last-reminder="" className="text-center text-base text-slate-800">{lastReminderLabel}</p>
           {/* Wiring 29/43 (16 Nov 2026): "Show {Name} the record" under the Last reminder line opens 73,
               look-only, for the customer to read. One line: a long name is cut, never the words around it. */}
-          <button
+          <PosSecondaryButton
             type="button"
             data-show-record=""
             aria-label={t("record.show", { name: displayName(data.name) })}
             onClick={() => onNavigate("CustomerRecordView", { customerId: data.customerId, customerName: data.name })}
-            className="flex h-[52px] w-full min-w-0 items-center justify-center gap-1 whitespace-nowrap rounded-[14px] border-2 border-[#0F172A] bg-white px-3 text-lg font-extrabold text-[#0F172A]"
+            className="w-full min-w-0 gap-1! whitespace-nowrap px-3!"
           >
             <span className="shrink-0">Show</span>{" "}
             <span className="min-w-0 truncate">{displayName(data.name)}</span>{" "}
             <span className="shrink-0">the record</span>
-          </button>
+          </PosSecondaryButton>
           {balanceReceiptText && (
             <>
               <div className="flex flex-col gap-2">
@@ -853,9 +848,9 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
             </>
           )}
           {singleDebtMatchesTotal && (
-            <button type="button" onClick={() => openCorrection()} disabled={!data.debt?.id || data.balancePesewas <= 0} className="mt-2 h-[54px] w-full rounded-2xl border-2 border-slate-500 bg-white px-4 text-lg font-extrabold text-slate-900 disabled:opacity-50">
+            <PosSecondaryButton type="button" onClick={() => openCorrection()} disabled={!data.debt?.id || data.balancePesewas <= 0} className="mt-2 w-full">
               Correct balance
-            </button>
+            </PosSecondaryButton>
           )}
           {data.debt?.isInstallmentPlan && (
             <section className="flex flex-col gap-1.5 rounded-[18px] border-2 border-emerald-900 bg-green-100 px-3.5 py-2.5">
@@ -902,9 +897,9 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                           {detail} · {formatHistoryRowTimestamp(debt.createdAt ?? debt.created_at)}
                         </span>
                       </span>
-                      <button type="button" onClick={() => openCorrection(debt, true)} className="min-h-11 rounded-xl border-2 border-emerald-900 bg-white px-3 text-sm font-extrabold text-emerald-900">
+                      <PosSecondaryButton type="button" onClick={() => openCorrection(debt, true)} className="shrink-0">
                         Correct this entry
-                      </button>
+                      </PosSecondaryButton>
                     </li>
                   );
                 })}
@@ -912,10 +907,11 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
             </section>
           )}
           <section>
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+            {/* rules_global.button_system.add: "+ Add to debt" is the shared AddButton, full width and 52px, on
+                its own line under the What happened heading. */}
+            <div className="mb-2 flex flex-col gap-2">
               <h2 className="text-[22px] font-extrabold leading-tight">{t("collect.onTimeHistory")}</h2>
-              <button
-                type="button"
+              <AddButton
                 onClick={() => onNavigate("ManualDebtAmount", {
                   manualDebt: true,
                   customer: {
@@ -928,15 +924,15 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                   },
                   debtId: data.debt?.id
                 })}
-                className="h-[54px] shrink-0 rounded-2xl border-2 border-emerald-900 bg-white px-4 text-lg font-extrabold text-emerald-900"
               >
-                + Add to debt
-              </button>
+                Add to debt
+              </AddButton>
             </div>
             {data.history.length ? (
               // Wiring "What happened cards" (final, 16 Nov 2026): the same cards as 73 (EventRows). An unsigned
-              // credit at or above the threshold offers Get signature next to its pill; it opens 72 for that
-              // entry and 72 returns here.
+              // credit at or above the threshold offers Get signature (17 Nov 2026: the add look without the
+              // "+", full width, 52px, on its own line below the card's last row); it opens 72 for that entry
+              // and 72 returns here.
               <ul className="flex min-w-0 flex-col gap-2.5">
                 {data.history.map((event) => (
                   <EventRows
@@ -944,9 +940,9 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                     event={event}
                     creditTitle={event.type === "addon" ? t("collect.creditAdded") : t("collect.creditTaken")}
                     signatureAction={!event.signed && event.transactionId && needsSignature(event.amountPesewas) ? (
-                      <button type="button" onClick={() => onNavigate("CustomerSignature", { transactionId: event.transactionId })} className="min-h-12 shrink-0 whitespace-nowrap rounded-xl border-2 border-emerald-900 bg-white px-3 text-base font-extrabold text-emerald-900">
+                      <AddButton plus={false} onClick={() => onNavigate("CustomerSignature", { transactionId: event.transactionId })}>
                         {t("creditRow.getSignature")}
-                      </button>
+                      </AddButton>
                     ) : null}
                   />
                 ))}

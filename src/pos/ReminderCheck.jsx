@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { recordReminderSent } from "../db/reminders.js";
 import { useBackHandler } from "./browserBack.js";
 import { posText as t } from "./i18n.js";
+import { LeaveButton } from "./PosComponents.jsx";
 import { needsReminderCheck, reminderAgainText } from "./reminderLabel.js";
 
 // rules_global.reminders: ONE shared path for every WhatsApp reminder button (Home Collect first 22,
@@ -114,7 +115,6 @@ export function useReminderCheck({ record = recordReminderSent, now = () => Date
 }
 
 const STRONG = "flex min-h-[60px] w-full items-center justify-center rounded-[18px] border-[3px] border-emerald-900 bg-emerald-900 px-4 text-xl font-extrabold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800";
-const OUTLINED = "flex min-h-[60px] w-full items-center justify-center rounded-[18px] border-[3px] border-slate-900 bg-white px-4 text-xl font-extrabold text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800";
 
 // "Send another reminder?": a bottom sheet on a phone, a centred dialog on wide screens.
 export function ReminderAgainSheet({ text, href, onSendAgain, onNotNow }) {
@@ -150,7 +150,8 @@ export function ReminderAgainSheet({ text, href, onSendAgain, onNotNow }) {
         ) : (
           <button type="button" onClick={onSendAgain} className={STRONG}>{t("reminderAgain.sendAgain")}</button>
         )}
-        <button ref={notNowRef} type="button" onClick={onNotNow} className={OUTLINED}>{t("reminderAgain.notNow")}</button>
+        {/* rules_global.button_system.leave: Not now is the grey leave look, as tall as Send again. */}
+        <LeaveButton ref={notNowRef} onClick={onNotNow} className="min-h-[60px]!">{t("reminderAgain.notNow")}</LeaveButton>
       </section>
     </div>
   );

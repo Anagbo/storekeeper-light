@@ -352,7 +352,8 @@ test("31 with a saved number goes to that number; without one, the share sheet",
   }
 });
 
-// 28: "Add a phone number" with a quiet line under it; only with the receipts flag on and no phone.
+// 28: "+ Add phone" (the add look since 17 Nov 2026, open_text_sweep) with a quiet line under it; only
+// with the receipts flag on and no phone.
 async function show28(env, phone) {
   const { PaymentReceived } = await loadJsx("src/pos/DebtCollection.jsx", env);
   setLiveQuery(() => null);
@@ -371,15 +372,18 @@ async function show28(env, phone) {
   }
 }
 
-test("28 without a phone and receipts on: link \"Add a phone number\" with the quiet line under it", async () => {
+test("28 without a phone and receipts on: \"+ Add phone\" (add look) with the quiet line under it", async () => {
   const view = await show28(ON, "");
-  assert.ok(findButton(view.tree, "Add a phone number"), "the reworded link");
-  assert.doesNotMatch(textOf(view.tree), /Add a phone number to send this receipt/);
-  assert.match(textOf(view.tree), /Add a phone number\s*Next time the receipt opens their WhatsApp chat\./);
+  const button = findButton(view.tree, "Add phone");
+  assert.ok(button, "the add button");
+  assert.equal(button.props["data-look"], "add");
+  assert.equal(textOf(button), "+ Add phone");
+  assert.doesNotMatch(textOf(view.tree), /Add a phone number/);
+  assert.match(textOf(view.tree), /\+ Add phone\s*Next time the receipt opens their WhatsApp chat\./);
 });
 
 test("28 with a phone, or with the receipts flag off: no link and no quiet line", async () => {
   for (const view of [await show28(ON, "+233241234567"), await show28({}, "")]) {
-    assert.doesNotMatch(textOf(view.tree), /Add a phone number|Next time the receipt opens/);
+    assert.doesNotMatch(textOf(view.tree), /Add phone|Next time the receipt opens/);
   }
 });

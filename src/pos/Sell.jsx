@@ -1,17 +1,21 @@
 import { useEffect, useRef, useState } from "react";
-import { Banknote, Check, Plus, Smartphone, UserRound } from "lucide-react";
+import { Banknote, Check, Smartphone, UserRound } from "lucide-react";
 import { recordCashSale } from "../db/sales.js";
 import { isSaveOutcomeUnknown, isSaveTimeout } from "../lib/saveAttempt.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
-import { PosCard, SplitIcons, PosPage, PosPrimaryButton } from "./PosComponents.jsx";
+import { AddButton, PosCard, SplitIcons, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
 import { useLargeAmountConfirm } from "./LargeAmountConfirm.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { useBackBlock } from "./browserBack.js";
 import { useFormErrors } from "./formErrors.js";
+
+// Keypad keys on 15: 62px, shorter on short screens (never under 48px; the gaps stay 8px) so that Done
+// fits above the bottom bar without scrolling where it can.
+const KEY_HEIGHT_15 = "54px";
 import { getSplitPaymentParams } from "./routes.js";
 import AmountKeypad from "./AmountKeypad.jsx";
 import { pesewasToAmountText, pressAmountKey } from "./amountKeypad.js";
@@ -130,23 +134,25 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
   }, [amount, canSave, busy, paymentMethod, largeAmount.open]);
 
   return (
-    <PosPage style={{ paddingTop: 14, paddingBottom: 96 }} className="flex flex-col gap-3 pb-32 lg:max-w-5xl lg:justify-center lg:pb-10">
+    // Wiring 15 "Done on 15" (17 Nov 2026, second decision): Done is NOT pinned. It is the last thing in
+    // the content, and the page keeps room below it so that, scrolled to the end, Done ends above the
+    // fixed bottom bar (PosBottomNav, below lg: 3px border + 4px + 76px + its safe-bottom padding, and the
+    // raised Sell circle 22px higher, so 103px) with 8px to spare. Nothing floats over the content.
+    <PosPage style={{ paddingTop: 14 }} className="flex flex-col gap-3 pb-[calc(111px+max(0px,env(safe-area-inset-bottom)-1rem))]! lg:max-w-5xl lg:justify-center lg:pb-10!">
       <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.9fr)] lg:items-start lg:gap-6">
         <div className="flex flex-col gap-3">
           <PosCard className="amount-fit-container rounded-[20px] px-4 py-3 text-right lg:px-6 lg:py-5">
             <p className="text-base font-bold text-slate-700 lg:text-lg">{t("sell.customerPays")}</p>
             <output aria-live="polite" className="amount-fit font-extrabold">{formatGhs(amountPesewas ?? 0)}</output>
           </PosCard>
-          <AmountKeypad label={t("sell.enterAmount")} disabled={hasSaleItems} onKey={appendDigit} />
+          <AmountKeypad label={t("sell.enterAmount")} disabled={hasSaleItems} onKey={appendDigit} keyHeight={KEY_HEIGHT_15} />
         </div>
         <div className="flex flex-col gap-3 lg:pt-1">
-          <button
-            type="button"
-            onClick={() => onNavigate("SellWithItems", { amountPesewas, saleItems })}
-            className="inline-flex h-12 items-center justify-center gap-1 self-center rounded-xl px-3 py-2 text-base font-bold text-emerald-900 underline decoration-2 underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800"
-          >
-            <Plus size={20} aria-hidden="true" /> {t("sell.addItems")}
-          </button>
+          {/* Wiring 15 "Done on 15" (17 Nov 2026): "+ Add items" is the add look at the compact 44px, the
+              one allowed use of the compact size. */}
+          <AddButton size="compact" onClick={() => onNavigate("SellWithItems", { amountPesewas, saleItems })}>
+            {t("sell.addItems")}
+          </AddButton>
           <div className="grid grid-cols-4 gap-1 sm:gap-2 lg:gap-3">
             {paymentChoices.map(({ value, label, icon: Icon }) => (
               <button
@@ -172,7 +178,9 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
                 <span className="w-full min-w-0 truncate text-center">{t(label)}</span>
               </button>
             ))}
-            <button
+            {/* open_text_sweep (17 Nov 2026): Split is an other button (dark 2px border, dark text), keeping
+                its Cash + MoMo + Owe icon and the tile size of the row. */}
+            <PosSecondaryButton
               type="button"
               aria-label={t("sell.split")}
               disabled={!canSave || busy}
@@ -184,16 +192,16 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
                 if (params.splitDraft) onUpdateParams?.({ splitDraft: undefined });
                 onNavigate("SplitPayment", splitParams);
               }}
-              className="flex h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-[14px] border-2 border-emerald-900 bg-white px-1 text-xs font-extrabold text-emerald-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 sm:h-20 sm:gap-1 sm:rounded-2xl sm:text-sm lg:h-24 lg:rounded-[18px] lg:border-[3px] lg:px-2 lg:text-[17px]"
+              className="h-14 min-h-0! min-w-0 flex-1 flex-col gap-0.5! overflow-hidden px-1! py-0! text-xs! sm:h-20 sm:gap-1! sm:rounded-2xl sm:text-sm! lg:h-24 lg:rounded-[18px] lg:px-2! lg:text-[17px]!"
             >
               <SplitIcons withOwe size={11} />
-              <span className="w-full min-w-0 truncate text-center text-xs sm:hidden">Split</span>
+              <span className="w-full min-w-0 truncate text-center sm:hidden">Split</span>
               <span className="hidden w-full min-w-0 truncate text-center sm:inline">{t("sell.split")}</span>
-            </button>
+            </PosSecondaryButton>
           </div>
           {(amountErrors.message || error) && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 text-base font-semibold text-rose-950">{amountErrors.message || error}</p>}
           <SaveAttemptNotice saveAttempt={saveAttempt} busy={busy} onTryAgain={() => void saveSale(true)} />
-          <PosPrimaryButton type="button" onClick={() => void saveSale()} disabled={!canSave || busy} className="mb-4 h-[68px] min-h-0 rounded-[20px] border-0 text-[26px] lg:mb-0 lg:h-20 lg:text-3xl">
+          <PosPrimaryButton type="button" onClick={() => void saveSale()} disabled={!canSave || busy} className="h-[60px] min-h-0 rounded-[20px] border-0 text-[26px] lg:h-20 lg:text-3xl">
             <Check size={32} aria-hidden="true" /> {busy ? t("sell.saving") : t("sell.done")}
           </PosPrimaryButton>
         </div>

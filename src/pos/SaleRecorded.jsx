@@ -128,7 +128,7 @@ export default function SaleRecorded({ transaction, creditResult, shopName, onDo
 
       <div className={`grid gap-2 ${receiptsOn ? "grid-cols-2" : "grid-cols-1"}`}>
         {receiptsOn && <SendReceiptButton onClick={() => void actions.send()} />}
-        <PosSecondaryButton type="button" onClick={onDone} className="h-14 min-h-0 rounded-2xl border-2 border-slate-900 text-[17px]">
+        <PosSecondaryButton type="button" onClick={onDone}>
           {t("saleRecorded.done")}
         </PosSecondaryButton>
         {receiptsOn && <ReceiptOfflineLine online={actions.online} className="col-span-full" />}

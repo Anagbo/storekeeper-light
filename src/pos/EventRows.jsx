@@ -45,7 +45,9 @@ function Details({ children }) {
   return <dl data-event-details="" className="flex min-w-0 flex-col text-lg">{children}</dl>;
 }
 
-// `signatureAction`: an extra control next to the Signature pill (29/43 "Get signature"); none on 73.
+// `signatureAction`: 29/43 "Get signature" (wiring "Signature row and Get signature", 17 Nov 2026): on its
+// own line below the last row of the card, never beside the tag; the Signature row shows only the
+// status tag, which is never tappable. None on 73.
 // The Paid amount has no "+" on any screen (decision (4), 16 Nov 2026: the title says Paid).
 export default function EventRows({ event, creditTitle, signatureAction = null }) {
   if (event.type === "payment") {
@@ -82,12 +84,10 @@ export default function EventRows({ event, creditTitle, signatureAction = null }
           <EventDetail label={t("event.time")} name="time" valueProps={{ "data-when": "" }}>{rowTime(event)}</EventDetail>
           <EventDetail label={t("event.reason")} name="reason" valueProps={{ "data-reason": "" }}>{rowReason(event)}</EventDetail>
           <EventDetail label={t("event.signature")} name="signature">
-            <span className="inline-flex flex-wrap items-center justify-end gap-2">
-              <SignedTag signed={event.signed} />
-              {signatureAction}
-            </span>
+            <SignedTag signed={event.signed} />
           </EventDetail>
         </Details>
+        {signatureAction && <div data-signature-action="" className="pt-1">{signatureAction}</div>}
       </Card>
     );
   }

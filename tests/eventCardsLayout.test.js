@@ -34,6 +34,13 @@ const MEASURE = `(frame, win, doc) => {
       cardRight: box(card).right - parseFloat(style.paddingRight) - parseFloat(style.borderRightWidth),
       title: { text: titleEl.textContent, lines: textLines(titleEl), ...box(titleEl) },
       amount: amountEl ? { text: amountEl.textContent, lines: textLines(amountEl), ...box(amountEl) } : null,
+      action: (() => {
+        const button = card.querySelector("button");
+        if (!button) return null;
+        const bs = win.getComputedStyle(button);
+        const rows = [...card.querySelectorAll("[data-event-detail]")];
+        return { text: button.textContent, look: button.getAttribute("data-look"), lines: textLines(button), overflow: button.scrollWidth > button.clientWidth, height: button.getBoundingClientRect().height, border: bs.borderTopStyle + " " + bs.borderTopWidth, background: bs.backgroundColor, lastRowBottom: box(rows.at(-1)).bottom, ...box(button) };
+      })(),
       rows: [...card.querySelectorAll("[data-event-detail]")].map((row) => {
         const label = row.querySelector("dt");
         const value = row.querySelector("dd");
@@ -78,9 +85,28 @@ test("What happened cards on 29, 43 and 73 at 340, 360 and 393px: title row, the
     assert.equal(longCredit.rows[1].value, LONG);
     assert.equal(corrected.rows[3].value, LONG);
     assert.equal(shortCredit.rows[1].value, "No reason written");
-    // 29/43 offer Get signature next to the pill for an unsigned credit at or above the threshold; 73 does not.
-    assert.equal(longCredit.rows[2].value, result.page === "73" ? "Not signed" : "Not signedGet signature");
+    // Wiring "Signature row and Get signature" (17 Nov 2026): the Signature row shows only the status tag.
+    // 29/43 offer Get signature for an unsigned credit at or above the threshold: on its own line below the
+    // card's last row, full width of the card, 52px, the add look without the "+"; 73 and signed entries
+    // have no button.
+    assert.equal(longCredit.rows[2].value, "Not signed");
     assert.equal(shortCredit.rows[2].value, "Signed ✓");
+    assert.equal(shortCredit.action, null, `${where}: no button on a signed entry`);
+    for (const card of [corrected, paid]) assert.equal(card.action, null, `${where}: no button on ${card.kind}`);
+    if (result.page === "73") assert.equal(longCredit.action, null, `${where}: no Get signature on 73`);
+    else {
+      const action = longCredit.action;
+      assert.ok(action, `${where}: Get signature is shown`);
+      assert.equal(action.text, "Get signature", `${where}: the label is exactly Get signature, no "+"`);
+      assert.equal(action.look, "add", `${where}: the add look`);
+      assert.equal(action.border, "dashed 2px", `${where}: dashed 2px border`);
+      assert.equal(action.background, "rgba(0, 0, 0, 0)", `${where}: no fill`);
+      assert.ok(action.top >= action.lastRowBottom - 0.5, `${where}: below the last row (${action.top} vs ${action.lastRowBottom})`);
+      assert.ok(Math.abs(action.left - longCredit.cardLeft) < 0.5 && Math.abs(action.right - longCredit.cardRight) < 0.5, `${where}: full width of the card`);
+      assert.ok(Math.abs(action.height - 52) < 0.5, `${where}: 52px (${action.height})`);
+      assert.equal(action.lines, 1, `${where}: one line`);
+      assert.ok(!action.overflow, `${where}: no overflow`);
+    }
     for (const card of result.cards) {
       const what = `${where} ${card.title.text}`;
       if (card.amount) {

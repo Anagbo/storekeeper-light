@@ -53,7 +53,7 @@ test("16 chips: a verified (phone request) MoMo row shows no pencil and no remov
   assert.ok(chip(view.tree, "Cash"));
 });
 
-test("16 chips: tapping the chip opens the editor with that amount; tapping the row name does too", async () => {
+test("16 chips: tapping the chip opens the editor with that amount; the row name is not a button", async () => {
   const view = await mount(PARTS);
   assert.equal(editor(view.tree), undefined);
   chip(view.tree, "Cash").props.onClick();
@@ -61,8 +61,9 @@ test("16 chips: tapping the chip opens the editor with that amount; tapping the 
   assert.equal(editor(view.tree).props.value, "5.00");
   assert.ok(textOf(view.tree).includes("How much"));
   const again = await mount(PARTS);
-  const nameButton = all(row(again.tree, "momo"), (n) => n.type === "button" && textOf(n).startsWith("MoMo"))[0];
-  nameButton.props.onClick();
+  // Open-text sweep (17 Nov 2026): the name is plain text; the MoMo chip opens its editor.
+  assert.equal(all(row(again.tree, "momo"), (n) => n.type === "button" && textOf(n).startsWith("MoMo")).length, 0, "the MoMo name is not a button");
+  chip(again.tree, "MoMo").props.onClick();
   again.rerender();
   assert.equal(editor(again.tree).props.value, "3.00");
 });

@@ -3,7 +3,7 @@ import { Banknote, Check, Smartphone, UserRound } from "lucide-react";
 import { isSaveOutcomeUnknown, isSaveTimeout } from "../lib/saveAttempt.js";
 import { formatGhs } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
-import { PosCard, PosPage, PosPrimaryButton, SplitIcons, PosBackButton } from "./PosComponents.jsx";
+import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, SplitIcons, PosBackButton } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
 import { useLargeAmountConfirm } from "./LargeAmountConfirm.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
@@ -114,18 +114,20 @@ export default function ReviewAndPay({ params = {}, onBack, onNavigate, onUpdate
           </button>
         ))}
       </div>
-      <button
+      {/* open_text_sweep (17 Nov 2026): Split is an other button, keeping its Cash + MoMo + Owe icon. */}
+      <PosSecondaryButton
         type="button"
+        data-split-55=""
         onClick={() => {
           // MOMO16: the parts kept from the last Back on 16 come back while the total is unchanged.
           const splitParams = getSplitPaymentParams(params, totalPesewas, saleItems, params);
           if (params.splitDraft) onUpdateParams?.({ splitDraft: undefined });
           onNavigate("SplitPayment", splitParams);
         }}
-        className="flex min-h-[68px] items-center justify-center gap-2 rounded-[18px] border-[3px] border-emerald-900 bg-white px-3 text-lg font-extrabold text-emerald-900"
+        className="min-h-[68px]! w-full"
       >
         <SplitIcons withOwe size={18} /> {t("review.split")}
-      </button>
+      </PosSecondaryButton>
 
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
       <div className="flex-1" />

@@ -81,9 +81,10 @@ test("K1: the row amount opens the editor, prefilled with the row's amount, and 
 });
 
 test("K1: the Owe row is still never typed", () => {
-  // Item 5 (11 Nov 2026): the row name and the amount chip open the editor only for an editable part.
+  // Item 5 (11 Nov 2026): the amount chip opens the editor only for an editable part. Open-text sweep
+  // (17 Nov 2026): the row name is never a button; the pencil chip is the one way to edit.
   assert.match(split, /const isEditablePart = \(part\) => part\.paymentMethod !== "owe" && !isLockedMomoRow\(part\);/);
-  // A row that cannot be edited is not a button at all (wiring 16: not tappable).
-  assert.match(split, /\{editable \? \(\s*<button type="button" disabled=\{busy\} onClick=\{\(\) => startEdit\(part\)\}/);
+  assert.match(split, /<div data-row-name="" className=\{nameClass\}>\{name\}<\/div>/);
+  assert.doesNotMatch(split, /className=\{nameClass\}>\{name\}<\/button>/);
   assert.match(split, /editable \? \(\s*<button type="button" disabled=\{busy\} aria-label=\{t\("split\.editAmount"/);
 });

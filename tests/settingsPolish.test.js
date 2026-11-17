@@ -159,7 +159,12 @@ test("47 Done: bold (800); Back is the shared PosBackButton", async () => {
   const back = nodes(view.tree, (node) => node.type === "button" && textOf(node).trim() === "Back")[0];
   assert.equal(back.props.style, undefined, "Back is the shared PosBackButton");
   const components = read("src/pos/PosComponents.jsx");
-  assert.match(components, /export function PosSecondaryButton[\s\S]*?text-base font-bold text-slate-900/);
+  // rules_global.button_system.secondary_component: the exact "other" look.
+  assert.match(components, /OTHER_SHAPE = "[^"]*min-h-\[52px\][^"]*border-2 bg-white[^"]*text-\[18px\] font-extrabold/);
+  assert.match(components, /OTHER_BUTTON_CLASS = `\$\{OTHER_SHAPE\} border-\[#0F172A\] text-\[#0F172A\]`/);
+  // rules_global.button_system.danger: the same shape, red border and text.
+  assert.match(components, /danger: `\$\{OTHER_SHAPE\} border-rose-900 text-rose-900`/);
+  assert.match(components, /export function PosSecondaryButton[\s\S]*?OTHER_BUTTON_CLASS/);
   assert.match(components, /export function PosBackButton/);
   assert.match(components, /export function PosPrimaryButton[\s\S]*?text-lg font-extrabold text-white/);
 });

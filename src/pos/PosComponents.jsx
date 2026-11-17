@@ -125,16 +125,64 @@ function SideConnectionStatus({ hideSaved }) {
 }
 
 export function PosPrimaryButton({ children, className = "", ...props }) {
-  return <button {...props} className={`flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-emerald-950 bg-emerald-900 px-4 text-lg font-extrabold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}>{children}</button>;
+  return <button data-look="main" {...props} className={`flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-emerald-950 bg-emerald-900 px-4 text-lg font-extrabold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}>{children}</button>;
 }
 
-export function PosSecondaryButton({ children, className = "", ...props }) {
-  return <button {...props} className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl border-2 border-slate-600 bg-white px-4 text-base font-bold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}>{children}</button>;
+// The "other" look (rules_global.button_system.other and .secondary_component): 2px #0F172A border,
+// dark bold 18px text, white fill, 52px or taller. A long label wraps (at most two lines; padding, never
+// a shorter label, keeps it there).
+const OTHER_SHAPE = "flex min-h-[52px] items-center justify-center gap-2 rounded-[14px] border-2 bg-white px-4 py-1.5 text-center text-[18px] font-extrabold leading-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50";
+export const OTHER_BUTTON_CLASS = `${OTHER_SHAPE} border-[#0F172A] text-[#0F172A]`;
+// tone="danger" (rules_global.button_system.danger, 17 Nov 2026): the same shape with a red border and
+// red bold text, only for actions that remove or reverse something (Delete on 40, Undo on 28).
+const SECONDARY_TONES = { other: OTHER_BUTTON_CLASS, danger: `${OTHER_SHAPE} border-rose-900 text-rose-900` };
+
+export function PosSecondaryButton({ children, tone = "other", className = "", ...props }) {
+  return <button data-look={tone === "danger" ? "danger" : "other"} {...props} className={`${SECONDARY_TONES[tone] ?? OTHER_BUTTON_CLASS} ${className}`}>{children}</button>;
+}
+
+// The "add" look (rules_global.button_system.add): dashed 2px dark-green border, 14px corners, bold
+// dark-green "+ Label", no fill. The "+" is shown but hidden from screen readers, so the accessible name
+// is the word ("Add items"); plus={false} leaves it out ("Get signature"). Sizes (button_system.sizes):
+// "standard" full width and 52px or taller; "compact" 44px, on 15 only; "tile" the 72px grid tile on 20.
+// role="radio" (button_system.add_variants) is a choice inside a list (45 "+ New supplier"): same border,
+// corners, height and text, left aligned like the rows beside it; when chosen the border turns solid on
+// a light green fill, like the other chosen rows.
+const ADD_SIZES = {
+  standard: "min-h-[52px] w-full justify-center px-4 py-1.5 text-center",
+  compact: "h-[44px] w-full justify-center px-4 text-center",
+  tile: "min-h-[72px] justify-center px-2 text-center"
+};
+
+export function AddButton({ children, plus = true, size = "standard", role, checked = false, className = "", ...props }) {
+  const radio = role === "radio";
+  const layout = radio ? "min-h-[60px] w-full justify-start px-3.5 py-2 text-left" : ADD_SIZES[size];
+  const border = radio && checked ? "border-solid bg-emerald-50" : "border-dashed bg-transparent";
+  return (
+    <button
+      type="button"
+      data-look="add"
+      {...(radio ? { role: "radio", "aria-checked": checked } : {})}
+      {...props}
+      className={`flex min-w-0 items-center gap-1.5 rounded-[14px] border-2 border-emerald-900 ${border} ${layout} text-[18px] font-extrabold leading-tight text-emerald-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+    >
+      {plus && <span aria-hidden="true" className="shrink-0">+</span>}
+      {plus && " "}
+      {children}
+    </button>
+  );
+}
+
+// The "leave" look (rules_global.button_system.leave): grey outline (2px #64748B border), #334155 bold
+// text, white fill, full width and 52px. Skip for now, Not now: lower priority than the main action but a
+// real button.
+export function LeaveButton({ children, className = "", ...props }) {
+  return <button type="button" data-look="leave" {...props} className={`flex min-h-[52px] w-full items-center justify-center rounded-[14px] border-2 border-[#64748B] bg-white px-4 py-1.5 text-center text-[18px] font-bold leading-tight text-[#334155] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}>{children}</button>;
 }
 
 // The one Back button (wiring rules_global.back_button): arrow-left icon (24px, 6px gap) then "Back", bold 800, 18px, 52px tall, 2px #0F172A border.
 export function PosBackButton({ className = "", ...props }) {
-  return <button type="button" aria-label={t("items.back")} {...props} className={`flex h-[52px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-[14px] border-2 border-[#0F172A] bg-white px-4 text-[18px] font-extrabold text-[#0F172A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M19 12H5M11 5l-7 7 7 7" /></svg>{t("items.back")}</button>;
+  return <button type="button" data-look="other" aria-label={t("items.back")} {...props} className={`flex h-[52px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-[14px] border-2 border-[#0F172A] bg-white px-4 text-[18px] font-extrabold text-[#0F172A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M19 12H5M11 5l-7 7 7 7" /></svg>{t("items.back")}</button>;
 }
 
 export function PosCard({ children, className = "", ...rest }) {

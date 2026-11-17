@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Check, Plus, Search, Trash2 } from "lucide-react";
+import { Check, Search, Trash2 } from "lucide-react";
 import { db } from "../db/db.js";
 import { createProduct, normalizeProductInput, removeProduct, updateProduct, addStarterProducts } from "../db/products.js";
 import { getAllStarterItems, groupCoreItemsByCategory, mergeStarterItems } from "../db/starterItems.js";
@@ -8,7 +8,7 @@ import { formatGhs, toPesewas } from "../lib/money.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { posText as t } from "./i18n.js";
 import { shortSaveName } from "./saveLabel.js";
-import { PosBackButton, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
+import { AddButton, LeaveButton, PosBackButton, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { useBackBlock } from "./browserBack.js";
 import { useFormErrors } from "./formErrors.js";
 import AmountTextInput from "./AmountTextInput.jsx";
@@ -60,9 +60,8 @@ function MyItems({ onBack, onNavigate }) {
         <span className="sr-only">{t("items.find")}</span>
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("items.find")} className="min-w-0 flex-1 bg-transparent text-lg font-semibold outline-none" />
       </label>
-      <PosPrimaryButton type="button" onClick={() => onNavigate("NewItem")}>
-        <Plus size={24} aria-hidden="true" />{t("items.new")}
-      </PosPrimaryButton>
+      {/* rules_global.button_system.open_text_sweep: "+ New item" is the add look (was solid green). */}
+      <AddButton onClick={() => onNavigate("NewItem")}>{t("items.new")}</AddButton>
       {result === undefined ? (
         <p role="status" className="rounded-xl bg-slate-100 p-3 font-semibold">{t("items.loading")}</p>
       ) : result.error ? (
@@ -83,9 +82,8 @@ function MyItems({ onBack, onNavigate }) {
           {query ? t("items.noMatches") : t("items.empty")}
         </p>
       )}
-      <PosSecondaryButton type="button" onClick={() => onNavigate("YourStarterList", { returnRoute: "MyItems" })}>
-        {t("items.starterList")}
-      </PosSecondaryButton>
+      {/* rules_global.button_system.open_text_sweep: "+ Add from starter list" is the add look. */}
+      <AddButton onClick={() => onNavigate("YourStarterList", { returnRoute: "MyItems" })}>{t("items.starterList")}</AddButton>
     </PosPage>
   );
 }
@@ -141,7 +139,7 @@ function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCom
         {(formErrors.message || error) && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{formErrors.message || error}</p>}
         <div className="mt-auto flex flex-col gap-2">
           {item && (
-            <PosSecondaryButton type="button" disabled={saving} onClick={() => onNavigate("DeleteItem", { itemId: item.id, itemName: item.name })} className="border-rose-900 text-rose-900">
+            <PosSecondaryButton type="button" disabled={saving} onClick={() => onNavigate("DeleteItem", { itemId: item.id, itemName: item.name })} tone="danger">
               <Trash2 size={20} aria-hidden="true" />{t("items.delete")}
             </PosSecondaryButton>
           )}
@@ -341,9 +339,9 @@ function StarterList({ grouped = false, params, onBack, onAdd, onCompleteSetup }
         {saving ? t("items.saving") : t("setup.continueCount", { count: selectedCount })}
       </PosPrimaryButton>
       {params.setupFlow && (
-        <PosSecondaryButton type="button" disabled={saving} onClick={() => void finishSetup()}>
+        <LeaveButton disabled={saving} onClick={() => void finishSetup()}>
           {t("setup.finish")}
-        </PosSecondaryButton>
+        </LeaveButton>
       )}
     </PosPage>
   );

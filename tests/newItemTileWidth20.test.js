@@ -6,7 +6,7 @@ import { loadJsx, render, setLiveQuery, walk } from "./helpers/renderJsx.js";
 // Wiring 20 (16 Nov 2026) in a real browser at 340, 360 and 393px: "+ New item" never sits alone in a
 // half-width row. One rule on the number of item tiles: even (zero included, or a search that matches
 // nothing) spans the whole grid width; odd stays beside the last tile, one tile wide. Always 72px tall,
-// 3px dashed border, no horizontal overflow.
+// 2px dashed border (the add look since 17 Nov 2026), no horizontal overflow.
 
 const WIDTHS = [340, 360, 393];
 const BREAD = { id: 1, name: "Bread", default_price: 2 };
@@ -65,7 +65,7 @@ test("20 + New item: full width with an even tile count (0, 2, 4, search with no
     assert.equal(result.pageOverflow, false, `${at}: no horizontal scroll`);
     assert.ok(button.right <= result.width && button.left >= 0, `${at}: + New item inside the screen`);
     assert.equal(button.borderStyle, "dashed", `${at}: dashed border kept`);
-    assert.equal(button.borderWidth, 3, `${at}: 3px border`);
+    assert.equal(button.borderWidth, 2, `${at}: 2px border (the add look, 17 Nov 2026)`);
     const rowWidth = grid.width - grid.paddingLeft - grid.paddingRight;
     if (tiles.length % 2 === 0) {
       assert.ok(Math.abs(button.height - 72) <= 0.5, `${at}: 72px tall on its own row (is ${button.height})`);

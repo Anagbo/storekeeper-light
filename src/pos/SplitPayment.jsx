@@ -126,11 +126,9 @@ export default function SplitPayment({
           <div key={part.paymentMethod} data-split-row={part.paymentMethod} className="flex min-h-16 min-w-0 flex-col justify-center gap-1 rounded-2xl border-2 border-slate-500 bg-white px-2 py-2">
             <div data-row-line="" className="flex min-w-0 flex-wrap items-center gap-1.5">
               <Icon size={22} className="shrink-0 text-emerald-900" aria-hidden="true" />
-              {editable ? (
-                <button type="button" disabled={busy} onClick={() => startEdit(part)} className={nameClass}>{name}</button>
-              ) : (
-                <div className={nameClass}>{name}</div>
-              )}
+              {/* rules_global.button_system.open_text_sweep (17 Nov 2026): the method name is plain text,
+                  never tappable; the pencil chip is the one way to edit the amount. */}
+              <div data-row-name="" className={nameClass}>{name}</div>
               <div className="ml-auto flex shrink-0 items-center gap-1.5">
                 {locked ? (
                   <strong data-row-amount="" className="shrink-0 whitespace-nowrap text-[21px] font-extrabold text-[#0F172A]">{formatGhs(part.amountPesewas)}</strong>
