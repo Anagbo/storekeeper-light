@@ -130,7 +130,9 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
   }, [amount, canSave, busy, paymentMethod, largeAmount.open]);
 
   return (
-    <PosPage style={{ paddingTop: 14 }} className="flex flex-col gap-3 overflow-visible! pb-0! lg:max-w-5xl lg:justify-center lg:pb-10!">
+    // The bottom bar (PosBottomNav, below lg) is fixed over the page: 3px border + 4px + 76px + its
+    // safe-bottom padding. The page keeps that much room at its end, and Done sticks just above the bar.
+    <PosPage style={{ paddingTop: 14 }} className="flex flex-col gap-3 overflow-visible! pb-[calc(83px+max(1rem,env(safe-area-inset-bottom)))]! lg:max-w-5xl lg:justify-center lg:pb-10!">
       <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.9fr)] lg:items-start lg:gap-6">
         <div className="flex flex-col gap-3">
           <PosCard className="amount-fit-container rounded-[20px] px-4 py-3 text-right lg:px-6 lg:py-5">
@@ -139,7 +141,9 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
           </PosCard>
           <AmountKeypad label={t("sell.enterAmount")} disabled={hasSaleItems} onKey={appendDigit} />
         </div>
-        <div className="flex flex-col gap-3 lg:pt-1">
+        {/* Below lg this column is display: contents, so the pinned Done row can stick anywhere in the
+            page (a sticky row cannot rise above its own parent); on lg it is the right-hand column. */}
+        <div className="contents lg:flex lg:flex-col lg:gap-3 lg:pt-1">
           {/* Wiring 15 "Done on 15" (17 Nov 2026): "+ Add items" is the add look at the compact 44px, the
               one allowed use of the compact size. */}
           <AddButton size="compact" onClick={() => onNavigate("SellWithItems", { amountPesewas, saleItems })}>
@@ -196,7 +200,7 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
           {/* Wiring 15 "Done on 15" (17 Nov 2026): Done is pinned at the bottom of the screen (60px, solid
               green) and the content above it scrolls under it, so Done is fully visible at 340x667, 340x640
               and 360x667. On the wide layout it stays in the right column. */}
-          <div data-bottom-row="" className="sticky bottom-0 z-10 -mx-4 bg-white px-4 pb-3 pt-2 sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:p-0">
+          <div data-bottom-row="" className="sticky bottom-[calc(83px+max(1rem,env(safe-area-inset-bottom)))] z-10 -mx-4 bg-white px-4 pb-3 pt-2 sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:p-0">
             <PosPrimaryButton type="button" onClick={() => void saveSale()} disabled={!canSave || busy} className="h-[60px] min-h-0 rounded-[20px] border-0 text-[26px] lg:h-20 lg:text-3xl">
               <Check size={32} aria-hidden="true" /> {busy ? t("sell.saving") : t("sell.done")}
             </PosPrimaryButton>

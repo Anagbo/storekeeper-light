@@ -36,6 +36,8 @@ const MEASURE = `(() => {
     doneBackground: getComputedStyle(done).backgroundColor,
     add: { ...rect(add), text: add.textContent.trim(), name: add.textContent.replace("+", "").trim(), overflow: add.scrollWidth > add.clientWidth, lines,
       border: cs.borderTopStyle + " " + cs.borderTopWidth + " " + cs.borderTopColor, radius: cs.borderTopLeftRadius, background: cs.backgroundColor, color: cs.color, weight: cs.fontWeight, underline: cs.textDecorationLine },
+    // The fixed bottom bar (and the raised Sell circle in it): Done must end above its highest point.
+    barTop: (() => { const bar = [...document.querySelectorAll("nav")].find((n) => getComputedStyle(n).position === "fixed" && n.getClientRects().length); return bar ? Math.min(...[bar, ...bar.querySelectorAll("*")].map((el) => el.getBoundingClientRect().top)) : innerHeight; })(),
     tileCount: tiles.length,
     lastTile: tiles.length ? { bottom: Math.max(...tiles.map((t) => t.getBoundingClientRect().bottom)) } : null
   };
@@ -53,8 +55,9 @@ test("15: Done pinned and fully visible at 340x667, 340x640, 360x667 and 393x852
       assert.equal(top.innerWidth, width, `${label}: viewport`);
       assert.ok(top.docScrollWidth <= width, `${label}: no sideways scroll (${top.docScrollWidth})`);
       assert.ok(top.docScrollHeight <= height + 0.5, `${label}: the document never scrolls (${top.docScrollHeight})`);
-      // Done: fully on the screen, below the header, 60px, solid green.
-      assert.ok(top.done.top >= top.header.bottom - 0.5 && top.done.bottom <= height + 0.5, `${label}: Done is fully visible (${top.done.top}-${top.done.bottom} of ${height})`);
+      // Done: fully visible, below the header and above the fixed bottom bar (its raised Sell circle
+      // included), 60px, solid green.
+      assert.ok(top.done.top >= top.header.bottom - 0.5 && top.done.bottom <= top.barTop + 0.5, `${label}: Done is fully visible (${top.done.top}-${top.done.bottom}, bottom bar from ${top.barTop})`);
       assert.ok(Math.abs(top.done.height - 60) < 0.5, `${label}: Done is 60px (${top.done.height})`);
       assert.ok(top.done.left >= 0 && top.done.right <= width, `${label}: Done fits across`);
       assert.match(top.doneBackground, GREEN, `${label}: Done is solid green`);
@@ -75,13 +78,13 @@ test("15: Done pinned and fully visible at 340x667, 340x640, 360x667 and 393x852
       await app.evaluate(`(() => { const a = document.querySelector("[data-page-area]"); a.scrollTop = a.scrollHeight; })()`);
       await sleep(200);
       const end = await app.evaluate(MEASURE);
-      assert.ok(end.done.bottom <= height + 0.5, `${label}: Done stays visible at the end of the scroll`);
+      assert.ok(end.done.bottom <= end.barTop + 0.5, `${label}: Done stays above the bottom bar at the end of the scroll`);
       // Accepted 17 Nov 2026: at 340x640 Done covers the tiles until scrolled; at the end of the scroll
       // all four tiles (Split included) sit fully above Done, at 340x640 and 340x667 as at every size.
       assert.equal(end.tileCount, 4, `${label}: the four payment tiles`);
       assert.ok(end.lastTile && end.lastTile.bottom <= end.done.top + 0.5, `${label}: the payment tiles end above Done (${end.lastTile?.bottom} vs ${end.done.top})`);
       assert.ok(end.add.top >= end.header.bottom - 0.5 || top.add.bottom <= top.done.top + 0.5, `${label}: + Add items can be reached`);
-      console.log(`${label}: page area ${top.area.clientHeight}px, content ${top.area.scrollHeight}px; Done ${top.done.top}-${top.done.bottom}; + Add items ${top.add.top}-${top.add.bottom}`);
+      console.log(`${label}: page area ${top.area.clientHeight}px, content ${top.area.scrollHeight}px; Done ${top.done.top}-${top.done.bottom}; bar from ${top.barTop}; + Add items ${top.add.top}-${top.add.bottom}; tiles end ${top.lastTile?.bottom} (hidden under Done by ${Math.max(0, top.lastTile?.bottom - top.done.top + 8).toFixed(0)}px at the top of the scroll)`);
     }
   });
 });
