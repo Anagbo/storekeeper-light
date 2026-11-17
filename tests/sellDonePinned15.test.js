@@ -20,7 +20,9 @@ const MEASURE = `(() => {
   const buttons = [...document.querySelectorAll("main button")];
   const done = buttons.find((b) => /^Done$/.test(b.textContent.trim()));
   const add = buttons.find((b) => b.getAttribute("data-look") === "add");
-  const tiles = [...document.querySelectorAll("main button[aria-pressed], main button[aria-label='Cash + MoMo + Owe']")];
+  // The payment tiles: every button in the row that holds the Cash tile (Cash, MoMo, Owe, Split).
+  const cash = [...document.querySelectorAll("main button[aria-pressed]")].find((b) => b.textContent.trim() === "Cash");
+  const tiles = cash ? [...cash.parentElement.querySelectorAll(":scope > button")] : [];
   const rect = (el) => { const r = el.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, height: r.height }; };
   const cs = getComputedStyle(add);
   const lines = (() => { const tops = new Set(); const w = document.createTreeWalker(add, NodeFilter.SHOW_TEXT); for (let n = w.nextNode(); n; n = w.nextNode()) { if (!n.textContent.trim()) continue; const r = document.createRange(); r.selectNodeContents(n); for (const b of r.getClientRects()) tops.add(Math.round(b.top / 4)); } return tops.size; })();
@@ -34,7 +36,8 @@ const MEASURE = `(() => {
     doneBackground: getComputedStyle(done).backgroundColor,
     add: { ...rect(add), text: add.textContent.trim(), name: add.textContent.replace("+", "").trim(), overflow: add.scrollWidth > add.clientWidth, lines,
       border: cs.borderTopStyle + " " + cs.borderTopWidth + " " + cs.borderTopColor, radius: cs.borderTopLeftRadius, background: cs.backgroundColor, color: cs.color, weight: cs.fontWeight, underline: cs.textDecorationLine },
-    lastTile: tiles.length ? rect(tiles.at(-1)) : null
+    tileCount: tiles.length,
+    lastTile: tiles.length ? { bottom: Math.max(...tiles.map((t) => t.getBoundingClientRect().bottom)) } : null
   };
 })()`;
 
@@ -73,6 +76,9 @@ test("15: Done pinned and fully visible at 340x667, 340x640, 360x667 and 393x852
       await sleep(200);
       const end = await app.evaluate(MEASURE);
       assert.ok(end.done.bottom <= height + 0.5, `${label}: Done stays visible at the end of the scroll`);
+      // Accepted 17 Nov 2026: at 340x640 Done covers the tiles until scrolled; at the end of the scroll
+      // all four tiles (Split included) sit fully above Done, at 340x640 and 340x667 as at every size.
+      assert.equal(end.tileCount, 4, `${label}: the four payment tiles`);
       assert.ok(end.lastTile && end.lastTile.bottom <= end.done.top + 0.5, `${label}: the payment tiles end above Done (${end.lastTile?.bottom} vs ${end.done.top})`);
       assert.ok(end.add.top >= end.header.bottom - 0.5 || top.add.bottom <= top.done.top + 0.5, `${label}: + Add items can be reached`);
       console.log(`${label}: page area ${top.area.clientHeight}px, content ${top.area.scrollHeight}px; Done ${top.done.top}-${top.done.bottom}; + Add items ${top.add.top}-${top.add.bottom}`);
