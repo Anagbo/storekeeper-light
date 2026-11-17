@@ -97,6 +97,8 @@ const ACTIONS = [
   ["29/43 Get signature (no +)", "DebtCollection.jsx", "AddButton", /plus=\{false\}/, /t\("creditRow\.getSignature"\)/],
   ["45 + New supplier (radio)", "SupplierScreens.jsx", "AddButton", /role="radio"/, /t\("expense\.newSupplierRow"\)/],
   ["28 + Add phone", "DebtCollection.jsx", "AddButton", /setContactEditorOpen/, /t\("collect\.addPhoneForReceipt"\)/],
+  ["39 + New item", "ItemScreens.jsx", "AddButton", /"NewItem"/, /t\("items\.new"\)/],
+  ["39 + Add from starter list", "ItemScreens.jsx", "AddButton", /"YourStarterList"/, /t\("items\.starterList"\)/],
   ["22 Today’s transactions", "Home.jsx", "PosSecondaryButton", /"TodaysTransactions"/, /t\("home\.transactionsLink"\)/],
   ["25 See {Name}’s details", "DebtCollection.jsx", "PosSecondaryButton", /debtId: debt\.id/, /t\("collect\.seeDetails"/],
   ["28 See {Name}’s details", "DebtCollection.jsx", "PosSecondaryButton", /debtId: result\.debtId/, /t\("collect\.seeDetails"/],

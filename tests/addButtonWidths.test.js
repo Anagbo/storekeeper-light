@@ -22,6 +22,8 @@ const VISITS = [
   { name: "17 Who owes you (Add debt)", seed: "base", steps: ["^Owed$", "Add debt$"], add: [{ text: "+ New person", height: 52, full: true }] },
   // 45: "+ New supplier" is the add radio variant (60px like the rows), "Show all 5 suppliers" is other.
   { name: "45 Stock on credit", seed: "suppliers", steps: ["^Spent money", "type:10", "^Stock$", "^No$"], add: [{ text: "+ New supplier", height: 60, sameWidthAs: "Kofi Wholesale" }], other: ["Show all 5 suppliers"] },
+  // 39: both actions add (no solid green button on 39, accepted 17 Nov 2026).
+  { name: "39 My items", seed: "base", steps: ["^Menu", "^Items"], add: [{ text: "+ New item", height: 52, full: true }, { text: "+ Add from starter list", height: 52, full: true }] },
   // 28 (receipts on, no phone saved): "+ Add phone".
   { name: "28 Payment received", seed: "base", steps: ["^Owed$", "^Collect from Amoto", "^Received$"], add: [{ text: "+ Add phone", height: 52, full: true }] },
   // 29: "+ Add to debt" on its own line under What happened; GH₵27 is under the signature threshold.
