@@ -160,7 +160,7 @@ test("split from 16 with an existing debt: the pink row is the balance after the
   await app.keys(["8"]);
   await app.tap("Split payment");
   await app.tap(/^Cash$/);
-  await app.tap(/^Cash/);
+  await app.tap("Edit Cash amount");
   await app.type("split-draft-amount", "4.00");
   await app.tap(/^Save$/);
   await app.tap(/^Owe$/);

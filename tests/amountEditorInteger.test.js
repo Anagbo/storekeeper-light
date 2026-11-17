@@ -17,7 +17,7 @@ async function editCashRowTo(value, totalPesewas = 20000) {
     onPartsChange: (parts) => changes.push(parts),
     initialParts: [{ paymentMethod: "cash", amountPesewas: totalPesewas }]
   } });
-  findButton(view.tree, "Cash").props.onClick();
+  [...walk(view.tree)].find((node) => node.props?.["aria-label"] === "Edit Cash amount").props.onClick();
   view.rerender();
   const startValue = editorInput(view.tree).props.value;
   editorInput(view.tree).props.onChange({ target: { value } });
@@ -34,7 +34,7 @@ test("the editor starts from the row amount written by integer math", async () =
       totalPesewas: pesewas, totalLabel: "Total", doneLabel: "Done", onBack() {}, onDone() {},
       initialParts: [{ paymentMethod: "cash", amountPesewas: pesewas }]
     } });
-    findButton(view.tree, "Cash").props.onClick();
+    [...walk(view.tree)].find((node) => node.props?.["aria-label"] === "Edit Cash amount").props.onClick();
     view.rerender();
     assert.equal(editorInput(view.tree).props.value, text, `${pesewas} pesewas`);
   }
@@ -77,7 +77,7 @@ test("text that is not a plain amount is refused, not read as a number", async (
       totalPesewas: 20000, totalLabel: "Total", doneLabel: "Done", onBack() {}, onDone() {},
       initialParts: [{ paymentMethod: "cash", amountPesewas: 20000 }]
     } });
-    findButton(view.tree, "Cash").props.onClick();
+    [...walk(view.tree)].find((node) => node.props?.["aria-label"] === "Edit Cash amount").props.onClick();
     view.rerender();
     editorInput(view.tree).props.onChange({ target: { value: typed } });
     view.rerender();

@@ -31,6 +31,8 @@ const momoRow = (amountPesewas, confirmedPesewas = amountPesewas) => ({ paymentM
 const exactButtons = (tree, label) => [...walk(tree)].filter((node) => node.type === "button" && textOf(node) === label);
 const tileOf = (tree, label) => exactButtons(tree, label).at(-1);          // the tiles come after the rows
 const rowOf = (tree, label) => [...walk(tree)].find((node) => node.type === "button" && textOf(node).startsWith(label));
+// The pencil chip is the one way to edit a row (the method name is not tappable, 17 Nov 2026).
+const editChip = (tree, method) => [...walk(tree)].find((node) => node.type === "button" && node.props?.["aria-label"] === `Edit ${method} amount`);
 const removeButton = (tree, method) => [...walk(tree)].find((node) => node.type === "button" && node.props?.["aria-label"] === `Remove ${method}`);
 const editorInput = (tree) => [...walk(tree)].find((node) => node.type === "input");
 
@@ -85,7 +87,7 @@ test("GH₵60: Cash 20, then MoMo opens the editor at GH₵40; 20 goes to 61 and
   let view = mount();
   tileOf(view.tree, "Cash").props.onClick();
   view.rerender();
-  rowOf(view.tree, "Cash").props.onClick();
+  editChip(view.tree, "Cash").props.onClick();
   view.rerender();
   typeAndSave(view, "20.00");
   openEditor(view, "MoMo");

@@ -29,8 +29,9 @@ async function rows({ busy = false } = {}) {
 test("the Owe row and a verified MoMo row are not dimmed; they stay read-only", async () => {
   const { cash, momo, owe, view } = await rows();
   assert.ok(cash && momo && owe);
-  assert.equal(cash.type, "button");
-  assert.equal(cash.props.disabled, false);
+  // Open-text sweep (17 Nov 2026): no row name is tappable; the pencil chip edits an editable row.
+  assert.equal(cash.type, "div", "the Cash name is plain text");
+  assert.ok([...walk(view.tree)].some((node) => node.type === "button" && node.props?.["aria-label"] === "Edit Cash amount"), "Cash keeps its pencil chip");
   assert.equal(owe.type, "div", "Owe is still never typed: not a button");
   assert.equal(momo.type, "div", "a verified row is still never edited: not a button");
   for (const [name, button] of Object.entries({ cash, momo, owe })) {

@@ -39,7 +39,7 @@ async function to19(app, { cash, momo, owe }) {
   await app.tap("Split payment");
   if (cash) {
     await app.tap(/^Cash$/);
-    await app.tap(/^Cash/);
+    await app.tap("Edit Cash amount");
     await app.type("split-draft-amount", cash);
     await app.tap(/^Save$/);
   }

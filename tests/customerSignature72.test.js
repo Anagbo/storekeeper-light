@@ -189,7 +189,7 @@ test("split with cash: the Owe part counts, not the sale: GH₵10.00 cash + GH�
   await sell(app, "60");
   await app.tap("Split payment");
   await app.tap(/^Cash$/);
-  await app.tap(/^Cash/);
+  await app.tap("Edit Cash amount");
   await app.type("split-draft-amount", "10.00");
   await app.tap(/^Save$/);
   await app.tap(/^Owe$/);
@@ -208,7 +208,7 @@ test("split with cash below the threshold: GH₵20.00 cash + GH₵40.00 owed goe
   await sell(app, "60");
   await app.tap("Split payment");
   await app.tap(/^Cash$/);
-  await app.tap(/^Cash/);
+  await app.tap("Edit Cash amount");
   await app.type("split-draft-amount", "20.00");
   await app.tap(/^Save$/);
   await app.tap(/^Owe$/);

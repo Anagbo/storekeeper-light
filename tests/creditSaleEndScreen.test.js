@@ -223,7 +223,7 @@ test("split, GH₵3.00 cash + GH₵5.00 owed with a plan: 30 shows Cash GH₵3.0
   await sell(app, "8");
   await app.tap("Split payment");
   await app.tap(/^Cash$/);
-  await app.tap(/^Cash/);
+  await app.tap("Edit Cash amount");
   await app.type("split-draft-amount", "3.00");
   await app.tap(/^Save$/);
   await app.tap(/^Owe$/);
