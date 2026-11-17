@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Banknote, Check, Plus, Smartphone, UserRound } from "lucide-react";
+import { Banknote, Check, Smartphone, UserRound } from "lucide-react";
 import { recordCashSale } from "../db/sales.js";
 import { isSaveOutcomeUnknown, isSaveTimeout } from "../lib/saveAttempt.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
-import { PosCard, SplitIcons, PosPage, PosPrimaryButton } from "./PosComponents.jsx";
+import { AddButton, PosCard, SplitIcons, PosPage, PosPrimaryButton } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
 import { useLargeAmountConfirm } from "./LargeAmountConfirm.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
@@ -130,7 +130,7 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
   }, [amount, canSave, busy, paymentMethod, largeAmount.open]);
 
   return (
-    <PosPage style={{ paddingTop: 14, paddingBottom: 96 }} className="flex flex-col gap-3 pb-32 lg:max-w-5xl lg:justify-center lg:pb-10">
+    <PosPage style={{ paddingTop: 14 }} className="flex flex-col gap-3 overflow-visible! pb-0! lg:max-w-5xl lg:justify-center lg:pb-10!">
       <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.9fr)] lg:items-start lg:gap-6">
         <div className="flex flex-col gap-3">
           <PosCard className="amount-fit-container rounded-[20px] px-4 py-3 text-right lg:px-6 lg:py-5">
@@ -140,13 +140,11 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
           <AmountKeypad label={t("sell.enterAmount")} disabled={hasSaleItems} onKey={appendDigit} />
         </div>
         <div className="flex flex-col gap-3 lg:pt-1">
-          <button
-            type="button"
-            onClick={() => onNavigate("SellWithItems", { amountPesewas, saleItems })}
-            className="inline-flex h-12 items-center justify-center gap-1 self-center rounded-xl px-3 py-2 text-base font-bold text-emerald-900 underline decoration-2 underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800"
-          >
-            <Plus size={20} aria-hidden="true" /> {t("sell.addItems")}
-          </button>
+          {/* Wiring 15 "Done on 15" (17 Nov 2026): "+ Add items" is the add look at the compact 44px, the
+              one allowed use of the compact size. */}
+          <AddButton size="compact" onClick={() => onNavigate("SellWithItems", { amountPesewas, saleItems })}>
+            {t("sell.addItems")}
+          </AddButton>
           <div className="grid grid-cols-4 gap-1 sm:gap-2 lg:gap-3">
             {paymentChoices.map(({ value, label, icon: Icon }) => (
               <button
@@ -193,9 +191,14 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
           </div>
           {(amountErrors.message || error) && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 text-base font-semibold text-rose-950">{amountErrors.message || error}</p>}
           <SaveAttemptNotice saveAttempt={saveAttempt} busy={busy} onTryAgain={() => void saveSale(true)} />
-          <PosPrimaryButton type="button" onClick={() => void saveSale()} disabled={!canSave || busy} className="mb-4 h-[68px] min-h-0 rounded-[20px] border-0 text-[26px] lg:mb-0 lg:h-20 lg:text-3xl">
-            <Check size={32} aria-hidden="true" /> {busy ? t("sell.saving") : t("sell.done")}
-          </PosPrimaryButton>
+          {/* Wiring 15 "Done on 15" (17 Nov 2026): Done is pinned at the bottom of the screen (60px, solid
+              green) and the content above it scrolls under it, so Done is fully visible at 340x667, 340x640
+              and 360x667. On the wide layout it stays in the right column. */}
+          <div data-bottom-row="" className="sticky bottom-0 z-10 -mx-4 bg-white px-4 pb-3 pt-2 sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:p-0">
+            <PosPrimaryButton type="button" onClick={() => void saveSale()} disabled={!canSave || busy} className="h-[60px] min-h-0 rounded-[20px] border-0 text-[26px] lg:h-20 lg:text-3xl">
+              <Check size={32} aria-hidden="true" /> {busy ? t("sell.saving") : t("sell.done")}
+            </PosPrimaryButton>
+          </div>
         </div>
       </div>
       {largeAmount.dialog}
