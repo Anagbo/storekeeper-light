@@ -42,10 +42,7 @@ test("the other look (PosSecondaryButton) fits at 340, 360 and 393px on every sc
       for (const width of WIDTHS) {
         try {
           await app.open(visit.seed, width, 800);
-          for (const step of visit.steps) {
-            await app.click(step);
-            await sleep(150);
-          }
+          await app.steps(visit.steps);
           for (const expected of visit.expect) await app.shows(expected);
         } catch (error) {
           throw new Error(`${visit.name} ${width}px: ${error.message}`);

@@ -177,6 +177,17 @@ export async function withEdgeApp({ seeds, env = {} }, run) {
       },
       measure: () => evaluate(MEASURE_BUTTONS)
     };
+    // Steps: a regex source clicks that control; "type:<text>" focuses the first visible text field on
+    // the page and types the text there.
+    app.steps = async (steps) => {
+      for (const step of steps) {
+        if (step.startsWith("type:")) {
+          await waitFor(() => evaluate(`(() => { const field = [...document.querySelectorAll("main input")].find((el) => el.offsetParent && !el.disabled && !el.readOnly); if (!field) return false; field.focus(); return true; })()`), "a text field");
+          await app.type(step.slice(5));
+        } else await app.click(step);
+        await sleep(150);
+      }
+    };
     await run(app);
   } finally {
     await session?.close();

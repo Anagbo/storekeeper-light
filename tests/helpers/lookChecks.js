@@ -11,6 +11,11 @@ export const SEEDS = {
   // A long name that is still one word per part: the longest "See {Name}’s details" a shop is likely to type.
   longName: `await setPreference("posSetupCompleted", true);
     await recordCreditSale({ name: "Nana Akosua Frimpomaa Asamoah-Boateng", amountPesewas: 2700, now: Date.now() - 86400000 });`,
+  // Five suppliers: 45 lists four and offers "Show all 5 suppliers".
+  suppliers: `await setPreference("posSetupCompleted", true);
+    for (const [index, name] of ["Kofi Wholesale", "Nana Akosua Frimpomaa-Boateng Wholesale Distributors", "Ama Rice", "Yaw Oil", "Esi Sugar"].entries()) {
+      await recordExpense({ amountPesewas: 1000, paidAmountPesewas: 0, category: "stock", newSupplier: { name }, paidWith: "cash", now: Date.now() - 60000 * (index + 1) });
+    }`,
   fresh: ""
 };
 

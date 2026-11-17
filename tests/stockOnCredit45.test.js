@@ -41,7 +41,10 @@ test("45 picker: one card headed \"Who do you owe?\", radio rows 60px, names in 
   assert.equal(textOf(rows[0]), "Kofi Wholesale");
   assert.match(cls(rows[2]), /border-dashed/);
   assert.match(cls(rows[2]), /text-emerald-900/);
-  assert.equal(textOf(rows[2]), "New supplier");
+  // rules_global.button_system.add_variants (17 Nov 2026): the AddButton radio variant, "+" then the word.
+  assert.equal(textOf(rows[2]), "+ New supplier");
+  assert.equal(rows[2].props["data-look"], "add");
+  assert.equal(rows[2].props.role, "radio");
 });
 
 test("45 picker: choosing a supplier checks only that row (green border, light green, filled circle) and Save sends it", async () => {

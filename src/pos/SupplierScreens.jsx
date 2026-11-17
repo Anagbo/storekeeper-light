@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Banknote, Plus, Smartphone, Wallet } from "lucide-react";
+import { Banknote, Smartphone, Wallet } from "lucide-react";
 import { db } from "../db/db.js";
 import { displayName } from "../lib/displayName.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
@@ -9,7 +9,7 @@ import { getSupplierBalances, orderSuppliersByRecentUse, SUPPLIER_CATEGORIES } f
 import { posText as t } from "./i18n.js";
 import AmountTextInput from "./AmountTextInput.jsx";
 import { PartyCard } from "./PartyCard.jsx";
-import { PosBackButton, PosCard, PosPage, PosPrimaryButton } from "./PosComponents.jsx";
+import { AddButton, PosBackButton, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { useBackBlock, useBackHandler } from "./browserBack.js";
 import { useFormErrors } from "./formErrors.js";
 
@@ -147,12 +147,10 @@ export function SpentMoney({ params = {}, onBack, onNavigate, onUpdateParams, on
 }
 
 // 45: a supplier row in the "Who do you owe?" picker (role radio, 60px, circle on the left).
-function SupplierRadio({ checked, onSelect, children, dashed = false, ...rest }) {
-  const tone = checked
-    ? "border-solid border-emerald-900 bg-emerald-50"
-    : dashed ? "border-dashed border-emerald-900 bg-white" : "border-solid border-slate-300 bg-white";
+function SupplierRadio({ checked, onSelect, children, ...rest }) {
+  const tone = checked ? "border-emerald-900 bg-emerald-50" : "border-slate-300 bg-white";
   return (
-    <button type="button" role="radio" aria-checked={checked} onClick={onSelect} {...rest} className={`flex min-h-[60px] w-full min-w-0 items-center gap-3 rounded-[14px] border-2 px-3.5 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 ${dashed ? "text-emerald-900" : "text-[#0F172A]"} ${tone}`}>
+    <button type="button" role="radio" aria-checked={checked} onClick={onSelect} {...rest} className={`flex min-h-[60px] w-full min-w-0 items-center gap-3 rounded-[14px] border-2 border-solid px-3.5 py-2 text-left text-[#0F172A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 ${tone}`}>
       {children}
     </button>
   );
@@ -270,14 +268,14 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
                 );
               })}
               {!showAll && listed.length > 4 && (
-                <button type="button" data-show-all="" onClick={() => setShowAll(true)} className="flex min-h-12 w-full items-center rounded-[14px] px-3.5 text-left text-lg font-extrabold text-emerald-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">
+                <PosSecondaryButton type="button" data-show-all="" onClick={() => setShowAll(true)} className="w-full">
                   {t("expense.showAllSuppliers", { count: listed.length })}
-                </button>
+                </PosSecondaryButton>
               )}
-              <SupplierRadio dashed checked={isNew} data-supplier-id="new" onSelect={() => { setNewSupplier(true); onUpdateParams?.({ stockNewSupplier: true }); }}>
-                <Plus size={24} aria-hidden="true" className="shrink-0" />
-                <b className="min-w-0 flex-1 text-lg">{t("expense.newSupplierRow")}</b>
-              </SupplierRadio>
+              {/* rules_global.button_system.add_variants: "+ New supplier" is the AddButton radio variant. */}
+              <AddButton role="radio" checked={isNew} data-supplier-id="new" onClick={() => { setNewSupplier(true); onUpdateParams?.({ stockNewSupplier: true }); }}>
+                {t("expense.newSupplierRow")}
+              </AddButton>
             </div>
             {isNew && (
               <div data-new-supplier-fields="" className="flex flex-col gap-2.5 pt-1">

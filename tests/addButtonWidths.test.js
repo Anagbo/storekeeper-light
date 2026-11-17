@@ -20,6 +20,8 @@ const VISITS = [
   { name: "32 People who owe you", seed: "base", steps: ["^Owed$"], add: [{ text: "+ Add debt", height: 52, full: true }] },
   { name: "17 Who owes you", seed: "base", steps: ["^Sell$", "^5$", "^Owe$"], add: [{ text: "+ New person", height: 52, full: true }] },
   { name: "17 Who owes you (Add debt)", seed: "base", steps: ["^Owed$", "Add debt$"], add: [{ text: "+ New person", height: 52, full: true }] },
+  // 45: "+ New supplier" is the add radio variant (60px like the rows), "Show all 5 suppliers" is other.
+  { name: "45 Stock on credit", seed: "suppliers", steps: ["^Spent money", "type:10", "^Stock$", "^No$"], add: [{ text: "+ New supplier", height: 60, sameWidthAs: "Kofi Wholesale" }], other: ["Show all 5 suppliers"] },
   // 29: "+ Add to debt" on its own line under What happened; GH₵27 is under the signature threshold.
   { name: "29 Debtor detail", seed: "base", steps: ["^Owed$", "^Amoto"], add: [{ text: "+ Add to debt", height: 52, full: true }], other: ["Correct balance"] },
   // 43 (late): GH₵90 unsigned is at or above the threshold, so its card offers Get signature (no "+").
@@ -36,10 +38,7 @@ test("the add look fits at 340, 360 and 393px: dashed 2px green, 14px corners, n
         const label = `${visit.name} ${width}px`;
         try {
           await app.open(visit.seed, width, 800);
-          for (const step of visit.steps) {
-            await app.click(step);
-            await sleep(150);
-          }
+          await app.steps(visit.steps);
           for (const { text } of visit.add) await app.shows(text.replace(/[+]/g, "\\+"));
         } catch (error) {
           throw new Error(`${label}: ${error.message}`);
@@ -62,6 +61,10 @@ test("the add look fits at 340, 360 and 393px: dashed 2px green, 14px corners, n
           assert.ok(!c.overflow, `${what}: no overflow`);
           assert.ok(c.left >= -0.5 && c.right <= m.innerWidth + 0.5, `${what}: inside the screen`);
           assert.ok(Math.abs(c.height - expected.height) < 0.5 || ((expected.atLeast || expected.height === 52) && c.height >= expected.height), `${what}: ${expected.height}px (${c.height})`);
+          if (expected.sameWidthAs) {
+            const row = m.controls.find((control) => control.text === expected.sameWidthAs);
+            assert.ok(row && Math.abs(row.width - c.width) < 0.5 && Math.abs(row.left - c.left) < 0.5, `${what}: as wide as the "${expected.sameWidthAs}" row`);
+          }
           if (expected.full) assert.ok(c.width >= content - 16.5, `${what}: full width (${c.width} of about ${content})`);
         }
         for (const text of visit.other ?? []) assert.ok(m.controls.some((c) => c.look === "other" && c.text === text), `${label}: "${text}" is an other button`);
