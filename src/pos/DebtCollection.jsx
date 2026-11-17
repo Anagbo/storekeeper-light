@@ -7,10 +7,9 @@ import { correctDebtBalance } from "../db/debtLedger.js";
 import { formatLastReminder } from "./reminderLabel.js";
 import { useReminderCheck } from "./ReminderCheck.jsx";
 import { latestReminderAt, loadReminderEvents } from "../db/reminders.js";
-import { formatDate, formatTime } from "../lib/formatDate.js";
+import { formatDate } from "../lib/formatDate.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { formatGhanaCard } from "../utils/formatters.js";
-import { formatHistoryTimestamp } from "../utils/customerDebtHistory.js";
 import { loadCustomerHistory } from "../utils/loadCustomerDebtHistory.js";
 import { getOutstandingDebtPesewas } from "../lib/money.js";
 import { buildWhatsAppReminderText, generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
@@ -23,6 +22,7 @@ import { getDebtDueLabel, getDebtDueLine } from "./money.js";
 import { getInstallmentsLeft, getPlanProgress } from "../utils/installments.js";
 import { getCustomerLedgerRecords, getPlanPaidPesewas } from "../utils/debtLedgerMath.js";
 import { posText as t } from "./i18n.js";
+import { getDebtEntryReason } from "../lib/creditReason.js";
 import { PosBackButton, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, SplitIcons } from "./PosComponents.jsx";
 import CustomerContactEditor from "./CustomerContactEditor.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
@@ -33,12 +33,14 @@ import { getInitialPaymentParts } from "./paymentAmount.js";
 import { confirmDirectMomoParts, describeSplitPart, isUnconfirmedDirectMomo } from "./splitTender.js";
 import { getMomoDisplayLabel } from "./momoMapping.js";
 import { secondsUntil } from "../lib/countdown.js";
-import { getDebtorItemDescription } from "../utils/debtorItemDescription.js";
 import { useBackBlock, useBackHandler } from "./browserBack.js";
 import { displayName } from "../lib/displayName.js";
 import { DueTag } from "./PartyCard.jsx";
 import { useFormErrors } from "./formErrors.js";
 import AmountTextInput from "./AmountTextInput.jsx";
+import { formatHistoryRowTimestamp, groupCollectionHistory } from "./historyRows.js";
+import { needsSignature } from "../config/features.js";
+import EventRows from "./EventRows.jsx";
 
 const PAYMENT_METHODS = [
   { value: "cash", label: "collect.cash", icon: Banknote },
@@ -65,40 +67,6 @@ function latestPaymentReceiptOrNull(details) {
     console.error("Could not build the receipt for the latest payment.", error);
     return null;
   }
-}
-
-function groupCollectionHistory(events) {
-  const rows = new Map();
-  for (const event of events) {
-    if (event.type !== "payment" || !event.collectionId) {
-      rows.set(event.id, event);
-      continue;
-    }
-    const id = `collection-${event.collectionId}`;
-    const row = rows.get(id) ?? {
-      id,
-      type: "payment",
-      timestamp: event.timestamp,
-      amountPesewas: 0,
-      collectionParts: []
-    };
-    row.amountPesewas += event.amountPesewas;
-    row.collectionParts.push({ method: event.method, amountPesewas: event.amountPesewas });
-    rows.set(id, row);
-  }
-  return [...rows.values()].sort((left, right) => right.timestamp - left.timestamp);
-}
-
-function formatHistoryRowTimestamp(timestamp) {
-  const value = timestamp instanceof Date ? timestamp.getTime() : Number(timestamp);
-  if (!Number.isFinite(value) || value <= 0) return formatHistoryTimestamp(timestamp).date;
-  const date = new Date(value);
-  const today = new Date();
-  const isToday = date.getFullYear() === today.getFullYear() &&
-    date.getMonth() === today.getMonth() &&
-    date.getDate() === today.getDate();
-  const time = formatTime(date);
-  return isToday ? `Today ${time}` : `${formatDate(date)} ${time}`;
 }
 
 function useCollectionDebt(debtId, customerName) {
@@ -417,7 +385,7 @@ function CollectPayPartScreen({ params, onBack, onNavigate, onUpdateParams, onRe
   }
 
   return (
-    <PosPage className="!min-h-[calc(100vh-4rem)] !pb-6 mx-auto flex max-w-2xl flex-col gap-3 px-4 sm:px-6 lg:justify-center">
+    <PosPage className="!pb-6 mx-auto flex max-w-2xl flex-col gap-3 px-4 sm:px-6 lg:justify-center">
       {debt === undefined ? <p role="status">{t("collect.loading")}</p> : !debt ? <CollectionError>{t("collect.notFound")}</CollectionError> : (
         <>
           <div className="flex items-center gap-2">
@@ -540,7 +508,7 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
   }
 
   return (
-    <PosPage className="!min-h-[calc(100vh-4rem)] !pb-6 mx-auto flex max-w-xl flex-col gap-3 px-4 sm:px-6">
+    <PosPage className="!pb-6 mx-auto flex max-w-xl flex-col gap-3 px-4 sm:px-6">
       <section className="amount-fit-container pt-2 text-center">
         <div className="mx-auto mb-2 grid h-24 w-24 place-items-center rounded-full bg-emerald-900 text-white">
           <Check size={56} strokeWidth={2.2} aria-hidden="true" />
@@ -612,6 +580,8 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
   const [correctionDebtSnapshot, setCorrectionDebtSnapshot] = useState(null);
   const [correctionError, setCorrectionError] = useState("");
   const [correctionSaving, setCorrectionSaving] = useState(false);
+  // Wiring 54 "When the sheet first opens": no message until the owner changes the pre-filled value.
+  const [correctionChanged, setCorrectionChanged] = useState(false);
   useBackBlock(correctionSaving);
   useBackHandler(correctionOpen, () => setCorrectionOpen(false));
   const data = useLiveQuery(async () => {
@@ -765,6 +735,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
     setCorrectionDebtSnapshot(debtSnapshot);
     setCorrectionAmount(debtSnapshot ? (debtSnapshot.amountPesewas / 100).toFixed(2) : "");
     setCorrectionReason("");
+    setCorrectionChanged(false);
     setCorrectionNote("");
     setCorrectionError("");
     correctionErrors.clear();
@@ -800,23 +771,22 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
   }
 
   return (
-    <PosPage className="!min-h-[calc(100vh-4rem)] !pb-6 mx-auto flex max-w-2xl flex-col gap-3 px-4 sm:px-6">
+    <PosPage className="!pb-6 mx-auto flex max-w-2xl flex-col gap-3 px-4 sm:px-6">
       {data === undefined ? <p role="status">{t("collect.loading")}</p> : !data ? <CollectionError>{t("collect.notFound")}</CollectionError> : (
         <>
-          {/* Wiring 29/43 Back (to BACK: the previous screen in history, so the place on 32 or 22 is kept),
-              top left on the name's row; it takes the place of the initial circle and Edit contact sits
-              under the name (owner's choice, 16 Nov 2026), so a long name still has room at 340px. */}
-          <section data-row="debtor-header" className="flex items-start gap-3 rounded-[20px] border-2 border-slate-500 bg-white px-3 py-3">
-            <PosBackButton onClick={onBack} />
-            <span className="flex min-w-0 flex-1 flex-col items-start gap-2">
-              <span className="flex min-h-[52px] w-full min-w-0 flex-col justify-center">
-                <strong className="line-clamp-2 break-words text-[22px] leading-tight">{displayName(data.name)}</strong>
-                {data.ghanaCardNumber && <span className="text-base text-slate-800">{t("collect.customerId", { number: formatGhanaCard(data.ghanaCardNumber) })}</span>}
-              </span>
-              <button type="button" onClick={() => setContactEditorOpen(true)} className="flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-xl border-2 border-emerald-900 px-2 text-sm font-extrabold text-emerald-900">
-                <UserRoundPen size={20} className="shrink-0" aria-hidden="true" />{t("collect.editContact")}
-              </button>
+          {/* Wiring "Header of 29/43" (final, 16 Nov 2026): Back (to BACK: the previous screen in history, so the
+              place on 32 or 22 is kept) is its own plain row above the contact card, left aligned. The card is
+              unchanged from before Back was added. */}
+          <PosBackButton onClick={onBack} className="self-start" />
+          <section data-row="debtor-header" className="flex items-center gap-3 rounded-[20px] border-2 border-slate-500 bg-white px-3 py-3">
+            <span className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full bg-emerald-900 text-2xl font-extrabold text-white">{displayName(data.name).slice(0, 1).toUpperCase()}</span>
+            <span className="min-w-0 flex-1">
+              <strong className="line-clamp-2 break-words text-[22px] leading-tight">{displayName(data.name)}</strong>
+              {data.ghanaCardNumber && <span className="text-base text-slate-800">{t("collect.customerId", { number: formatGhanaCard(data.ghanaCardNumber) })}</span>}
             </span>
+            <button type="button" onClick={() => setContactEditorOpen(true)} className="shrink-0 rounded-xl border-2 border-emerald-900 px-2 py-2 text-sm font-extrabold text-emerald-900">
+              <UserRoundPen size={20} className="mx-auto" aria-hidden="true" />{t("collect.editContact")}
+            </button>
           </section>
           <section className="amount-fit-container rounded-[20px] bg-rose-200 px-4 py-3">
             <p className="text-lg font-bold text-rose-950">{t("collect.balanceOwed", { name: displayName(data.name) })}</p>
@@ -859,6 +829,19 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
           {/* Wiring 29/43: Last reminder, under the action buttons and above Correct balance. Per
               person; it says when the reminder was handed to WhatsApp, never that it was delivered. */}
           <p data-last-reminder="" className="text-center text-base text-slate-800">{lastReminderLabel}</p>
+          {/* Wiring 29/43 (16 Nov 2026): "Show {Name} the record" under the Last reminder line opens 73,
+              look-only, for the customer to read. One line: a long name is cut, never the words around it. */}
+          <button
+            type="button"
+            data-show-record=""
+            aria-label={t("record.show", { name: displayName(data.name) })}
+            onClick={() => onNavigate("CustomerRecordView", { customerId: data.customerId, customerName: data.name })}
+            className="flex h-[52px] w-full min-w-0 items-center justify-center gap-1 whitespace-nowrap rounded-[14px] border-2 border-[#0F172A] bg-white px-3 text-lg font-extrabold text-[#0F172A]"
+          >
+            <span className="shrink-0">Show</span>{" "}
+            <span className="min-w-0 truncate">{displayName(data.name)}</span>{" "}
+            <span className="shrink-0">the record</span>
+          </button>
           {balanceReceiptText && (
             <>
               <div className="flex flex-col gap-2">
@@ -909,7 +892,8 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               <ul className="overflow-hidden rounded-[18px] border-2 border-slate-500 bg-white">
                 {data.unpaidDebts.map((debt) => {
                   const amountPesewas = debt.amountPesewas ?? debt.total_owed ?? 0;
-                  const detail = debt.note ?? debt.description ?? debt.itemDescription ?? "Credit entry";
+                  // Each entry shows its own reason, generated words hidden, or "No reason written".
+                  const detail = getDebtEntryReason(debt) || t("creditRow.noReason");
                   return (
                     <li key={debt.id} className="flex flex-wrap items-center gap-3 border-b-2 border-slate-300 px-3.5 py-3 last:border-b-0">
                       <span className="min-w-0 flex-1">
@@ -950,44 +934,21 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               </button>
             </div>
             {data.history.length ? (
-              <ul className="overflow-hidden rounded-[18px] border-2 border-slate-500 bg-white">
+              // Wiring "What happened cards" (final, 16 Nov 2026): the same cards as 73 (EventRows). An unsigned
+              // credit at or above the threshold offers Get signature next to its pill; it opens 72 for that
+              // entry and 72 returns here.
+              <ul className="flex min-w-0 flex-col gap-2.5">
                 {data.history.map((event) => (
-                  <li key={event.id} className="flex min-h-12 items-center gap-3 border-b-2 border-slate-300 px-3.5 py-3 last:border-b-0">
-                    <span className="min-w-0 flex-1">
-                      <strong className="block text-lg">
-                        {event.type === "payment"
-                          ? t("collect.paid")
-                          : event.type === "adjustment"
-                            ? "Balance corrected"
-                            : event.type === "manual_debt"
-                              ? "Added to debt"
-                            : event.type === "addon" ? t("collect.creditAdded") : t("collect.creditTaken")}
-                      </strong>
-                      <span className="block text-sm text-slate-800">
-                        {event.type === "adjustment"
-                          ? `${event.reasonLabel} · ${formatHistoryRowTimestamp(event.timestamp)}`
-                          : event.dateOnly ? formatDate(event.timestamp) : formatHistoryRowTimestamp(event.timestamp)}
-                        {event.type === "manual_debt" && event.note && <> · {event.note}</>}
-                        {["credit", "addon"].includes(event.type) && (
-                          <> · {getDebtorItemDescription(event)
-                            ? `Item: ${getDebtorItemDescription(event)}`
-                            : "Item description unavailable"}</>
-                        )}
-                        {event.type === "payment" && (
-                          <> · {event.collectionParts
-                            ? event.collectionParts.map((part) => `${part.method} ${formatGhs(part.amountPesewas)}`).join(", ")
-                            : event.method ?? event.detail}</>
-                        )}
-                      </span>
-                    </span>
-                    <strong className={`shrink-0 text-lg ${event.type === "payment" ? "text-emerald-900" : event.type === "adjustment" ? "text-slate-800" : "text-rose-900"}`}>
-                      {event.type === "payment"
-                        ? "+"
-                        : ""} {event.type === "adjustment"
-                        ? `${formatGhs(event.previousBalancePesewas ?? event.newBalancePesewas ?? 0)} → ${formatGhs(event.newBalancePesewas ?? 0)}`
-                        : formatGhs(event.amountPesewas)}
-                    </strong>
-                  </li>
+                  <EventRows
+                    key={event.id}
+                    event={event}
+                    creditTitle={event.type === "addon" ? t("collect.creditAdded") : t("collect.creditTaken")}
+                    signatureAction={!event.signed && event.transactionId && needsSignature(event.amountPesewas) ? (
+                      <button type="button" onClick={() => onNavigate("CustomerSignature", { transactionId: event.transactionId })} className="min-h-12 shrink-0 whitespace-nowrap rounded-xl border-2 border-emerald-900 bg-white px-3 text-base font-extrabold text-emerald-900">
+                        {t("creditRow.getSignature")}
+                      </button>
+                    ) : null}
+                  />
                 ))}
               </ul>
             ) : <p className="mt-2 text-slate-700">{t("collect.noPaymentHistory")}</p>}
@@ -1027,16 +988,21 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                 {/* rules_global.amount_entry: right-aligned, GH₵ on the left, focus selects the amount. */}
                 <span className="mt-1 flex h-14 items-center gap-2 rounded-[14px] border-[3px] border-emerald-900 px-3 focus-within:ring-2 focus-within:ring-emerald-900/20">
                   <span className="shrink-0 text-lg font-bold text-slate-700">GH₵</span>
-                  <AmountTextInput id="pos-correction-amount" value={correctionAmount} onValue={(value) => { setCorrectionAmount(value); setCorrectionError(""); }} className="h-full w-full min-w-0 bg-transparent text-[28px] font-extrabold outline-none" />
+                  {/* Focused on open, so the shared field selects the pre-filled balance (the first digit replaces it). */}
+                  <AmountTextInput id="pos-correction-amount" autoFocus value={correctionAmount} onValue={(value) => { setCorrectionAmount(value); setCorrectionChanged(true); setCorrectionError(""); }} className="h-full w-full min-w-0 bg-transparent text-[28px] font-extrabold outline-none" />
                 </span>
               </label>
-              <p className={`text-lg font-extrabold ${correctionNewBalancePesewas < correctionCurrentBalancePesewas ? "text-emerald-900" : "text-slate-700"}`}>
-                {correctionAmount.trim() !== "" && Number.isSafeInteger(correctionNewBalancePesewas) && correctionNewBalancePesewas < correctionCurrentBalancePesewas
-                  ? `This lowers the debt by ${formatGhs(correctionCurrentBalancePesewas - correctionNewBalancePesewas)}`
-                  : correctionNewBalancePesewas > correctionCurrentBalancePesewas
-                    ? "Corrections cannot increase debt. Use Add to debt."
-                    : "New balance must be lower."}
-              </p>
+              {/* Wiring 54 (16 Nov 2026): no line when the sheet first opens (until the value changes) and
+                  none for an empty field; Save correction is only disabled. */}
+              {correctionChanged && correctionAmount.trim() !== "" && (
+                <p className={`text-lg font-extrabold ${correctionNewBalancePesewas < correctionCurrentBalancePesewas ? "text-emerald-900" : "text-slate-700"}`}>
+                  {Number.isSafeInteger(correctionNewBalancePesewas) && correctionNewBalancePesewas < correctionCurrentBalancePesewas
+                    ? `This lowers the debt by ${formatGhs(correctionCurrentBalancePesewas - correctionNewBalancePesewas)}`
+                    : correctionNewBalancePesewas > correctionCurrentBalancePesewas
+                      ? "Corrections cannot increase debt. Use Add to debt."
+                      : "New balance must be lower."}
+                </p>
+              )}
               <fieldset>
                 <legend className="text-[19px] font-extrabold">Reason</legend>
                 <div className="mt-1 flex flex-wrap gap-2">

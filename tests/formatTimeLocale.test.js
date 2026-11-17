@@ -106,7 +106,8 @@ test("every screen and message that shows a time uses formatTime", () => {
     "src/pos/receiptTemplates.js",
     "src/pos/SaleRecorded.jsx",
     "src/pos/TodaysTransactions.jsx",
-    "src/pos/DebtCollection.jsx",
+    // 29/43 and 73 show history times through historyRows.js (moved from DebtCollection.jsx, 16 Nov 2026).
+    "src/pos/historyRows.js",
     "src/utils/customerDebtHistory.js"
   ];
   for (const file of users) {

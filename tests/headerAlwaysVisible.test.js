@@ -1,10 +1,9 @@
 import "fake-indexeddb/auto";
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { after, beforeEach, test } from "node:test";
 import { compile } from "@tailwindcss/node";
 import { Scanner } from "@tailwindcss/oxide";
@@ -12,6 +11,7 @@ import { db } from "../src/db/db.js";
 import { recordCreditSale } from "../src/db/debts.js";
 import { setPreference } from "../src/db/preferences.js";
 import { resetBrowserBack } from "../src/pos/browserBack.js";
+import { dumpDom } from "./helpers/browserLayout.js";
 import { openPosApp } from "./helpers/posAppHarness.js";
 import { setLiveQuery, walk } from "./helpers/renderJsx.js";
 
@@ -192,7 +192,7 @@ const WIDTHS = [340, 360, 393, 768, 1280];
 const HEIGHT = 640;
 
 // Each page goes in iframes of each width (a headless window will not size below ~500px); in each,
-// the document is scrolled down and the header's place on screen and every ancestor's overflow are read.
+// the page area is scrolled down and the header's place on screen and every ancestor's overflow are read.
 function measuringPage(pages, css) {
   const docs = pages.map(({ name, html }) => ({ name, doc: `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>${css}</style></head><body><div id="root">${html}</div></body></html>` }));
   const frames = docs.flatMap(({ name, doc }) => WIDTHS.map((width) => `<iframe data-page="${name}" data-width="${width}" style="width:${width}px;height:${HEIGHT}px;border:0;display:block" srcdoc="${escapeHtml(doc)}"></iframe>`)).join("");
@@ -202,22 +202,23 @@ function measuringPage(pages, css) {
       const doc = frame.contentDocument;
       const header = doc.querySelector("header");
       for (const el of doc.querySelectorAll("*")) for (const a of el.getAnimations ? el.getAnimations() : []) a.finish();
-      const scroller = doc.scrollingElement;
+      // rules_global.shell_height: the page area scrolls, never the document.
+      const scroller = doc.querySelector("[data-page-area]");
       const before = header.getBoundingClientRect();
       const ancestors = [];
       for (let el = header.parentElement; el; el = el.parentElement) {
         const s = win.getComputedStyle(el);
         ancestors.push({ tag: el.tagName.toLowerCase(), cls: el.className, x: s.overflowX, y: s.overflowY });
       }
-      const scrollable = scroller.scrollHeight - win.innerHeight;
+      const scrollable = scroller.scrollHeight - scroller.clientHeight;
       const positions = [];
       for (const y of [200, 600, 1200, scroller.scrollHeight]) {
-        win.scrollTo(0, y);
+        scroller.scrollTop = y;
         const r = header.getBoundingClientRect();
-        positions.push({ scrollY: Math.round(win.scrollY), top: r.top, bottom: r.bottom });
+        positions.push({ scrollY: Math.round(scroller.scrollTop), docScrollY: win.scrollY, docHeight: doc.documentElement.scrollHeight, top: r.top, bottom: r.bottom });
       }
       const menu = doc.querySelector('header button[aria-label="Open menu"], header button[aria-label="Home"]');
-      win.scrollTo(0, scroller.scrollHeight);
+      scroller.scrollTop = scroller.scrollHeight;
       const m = menu ? menu.getBoundingClientRect() : null;
       return { page: frame.dataset.page, width: Number(frame.dataset.width), innerWidth: win.innerWidth, headerHeight: before.height, position: win.getComputedStyle(header).position, scrollable, positions, menuTopAtBottom: m && m.top, menuBottomAtBottom: m && m.bottom, ancestors };
     }
@@ -235,7 +236,7 @@ function runBrowser(html) {
   try {
     const file = join(dir, "page.html");
     writeFileSync(file, html);
-    const result = spawnSync(browser, ["--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check", `--user-data-dir=${join(dir, "profile")}`, "--window-size=1400,900", "--virtual-time-budget=8000", "--dump-dom", pathToFileURL(file).href], { encoding: "utf8", timeout: 90_000, maxBuffer: 64 * 1024 * 1024 });
+    const result = dumpDom(file, dir);
     const match = /<pre id="out">([\s\S]*?)<\/pre>/.exec(result.stdout ?? "");
     assert.ok(match, `the browser measured the page (status ${result.status}): ${String(result.stderr).slice(0, 400)}`);
     return JSON.parse(match[1].replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&"));
@@ -257,8 +258,10 @@ test("scrolling a long Home and a long Owed list keeps the header at the top of 
     assert.equal(result.innerWidth, result.width, `${where}: the frame is that wide`);
     assert.equal(result.position, "sticky", where);
     assert.ok(result.scrollable > 100, `${where}: the page is long enough to scroll (${result.scrollable}px)`);
-    for (const { scrollY, top, bottom } of result.positions) {
-      assert.ok(scrollY > 0, `${where}: the document scrolled`);
+    for (const { scrollY, docScrollY, docHeight, top, bottom } of result.positions) {
+      assert.ok(scrollY > 0, `${where}: the page area scrolled`);
+      assert.equal(docScrollY, 0, `${where}: the document does not scroll`);
+      assert.equal(docHeight, HEIGHT, `${where}: the document is exactly the screen high`);
       assert.equal(top, 0, `${where}: header top is 0 after scrolling to ${scrollY}`);
       assert.ok(bottom > 0 && bottom <= HEIGHT, `${where}: header is on screen after scrolling to ${scrollY}`);
     }

@@ -28,6 +28,9 @@ import { useBackBlock } from "./browserBack.js";
 import { useFormErrors } from "./formErrors.js";
 import AmountTextInput from "./AmountTextInput.jsx";
 import { confirmDirectMomoParts, describeSplitPart, isLockedMomoRow, isUnconfirmedDirectMomo } from "./splitTender.js";
+import { CREDIT_REASON_MAX } from "../lib/creditReason.js";
+import { loadRecentCreditReasons } from "../db/recentReasons.js";
+import { getCreditReasonCase } from "./creditDraft.js";
 
 function CreditAmount({ amountPesewas }) {
   return (
@@ -294,6 +297,27 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onUpdateParams, onReturnT
     { value: "twoWeeks", label: t("credit.inTwoWeeks") }
   ];
   const totalAfterSalePesewas = (params.customer?.totalDebtPesewas ?? 0) + getCreditAmountOwedPesewas(params);
+  // Wiring 18 "Reason on 18": a field for a keypad sale or split, the items or the 53 note read-only.
+  const reasonCase = getCreditReasonCase(params);
+  const [reason, setReason] = useState(typeof params.creditReason === "string" ? params.creditReason.slice(0, CREDIT_REASON_MAX) : "");
+  const [recentReasons, setRecentReasons] = useState([]);
+  const reasonParams = reasonCase.kind === "field" ? { creditReason: reason } : {};
+
+  useEffect(() => {
+    if (reasonCase.kind !== "field") return undefined;
+    let active = true;
+    loadRecentCreditReasons().then((reasons) => { if (active) setRecentReasons(reasons); }, (loadError) => {
+      console.error("Could not load recent reasons.", loadError);
+    });
+    return () => { active = false; };
+  }, [reasonCase.kind]);
+
+  // Typing replaces the text; a chip fills it. Kept in the route params with the rest of the draft.
+  function changeReason(value) {
+    const next = value.slice(0, CREDIT_REASON_MAX);
+    setReason(next);
+    onUpdateParams?.({ creditReason: next });
+  }
 
   async function save(confirmed = false) {
     if (savingRef.current) return;
@@ -308,6 +332,7 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onUpdateParams, onReturnT
       const days = { today: 0, week: 7, twoWeeks: 14 }[dueChoice];
       const details = {
         ...params,
+        ...reasonParams,
         dueDate: addDueCycles(localDateString(), "weekly", days / 7),
         payBackLabel: choices.find((choice) => choice.value === dueChoice)?.label ?? t("credit.inOneWeek")
       };
@@ -326,26 +351,77 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onUpdateParams, onReturnT
     }
   }
 
+  // Wiring 18 "Reason on 18": the reason sits above the Pay by choices. So that 18 fits 360x667 with a
+  // short name (16 Nov 2026): options 56px, 10px between blocks, 6px inside the field block and between
+  // chip rows, 16px top padding. Wiring "Save button and Back on 18" (final): Back is at the top beside the title (the title wraps beside it) and scrolls
+  // with the content; Save alone stays pinned at the bottom (16px under it, no bottom bar here). The
+  // page fills the shell's page area (rules_global.shell_height), so a page that fits ends exactly at
+  // the bottom of the screen and a longer one scrolls inside the page area with Save stuck to it.
   return (
-    <PosPage className="flex flex-col gap-3">
-      <h1 className="text-2xl font-extrabold">{t("credit.whenPay", { name: customerName })}</h1>
+    <PosPage className="flex flex-col gap-2.5 overflow-visible! pt-4! pb-4!">
+      <div className="flex min-w-0 items-center gap-3">
+        <PosBackButton onClick={onBack} />
+        <h1 className="min-w-0 text-2xl font-extrabold leading-tight">{t("credit.whenPay", { name: customerName })}</h1>
+      </div>
+      {reasonCase.kind === "field" ? (
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="credit-reason" className="-mb-0.5 text-[17px] font-extrabold text-slate-950">{t("credit.whatFor")}</label>
+          <input
+            id="credit-reason"
+            maxLength={CREDIT_REASON_MAX}
+            autoComplete="off"
+            placeholder={t("credit.whatForPlaceholder")}
+            value={reason}
+            onChange={(event) => changeReason(event.target.value)}
+            className="h-[52px] w-full min-w-0 rounded-[14px] border-2 border-slate-500 px-3 text-lg"
+          />
+          {recentReasons.length > 0 && (
+            <div role="group" aria-label={t("credit.recentReasons")} data-recent-reasons="" className="flex flex-wrap gap-x-2 gap-y-1.5">
+              {recentReasons.map((recent) => (
+                <button key={recent} type="button" data-reason-chip="" onClick={() => changeReason(recent)} className="h-10 max-w-full truncate rounded-full border-2 border-slate-500 bg-white px-3.5 text-base font-bold text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800">
+                  {recent}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : reasonCase.text ? <ReasonForRow text={reasonCase.text} /> : null}
       {choices.map((choice) => (
-        <button key={choice.value} type="button" aria-pressed={dueChoice === choice.value} onClick={() => { setDueChoice(choice.value); onUpdateParams?.({ creditDueChoice: choice.value }); }} className={`min-h-[68px] rounded-2xl border-[3px] px-4 text-xl font-extrabold ${dueChoice === choice.value ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>
+        <button key={choice.value} type="button" aria-pressed={dueChoice === choice.value} onClick={() => { setDueChoice(choice.value); onUpdateParams?.({ creditDueChoice: choice.value }); }} className={`min-h-14 shrink-0 rounded-2xl border-[3px] px-4 text-xl font-extrabold ${dueChoice === choice.value ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>
           {choice.label}
         </button>
       ))}
-      <button type="button" onClick={() => onNavigate("ALittleAtATime", { ...params, creditDueChoice: dueChoice })} className="flex min-h-[68px] flex-col items-center justify-center rounded-2xl border-[3px] border-slate-500 px-4 text-lg font-extrabold">
+      <button type="button" onClick={() => onNavigate("ALittleAtATime", { ...params, ...reasonParams, creditDueChoice: dueChoice })} className="flex min-h-14 shrink-0 flex-col items-center justify-center rounded-2xl border-[3px] border-slate-500 px-4 text-lg font-extrabold leading-tight">
         {t("credit.aLittleAtATime")}
         <span className="text-sm font-semibold text-slate-700">{t("credit.installmentSubtitle")}</span>
       </button>
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
       <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => void save(true)} />
-      <div className="mt-auto grid grid-cols-[auto_minmax(0,1fr)] gap-2">
-        <PosBackButton onClick={onBack} className="h-14!" />
-        <PosPrimaryButton type="button" disabled={saving} onClick={() => void save()} className="h-14 px-2 text-base leading-tight">{saving ? t("credit.saving") : t("credit.saveAmount", { name: shortSaveName(customerName), amount: formatGhs(totalAfterSalePesewas) })}</PosPrimaryButton>
+      {/* Wiring "Save button and Back on 18" (final): Save is the only pinned element, full width, at
+          least 56px: line 1 "Save" (800, 18px), line 2 "{Name} owes GH₵x" (600, 16px, one line); the
+          name for screen readers stays "Save · {Name} owes GH₵x". */}
+      <div data-bottom-row="" className="sticky bottom-0 z-10 -mx-4 mt-auto flex flex-col items-stretch bg-white px-4 pt-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <PosPrimaryButton type="button" disabled={saving} onClick={() => void save()} aria-label={saving ? undefined : t("credit.saveAmount", { name: shortSaveName(customerName), amount: formatGhs(totalAfterSalePesewas) })} data-save-18="" className="h-auto min-h-14 flex-col gap-0 px-3 py-1.5 leading-tight">
+          {saving ? t("credit.saving") : (
+            <>
+              <span data-save-line="1" className="text-[18px] font-extrabold">{t("credit.saveWord")}</span>
+              <span data-save-line="2" className="max-w-full whitespace-nowrap text-base font-semibold">{t("credit.saveDetail", { name: shortSaveName(customerName), amount: formatGhs(totalAfterSalePesewas) })}</span>
+            </>
+          )}
+        </PosPrimaryButton>
       </div>
       {largeAmount.dialog}
     </PosPage>
+  );
+}
+
+// Wiring 18 cases B and C, and 19: what the credit is for, read-only ("For" on the left).
+function ReasonForRow({ text }) {
+  return (
+    <p data-credit-for="" className="flex min-w-0 items-baseline gap-3 rounded-2xl bg-slate-100 px-3 py-2.5 text-lg">
+      <span className="shrink-0 font-extrabold text-slate-700">{t("signature.for")}</span>
+      <span className="min-w-0 font-bold text-slate-950 [overflow-wrap:anywhere]">{text}</span>
+    </p>
   );
 }
 
@@ -408,6 +484,8 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
   const [frequency, setFrequency] = useState(params.frequency ?? "weekly");
   const carriedPaymentParts = getCarriedPaymentParts(params);
   const paidTodayPesewas = getPaidPaymentPesewas(carriedPaymentParts);
+  // Wiring 18 split rule: 19 carries the reason and shows it as a read-only "For" row.
+  const reasonOn19 = getCreditReasonCase(params).text;
   // In a split sale (flow=split) the payment today is taken on 16, so 19 hides its own
   // payment section and passes 16's parts through unchanged (K5, E2).
   const paymentAlreadyMadeToday = params.paymentAlreadyMadeToday === true ||
@@ -657,6 +735,8 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
     <PosPage className="flex flex-col gap-3">
       <h1 className="text-2xl font-extrabold">{t("credit.aLittleAtATime")}</h1>
       <CreditAmount amountPesewas={maxCreditPesewas} />
+      {/* Wiring 18 "Reason on 18": the reason carried from 18 (typed, the items or the 53 note), read-only; no row when empty. */}
+      {reasonOn19 && <ReasonForRow text={reasonOn19} />}
       <label className="block">
         <span className="mb-1 block text-lg font-extrabold">{t("credit.howMuchEachTime")}</span>
         <span className="flex min-h-16 items-center gap-2 rounded-2xl border-[3px] border-slate-500 px-4">

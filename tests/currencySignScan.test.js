@@ -162,7 +162,7 @@ test("28, 24 and 33: a collection, today's transactions and My money show every 
   assertSigned(app, "33");
 });
 
-test("29/43 history: a correction row shows both balances with GH₵ (GH₵10.00 → GH₵8.00)", async () => {
+test("29/43 history: a correction card shows both balances with GH₵ (Was GH₵10.00, New balance GH₵8.00)", async () => {
   await recordCreditSale({ name: "juju", amountPesewas: 1000, now: Date.now() - 3 * 86_400_000 });
   const debt = (await db.debts.toArray())[0];
   await correctDebtBalance({ debtId: debt.id, expectedUpdatedAt: debt.updatedAt, newBalancePesewas: 800, reasonCode: "wrong_amount", reasonNote: "" });
@@ -171,6 +171,6 @@ test("29/43 history: a correction row shows both balances with GH₵ (GH₵10.00
   [...walk(app.view.tree)].find((node) => node.type?.name === "Home").props.onNavigate("DebtorDetail", { debtId: debt.id, customerName: "juju" });
   await app.settle();
   assert.equal(app.route, "DebtorDetail");
-  assert.match(app.text(), /GH₵10\.00 → GH₵8\.00/);
+  assert.match(app.text(), /Was\s*GH₵10\.00\s*New balance\s*GH₵8\.00/);
   assertSigned(app, "29/43");
 });

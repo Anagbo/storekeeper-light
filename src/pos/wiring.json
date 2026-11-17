@@ -22,10 +22,10 @@
   "DIRECT": "From 61: go to 62. Needs no setup beyond the merchant's own MoMo number. Records the MoMo part as 'you confirmed'.",
   "PHONE": "From 61: if the Paystack payout account is not set up go to 60 (Save and verify continues to 56); otherwise go to 56.",
   "MOMOPICK": "MoMo tile on 16 (split): first ask how much (amount editor prefilled with Left to pay, can be lowered), then go to 61 with pick16 set and that amount. DIRECT or PHONE then records the method on the MoMo part and returns to 16. With a direct MoMo row already present, the tile raises it and only the extra goes to 61/62. Nothing is requested yet.",
-  "SAVECREDIT": "Save on 18 or 19. If flow=split, mark the Owe part complete and return to 16 (drop the screens in between from history). Otherwise go to 31. NEW (decided 16 Nov 2026): before continuing, if the amount just added is at or above VITE_SIGNATURE_THRESHOLD_PESEWAS go to 72 first, then continue to the destination above. Below the threshold, no signature step.",
-  "SAVE19": "Save plan on 19. If today's payment includes MoMo: confirm it first (Direct: 62; Phone request: 56 then 57, 60 for setup, 61 when the method is not chosen yet). Then commit once (debt or sale credit, plan, collection of the amount paid today) and go to 31. In flow=split return to 16 with the Owe part complete. If the request fails go to 59 and stay on 19, nothing saved. Same signature step as SAVECREDIT (go to 72 first when the total credit is at or above the threshold).",
+  "SAVECREDIT": "Save on 18 or 19. If flow=split, mark the Owe part complete and return to 16 (drop the screens in between from history). Otherwise go to 31. Signature step (decided 16 Nov 2026): the credit is saved first, then 72 opens when the amount of THAT credit event (the Owe part for a sale, the amount added for a manual debt; older balance is not counted) is at or above VITE_SIGNATURE_THRESHOLD_PESEWAS, then continue through SIGNED. Applies to sale on credit, plan on 19 (sale), Add debt 53 (also the inherited-terms save) and the split sale. Below the threshold there is no signature step. flow=split: nothing is saved on 18/19 (they only return to 16); the credit is saved on Done on 16, then 72 opens, then continue to 30 or 31 as before.",
+  "SAVE19": "Same as SAVECREDIT (including the signature step after the save).",
   "MOMOPICK19": "MoMo on 19: go to 61 with pick19 set. The chosen method returns to 19.",
-  "SIGNED": "Done or Skip for now on 72. Continue to the destination SAVECREDIT would have used: 31 for a sale on credit or add debt, return to 16 when flow=split, ManualDebtSaved for a manual debt. Drop 72 from history."
+  "SIGNED": "Done, Skip for now or Back on 72. Continue to where the save would have gone: 31 for a sale on credit or add debt, 30 or 31 after a split sale, ManualDebtSaved for a manual debt. 72 after a save starts a fresh history stack (like the result screens), and both the on-screen Back and the phone back act as Skip for now. When 72 was opened by Get signature on 29 or 43, Done, Skip for now and Back return to that screen (29 or 43)."
  },
  "flows_and_flags": {
   "flow=add_debt": "Set by Add debt on 32. Hides the Owed banner on 17. Cleared on arriving at 22 or 15.",
@@ -330,7 +330,7 @@
      "to": "34"
     },
     {
-     "label": "Next ›",
+     "label": "Next",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -347,6 +347,21 @@
    "name": "When will they pay?",
    "component": "WhenWillTheyPay",
    "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "BACK",
+     "to_rule": "Return to the previous screen (17, or 53 in the add-debt flow). The draft, including the reason, is kept. Bottom row, left of Save (built, kept)."
+    },
+    {
+     "label": "Recent reason chip",
+     "role": null,
+     "disabled_initially": false,
+     "type": "selection_or_edit",
+     "effect": "Up to three of the owner's most recent distinct reasons (last 30 days). Tapping one fills the What for field; tapping the field and typing replaces it. Hidden when there are none."
+    },
     {
      "label": "Today",
      "role": null,
@@ -383,8 +398,18 @@
      "to": "SAVECREDIT"
     }
    ],
-   "inputs": [],
-   "bottom_bar": false
+   "inputs": [
+    "What for? (optional)"
+   ],
+   "bottom_bar": false,
+   "rules": [
+    "Reason on 18 (decided 16 Nov 2026). 18 is the one step every credit path passes through, so the reason is entered or shown here. Three cases: (A) keypad sale on credit, and the Owe part of a split: a \"What for? (optional)\" text field above the Pay by choices, 52px, max 60 characters, with up to three recent-reason chips under it. (B) Sale with items: no field; a read-only \"For\" row showing the items (for example \"Rice ×2, Water ×3\"). (C) Add debt or + Add to debt (reason typed on 53): no field; a read-only \"For\" row with what was typed on 53, or no row when nothing was typed.",
+    "The reason is optional and never blocks Save. Empty is saved as no reason and shown as \"No reason written\" on 29, 43, 72 and 73. A generated word such as \"Sale\" or \"Other amount\" is not a reason.",
+    "The reason sits above the Pay by choices so the keyboard does not hide it. The Pay by choices are 56px high (down from 68px, then 60px; 16 Nov 2026). On a 360x667 phone with Back moved to the top beside the title (16 Nov 2026) the screen should fit 360x667 without scrolling for a short name; if it does not (long name, two rows of chips, 340x640) the content scrolls inside the page area, the document itself never scrolls, Save stays pinned and the \"What for?\" field and chips stay reachable.",
+    "Split (flow=split): 18 and 19 save nothing, they return to 16. The reason is held in the draft (route params) and saved with the credit when Done is tapped on 16. It survives trips to 17, 19 and 16 and back. On 19 (A little at a time) the reason is carried and shown as a read-only \"For\" row.",
+    "Save button text: \"Save · {Name} owes GH₵x\" may wrap to two lines inside the full-width Save button (built). It never wraps the amount (GH₵ and the figure stay together) and the button stays 56px or more.",
+    "Save button and Back on 18 (final, 16 Nov 2026; replaces the earlier two-row bottom): Back (PosBackButton, 52px) is at the TOP in a row with the title \"When will {Name} pay?\", like every other screen; the title wraps beside it at narrow widths. The only pinned element at the bottom is Save, full width, at least 56px, two lines inside the button: line 1 \"Save\" (800 weight, 18px); line 2 \"{Name} owes GH₵{amount}\" (600 weight, 16px, one line, name cut at 10 characters with an ellipsis). Full width leaves 288px at 340px, enough for the longest line 2 with GH₵12,345.00 (about 239px). Never three lines, words never split, font never shrunk below 16px. The accessible name stays \"Save · {Name} owes GH₵{amount}\". Back keeps its place when the page area scrolls (it scrolls with the content; Save stays pinned)."
+   ]
   },
   "19": {
    "name": "A little at a time",
@@ -489,7 +514,8 @@
     "Draft survives Back (decided 12 Nov 2026, reported on the phone): in the sale-on-credit flow (15 → 17 → 34/18 → 19 → 27) everything the owner has typed or chosen is kept when they go Back and return, until the sale is saved (Done or Save plan) or the owner leaves with header Home or another tab. Nothing is lost by going one step back and forward. Kept values live in the route parameters, like 15 and 16. On 19 that means How much each time, How often, First payment (Today or Next cycle), Amount paid today, Next payment date and the chosen method or split parts. Opening Split payment (27) from 19 and coming back with Back keeps the 19 values; opening 27 again reopens it with the same Cash and MoMo parts.",
     "Still owed row, all flows (clarified 12 Nov 2026 after a phone test): the pink \"Still owed · {Name}\" row under \"Total today\" is shown whenever the Paying today panel is shown and something remains owed after today's payment, in every flow, not only when an Owe part sits in a split draft. Amount = the Owed figure at the top of 19 minus the amount paid today (the customer's balance after this sale and today's payment, the same figure screen 31 shows as \"owes\"). Example: sale GH₵8.00 on credit, GH₵2.00 paid today (Cash 1.00 + MoMo 1.00) shows the rows Cash 1.00, MoMo 1.00, Total today GH₵2.00, then the pink row \"Still owed · Kofi Mensah GH₵6.00\". If today's payment settles the whole balance, the pink row is absent.",
     "Paying today panel with one method (decided 12 Nov 2026): the panel is shown whenever Amount paid today is above zero and a method is chosen, also for Cash only or MoMo only (one row, then Total today, then the pink Still owed row). Hidden for Next cycle or when nothing is paid today. This keeps the unpaid balance visible in every flow.",
-    "Paying today alignment (decided 16 Nov 2026, found on a real phone): in the panel every amount shares one right edge: Cash, MoMo, Total today and the Still owed row. Total today and its amount use the same inner padding as the Cash and MoMo rows, so GH₵6.00 ends exactly under GH₵4.00 and GH₵2.00. Equal-width digits (tabular-nums). A render test measures the right edges of the amounts at 340, 360 and 393px."
+    "Paying today alignment (decided 16 Nov 2026, found on a real phone): in the panel every amount shares one right edge: Cash, MoMo, Total today and the Still owed row. Total today and its amount use the same inner padding as the Cash and MoMo rows, so GH₵6.00 ends exactly under GH₵4.00 and GH₵2.00. Equal-width digits (tabular-nums). A render test measures the right edges of the amounts at 340, 360 and 393px.",
+    "Paid today with Start today (decided 16 Nov 2026): the amount must be above 0. Paying nothing today is what Next cycle is for, so 0 stays refused with \"Enter the amount being paid today.\""
    ]
   },
   "20": {
@@ -602,7 +628,7 @@
      "to": "35"
     },
     {
-     "label": "Continue ›",
+     "label": "Continue",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -666,7 +692,7 @@
      "effect": "tel: link to the person's valid phone number."
     },
     {
-     "label": "Today’s transactions ›",
+     "label": "Today’s transactions",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -692,7 +718,7 @@
    "rules": [
     "Tapping the debtor name opens 43 (brief line 122).",
     "Built extras kept: People-who-owe link, Add contact.",
-    "Owed card on Home (redesign 11 Nov 2026, layout and wording only): a white card with a 2px light grey border and a thicker red left edge (the same style as the debt tiles on My money), not a pink block. Top: the label \"Owed to you\" (17px, grey), the total in bold dark text (30px, never red or pink), a quiet line \"{n} people · {m} late\" (\"1 person\"; leave out \"· {m} late\" when none is late), and \"See all ›\" in green on the right. The whole top part is one tappable area that opens 32 (accessible name \"Owed to you, see all\"). Under a thin line and the small heading \"Collect first\": the most urgent debtor (same ordering as today) with the name (bold 19px, up to 2 lines, capital first letter), the amount (bold 22px, never clipped, at the right), and the due tag under the name in the same wording and colours as the Owed list (\"Late 1 day\" red, \"Due today\" and \"Due in n days\" amber, grey when far). Then one row of buttons: a green \"Collect\" button with a small cash icon and the word Collect (52px, takes the remaining width, accessible name \"Collect payment from {name}\", opens 25), a square WhatsApp button (52px, green outline) and a square Call button (52px, dark outline) shown only when the person has a valid phone number (never a greyed disabled Call button). Icon-only buttons keep their accessible names.",
+    "Owed card on Home (redesign 11 Nov 2026, layout and wording only): a white card with a 2px light grey border and a thicker red left edge (the same style as the debt tiles on My money), not a pink block. Top: the label \"Owed to you\" (17px, grey), the total in bold dark text (30px, never red or pink), a quiet line \"{n} people · {m} late\" (\"1 person\"; leave out \"· {m} late\" when none is late), and \"See all\" in green on the right. The whole top part is one tappable area that opens 32 (accessible name \"Owed to you, see all\"). Under a thin line and the small heading \"Collect first\": the most urgent debtor (same ordering as today) with the name (bold 19px, up to 2 lines, capital first letter), the amount (bold 22px, never clipped, at the right), and the due tag under the name in the same wording and colours as the Owed list (\"Late 1 day\" red, \"Due today\" and \"Due in n days\" amber, grey when far). Then one row of buttons: a green \"Collect\" button with a small cash icon and the word Collect (52px, takes the remaining width, accessible name \"Collect payment from {name}\", opens 25), a square WhatsApp button (52px, green outline) and a square Call button (52px, dark outline) shown only when the person has a valid phone number (never a greyed disabled Call button). Icon-only buttons keep their accessible names.",
     "Header (decided 14 Nov 2026): the Menu button is on the left (hamburger icon + the word Menu, 48px), then the shop name, then the connection status. It opens the Menu drawer (see 23) over this page; the page and any draft stay as they are. The bottom bar is covered by the dimmed layer while the drawer is open.",
     "Nobody owes (decided 14 Nov 2026 from a phone test where a corrected balance of zero still showed 'Owed to you GHS 0.00' and a Collect button): a person counts as owing only with a balance above zero. When nobody owes, the Owed to you card is not shown at all; Home goes from Spent money straight to the Today's transactions link, and the Owed tab in the bottom bar stays. Collect first, the people count and the total use only people with a balance above zero, so a person whose balance was corrected to zero or paid in full disappears from all three.",
     "Reminder check (rules_global.reminders): this button runs the shared 7-day check for the person. A reminder recorded in the last 7 days opens the Send another reminder? sheet first (Send again strong, Not now outlined; Back and Escape act as Not now; after Not now the merchant stays on this screen). Otherwise WhatsApp opens directly. Tapping records a reminder event. No Last reminder text is shown on this screen.",
@@ -905,7 +931,7 @@
      "to": "28"
     },
     {
-     "label": "See Amoto’s details ›",
+     "label": "See Amoto’s details",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -1131,7 +1157,7 @@
      "effect": "Open WhatsApp with the existing reminder template (reminders) or the new receipt template (receipts, after approval). The merchant reviews and sends. Nothing is sent automatically."
     },
     {
-     "label": "See Amoto’s details ›",
+     "label": "See Amoto’s details",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -1170,7 +1196,7 @@
      "role": null,
      "disabled_initially": false,
      "type": "reuse_existing",
-     "effect": "Open the existing edit-contact form with its existing validation. No new screen."
+     "effect": "Person-with-pen icon above the words \"Edit contact\" (the existing button, unchanged), right side of the contact card, in line with the name. Open the existing edit-contact form with its existing validation. No new screen."
     },
     {
      "label": "Collect",
@@ -1209,7 +1235,7 @@
      "to_rule": "Start the add-debt-for-a-person flow (flow=add_debt_person) and go to 53."
     },
     {
-     "label": "Show {Name} the record ›",
+     "label": "Show {Name} the record",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -1228,7 +1254,11 @@
     "Send another reminder? check: if a reminder to this person was recorded within the last 7 days, tapping the WhatsApp reminder button first opens a bottom sheet: \"You sent {Name} a reminder {today|yesterday|on dd/mm/yyyy} at HH:mm. Sending too many can annoy a customer.\" Buttons: \"Send again\" (strong, primary; opens WhatsApp and records a new reminder) and \"Not now\" (outlined; closes the sheet, nothing recorded). After 7 days or with no reminder the button opens WhatsApp directly. Sending a receipt never counts as a reminder and never triggers the check.",
     "No open debt entries (decided 15 Nov 2026): when the person has no open debt entries, the \"Open debt entries\" heading and its line are not shown at all. With open entries the list and \"Correct this entry\" stay.",
     "Collection receipt (decided 15 Nov 2026): Receipt and Copy receipt on this screen cover the person's latest payment only, and the label says so (\"Receipt for GH₵30.00 payment\"). A person who has never paid has no receipt buttons. Receipt text: \"Receipt from {Shop}\", \"dd/mm/yyyy HH:mm\" (no comma), \"Received from {Name}: GH₵x (Cash|MoMo)\", \"Balance owed now: GH₵y\" (or \"Nothing owed now\" when zero), \"Thank you!\".",
-    "Credit rows in the history show the reason line (items or reason) and a tag \"Signed ✓\" or \"Not signed\". Not signed rows at or above the signature threshold show a small \"Get signature\" action that opens 72 for that entry."
+    "Credit rows in the history show the reason line (items or reason) and a tag \"Signed ✓\" or \"Not signed\". Not signed rows at or above the signature threshold show a small \"Get signature\" action that opens 72 for that entry.",
+    "Balance corrected row (changed 16 Nov 2026, replaces the stacked old → new layout): line 1 is the title \"Balance corrected\" alone (never wraps). Line 2 is a two-column row: \"Was GH₵old\" on the left in grey regular weight, and the NEW balance on the right, bold, 24px, neutral dark colour (not red or green), ending at the same right edge as the amounts of the other rows. Line 3: date and \"Reason: …\" (reason label, plus the typed note for Other). An amount never breaks. A correction to zero shows GH₵0.00 on the right and \"Was GH₵105.00\" on the left.",
+    "Header of 29/43 (final, 16 Nov 2026; replaces all earlier versions): the contact card stays exactly as it was before Back was added: the initial circle, the name (22px bold, may wrap to two lines) and, on the right of the same row, the Edit contact button (the person-with-pen icon above the words \"Edit contact\", about 88px wide, 64px high). The ONLY change is a Back button (PosBackButton) added as its own plain row above the card, left aligned, 52px high, like the other screens. Nothing inside the card moves. At 340px the card never wraps sideways and the page never scrolls sideways.",
+    "What happened cards (final, 16 Nov 2026; replaces the earlier text-line layouts and the \"Balance corrected row\" rule above): every event card has a title row (title left, amount right, nowrap) and then label-value rows like the card on 72: label on the left in grey, value on the right in bold, thin divider between rows, same sizes. Paid: rows \"Time\" (Today HH:mm, or dd/mm/yyyy) and \"Paid with\" (Cash GH₵x, MoMo GH₵y). {Took on credit on 73 / Added to debt on 29 and 43}: rows \"Time\", \"Reason\" (the reason, or \"No reason written\"; no \"Item:\" prefix) and \"Signature\" (pill \"Signed ✓\" green, or \"Not signed\" grey). Balance corrected (dashed card): the title alone on the first line (never wraps), then rows \"Was\" (GH₵old), \"New balance\" (bold), \"Time\", \"Reason\" (the reason entered on 54). A long value wraps inside its own right column; labels never wrap. Applies to 29, 43 and 73. Decisions after the build (16 Nov 2026): (1) Time on an older day is \"dd/mm/yyyy HH:mm\" (date and time), on today \"Today HH:mm\". (2) The rows are 18px on 29, 43 and 73 (same as 72). (3) \"Get signature\" sits next to the \"Not signed\" pill in the Signature row on 29 and 43. (4) The Paid amount has no \"+\" on any of the three screens (the title says Paid). (5) The credit amount uses the same dark red on all three.",
+    "Key-value rows (decided 16 Nov 2026): same row style as the card on 72 and the What happened cards: grey label on the left (never wraps), bold value on the right (wraps inside its own column), thin divider between rows, no divider after the last row. Shared row component. Debt summary: \"Last reminder\" row (value like \"yesterday 14:05\"; replaces the clock icon line \"Last reminder: ...\"). In the \"A little at a time\" card: rows \"Each payment\" (GH₵x every week), then the progress bar, then \"Paid so far\" (\"1 of 3\") and \"Next payment\" (dd/mm/yyyy). Replaces \"1 paid · 2 left\" and \"Next: ...\"."
    ]
   },
   "30": {
@@ -1270,7 +1300,7 @@
    "component": "SavedAsCredit",
    "controls": [
     {
-     "label": "See Amoto’s details ›",
+     "label": "See Amoto’s details",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -1289,7 +1319,7 @@
    "rules": [
     "Never list a payment part with GH₵0.00 (for example no \"MoMo GH₵0.00\" row after a cash-only payment): only parts above zero are shown.",
     "Receipts offline (decided 12 Nov 2026): the sale or collection is already saved before the receipt button is shown, and a receipt never blocks Done or New sale. Send receipt opens WhatsApp through the installed app or the phone's share sheet (not a wa.me web page that fails offline), with the receipt text filled in. When the phone is offline, one quiet line appears directly under the Send receipt button (8px below it, above Copy receipt; it explains what Send receipt does, so it never sits under Copy receipt or further down): \"You are offline. WhatsApp will send it when you are back online.\" A secondary outlined button \"Copy receipt\" copies the same text (shows \"Copied\" for two seconds). Receipt buttons only exist when VITE_ENABLE_POS_RECEIPTS is \"true\". Amounts in the receipt text and in the panel above it always use formatGhs (GH₵5.00), also the Sale line.",
-    "No reminder button on 31 (decided 14 Nov 2026): the old 'WhatsApp {Name}' reminder button is removed. This screen appears seconds after the sale and the receipt already tells the customer what they owe; reminders live on the debtor detail page (29/43), the Home Collect first tile and the Owed list. The buttons are, top to bottom: Send receipt, the offline line (offline only), Copy receipt (these three only with the receipts flag on), See {Name}'s details ›, Done."
+    "No reminder button on 31 (decided 14 Nov 2026): the old 'WhatsApp {Name}' reminder button is removed. This screen appears seconds after the sale and the receipt already tells the customer what they owe; reminders live on the debtor detail page (29/43), the Home Collect first tile and the Owed list. The buttons are, top to bottom: Send receipt, the offline line (offline only), Copy receipt (these three only with the receipts flag on), See {Name}'s details, Done."
    ]
   },
   "32": {
@@ -1539,14 +1569,14 @@
      "effect": "Choose the period. One of the three is selected at all times (aria-pressed). Default: Today. Changes every figure on the screen except Owed to you and You owe suppliers."
     },
     {
-     "label": "Owed to youGH₵93.00See who ›",
+     "label": "Owed to youGH₵93.00See who",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
      "to": "32"
     },
     {
-     "label": "You owe suppliersGH₵280.00See list ›",
+     "label": "You owe suppliersGH₵280.00See list",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -1556,11 +1586,11 @@
    "inputs": [],
    "bottom_bar": false,
    "rules": [
-    "Layout, top to bottom: (0) period selector Today / This week / This month (three equal buttons, 16px, one line each at 340px, default Today); (1) one strong green block \"Money left today\" / \"Money left this week\" / \"Money left this month\" with one calm line \"GH₵X more than yesterday / last week / last month\" or \"GH₵X less than ...\" (never a green card with a red or alarming drop) and \"Money in minus money spent\"; (2) Money in card (Cash and MoMo rows; then, under a thicker line, two rows \"Debts paid\" in dark green text and \"On credit\" in dark crimson text: plain bold labels with no fill and no border, amounts in the same right-hand column and size as Cash and MoMo; each of the two rows is hidden when its amount is zero); (3) Money spent card (Paid in cash, Paid by MoMo); (4) What you should have left card (Cash, MoMo); (5) the profit card; (6) Owed to you and You owe suppliers as two white tiles with a coloured left edge and a clear \"See who ›\" / \"See list ›\" link. The screen scrolls.",
+    "Layout, top to bottom: (0) period selector Today / This week / This month (three equal buttons, 16px, one line each at 340px, default Today); (1) one strong green block \"Money left today\" / \"Money left this week\" / \"Money left this month\" with one calm line \"GH₵X more than yesterday / last week / last month\" or \"GH₵X less than ...\" (never a green card with a red or alarming drop) and \"Money in minus money spent\"; (2) Money in card (Cash and MoMo rows; then, under a thicker line, two rows \"Debts paid\" in dark green text and \"On credit\" in dark crimson text: plain bold labels with no fill and no border, amounts in the same right-hand column and size as Cash and MoMo; each of the two rows is hidden when its amount is zero); (3) Money spent card (Paid in cash, Paid by MoMo); (4) What you should have left card (Cash, MoMo); (5) the profit card; (6) Owed to you and You owe suppliers as two white tiles with a coloured left edge and a clear \"See who\" / \"See list\" link. The screen scrolls.",
     "The big heading says \"Money left\", not \"Cash left\", because Money in includes MoMo.",
     "Only one strong colour block on the screen. The other cards are white with a thin border.",
     "Profit card (Estimate, version A): Estimated profit = Sales − stock bought − other costs for the selected week or month, from the Spent money categories. Shown with an \"Estimate\" tag, the line \"Sales 300.00 − stock 150.00 − other costs 30.00\", and \"Average of last 4 weeks\" only when there are at least 4 weeks of data. A credit sale counts when it is sold. Shown by default; Settings has one switch to hide it. No nudge card pointing to Settings.",
-    "Item-level profit (version B, \"Based on 8 of 10 items\" and Add costs ›) stays deferred until items have cost prices.",
+    "Item-level profit (version B, \"Based on 8 of 10 items\" and Add costs) stays deferred until items have cost prices.",
     "The comparison with last week uses integer pesewas through the shared formatter. A value that cannot be real (for example more than a million cedis) must be checked as a possible unit bug.",
     "Built and kept: no Open Settings or Add costs controls on 33. The profit card is hidden with the one switch in Settings (47); there is no nudge card.",
     "One bad or inconsistent record must never stop the screen loading. A record whose parts do not add up (for example a credit sale whose cash and credit parts do not match the sale amount) is left out of the totals, logged with its id to the console, and the screen shows one quiet line: \"1 sale is not counted because its amounts do not match.\" (plural: \"{n} sales are not counted...\"). The same must hold on every screen that sums money (22 and others), not only 33.",
@@ -1587,7 +1617,7 @@
      "to": "17"
     },
     {
-     "label": "Next ›",
+     "label": "Next",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -1661,7 +1691,7 @@
      "effect": "Selects or edits a value on this screen. No navigation."
     },
     {
-     "label": "More categories ›",
+     "label": "More categories",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -1675,7 +1705,7 @@
      "effect": "Selects or edits a value on this screen. No navigation."
     },
     {
-     "label": "Continue ›",
+     "label": "Continue",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -2288,7 +2318,7 @@
      "role": null,
      "disabled_initially": false,
      "type": "reuse_existing",
-     "effect": "Open the existing edit-contact form with its existing validation. No new screen."
+     "effect": "Person-with-pen icon above the words \"Edit contact\" (the existing button, unchanged), right side of the contact card, in line with the name. Open the existing edit-contact form with its existing validation. No new screen."
     },
     {
      "label": "Send reminder on WhatsApp",
@@ -2327,7 +2357,7 @@
      "to_rule": "Start the add-debt-for-a-person flow (flow=add_debt_person) and go to 53."
     },
     {
-     "label": "Show {Name} the record ›",
+     "label": "Show {Name} the record",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -2348,7 +2378,11 @@
     "Send another reminder? check: if a reminder to this person was recorded within the last 7 days, tapping the WhatsApp reminder button first opens a bottom sheet: \"You sent {Name} a reminder {today|yesterday|on dd/mm/yyyy} at HH:mm. Sending too many can annoy a customer.\" Buttons: \"Send again\" (strong, primary; opens WhatsApp and records a new reminder) and \"Not now\" (outlined; closes the sheet, nothing recorded). After 7 days or with no reminder the button opens WhatsApp directly. Sending a receipt never counts as a reminder and never triggers the check.",
     "No open debt entries (decided 15 Nov 2026): when the person has no open debt entries, the \"Open debt entries\" heading and its line are not shown at all. With open entries the list and \"Correct this entry\" stay.",
     "Collection receipt (decided 15 Nov 2026): Receipt and Copy receipt on this screen cover the person's latest payment only, and the label says so (\"Receipt for GH₵30.00 payment\"). A person who has never paid has no receipt buttons. Receipt text: \"Receipt from {Shop}\", \"dd/mm/yyyy HH:mm\" (no comma), \"Received from {Name}: GH₵x (Cash|MoMo)\", \"Balance owed now: GH₵y\" (or \"Nothing owed now\" when zero), \"Thank you!\".",
-    "Credit rows in the history show the reason line (items or reason) and a tag \"Signed ✓\" or \"Not signed\". Not signed rows at or above the signature threshold show a small \"Get signature\" action that opens 72 for that entry."
+    "Credit rows in the history show the reason line (items or reason) and a tag \"Signed ✓\" or \"Not signed\". Not signed rows at or above the signature threshold show a small \"Get signature\" action that opens 72 for that entry.",
+    "Balance corrected row (changed 16 Nov 2026, replaces the stacked old → new layout): line 1 is the title \"Balance corrected\" alone (never wraps). Line 2 is a two-column row: \"Was GH₵old\" on the left in grey regular weight, and the NEW balance on the right, bold, 24px, neutral dark colour (not red or green), ending at the same right edge as the amounts of the other rows. Line 3: date and \"Reason: …\" (reason label, plus the typed note for Other). An amount never breaks. A correction to zero shows GH₵0.00 on the right and \"Was GH₵105.00\" on the left.",
+    "Header of 29/43 (final, 16 Nov 2026; replaces all earlier versions): the contact card stays exactly as it was before Back was added: the initial circle, the name (22px bold, may wrap to two lines) and, on the right of the same row, the Edit contact button (the person-with-pen icon above the words \"Edit contact\", about 88px wide, 64px high). The ONLY change is a Back button (PosBackButton) added as its own plain row above the card, left aligned, 52px high, like the other screens. Nothing inside the card moves. At 340px the card never wraps sideways and the page never scrolls sideways.",
+    "What happened cards (final, 16 Nov 2026; replaces the earlier text-line layouts and the \"Balance corrected row\" rule above): every event card has a title row (title left, amount right, nowrap) and then label-value rows like the card on 72: label on the left in grey, value on the right in bold, thin divider between rows, same sizes. Paid: rows \"Time\" (Today HH:mm, or dd/mm/yyyy) and \"Paid with\" (Cash GH₵x, MoMo GH₵y). {Took on credit on 73 / Added to debt on 29 and 43}: rows \"Time\", \"Reason\" (the reason, or \"No reason written\"; no \"Item:\" prefix) and \"Signature\" (pill \"Signed ✓\" green, or \"Not signed\" grey). Balance corrected (dashed card): the title alone on the first line (never wraps), then rows \"Was\" (GH₵old), \"New balance\" (bold), \"Time\", \"Reason\" (the reason entered on 54). A long value wraps inside its own right column; labels never wrap. Applies to 29, 43 and 73. Decisions after the build (16 Nov 2026): (1) Time on an older day is \"dd/mm/yyyy HH:mm\" (date and time), on today \"Today HH:mm\". (2) The rows are 18px on 29, 43 and 73 (same as 72). (3) \"Get signature\" sits next to the \"Not signed\" pill in the Signature row on 29 and 43. (4) The Paid amount has no \"+\" on any of the three screens (the title says Paid). (5) The credit amount uses the same dark red on all three.",
+    "Key-value rows (decided 16 Nov 2026): same row style as the card on 72 and the What happened cards: grey label on the left (never wraps), bold value on the right (wraps inside its own column), thin divider between rows, no divider after the last row. Shared row component. Same as 29 for a late debt: \"Last reminder\" row; the plan card rows \"Each payment\", progress bar, \"Paid so far\" (\"0 of 3\") and \"Was due\" (dd/mm/yyyy). Replaces \"0 paid · 3 left\" and \"Was due: ...\". When no reminder was sent yet, no Last reminder row."
    ]
   },
   "44": {
@@ -2486,7 +2520,7 @@
     "After saving stock bought on credit, Home shows a calm message in words the owner uses: \"Stock of GH₵80.00 saved. You still owe GH₵80.00.\" (when part is paid now: \"Stock of GH₵80.00 saved. You paid GH₵30.00 and still owe GH₵50.00.\"; when all is paid now: \"Stock of GH₵80.00 saved. Paid in full.\"). The word \"Expense\" is not used for this. Spent money (other costs) keeps \"Spent GH₵x saved.\"",
     "The Supplier select shows no stray marks or text other than the chosen name or \"Choose supplier\". The pay-by date uses the phone's own date picker; the saved date is shown as dd/mm/yyyy everywhere else.",
     "Supplier picker (replaces the dropdown, decision 11 Nov 2026): inside one card headed \"Who do you owe?\" the suppliers are a vertical list of selectable rows (role radio, 60px tall, a circle on the left, the supplier name in bold, long names wrap). The chosen row has a green border, a light green background and a filled circle. The last row is a dashed green \"+ New supplier\" row. Tapping it selects it (solid green border, light green background) and shows the fields \"Supplier name\" and \"Phone (optional)\" below the list inside the same card. Choosing a supplier hides those fields and keeps what was typed until Save.",
-    "More than 4 suppliers: show the 4 most recently used, then a row \"Show all {n} suppliers ›\" that shows the whole list. With no suppliers yet, only the \"+ New supplier\" row is shown, already selected, with its fields open. No native dropdown (select) anywhere in the POS for choosing a supplier or customer.",
+    "More than 4 suppliers: show the 4 most recently used, then a row \"Show all {n} suppliers\" that shows the whole list. With no suppliers yet, only the \"+ New supplier\" row is shown, already selected, with its fields open. No native dropdown (select) anywhere in the POS for choosing a supplier or customer.",
     "Layout: Stock total and Still owed in one card at the top (Still owed in dark red); Paid now in its own card with the amount right-aligned; the supplier card; Pay by (optional) in its own card with the phone's date picker; a green Save button at the end of the list."
    ]
   },
@@ -2830,7 +2864,7 @@
      "effect": "Selects or edits a value on this screen. No navigation."
     },
     {
-     "label": "Done ›",
+     "label": "Done",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -3040,7 +3074,7 @@
      "effect": "Selects or edits a value on this screen. No navigation."
     },
     {
-     "label": "Next ›",
+     "label": "Next",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -3139,7 +3173,15 @@
    "inputs": [
     "nb"
    ],
-   "bottom_bar": false
+   "bottom_bar": false,
+   "rules": [
+    "Zero is a valid new balance (decided 16 Nov 2026). The only limits are: no negative amount and no increase from this screen (use Add debt). Typing 0 (or 0.00) is accepted, shows \"This lowers the debt by GH₵{all of it}\", and Save correction works once a reason is chosen. It records an adjustment to GH₵0.00 and the person then owes nothing. An empty field is the only invalid-looking state (Save correction stays disabled).",
+    "With several open entries (Correct this entry), the same rule applies to that entry: 0 settles that entry only; the history shows that entry's balance: \"Was GH₵old\" and the new balance.",
+    "The history row and the customer record 73 show \"Balance corrected\", the new balance GH₵0.00 with \"Was GH₵old\", and the reason, so a debt set to zero is never silent (layout: \"Balance corrected row\" rule on 29, 43 and 73).",
+    "Empty field on 54: no message at all (not \"New balance must be lower.\"). Save correction is only disabled. Messages appear only for an increase (\"Corrections cannot increase debt\") or a value that is not allowed.",
+    "When the sheet first opens (decided 16 Nov 2026): the field is pre-filled with the current balance, selected, and NO message is shown until the owner changes the value. Save correction is disabled. If the owner then types a value equal to the current balance, show \"New balance must be lower.\"; for an increase \"Corrections cannot increase debt\".",
+    "Key-value rows (decided 16 Nov 2026): same row style as the card on 72 and the What happened cards: grey label on the left (never wraps), bold value on the right (wraps inside its own column), thin divider between rows, no divider after the last row. Shared row component. The summary above the correction form uses the same rows as 43: \"Last reminder\", and in the plan card \"Each payment\", \"Paid so far\", \"Was due\" (or \"Next payment\" when not late)."
+   ]
   },
   "55": {
    "name": "Review and pay",
@@ -3247,7 +3289,10 @@
    "inputs": [
     "mp"
    ],
-   "bottom_bar": false
+   "bottom_bar": false,
+   "rules": [
+    "Key-value rows (decided 16 Nov 2026): same row style as the card on 72 and the What happened cards: grey label on the left (never wraps), bold value on the right (wraps inside its own column), thin divider between rows, no divider after the last row. Shared row component. Under the big \"Customer pays\" amount: rows \"Fee\" and \"You receive\" (white text on the green card, divider in white at about 35% opacity). Replaces \"Fee GH₵x · You receive GH₵y\"."
+   ]
   },
   "57": {
    "name": "Waiting for customer",
@@ -3487,7 +3532,7 @@
      "to": "BACK"
     },
     {
-     "label": "Phone request: set up ›",
+     "label": "Phone request: set up",
      "role": null,
      "disabled_initially": false,
      "type": "navigate",
@@ -3548,7 +3593,7 @@
     "Change request 2026-11-09: number and network inputs added to complete 'Customer sends to my number (on or off, number, network)'.",
     "Redesign (layout only, no behaviour change). Title \"MoMo payments\" (same words as the Settings row).",
     "Card 1 \"Customer sends to my number\": the title with a switch (role switch, not a tick box). When on: field \"My MoMo number\", then \"Network\" as three equal buttons in one row (MTN, Telecel, AirtelTigo; the selected one is green), then one green line \"Customers will send to 059•••8442 · MTN\". When off, the number and network fields are hidden.",
-    "Card 2 \"Phone request\": one row, \"Confirmed by itself. Fee GH₵0.25 per payment.\" with \"Set up ›\" on the right (opens 60) when the phone-request flag is on. When the flag is off the row shows a grey \"Coming soon\" tag instead and is not tappable. No disabled button.",
+    "Card 2 \"Phone request\": one row, \"Confirmed by itself. Fee GH₵0.25 per payment.\" with \"Set up\" on the right (opens 60) when the phone-request flag is on. When the flag is off the row shows a grey \"Coming soon\" tag instead and is not tappable. No disabled button.",
     "Section \"When I tap MoMo\": one card with radio rows (role radio, a circle on the left, the chosen one filled green with a light green row background): \"Ask me each time\", \"Always: customer sends to my number\". \"Always: phone request\" is shown only when the phone-request flag is on. If phone request is not set up yet it is shown greyed, not selectable, with the line \"Set up phone request first\". When the flag is off it is not shown at all. No person icons.",
     "Save is pinned at the bottom (always visible), 60px, green, with a check icon."
    ]
@@ -3582,7 +3627,8 @@
     "Status line by state: Active: \"Active until dd/mm/yyyy · n days left\" with a green Active tag. Trial: \"Trial · n days left\" with a Trial tag. Due today: \"Due today\". Late/expired: \"Your plan ended on dd/mm/yyyy. Your sales and records are safe.\" (calm, not red alarm). Pay now stays in every state.",
     "Never show a red verification error on this screen. An old unfinished Paystack payment record must not produce a message; when the plan is active, or the record is more than 24 hours old, the app clears the record quietly. Phone request payments have their own pending screens (56 to 62).",
     "Section \"Payments\": one card with rows separated by thin lines. Each row: left, the method (\"Phone request\", \"Mobile money\", \"Cash\") with the date under it; right, the amount in bold with a \"Confirmed\" tag under it (other statuses use their own tag). If there are no payments: \"No payments yet.\"",
-    "Dates dd/mm/yyyy, amounts through the shared formatter."
+    "Dates dd/mm/yyyy, amounts through the shared formatter.",
+    "Key-value rows (decided 16 Nov 2026): same row style as the card on 72 and the What happened cards: grey label on the left (never wraps), bold value on the right (wraps inside its own column), thin divider between rows, no divider after the last row. Shared row component. In the plan card: rows \"Active until\" (dd/mm/yyyy) and \"Days left\" (a number). Replaces \"Active until ... · 13 days left\". When the plan is late or ended, use the existing wording for that state as the row label and value."
    ]
   },
   "65": {
@@ -3728,7 +3774,8 @@
    "bottom_bar": false,
    "change_request": "2026-11-07 MoMo choice and plan payments",
    "rules": [
-    "Fee shown through the formatter from configuration (e.g. Fee GH₵0.59). No developer placeholder text."
+    "Fee shown through the formatter from configuration (e.g. Fee GH₵0.59). No developer placeholder text.",
+    "Key-value rows (decided 16 Nov 2026): same row style as the card on 72 and the What happened cards: grey label on the left (never wraps), bold value on the right (wraps inside its own column), thin divider between rows, no divider after the last row. Shared row component. Under the amount: rows \"Fee\" and \"You pay\". Replaces \"Fee GH₵x · you pay GH₵y\"."
    ]
   },
   "69": {
@@ -3752,7 +3799,10 @@
     "confirmed": "Confirmed",
     "failed": "Payment not completed",
     "reversed": "Payment reversed"
-   }
+   },
+   "rules": [
+    "Key-value rows (decided 16 Nov 2026): same row style as the card on 72 and the What happened cards: grey label on the left (never wraps), bold value on the right (wraps inside its own column), thin divider between rows, no divider after the last row. Shared row component. In the Plan paid card, under \"✓ GH₵x received\": rows \"Plan runs to\" (dd/mm/yyyy via formatDate, never \"19 Dec\"), \"Paid by\" (\"MoMo, phone request\" or \"MoMo\") and \"Status\" (\"Verified\" or \"Not verified\"). Replaces the line \"Plan runs to 19 Dec · Phone request · MoMo · verified\"."
+   ]
   },
   "70": {
    "name": "Waiting to confirm",
@@ -3815,7 +3865,8 @@
     "Existing backup and restore logic is not changed, only the screen around it.",
     "Exact text and order, top to bottom: (1) intro line under the title: \"Keep a copy of your sales, debts and items. It works without internet.\" (2) Card \"Save a backup\" with a green download icon before the heading, text \"Saves one file on this phone with all your records.\", green button \"Download backup\", and \"Last backup: dd/mm/yyyy\" only if stored. (3) Card \"Restore from a backup\" with a green upload icon before the heading, text \"Adds the records from a backup file to this phone. Matching records are updated. Nothing here is deleted.\", button \"Choose backup file\".",
     "Look: heading 19px bold, card text 16px grey (#475569), both buttons 56px tall with bold (800) 18px text. Download backup is solid green (#03543F, white text). Choose backup file is white with a dark (#0F172A) 2px outline and dark text, not green. Cards have a 2px light grey (#CBD5E1) border, 18px corners, 16px padding, 14px gap between cards.",
-    "After a restore the message says only what the app knows exactly: \"Restore finished. {total} record(s) in the file. {kept} saved sale(s), payment(s) and debt(s) were already on this phone and were kept.\" Use the singular for 1 (\"1 record\", \"1 saved sale, payment or debt was\"). Do not say \"added or updated\" unless the restore returns an exact count of them."
+    "After a restore the message says only what the app knows exactly: \"Restore finished. {total} record(s) in the file. {kept} saved sale(s), payment(s) and debt(s) were already on this phone and were kept.\" Use the singular for 1 (\"1 record\", \"1 saved sale, payment or debt was\"). Do not say \"added or updated\" unless the restore returns an exact count of them.",
+    "Restore and signatures (decided 16 Nov 2026): if a backup holds a signature that cannot be read (wrong shape, too many points, too large), the event restores as Not signed and the result says \"1 signature in the file could not be read and was left out.\" (plural: \"{n} signatures in the file could not be read and were left out.\"). The rest of the file restores. If the phone already has the same event unsigned, restore adds only the signature fields (signature, signedAt, signedAmountPesewas, signedReason) from the backup, nothing else; it never replaces an existing signature."
    ]
   },
   "ManualDebtSaved": {
@@ -3830,6 +3881,14 @@
    "name": "Customer signs",
    "component": "CustomerSignature",
    "controls": [
+    {
+     "label": "Back",
+     "role": null,
+     "disabled_initially": false,
+     "type": "navigate",
+     "to": "SIGNED",
+     "effect": "Acts as Skip for now (the credit stays saved as Not signed). The phone back button does the same. Uses PosBackButton."
+    },
     {
      "label": "Clear",
      "role": null,
@@ -3851,7 +3910,7 @@
      "disabled_initially": false,
      "type": "navigate",
      "to": "SIGNED",
-     "effect": "Underlined text link, never a button-looking primary. The credit stays saved as Not signed. Continues exactly as Done does."
+     "effect": "Grey-outline button (button_system: leave), full width, 52px, below Done and Clear. The credit stays saved as Not signed. Continues exactly as Done does."
     }
    ],
    "inputs": [
@@ -3864,11 +3923,14 @@
    "bottom_bar": false,
    "rules": [
     "Shown after saving a credit of GH₵50.00 or more (VITE_SIGNATURE_THRESHOLD_PESEWAS, default 5000, read only in src/config/features.js). The credit is ALREADY saved before this screen opens; nothing here can block or undo it.",
-    "Title \"Please sign\". Pink card, read-only: \"{Name} owes {Shop} GH₵x\", \"For: {items or reason}\", \"Taken: dd/mm/yyyy\", \"Pay by: dd/mm/yyyy\" (only when a due date exists). Amount through formatGhs, dates through formatDate.",
+    "Title \"Please sign\". Pink card, read-only: first line \"{Name} owes {Shop}\", then the amount (formatGhs, large), then three label-value rows under a thin line (decided 16 Nov 2026): \"For\" with the items or reason, \"Taken\" with the date (dd/mm/yyyy), and \"Pay by\" with the due date (only when a due date exists). The label is on the left in grey regular weight, the value is on the right, bold and right-aligned; a long value wraps inside its own column and never pushes the label. With no reason the value is \"No reason written\" (not \"For: No reason written\").",
     "The phone is handed to the customer. Text at least 18px, buttons 52px or more, Done full width.",
     "Done is disabled until ink exists. Skip for now is always available. Leaving by Back or closing the app counts as Skip for now.",
     "Storage: small vector strokes (or compressed PNG under 20 KB) saved on the debt event as signature plus signedAt. Local only, included in backup and restore. Never sent anywhere in this version.",
-    "Honest limit: a signature shows the customer saw and accepted this amount; it is not a legal proof. Do not use the words legal, proof or guaranteed anywhere in the UI."
+    "Honest limit: a signature shows the customer saw and accepted this amount; it is not a legal proof. Do not use the words legal, proof or guaranteed anywhere in the UI.",
+    "Snapshot: the signature record stores the credit amount and the reason as they were when signed. Anything changed afterwards is shown on 73 as a Balance corrected card; a signature never silently covers a different amount.",
+    "Layout (updated 16 Nov 2026): Back and the title \"Please sign\" share the top row. The three bottom buttons are full width, in this order: Done (solid green, 60px, disabled until ink), Clear (outlined, 60px), Skip for now (grey outline, 52px). The header is the Home tile without the Menu button (as on 73).",
+    "Order of the three bottom buttons: Done (solid green, disabled until ink), then Clear (outlined), then Skip for now (grey outline). Clear erases the drawing; Skip leaves without signing."
    ]
   },
   "73": {
@@ -3894,11 +3956,15 @@
    "inputs": [],
    "bottom_bar": false,
    "rules": [
-    "Read only. No edit, collect, correct, reminder or delete controls exist on this screen. Opened from 29 and 43 by \"Show {Name} the record ›\".",
+    "Look-only screen (see the notice rule). No edit, collect, correct, reminder or delete controls exist on this screen. Opened from 29 and 43 by \"Show {Name} the record\".",
     "Top: {Name}, then pink card \"You owe GH₵x\" (balance, wording for the customer). Below: \"What happened\", newest first, one card per event: Paid (amount, \"dd/mm/yyyy or Today HH:mm · Cash GH₵x, MoMo GH₵y\"), Took on credit (amount in dark red, date/time, what for, tag \"Signed ✓\" green or \"Not signed\" grey).",
     "Every credit row shows what it was for (items, or the reason typed on 54/53). A credit with no items and no reason shows \"No reason written\".",
-    "Caption: \"Read only. Please hand the phone back when you are done.\"",
-    "No private shop data on this screen: no profit, cost, other customers, totals or phone numbers."
+    "No private shop data on this screen: no profit, cost, other customers, totals or phone numbers.",
+    "Corrections are shown (decided 16 Nov 2026). Every balance correction made on 54 appears in \"What happened\" as its own dashed card (layout in the \"Balance corrected row\" rule below), with the date and \"Reason: …\" (the reason entered on 54). A customer can therefore see if a signed amount was changed later. Corrections are never hidden or merged into the credit rows.",
+    "Balance corrected row (changed 16 Nov 2026, replaces the stacked old → new layout): line 1 is the title \"Balance corrected\" alone (never wraps). Line 2 is a two-column row: \"Was GH₵old\" on the left in grey regular weight, and the NEW balance on the right, bold, 24px, neutral dark colour (not red or green), ending at the same right edge as the amounts of the other rows. Line 3: date and \"Reason: …\" (reason label, plus the typed note for Other). An amount never breaks. A correction to zero shows GH₵0.00 on the right and \"Was GH₵105.00\" on the left.",
+    "Notice (changed 16 Nov 2026): one plain line right under the \"You owe\" card, 16px grey: \"Nothing can be changed here.\" It is not at the bottom (a long history would push it off screen), and there is no \"Read only\" and no \"Please hand the phone back\" text anywhere on 73. The Back to shop button stays.",
+    "Text size on 73 (updated 16 Nov 2026): the rows use 18px on 73, and also on 29 and 43 (same as the card on 72). This replaces the earlier \"16px on 29 and 43\".",
+    "What happened cards (final, 16 Nov 2026; replaces the earlier text-line layouts and the \"Balance corrected row\" rule above): every event card has a title row (title left, amount right, nowrap) and then label-value rows like the card on 72: label on the left in grey, value on the right in bold, thin divider between rows, same sizes. Paid: rows \"Time\" (Today HH:mm, or dd/mm/yyyy) and \"Paid with\" (Cash GH₵x, MoMo GH₵y). {Took on credit on 73 / Added to debt on 29 and 43}: rows \"Time\", \"Reason\" (the reason, or \"No reason written\"; no \"Item:\" prefix) and \"Signature\" (pill \"Signed ✓\" green, or \"Not signed\" grey). Balance corrected (dashed card): the title alone on the first line (never wraps), then rows \"Was\" (GH₵old), \"New balance\" (bold), \"Time\", \"Reason\" (the reason entered on 54). A long value wraps inside its own right column; labels never wrap. Applies to 29, 43 and 73. Decisions after the build (16 Nov 2026): (1) Time on an older day is \"dd/mm/yyyy HH:mm\" (date and time), on today \"Today HH:mm\". (2) The rows are 18px on 29, 43 and 73 (same as 72). (3) \"Get signature\" sits next to the \"Not signed\" pill in the Signature row on 29 and 43. (4) The Paid amount has no \"+\" on any of the three screens (the title says Paid). (5) The credit amount uses the same dark red on all three."
    ]
   }
  },
@@ -3910,7 +3976,7 @@
   "currency": "Show money as GH₵ followed directly by the amount, for example GH₵268.20. Use the app's existing money formatter everywhere. The letters GHS appear only as the currency parameter of API calls. This includes every item line, chip, table column and total on every screen (decided 16 Nov 2026): a rendered amount without GH₵ is a bug. A scan test renders the screens that list amounts (20, 55, 24, 28, 30, 31, 33, 19, 16, 27) and fails on an amount text without the sign.",
   "bottom_bar_note": "The bottom bar shows only on 15, 22, 25 and 32, as in the prototype. It is hidden on every other screen so a tap on Home or Owed cannot lose a draft mid-flow. On wide screens the side menu may show instead.",
   "date_format": "All dates are shown as dd/mm/yyyy (for example 14/11/2026) through one shared formatter. The prototype month-name dates (2 Oct, 19 Dec) are examples only. Browser date inputs show the device format.",
-  "amount_entry": "Typed amounts are parsed to integer pesewas by integer math from the typed text, never through floating point. Exponent and hex text (1e2, 0x10) are refused. Pasted text with more than two decimals: a third digit of 5 or more rounds the pesewa up. Typing a third decimal digit is not accepted (4.00 then 2 does not become 4.002). One shared amount keypad (decided 15 Nov 2026) on Sell 15, Add debt 53, Collect 25, Split 26/27 and any other pad: keys 1 to 9, then a last row of four equal keys \". 0 00 delete\" (delete in the same grey style). Digits fill whole cedis from the left: 8 gives GH₵8.00 and 85 gives GH₵85.00; \".\" starts pesewas with at most two decimals; a second \".\" is ignored; \"00\" is ignored on an empty pad and after \".\"; leading zeros are not shown. Spent money 44 keeps a typed field with the phone number keyboard (decimal key) and follows the same rules. A scan fails if a second keypad implementation exists. Typed amount fields (split field on 16/27, 19 each time and paid today, 44, 45, 46, balance correction): when a field with an amount gets focus the whole amount is selected, so the first digit typed replaces it; at most two decimals while typing; one \".\"; digits only. The text is always right-aligned with the GH₵ label on the left.",
+  "amount_entry": "Typed amounts are parsed to integer pesewas by integer math from the typed text, never through floating point. Exponent and hex text (1e2, 0x10) are refused. Pasted text with more than two decimals: a third digit of 5 or more rounds the pesewa up. Typing a third decimal digit is not accepted (4.00 then 2 does not become 4.002). One shared amount keypad (decided 15 Nov 2026) on Sell 15, Add debt 53, Collect 25, Split 26/27 and any other pad: keys 1 to 9, then a last row of four equal keys \". 0 00 delete\" (delete in the same grey style). Digits fill whole cedis from the left: 8 gives GH₵8.00 and 85 gives GH₵85.00; \".\" starts pesewas with at most two decimals; a second \".\" is ignored; \"00\" is ignored on an empty pad and after \".\"; leading zeros are not shown. Spent money 44 keeps a typed field with the phone number keyboard (decimal key) and follows the same rules. A scan fails if a second keypad implementation exists. Typed amount fields (split field on 16/27, 19 each time and paid today, 44, 45, 46, balance correction): when a field with an amount gets focus the whole amount is selected, so the first digit typed replaces it; at most two decimals while typing; one \".\"; digits only. The text is always right-aligned with the GH₵ label on the left. Zero in a typed field (decided 16 Nov 2026): a lone 0 stays visible as 0 in every typed amount field (typing 0 never makes the field look empty); a leading zero before another digit is dropped (05 becomes 5); 0.5 and 0.00 are kept. This is separate from the keypad, which keeps its own rule. Each screen then applies its own validation to the value 0 (for example 54 accepts it, an expense or a supplier payment still needs an amount above zero).",
   "large_amount_confirm": {
    "rule": "A sale above the large-amount limit asks for confirmation before it is saved. The limit is configurable, default GH₵1,000.00 (100000 pesewas, VITE_LARGE_AMOUNT_CONFIRM_PESEWAS). Exactly the limit does not ask; one pesewa above does. An invalid or missing setting uses the default.",
    "applies_to": "The sale total on 15 Done, 55 Review and pay, and 16 Done (split), including credit sales and plans saved from 19.",
@@ -3994,7 +4060,14 @@
    "threshold": "VITE_SIGNATURE_THRESHOLD_PESEWAS, default 5000, read only in src/config/features.js.",
    "what_for": "Every credit shows its reason on 29, 43 and 73.",
    "stored": "signature (vector strokes) and signedAt live on the debt event, local, in backup and restore. Dexie version bump only if a new table is needed; prefer fields on the existing event.",
-   "deferred": "Customer confirmation by link on WhatsApp with a server timestamp waits for the backend. Codes generated on the phone are NOT used: they prove nothing and conflict with MoMo anti-fraud advice."
+   "deferred": "Customer confirmation by link on WhatsApp with a server timestamp waits for the backend. Codes generated on the phone are NOT used: they prove nothing and conflict with MoMo anti-fraud advice.",
+   "corrections": "Balance corrections after a signature stay visible on 73 (Balance corrected, old → new, reason), so a signed amount cannot be quietly changed.",
+   "fields": "On the transactions row of the credit event: signature, signedAt, signedAmountPesewas, signedReason. No Dexie version bump.",
+   "limits": "Points are whole numbers 0..1000, at most 1,500 points (about 18 KB as JSON), thinned on Done if longer. A signature is written once and never replaced.",
+   "sync": "Signature fields are stripped from any sync payload, and signing does not mark the event pending. The signature stays on this phone and in backup files.",
+   "no_reason": "A keypad sale with no items, or a generated word like Sale or Other amount, counts as no reason: show \"No reason written\".",
+   "threshold_scope": "The threshold applies to each credit event on its own. Anything not signed stays visible as Not signed on 29, 43 and 73.",
+   "paid_order": "Wherever a payment is split, list Cash first, then MoMo, on 29, 43 and 73. One shared helper."
   },
   "hide_amounts": {
    "decided": "16 Nov 2026",
@@ -4005,7 +4078,27 @@
    "default": "Amounts shown. The choice is remembered on this phone (local setting, in backup and restore as a setting) and survives restarting the app.",
    "accessibility": "Button 48px, accessible name \"Hide amounts\" or \"Show amounts\" with the current state, icon eye / eye-off, never colour alone.",
    "shared_component": "One AmountVisibility setting and one HiddenAmount rendering used by every hidden figure, so no figure can forget it (a test scans 22 and 33)."
-  }
+  },
+  "no_text_chevrons": "No chevron characters (›, >, ») anywhere in the app text, labels, i18n strings or tests (decided 16 Nov 2026). The Back arrow is a drawn icon; other buttons and links are written as words only (for example \"See all\", \"Show {Name} the record\", \"Next\"). A scan test fails if any chevron character appears in src/pos. The arrow → between two amounts (GH₵old → GH₵new) is not a chevron and stays.",
+  "button_system": {
+   "decided": "16 Nov 2026",
+   "main": "Solid green, white bold text: Done, Next, Save, Collect and other main actions.",
+   "other": "Outlined, 2px dark (#0F172A) border, dark bold text, white fill: Back, Clear, Cancel, Show {Name} the record, Correct balance.",
+   "add": "Dashed 2px dark-green border, bold dark-green \"+ Label\", no fill: every action that adds something (+ New item, + Add items, + Add debt, + Add to debt).",
+   "leave": "Grey outline (2px #64748B border, #334155 bold text, white fill): leave without doing it (Skip for now, Not now). Lower priority than the main action but a real button.",
+   "sizes": "Full width, 52px high or more (60px on 72 and 73); the compact add button (44px) only on 15.",
+   "no_link_buttons": "Underlined text is never used as a button. It appears only inside a sentence, for example Learn more. Every former underlined-link button becomes the right look above.",
+   "shared": "One shared component per look (PrimaryButton, SecondaryButton, AddButton, LeaveButton), and a scan test fails if a screen draws its own."
+  },
+  "credit_reason": {
+   "decided": "16 Nov 2026",
+   "why": "A keypad sale or a split on credit had no place to say what the credit was for; only sales with items and Add debt had one. Customer proof needs a reason on every credit.",
+   "where": "Screen 18 for every credit path (see the 18 rules).",
+   "stored": "On the credit event (the transactions row): items_json and itemDescription for items, note for typed text. Report first how the existing fields hold it.",
+   "optional": "Always optional; never blocks Save.",
+   "chips": "Up to three recent distinct reasons from the last 30 days, tap to fill. Hidden when none."
+  },
+  "shell_height": "Page shell (decided 16 Nov 2026): the area under the header must not use a hard-coded header height (it was 64px while the real header is 75px, so every screen scrolled by 11px at 360x667). Build the shell as a column of exactly the visible screen height (100dvh): header flex-none, page area flex-1 with min-height 0, so it adapts to any header height. A screen that fits must not scroll the page; a screen that does not fit scrolls inside the page area only, with Back and Save pinned."
  },
  "built_extras_kept": {
   "24": "row tags Collected Debt, Balance correction, Added to debt",

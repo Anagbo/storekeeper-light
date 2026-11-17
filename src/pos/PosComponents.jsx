@@ -17,7 +17,8 @@ function OfflineIcon({ size = 16 }) {
 }
 
 export function PosPage({ children, className = "", style }) {
-  return <main style={style} className={`mx-auto box-border min-w-0 max-w-full min-h-[calc(100vh-4rem)] w-full overflow-x-hidden overflow-y-auto px-4 pb-28 pt-5 sm:px-6 lg:max-w-6xl lg:px-8 lg:pb-10 lg:pt-8 ${className}`}>{children}</main>;
+  // flex 1 0 auto: fills the page area (rules_global.shell_height) and grows past it when longer.
+  return <main style={style} className={`mx-auto box-border min-w-0 max-w-full flex-[1_0_auto] w-full overflow-x-hidden overflow-y-auto px-4 pb-28 pt-5 sm:px-6 lg:max-w-6xl lg:px-8 lg:pb-10 lg:pt-8 ${className}`}>{children}</main>;
 }
 
 // Where "Saved ✓" was: the connection status. While a save or sync runs, statusLabel shows instead.
@@ -34,7 +35,7 @@ export function PosHeader({ shopName, statusLabel, hideSaved = false, onHome, on
     return () => clearTimeout(timer);
   }, [explained]);
   return (
-    <header className="sticky top-0 z-30 border-b-[3px] border-slate-900 bg-white px-4 pt-[max(0.5rem,env(safe-area-inset-top))]">
+    <header className="sticky top-0 z-30 flex-none border-b-[3px] border-slate-900 bg-white px-4 pt-[max(0.5rem,env(safe-area-inset-top))]">
       <div className="mx-auto flex min-h-16 min-w-0 max-w-6xl items-center gap-2 py-2">
         {hideMenu && (
           <button type="button" onClick={onHome} aria-label={t("nav.home")} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-900 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">

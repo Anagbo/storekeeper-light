@@ -72,7 +72,7 @@ for (const [name, back] of [["on-screen Back", (app) => app.tap("Back")], ["phon
   test(`53: amount and note survive Next > 18 > ${name}`, async () => {
     const app = await open();
     await to53(app);
-    await app.tap(/^Next ›/);
+    await app.tap(/^Next/);
     assert.equal(app.route, "WhenWillTheyPay");
     await back(app);
     assert53(app);

@@ -238,7 +238,8 @@ test("18: Today is still a valid fixed due date", async (t) => {
   let result = null;
   let failure = null;
   const view = render({ type: CreditScreens, props: { route: "WhenWillTheyPay", params: { amountPesewas: 5000, customer: { name: "Ama", totalDebtPesewas: 0 }, creditDueChoice: "today" }, onBack() {}, onNavigate() {}, onReturnToSplit() {}, onSaveCredit: async (details) => { try { result = await posSave(details); } catch (error) { failure = error; } } } });
-  const save = [...walk(view.tree)].filter((node) => node.type === "button" && /^Save /.test(textOf(node))).at(-1);
+  // Save on 18 shows two lines; its accessible name stays "Save · {Name} owes GH₵x".
+  const save = [...walk(view.tree)].filter((node) => node.type === "button" && /^Save · /.test(node.props["aria-label"] ?? textOf(node))).at(-1);
   await save.props.onClick();
   // Wait for the save itself (a fixed pause was too short on a busy machine); Date is frozen, so count rounds.
   for (let round = 0; round < 2000 && !result && !failure; round += 1) await new Promise((resolve) => setTimeout(resolve, 2));

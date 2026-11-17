@@ -32,7 +32,7 @@ async function open() {
 }
 
 // Wiring 34 "Error on 34" (16 Nov 2026): no amount field, so the box names only the name.
-const ERROR_BOX = "Enter the customer's name.";
+const ERROR_BOX = "Enter the customer’s name.";
 const shown = (app) => app.text().replace(/\s+/g, " ");
 const byPlaceholder = (app, placeholder) => [...walk(app.view.tree)].find((node) => node.type === "input" && node.props?.placeholder === placeholder);
 const amountOwedInput = (app) => [...walk(app.view.tree)].find((node) => node.type === "input" && node.props?.type === "number");

@@ -1,12 +1,26 @@
 import { db } from "../db/db.js";
 import { isValidDateString, localDateString } from "./installments.js";
 import { matchSaleTimePayments } from "./debtLedgerMath.js";
+import { getCreditReason } from "../lib/creditReason.js";
+import { isSignedEvent } from "../lib/signature.js";
 import {
   getDebtAdjustmentReasonLabel,
   getHistoryCreditAmount,
   getHistoryTimestampValue,
   summarizeCustomerHistory
 } from "./customerDebtHistory.js";
+
+// rules_global.customer_proof: every credit row knows its event, what it was for ("" = no reason
+// written) and whether the customer signed it.
+function creditSignedFields(transaction) {
+  const signed = isSignedEvent(transaction);
+  return {
+    transactionId: transaction.id,
+    reason: getCreditReason(transaction),
+    signed,
+    ...(signed && { signedAt: transaction.signedAt, signedAmountPesewas: transaction.signedAmountPesewas, signedReason: transaction.signedReason })
+  };
+}
 
 function getTransactionTimestamp(transaction) {
   return transaction.createdAt ?? transaction.timestamp ?? 0;
@@ -100,7 +114,8 @@ export async function loadCustomerHistory(customerId, customerName) {
           ...(backdated && { dateOnly: true, takenOn: transaction.takenOn }),
           amountPesewas: creditAmount,
           detail: "Added to debt",
-          note: transaction.note?.trim() || ""
+          note: transaction.note?.trim() || "",
+          ...creditSignedFields(transaction)
         });
       }
       continue;
@@ -134,7 +149,8 @@ export async function loadCustomerHistory(customerId, customerName) {
           amountPesewas: creditAmount,
           detail: transaction.itemDescription?.trim() ||
             transaction.note?.split(" · ")[0]?.trim() ||
-            (transaction.type === "installment_addon" ? "Debt add-on" : "Credit extended")
+            (transaction.type === "installment_addon" ? "Debt add-on" : "Credit extended"),
+          ...creditSignedFields(transaction)
         });
       }
 
@@ -165,7 +181,8 @@ export async function loadCustomerHistory(customerId, customerName) {
           type: "credit",
           timestamp,
           amountPesewas: creditAmount,
-          detail: transaction.itemDescription?.trim() || transaction.note?.split(" · ")[0]?.trim() || "Credit extended"
+          detail: transaction.itemDescription?.trim() || transaction.note?.split(" · ")[0]?.trim() || "Credit extended",
+          ...creditSignedFields(transaction)
         });
       }
       continue;

@@ -220,7 +220,7 @@ const DESTINATIONS = [
 ];
 
 for (const [label, route] of DESTINATIONS) {
-  for (const [how, back] of [["Back", (app) => app.tap(/^‹ Back$|^Back$/)], ["the phone's Back", (app) => app.phoneBack()]]) {
+  for (const [how, back] of [["Back", (app) => app.tap(/^\u2039 Back$|^Back$/)], ["the phone's Back", (app) => app.phoneBack()]]) {
     test(`15 > Menu > ${label} > ${how} returns to 15 with its draft (not to the drawer, not Home)`, async () => {
       const app = await open();
       await sellDraft(app);
@@ -243,7 +243,7 @@ test("22 > Menu > Settings > Back returns to Home; Today’s transactions and My
   for (const [label, route] of DESTINATIONS) {
     await app.menu(label);
     assert.equal(app.route, route);
-    await app.tap(/^‹ Back$|^Back$/);
+    await app.tap(/^\u2039 Back$|^Back$/);
     assert.equal(app.route, "Home", label);
     assert.deepEqual(app.state.history, []);
   }
@@ -336,7 +336,7 @@ test("47 Done calls the same handler as Back", async () => {
   const { SettingsProfitTools } = await loadJsx("src/pos/SettingsScreens.jsx");
   let backs = 0;
   const view = render({ type: SettingsProfitTools, props: { shopName: "My shop", onShopNameChange() {}, onOpenBackup() {}, onOpenMomoSettings() {}, onOpenPlan() {}, onOpenSubscription() {}, onBack: () => { backs += 1; } } });
-  const exact = (label) => [...walk(view.tree)].find((node) => node.type === "button" && textOf(node).replace(/^‹\s*/, "") === label);
+  const exact = (label) => [...walk(view.tree)].find((node) => node.type === "button" && textOf(node).replace(/^\u2039\s*/, "") === label);
   exact("Done").props.onClick();
   exact("Back").props.onClick();
   assert.equal(backs, 2, "Done and Back are the same");

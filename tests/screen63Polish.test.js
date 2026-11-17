@@ -53,7 +53,7 @@ test("63: no fee text when the fee setting is invalid (Phone request stays off)"
 test("63: the fee shows, through the formatter, when Phone request is on and the fee is above zero", async () => {
   const { text, view } = await card63({ VITE_ENABLE_MOMO_PHONE_REQUEST: "true", VITE_MOMO_PHONE_REQUEST_FEE_PESEWAS: "25" });
   assert.match(text, /Confirmed by itself\. Fee GH₵0\.25 per payment\./);
-  assert.ok(findButton(view.tree, "Set up ›"), "the contract's set-up control");
+  assert.ok(findButton(view.tree, "Set up"), "the contract's set-up control");
 });
 
 // The network row is now one three-column grid (see screens63And64Layout.test.js).

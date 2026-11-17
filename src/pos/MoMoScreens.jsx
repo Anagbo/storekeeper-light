@@ -19,7 +19,7 @@ const SPLIT_PART_OF = Object.freeze({ sale16: "sale", collect27: "payment", plan
 // 62 after a failed Money received (wiring 62, 12 Nov 2026): the same words whether the save
 // certainly failed or its result is unknown. Money received again reuses the attempt key while the
 // result is unknown, so it cannot record twice.
-const SAVE_FAILED_62 = "We could not confirm that this was saved. Check Today's transactions first. Tap Money received again only if the payment is not there.";
+const SAVE_FAILED_62 = "We could not confirm that this was saved. Check Today’s transactions first. Tap Money received again only if the payment is not there.";
 
 function BackTitle({ title, onBack }) {
   return <div className="flex items-center gap-3"><PosBackButton onClick={onBack} /><h1 className="text-2xl font-extrabold">{title}</h1></div>;
@@ -282,7 +282,7 @@ export function PaymentSettings({ params = {}, onBack, onNavigate, onUpdateParam
           <p className="text-base">Confirmed by itself.{showPhoneFee ? ` Fee ${formatGhs(MOMO_CONFIG.phoneRequestFeePesewas)} per payment.` : ""}</p>
         </div>
         {PHONE_REQUEST_ENABLED
-          ? <button type="button" aria-label="Phone request: set up" onClick={() => onNavigate("MoMoSetup")} className="shrink-0 rounded-xl px-2 py-3 text-lg font-extrabold text-emerald-900">Set up ›</button>
+          ? <button type="button" aria-label="Phone request: set up" onClick={() => onNavigate("MoMoSetup")} className="shrink-0 rounded-xl px-2 py-3 text-lg font-extrabold text-emerald-900">Set up</button>
           : <PosStatusTag>Coming soon</PosStatusTag>}
       </div>
     </PosCard>
@@ -321,7 +321,7 @@ export function MoMoSetup({ params = {}, onBack, onNavigate, onUpdateParams, sho
       <div className="flex flex-wrap gap-2">{NETWORKS.map((item) => <button key={item} type="button" aria-label={`Payout ${item}`} aria-pressed={network === item} onClick={() => { setNetwork(item); onUpdateParams?.({ payoutNetwork: item }); }} className={`min-h-14 min-w-[6.5rem] flex-1 rounded-2xl border-[3px] px-2 font-extrabold ${network === item ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{item}</button>)}</div>
     </fieldset>
     <label className="font-bold">Payout MoMo number<input value={number} onChange={(event) => { setNumber(event.target.value); onUpdateParams?.({ payoutNumber: event.target.value }); }} type="tel" inputMode="tel" className="mt-1 h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-xl" /></label>
-    <p className="text-base text-slate-800">Payouts come on Paystack&apos;s schedule, not the moment a customer pays.</p>
+    <p className="text-base text-slate-800">Payouts come on Paystack’s schedule, not the moment a customer pays.</p>
     <div className="flex-1" />
     <PosPrimaryButton type="button" onClick={async () => {
       // The payout account is separate from the number customers send to directly (62).
@@ -351,10 +351,10 @@ export function MoMoPayment({ params = {}, onBack, onNavigate, onUpdateParams })
       <p className="text-base text-white">{showFee ? `Fee ${formatGhs(feePesewas)} · ` : ""}You receive {formatGhs(merchantReceivesPesewas)}</p>
     </section>
     <fieldset>
-      <legend className="mb-2 text-lg font-extrabold">Customer&apos;s network</legend>
+      <legend className="mb-2 text-lg font-extrabold">Customer’s network</legend>
       <div className="flex flex-wrap gap-2">{NETWORKS.map((item) => <button key={item} type="button" aria-label={`Network ${item}`} aria-pressed={network === item} onClick={() => { setNetwork(item); onUpdateParams?.({ requestNetwork: item }); }} className={`min-h-14 min-w-[6.5rem] flex-1 rounded-xl border-[3px] px-2 font-bold ${network === item ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{item}</button>)}</div>
     </fieldset>
-    <label className="font-bold">Customer&apos;s MoMo number<input aria-label="Customer's MoMo number" value={phone} onChange={(event) => { setPhone(event.target.value); onUpdateParams?.({ requestPhone: event.target.value }); }} type="tel" inputMode="tel" className="mt-1 h-14 w-full rounded-xl border-[3px] border-slate-500 px-3 text-xl" /></label>
+    <label className="font-bold">Customer’s MoMo number<input aria-label="Customer’s MoMo number" value={phone} onChange={(event) => { setPhone(event.target.value); onUpdateParams?.({ requestPhone: event.target.value }); }} type="tel" inputMode="tel" className="mt-1 h-14 w-full rounded-xl border-[3px] border-slate-500 px-3 text-xl" /></label>
     <PosPrimaryButton type="button" disabled={!PHONE_REQUEST_ENABLED} onClick={() => onNavigate(network === "Telecel" ? "MoMoCode" : "MoMoWaiting", { ...params, network, phone })}><Smartphone size={24} aria-hidden="true" />Send request</PosPrimaryButton>
     <button type="button" onClick={() => onNavigate("MoMoDirect", params)} className="min-h-10 border-0 bg-transparent font-extrabold text-emerald-900 underline">Customer already paid me directly</button>
     <p className="-mt-2 text-center text-sm text-slate-700">Saved as MoMo · you confirmed.</p>
@@ -385,7 +385,7 @@ export function MoMoWaiting({ params = {}, onCancel }) {
     <div className="pt-1 text-center">
       <div className="mx-auto mb-2 grid h-24 w-24 place-items-center rounded-full border-[3px] border-amber-700 bg-amber-100 text-amber-800"><Clock3 size={56} aria-hidden="true" /></div>
       <h1 className="text-[26px] font-extrabold">Waiting for customer</h1>
-      <p className="mt-1 text-lg text-slate-700">We sent a request to {phone || "the customer's number"} ({network}). Ask the customer to approve it on their phone.</p>
+      <p className="mt-1 text-lg text-slate-700">We sent a request to {phone || "the customer’s number"} ({network}). Ask the customer to approve it on their phone.</p>
       <p className="mt-2 text-4xl font-extrabold">{formatGhs(paymentAmountPesewas)}</p>
       <span className="mt-1 inline-block rounded-xl border-2 border-amber-700 bg-amber-100 px-3 py-1 text-lg font-extrabold text-amber-800">Expires in {minutes}:{seconds}</span>
     </div>

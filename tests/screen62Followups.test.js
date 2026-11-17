@@ -54,7 +54,7 @@ const nodes = (tree) => [...walk(tree)].filter((node) => node.props);
 const dialogs = (tree) => nodes(tree).filter((node) => node.props.role === "alertdialog");
 const partsOf = (app) => (app.params.splitParts ?? []).map(({ paymentMethod, amountPesewas, verification }) => ({ paymentMethod, amountPesewas, verification }));
 const sorted = (parts) => [...parts].sort((a, b) => a.paymentMethod.localeCompare(b.paymentMethod));
-const NEW_ERROR = "We could not confirm that this was saved. Check Today's transactions first. Tap Money received again only if the payment is not there.";
+const NEW_ERROR = "We could not confirm that this was saved. Check Today’s transactions first. Tap Money received again only if the payment is not there.";
 
 async function failingWrites(run) {
   const store = globalThis.IDBObjectStore.prototype;

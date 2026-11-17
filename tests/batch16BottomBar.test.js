@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { POS_ROUTES, backRoute, createRouteState, showsBottomBar } from "../src/pos/routes.js";
 import wiring from "../src/pos/wiring.json" with { type: "json" };
-import { isNotBuiltYetScreen } from "./helpers/notBuiltYet.js";
 
 // Batch 16: the bottom bar shows only on 15, 22, 25 and 32 (wiring `bottom_bar`), and no other
 // screen is left without a way back, to Home or to finish.
@@ -27,8 +26,6 @@ test("the bar is shown on exactly the screens whose wiring says bottom_bar", () 
   const byRoute = new Map();
   for (const [id, screen] of Object.entries(wiring.screens)) {
     assert.equal(typeof screen.bottom_bar, "boolean", `screen ${id} has a bottom_bar flag`);
-    // customer proof feature, remove when built (tests/helpers/notBuiltYet.js).
-    if (isNotBuiltYetScreen(id)) continue;
     if (OVERLAYS.has(screen.component)) {
       assert.equal(screen.bottom_bar, false, `screen ${id} (an overlay) has no bar`);
       assert.equal(POS_ROUTES[screen.component], undefined, `screen ${id} (an overlay) is not a route`);
@@ -65,7 +62,7 @@ test("the app draws the bar from that same rule, and keeps the header and the si
 
 // ---- every screen without the bar still has a way back, to Home, or to finish ----
 
-const EXIT_LABEL = /^(‹ )?(back|close|close menu|cancel|cancel request|cancel sale|done|home|skip|keep|continue)/i;
+const EXIT_LABEL = /^(\u2039 )?(back|close|close menu|cancel|cancel request|cancel sale|done|home|skip|keep|continue)/i;
 const EXIT_TARGETS = new Set(["BACK", "22", "FROM", "CANCELMOMO", "PAYOTHER"]);
 // Actions that save or move forward are not a way out (16 Done saves the sale and stays off until the parts add up).
 const FORWARD_TARGETS = new Set(["MOMO16", "MOMO27", "SAVECREDIT", "SAVE19", "NEXT17", "NEXT53", "MOMOOK", "SEND", "SAVEMOMO"]);
@@ -77,7 +74,6 @@ const hasContractExit = (screen) => screen.controls.some((control) => control.to
 const EXIT_IN_CODE_ONLY = {
   "16": { file: "src/pos/SplitPayment.jsx", fn: "SplitPayment", needle: "onClick={onBack}" },
   "17": { file: "src/pos/CreditScreens.jsx", fn: "WhoOwesYou", needle: "onClick={onBack}" },
-  "18": { file: "src/pos/CreditScreens.jsx", fn: "WhenWillTheyPay", needle: "onClick={onBack}" },
   "20": { file: "src/pos/SellWithItems.jsx", fn: "SellWithItems", needle: "onClick={onBack}" },
   ManualDebtSaved: { file: "src/pos/ManualDebtScreens.jsx", fn: "ManualDebtSaved", needle: "onClick={onDone}" }
 };

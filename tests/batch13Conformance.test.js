@@ -131,7 +131,12 @@ test("53: a backdated debt orders by its Taken on date in history and shows a da
   assert.equal(backdated.dateOnly, true);
   assert.equal(localDateString(new Date(backdated.timestamp)), takenOn);
   assert.equal(events.find((event) => event.amountPesewas === 5000).dateOnly, undefined, "a debt taken on the day it is entered keeps its time");
-  assert.match(read("src/pos/DebtCollection.jsx"), /event\.dateOnly \?/);
+  // The date-only row time lives in historyRows.js (rowTime) since 16 Nov 2026; the shared What happened
+  // cards (EventRows, used by 29/43 and 73) use it.
+  assert.match(read("src/pos/historyRows.js"), /if \(event\.dateOnly\) return formatDate/);
+  assert.match(read("src/pos/EventRows.jsx"), /rowTime\(event\)/);
+  assert.match(read("src/pos/DebtCollection.jsx"), /<EventRows\b/);
+  assert.match(read("src/pos/CustomerRecordView.jsx"), /<EventRows\b/);
 });
 
 test("53: PosApp passes Taken on to recordManualDebt and no longer backdates the record time", () => {

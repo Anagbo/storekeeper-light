@@ -99,7 +99,7 @@ test("46 Call only with a valid number; never a disabled Call; Pay always; acces
 
 test("46 empty state: no summary card", async () => {
   const tree = (await mount([])).tree;
-  assert.ok(textOf(tree).includes("You don't owe any suppliers."));
+  assert.ok(textOf(tree).includes("You don’t owe any suppliers."));
   assert.ok(!textOf(tree).includes("Total you owe"));
   assert.equal(all(tree, (n) => n.props["data-summary"] === "suppliers").length, 0);
 });

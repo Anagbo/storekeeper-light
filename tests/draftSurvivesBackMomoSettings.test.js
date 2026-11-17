@@ -109,13 +109,13 @@ for (const [name, back] of backs) {
     await app.tap(/^Save and verify/);
     assert.equal(app.route, "MoMoPayment");
     await app.tap("Network Telecel");
-    await change(app, app.input("Customer's MoMo number"), "0201112223");
+    await change(app, app.input("Customer’s MoMo number"), "0201112223");
     await app.tap(/^Send request/);
     assert.equal(app.route, "MoMoCode");
     await back(app);
     assert.equal(app.route, "MoMoPayment");
     assert.equal(app.button("Network Telecel").props["aria-pressed"], true);
-    assert.equal(app.input("Customer's MoMo number").props.value, "0201112223");
+    assert.equal(app.input("Customer’s MoMo number").props.value, "0201112223");
     await back(app);
     assert.equal(app.route, "MoMoSetup");
     assert.equal(app.button("Payout AirtelTigo").props["aria-pressed"], true);
@@ -123,7 +123,7 @@ for (const [name, back] of backs) {
     await app.tap(/^Save and verify/);
     assert.equal(app.route, "MoMoPayment");
     assert.equal(app.button("Network Telecel").props["aria-pressed"], true);
-    assert.equal(app.input("Customer's MoMo number").props.value, "0201112223");
+    assert.equal(app.input("Customer’s MoMo number").props.value, "0201112223");
   });
 }
 

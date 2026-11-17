@@ -4,13 +4,13 @@ import { test } from "node:test";
 import { loadJsx, render, textOf, walk } from "./helpers/renderJsx.js";
 
 // The one Back button (wiring rules_global.back_button, decided 16 Nov 2026): an arrow-left SVG
-// icon then the word "Back", bold 800, 18px, 52px tall, 2px #0F172A border. No "‹" character.
+// icon then the word "Back", bold 800, 18px, 52px tall, 2px #0F172A border. No "\u2039" character.
 test("PosBackButton: arrow-left icon plus the word Back, looks like the prototype, only calls what it is given", async () => {
   const { PosBackButton } = await loadJsx("src/pos/PosComponents.jsx");
   let clicks = 0;
   const view = render({ type: PosBackButton, props: { onClick: () => { clicks += 1; } } });
   const button = [...walk(view.tree)].find((node) => node.type === "button");
-  assert.equal(textOf(button).trim(), "Back", "the word stays, no ‹");
+  assert.equal(textOf(button).trim(), "Back", "the word stays, no \u2039");
   assert.equal(button.props["aria-label"], "Back", "the name stays Back");
   assert.equal(button.props.type, "button");
   for (const cls of ["h-[52px]", "text-[18px]", "font-extrabold", "border-2", "border-[#0F172A]", "text-[#0F172A]", "bg-white", "rounded-[14px]", "gap-1.5"]) {
@@ -46,19 +46,19 @@ const posSources = () => {
     .map((name) => [name, readFileSync(new URL(name.replaceAll("\\", "/"), dir), "utf8")]);
 };
 
-test("the text character ‹ is not used in any POS source", () => {
-  const found = posSources().filter(([, source]) => source.includes("‹")).map(([name]) => name);
+test("the text character \u2039 is not used in any POS source", () => {
+  const found = posSources().filter(([, source]) => source.includes("\u2039")).map(([name]) => name);
   assert.deepEqual(found, []);
 });
 
 test("no screen draws its own Back button: every Back comes from PosBackButton", () => {
   const problems = [];
   for (const [file, source] of posSources().filter(([name]) => name.endsWith(".jsx") && name !== "PosComponents.jsx")) {
-    if (/<PosSecondaryButton[^>]*>\s*(?:‹\s*)?(?:\{t\("[a-zA-Z]+\.back"\)\}|Back)\s*<\/PosSecondaryButton>/.test(source)) problems.push(`${file}: a Back made from PosSecondaryButton`);
-    if (/<button[^>]*onClick=\{onBack\}[^>]*>\s*(?:‹|<ArrowLeft|\{t\("[a-zA-Z]+\.back"\)\}|Back\b)/.test(source)) problems.push(`${file}: a hand-made Back button`);
+    if (/<PosSecondaryButton[^>]*>\s*(?:\u2039\s*)?(?:\{t\("[a-zA-Z]+\.back"\)\}|Back)\s*<\/PosSecondaryButton>/.test(source)) problems.push(`${file}: a Back made from PosSecondaryButton`);
+    if (/<button[^>]*onClick=\{onBack\}[^>]*>\s*(?:\u2039|<ArrowLeft|\{t\("[a-zA-Z]+\.back"\)\}|Back\b)/.test(source)) problems.push(`${file}: a hand-made Back button`);
     // A "*.back" text may only be an aria-label passed to PosBackButton, never the visible label of another element.
     if (/>\s*\{t\("[a-zA-Z]+\.back"\)\}/.test(source)) problems.push(`${file}: a "*.back" text shown outside PosBackButton`);
-    if (/>\s*(?:‹\s*)?Back\s*</.test(source)) problems.push(`${file}: a literal Back label`);
+    if (/>\s*(?:\u2039\s*)?Back\s*</.test(source)) problems.push(`${file}: a literal Back label`);
   }
   assert.deepEqual(problems, []);
 });

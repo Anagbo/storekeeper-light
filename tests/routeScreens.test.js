@@ -4,7 +4,6 @@ import { test } from "node:test";
 import { POS_LINKS, POS_ROUTES } from "../src/pos/routes.js";
 import wiring from "../src/pos/wiring.json" with { type: "json" };
 import { builtRoutes } from "./helpers/builtRoutes.js";
-import { isNotBuiltYetControl, isNotBuiltYetScreen } from "./helpers/notBuiltYet.js";
 
 // Every route, and every link to one, must have a built screen. A route with no screen falls to
 // PlannedScreen, which is not meant to be reachable. (63 PaymentSettings and 52
@@ -111,8 +110,6 @@ test("every screen in the wiring file, and every wiring navigate target, has a b
   const built = builtRoutes();
   const problems = [];
   for (const [id, screen] of Object.entries(wiring.screens)) {
-    // customer proof feature, remove when built (tests/helpers/notBuiltYet.js).
-    if (isNotBuiltYetScreen(id)) continue;
     const route = routeOfComponent(screen.component);
     if (OVERLAYS.has(screen.component)) {
       if (!overlayBuilt(screen.component)) problems.push(`screen ${id} ${screen.name} (${screen.component}) is not drawn by PosApp`);
@@ -120,7 +117,6 @@ test("every screen in the wiring file, and every wiring navigate target, has a b
     for (const control of screen.controls) {
       const target = wiring.screens[control.to];
       if (control.type !== "navigate" || control.prototype_only || !target) continue;
-      if (isNotBuiltYetControl(id, control)) continue; // customer proof feature, remove when built
       if (OVERLAYS.has(target.component)) {
         if (!overlayBuilt(target.component)) problems.push(`screen ${id} "${control.label}" opens ${control.to} (${target.component}), which is not drawn`);
         continue;
