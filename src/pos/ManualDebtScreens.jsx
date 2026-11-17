@@ -10,7 +10,8 @@ import { latestReminderAt, loadReminderEvents } from "../db/reminders.js";
 import { sendReceipt } from "./receiptShare.js";
 import { useReminderCheck } from "./ReminderCheck.jsx";
 import { isValidInstallmentPlanForBalance, localDateString } from "../utils/installments.js";
-import { PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
+import { OTHER_BUTTON_CLASS, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
+import { EventDetail } from "./EventRows.jsx";
 import { getDebtDueLabel } from "./money.js";
 import { posText as t } from "./i18n.js";
 import { displayName } from "../lib/displayName.js";
@@ -241,7 +242,6 @@ export function ManualDebtSaved({ params, onDone, onNavigate, shopName }) {
   const reminderPerson = { customerId: reminderCustomerId, name: reminderName };
   const reminderText = buildWhatsAppReminderText(reminderName, balance, shopName);
   const shareReminder = () => sendReceipt({ text: reminderText, title: t("collect.remindOnWhatsApp") });
-  const whatsappClass = "flex min-h-14 items-center justify-center rounded-2xl border-2 border-emerald-900 px-2 text-center font-extrabold text-emerald-900";
   return (
     <PosPage className="flex flex-col gap-4 text-center">
       <div className="pt-2 text-center">
@@ -250,11 +250,14 @@ export function ManualDebtSaved({ params, onDone, onNavigate, shopName }) {
         <p className="mt-2 text-xl font-bold">{displayName(params.customer?.name)}</p>
         <p className="mt-2 text-3xl font-extrabold text-rose-900 sm:text-4xl">{displayName(params.customer?.name)} owes {formatGhs(balance)}</p>
       </div>
-      <div className="rounded-2xl border-2 border-slate-400 bg-white p-4 text-left">
-        <div className="flex justify-between gap-3 text-lg"><span>Before</span><strong>{formatGhs(previousDebt)}</strong></div>
-        <div className="flex justify-between gap-3 text-lg"><span>Added to debt</span><strong>{formatGhs(params.amountPesewas ?? 0)}</strong></div>
-        {params.note && <div className="mt-2 text-sm font-semibold">What for: {params.note}</div>}
-      </div>
+      {/* Debt saved layout (wiring ManualDebtSaved rules, 17 Nov 2026): the card is only label-value rows
+          in the What happened row style (grey label left, bold value right, thin dividers): Before, Added
+          to debt, and For only when a reason was written. A long reason wraps in the right column. */}
+      <dl data-debt-saved-rows="" className="flex min-w-0 flex-col rounded-2xl border-2 border-slate-400 bg-white px-4 py-2 text-left text-lg [&>div:first-child]:border-t-0 [&>div:first-child]:pt-0">
+        <EventDetail label={t("debtSaved.before")} name="before">{formatGhs(previousDebt)}</EventDetail>
+        <EventDetail label={t("debtSaved.added")} name="added">{formatGhs(params.amountPesewas ?? 0)}</EventDetail>
+        {params.note?.trim() && <EventDetail label={t("debtSaved.for")} name="for">{params.note.trim()}</EventDetail>}
+      </dl>
       {initialPaymentPesewas > 0 && (
         <div data-paying-today="" className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3 text-left" aria-live="polite">
           <p className="mb-2 font-extrabold text-emerald-950">{t("credit.paymentRecorded")}</p>
@@ -287,13 +290,15 @@ export function ManualDebtSaved({ params, onDone, onNavigate, shopName }) {
           </div>
         </div>
       )}
-      <div className="grid grid-cols-2 gap-2">
+      {/* Buttons on this screen (wiring ManualDebtSaved rules): "WhatsApp {Name}" and "See {Name}’s details"
+          are other buttons, full width, 52px, stacked; Done is the main button at the bottom. */}
+      <div data-debt-saved-actions="" className="flex flex-col gap-2">
         {whatsappLink ? (
-          <a href={whatsappLink} target="_blank" rel="noreferrer" onClick={(event) => reminders.onReminder(event, { person: reminderPerson, lastReminderAt, href: whatsappLink })} className={whatsappClass}>WhatsApp {displayName(params.customer?.name)}</a>
+          <a href={whatsappLink} target="_blank" rel="noreferrer" data-look="other" onClick={(event) => reminders.onReminder(event, { person: reminderPerson, lastReminderAt, href: whatsappLink })} className={`${OTHER_BUTTON_CLASS} w-full`}>{t("debtSaved.whatsapp", { name: displayName(params.customer?.name) })}</a>
         ) : (
-          <button type="button" disabled={!reminderText} onClick={(event) => reminders.onReminder(event, { person: reminderPerson, lastReminderAt, share: shareReminder })} className={whatsappClass}>WhatsApp {displayName(params.customer?.name)}</button>
+          <PosSecondaryButton type="button" disabled={!reminderText} onClick={(event) => reminders.onReminder(event, { person: reminderPerson, lastReminderAt, share: shareReminder })} className="w-full">{t("debtSaved.whatsapp", { name: displayName(params.customer?.name) })}</PosSecondaryButton>
         )}
-        <PosSecondaryButton type="button" onClick={() => onNavigate("DebtorDetail", { customerId: result?.customer?.id ?? params.customer?.id, customerName: params.customer?.name, debtId: result?.debt?.id })}>See details</PosSecondaryButton>
+        <PosSecondaryButton type="button" className="w-full" onClick={() => onNavigate("DebtorDetail", { customerId: result?.customer?.id ?? params.customer?.id, customerName: params.customer?.name, debtId: result?.debt?.id })}>{t("credit.seeDetails", { name: displayName(params.customer?.name) })}</PosSecondaryButton>
       </div>
       <div className="mt-auto grid gap-2">
         <PosPrimaryButton type="button" onClick={onDone}>Done</PosPrimaryButton>
