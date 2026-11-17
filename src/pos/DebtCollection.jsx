@@ -23,7 +23,7 @@ import { getInstallmentsLeft, getPlanProgress } from "../utils/installments.js";
 import { getCustomerLedgerRecords, getPlanPaidPesewas } from "../utils/debtLedgerMath.js";
 import { posText as t } from "./i18n.js";
 import { getDebtEntryReason } from "../lib/creditReason.js";
-import { PosBackButton, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, SplitIcons } from "./PosComponents.jsx";
+import { AddButton, PosBackButton, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, SplitIcons } from "./PosComponents.jsx";
 import CustomerContactEditor from "./CustomerContactEditor.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
@@ -853,9 +853,9 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
             </>
           )}
           {singleDebtMatchesTotal && (
-            <button type="button" onClick={() => openCorrection()} disabled={!data.debt?.id || data.balancePesewas <= 0} className="mt-2 h-[54px] w-full rounded-2xl border-2 border-slate-500 bg-white px-4 text-lg font-extrabold text-slate-900 disabled:opacity-50">
+            <PosSecondaryButton type="button" onClick={() => openCorrection()} disabled={!data.debt?.id || data.balancePesewas <= 0} className="mt-2 w-full">
               Correct balance
-            </button>
+            </PosSecondaryButton>
           )}
           {data.debt?.isInstallmentPlan && (
             <section className="flex flex-col gap-1.5 rounded-[18px] border-2 border-emerald-900 bg-green-100 px-3.5 py-2.5">
@@ -902,9 +902,9 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                           {detail} · {formatHistoryRowTimestamp(debt.createdAt ?? debt.created_at)}
                         </span>
                       </span>
-                      <button type="button" onClick={() => openCorrection(debt, true)} className="min-h-11 rounded-xl border-2 border-emerald-900 bg-white px-3 text-sm font-extrabold text-emerald-900">
+                      <PosSecondaryButton type="button" onClick={() => openCorrection(debt, true)} className="shrink-0">
                         Correct this entry
-                      </button>
+                      </PosSecondaryButton>
                     </li>
                   );
                 })}
@@ -912,10 +912,11 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
             </section>
           )}
           <section>
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+            {/* rules_global.button_system.add: "+ Add to debt" is the shared AddButton, full width and 52px, on
+                its own line under the What happened heading. */}
+            <div className="mb-2 flex flex-col gap-2">
               <h2 className="text-[22px] font-extrabold leading-tight">{t("collect.onTimeHistory")}</h2>
-              <button
-                type="button"
+              <AddButton
                 onClick={() => onNavigate("ManualDebtAmount", {
                   manualDebt: true,
                   customer: {
@@ -928,15 +929,15 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                   },
                   debtId: data.debt?.id
                 })}
-                className="h-[54px] shrink-0 rounded-2xl border-2 border-emerald-900 bg-white px-4 text-lg font-extrabold text-emerald-900"
               >
-                + Add to debt
-              </button>
+                Add to debt
+              </AddButton>
             </div>
             {data.history.length ? (
               // Wiring "What happened cards" (final, 16 Nov 2026): the same cards as 73 (EventRows). An unsigned
-              // credit at or above the threshold offers Get signature next to its pill; it opens 72 for that
-              // entry and 72 returns here.
+              // credit at or above the threshold offers Get signature (17 Nov 2026: the add look without the
+              // "+", full width, 52px, on its own line below the card's last row); it opens 72 for that entry
+              // and 72 returns here.
               <ul className="flex min-w-0 flex-col gap-2.5">
                 {data.history.map((event) => (
                   <EventRows
@@ -944,9 +945,9 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                     event={event}
                     creditTitle={event.type === "addon" ? t("collect.creditAdded") : t("collect.creditTaken")}
                     signatureAction={!event.signed && event.transactionId && needsSignature(event.amountPesewas) ? (
-                      <button type="button" onClick={() => onNavigate("CustomerSignature", { transactionId: event.transactionId })} className="min-h-12 shrink-0 whitespace-nowrap rounded-xl border-2 border-emerald-900 bg-white px-3 text-base font-extrabold text-emerald-900">
+                      <AddButton plus={false} onClick={() => onNavigate("CustomerSignature", { transactionId: event.transactionId })}>
                         {t("creditRow.getSignature")}
-                      </button>
+                      </AddButton>
                     ) : null}
                   />
                 ))}

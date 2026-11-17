@@ -19,7 +19,11 @@ const VISITS = [
   { name: "20 Sell with items", seed: "base", steps: ["^Sell$", "Add items"], add: [{ text: "+ New item", height: 72, atLeast: true }] },
   { name: "32 People who owe you", seed: "base", steps: ["^Owed$"], add: [{ text: "+ Add debt", height: 52, full: true }] },
   { name: "17 Who owes you", seed: "base", steps: ["^Sell$", "^5$", "^Owe$"], add: [{ text: "+ New person", height: 52, full: true }] },
-  { name: "17 Who owes you (Add debt)", seed: "base", steps: ["^Owed$", "Add debt$"], add: [{ text: "+ New person", height: 52, full: true }] }
+  { name: "17 Who owes you (Add debt)", seed: "base", steps: ["^Owed$", "Add debt$"], add: [{ text: "+ New person", height: 52, full: true }] },
+  // 29: "+ Add to debt" on its own line under What happened; GH₵27 is under the signature threshold.
+  { name: "29 Debtor detail", seed: "base", steps: ["^Owed$", "^Amoto"], add: [{ text: "+ Add to debt", height: 52, full: true }], other: ["Correct balance"] },
+  // 43 (late): GH₵90 unsigned is at or above the threshold, so its card offers Get signature (no "+").
+  { name: "43 Debtor detail (late)", seed: "base", steps: ["^Owed$", "^Kwabena"], add: [{ text: "+ Add to debt", height: 52, full: true }, { text: "Get signature", height: 52 }], other: ["Correct balance"] }
 ];
 
 const WIDTHS = [340, 360, 393];
@@ -60,6 +64,7 @@ test("the add look fits at 340, 360 and 393px: dashed 2px green, 14px corners, n
           assert.ok(Math.abs(c.height - expected.height) < 0.5 || ((expected.atLeast || expected.height === 52) && c.height >= expected.height), `${what}: ${expected.height}px (${c.height})`);
           if (expected.full) assert.ok(c.width >= content - 16.5, `${what}: full width (${c.width} of about ${content})`);
         }
+        for (const text of visit.other ?? []) assert.ok(m.controls.some((c) => c.look === "other" && c.text === text), `${label}: "${text}" is an other button`);
         notes.push(...checkControls(m, label, { looks: ["main", "other", "leave"] }));
         const adds = m.controls.filter((control) => control.look === "add");
         for (const c of adds) assert.ok(!c.overflow && c.lines === 1, `${label}: add "${c.text}" on one line without overflow`);
