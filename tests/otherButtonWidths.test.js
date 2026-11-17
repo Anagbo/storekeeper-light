@@ -22,12 +22,12 @@ const VISITS = [
   { name: "54 Correct balance", seed: "base", steps: ["^Owed$", "^Amoto", "^Correct balance"], expect: ["Cancel"] },
   { name: "22 Home", seed: "base", steps: [], expect: ["Today’s transactions"] },
   { name: "25 Collect", seed: "base", steps: ["^Owed$", "^Collect from Amoto"], expect: ["See Amoto’s details"] },
-  { name: "28 Payment received", seed: "base", steps: ["^Owed$", "^Collect from Amoto", "^Received$"], expect: ["Undo", "See Amoto’s details"] },
+  { name: "28 Payment received", seed: "base", steps: ["^Owed$", "^Collect from Amoto", "^Received$"], expect: ["See Amoto’s details"], danger: ["Undo"] },
   { name: "63 How customers pay me", seed: "base", steps: ["^Menu", "^Settings", "^MoMo payments"], expect: ["Set up"] },
   { name: "56 MoMo payment", seed: "base", steps: ["^Sell$", "^5$", "^MoMo$", "^Phone request", "^MTN", "type:0241234567", "^Save and verify"], expect: ["Customer already paid me directly"] },
-  { name: "28 Payment received, long name", seed: "longName", steps: ["^Owed$", "^Collect from Nana", "^Received$"], expect: ["Undo"] },
+  { name: "28 Payment received, long name", seed: "longName", steps: ["^Owed$", "^Collect from Nana", "^Received$"], expect: [], danger: ["Undo"] },
   { name: "39 My items", seed: "base", steps: ["^Menu", "^Items"], expect: [] },
-  { name: "40 Edit item", seed: "base", steps: ["^Menu", "^Items", "^Rice"], expect: ["Delete"] },
+  { name: "40 Edit item", seed: "base", steps: ["^Menu", "^Items", "^Rice"], expect: [], danger: ["Delete"] },
   { name: "36 Your starter list from 39", seed: "base", steps: ["^Menu", "^Items", "Add from starter list"], expect: [] },
   { name: "35 What do you sell?", seed: "fresh", steps: ["^With items", "^Continue"], expect: ["More categories"], leave: ["Skip for now"] },
   { name: "36 Your starter list (setup)", seed: "fresh", steps: ["^With items", "^Continue", "^Provisions shop", "^Continue"], expect: [], leave: ["Skip, I’ll add items later"] },
@@ -46,7 +46,7 @@ test("the other look (PosSecondaryButton) fits at 340, 360 and 393px on every sc
         try {
           await app.open(visit.seed, width, 800);
           await app.steps(visit.steps);
-          for (const expected of visit.expect) await app.shows(expected);
+          for (const expected of [...visit.expect, ...(visit.danger ?? []), ...(visit.leave ?? [])]) await app.shows(expected);
         } catch (error) {
           throw new Error(`${visit.name} ${width}px: ${error.message}`);
         }
@@ -56,10 +56,13 @@ test("the other look (PosSecondaryButton) fits at 340, 360 and 393px on every sc
         for (const expected of visit.expect) {
           assert.ok(m.controls.some((c) => c.look === "other" && c.text.includes(expected)), `${label}: "${expected}" is an other button`);
         }
+        for (const expected of visit.danger ?? []) {
+          assert.ok(m.controls.some((c) => c.look === "danger" && c.text.includes(expected)), `${label}: "${expected}" is the danger variant`);
+        }
         for (const expected of visit.leave ?? []) {
           assert.ok(m.controls.some((c) => c.look === "leave" && c.text === expected), `${label}: "${expected}" is a leave button`);
         }
-        notes.push(...checkControls(m, label, { looks: ["other", "leave"] }));
+        notes.push(...checkControls(m, label, { looks: ["other", "leave", "danger"] }));
       }
     }
   });

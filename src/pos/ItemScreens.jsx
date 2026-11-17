@@ -139,7 +139,7 @@ function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCom
         {(formErrors.message || error) && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{formErrors.message || error}</p>}
         <div className="mt-auto flex flex-col gap-2">
           {item && (
-            <PosSecondaryButton type="button" disabled={saving} onClick={() => onNavigate("DeleteItem", { itemId: item.id, itemName: item.name })} className="border-rose-900! text-rose-900!">
+            <PosSecondaryButton type="button" disabled={saving} onClick={() => onNavigate("DeleteItem", { itemId: item.id, itemName: item.name })} tone="danger">
               <Trash2 size={20} aria-hidden="true" />{t("items.delete")}
             </PosSecondaryButton>
           )}

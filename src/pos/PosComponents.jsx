@@ -131,10 +131,14 @@ export function PosPrimaryButton({ children, className = "", ...props }) {
 // The "other" look (rules_global.button_system.other and .secondary_component): 2px #0F172A border,
 // dark bold 18px text, white fill, 52px or taller. A long label wraps (at most two lines; padding, never
 // a shorter label, keeps it there).
-export const OTHER_BUTTON_CLASS = "flex min-h-[52px] items-center justify-center gap-2 rounded-[14px] border-2 border-[#0F172A] bg-white px-4 py-1.5 text-center text-[18px] font-extrabold leading-tight text-[#0F172A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50";
+const OTHER_SHAPE = "flex min-h-[52px] items-center justify-center gap-2 rounded-[14px] border-2 bg-white px-4 py-1.5 text-center text-[18px] font-extrabold leading-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50";
+export const OTHER_BUTTON_CLASS = `${OTHER_SHAPE} border-[#0F172A] text-[#0F172A]`;
+// tone="danger" (rules_global.button_system.danger, 17 Nov 2026): the same shape with a red border and
+// red bold text, only for actions that remove or reverse something (Delete on 40, Undo on 28).
+const SECONDARY_TONES = { other: OTHER_BUTTON_CLASS, danger: `${OTHER_SHAPE} border-rose-900 text-rose-900` };
 
-export function PosSecondaryButton({ children, className = "", ...props }) {
-  return <button data-look="other" {...props} className={`${OTHER_BUTTON_CLASS} ${className}`}>{children}</button>;
+export function PosSecondaryButton({ children, tone = "other", className = "", ...props }) {
+  return <button data-look={tone === "danger" ? "danger" : "other"} {...props} className={`${SECONDARY_TONES[tone] ?? OTHER_BUTTON_CLASS} ${className}`}>{children}</button>;
 }
 
 // The "add" look (rules_global.button_system.add): dashed 2px dark-green border, 14px corners, bold

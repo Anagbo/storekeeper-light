@@ -61,6 +61,8 @@ test("no screen draws its own add (dashed green), leave (grey outline) or underl
       if (tokens.some((token) => /(^|:)underline$/.test(token) || /^decoration-/.test(token))) problems.push(`${file}:${line} underlined text: ${text.slice(0, 90)}`);
       if (tokens.includes("border-dashed") && /emerald|green/.test(text)) problems.push(`${file}:${line} its own dashed green (add) look: ${text.slice(0, 90)}`);
       if (/border-\[#64748B\]/i.test(text)) problems.push(`${file}:${line} its own grey-outline (leave) look: ${text.slice(0, 90)}`);
+      // The danger look comes only from PosSecondaryButton tone="danger" (button_system.danger).
+      if (tokens.some((token) => /^border-rose-\d+!?$/.test(token)) && tokens.some((token) => /^text-rose-\d+!?$/.test(token)) && tokens.some((token) => /!$/.test(token))) problems.push(`${file}:${line} its own red (danger) override: ${text.slice(0, 90)}`);
     }
   }
   assert.deepEqual(problems, []);
@@ -111,6 +113,9 @@ const ACTIONS = [
   ["45 Show all suppliers", "SupplierScreens.jsx", "PosSecondaryButton", /data-show-all=""/, /t\("expense\.showAllSuppliers"/],
   ["29/43 Correct balance", "DebtCollection.jsx", "PosSecondaryButton", /openCorrection\(\)/, /^Correct balance$/],
   ["29/43 Correct this entry", "DebtCollection.jsx", "PosSecondaryButton", /openCorrection\(debt, true\)/, /^Correct this entry$/],
+  // rules_global.button_system.danger: the shared variant, never a screen's own red outline.
+  ["28 Undo (danger)", "DebtCollection.jsx", "PosSecondaryButton", /tone="danger"/, /t\("collect\.undo"\)/],
+  ["40 Delete (danger)", "ItemScreens.jsx", "PosSecondaryButton", /tone="danger"/, /t\("items\.delete"\)/],
   ["35 Skip for now", "SetupScreens.jsx", "LeaveButton", /skipSetup/, /t\("setup\.skip"\)/],
   ["36/52 Skip, I’ll add items later", "ItemScreens.jsx", "LeaveButton", /finishSetup/, /t\("setup\.finish"\)/],
   ["72 Skip for now", "CustomerSignature.jsx", "LeaveButton", /onClick=\{skip\}/, /t\("signature\.skip"\)/],
