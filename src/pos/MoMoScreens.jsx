@@ -281,10 +281,10 @@ export function PaymentSettings({ params = {}, onBack, onNavigate, onUpdateParam
           <h2 className="text-lg font-extrabold">Phone request</h2>
           <p className="text-base">Confirmed by itself.{showPhoneFee ? ` Fee ${formatGhs(MOMO_CONFIG.phoneRequestFeePesewas)} per payment.` : ""}</p>
         </div>
-        {PHONE_REQUEST_ENABLED
-          ? <button type="button" aria-label="Phone request: set up" onClick={() => onNavigate("MoMoSetup")} className="shrink-0 rounded-xl px-2 py-3 text-lg font-extrabold text-emerald-900">Set up</button>
-          : <PosStatusTag>Coming soon</PosStatusTag>}
+        {!PHONE_REQUEST_ENABLED && <PosStatusTag>Coming soon</PosStatusTag>}
       </div>
+      {/* rules_global.button_system.open_text_sweep: "Set up" is an other button on its own line under the card text. */}
+      {PHONE_REQUEST_ENABLED && <PosSecondaryButton type="button" aria-label="Phone request: set up" onClick={() => onNavigate("MoMoSetup")} className="mt-2 w-full">Set up</PosSecondaryButton>}
     </PosCard>
     <h2 className="text-lg font-extrabold">When I tap MoMo</h2>
     <PosCard className="!p-0">
@@ -356,7 +356,7 @@ export function MoMoPayment({ params = {}, onBack, onNavigate, onUpdateParams })
     </fieldset>
     <label className="font-bold">Customer’s MoMo number<input aria-label="Customer’s MoMo number" value={phone} onChange={(event) => { setPhone(event.target.value); onUpdateParams?.({ requestPhone: event.target.value }); }} type="tel" inputMode="tel" className="mt-1 h-14 w-full rounded-xl border-[3px] border-slate-500 px-3 text-xl" /></label>
     <PosPrimaryButton type="button" disabled={!PHONE_REQUEST_ENABLED} onClick={() => onNavigate(network === "Telecel" ? "MoMoCode" : "MoMoWaiting", { ...params, network, phone })}><Smartphone size={24} aria-hidden="true" />Send request</PosPrimaryButton>
-    <button type="button" onClick={() => onNavigate("MoMoDirect", params)} className="min-h-10 border-0 bg-transparent font-extrabold text-emerald-900 underline">Customer already paid me directly</button>
+    <PosSecondaryButton type="button" className="w-full" onClick={() => onNavigate("MoMoDirect", params)}>Customer already paid me directly</PosSecondaryButton>
     <p className="-mt-2 text-center text-sm text-slate-700">Saved as MoMo · you confirmed.</p>
   </PosPage>;
 }

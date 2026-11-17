@@ -21,7 +21,7 @@ import {
 } from "./money.js";
 import { Amount, HideAmountsButton } from "./HiddenAmount.jsx";
 import { callHrefFor, PartyCard } from "./PartyCard.jsx";
-import { PosCard, PosPage } from "./PosComponents.jsx";
+import { PosCard, PosPage, PosSecondaryButton } from "./PosComponents.jsx";
 import { useReminderCheck } from "./ReminderCheck.jsx";
 
 function WhatsAppIcon({ size = 27 }) {
@@ -178,9 +178,10 @@ export default function Home({ onNavigate, notice = "" }) {
               </>
           </section>}
 
-          <button type="button" onClick={() => onNavigate("TodaysTransactions")} className="min-h-11 py-1 text-center text-lg font-extrabold text-emerald-900 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 lg:col-start-1">
+          {/* rules_global.button_system.open_text_sweep: "Today’s transactions" is an other button (22 only). */}
+          <PosSecondaryButton type="button" onClick={() => onNavigate("TodaysTransactions")} className="w-full lg:col-start-1">
             {t("home.transactionsLink")}
-          </button>
+          </PosSecondaryButton>
         </>
       )}
       {reminders.sheet}

@@ -617,7 +617,7 @@ const ENGLISH = Object.freeze({
   "collect.receiptShare": "Send receipt",
   "collect.receiptForPayment": "Receipt for {amount} payment",
   "collect.receiptNoPhone": "Add a valid Ghana mobile number to this customer before sharing the receipt.",
-  "collect.addPhoneForReceipt": "Add a phone number",
+  "collect.addPhoneForReceipt": "Add phone",
   "collect.addPhoneForReceiptHint": "Next time the receipt opens their WhatsApp chat.",
   "collect.editContact": "Edit contact",
   "collect.addContact": "Add contact",

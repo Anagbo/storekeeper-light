@@ -239,9 +239,9 @@ function CollectionSheet({ debt, params = {}, onClose, onNavigate, onUpdateParam
         <PosPrimaryButton type="button" onClick={() => void receivePayment()} disabled={busy || amountPesewas <= 0} className="mt-4 h-[68px] min-h-0 rounded-[20px] text-2xl">
           <Check size={28} aria-hidden="true" /> {busy ? t("collect.saving") : t("collect.received")}
         </PosPrimaryButton>
-        <button type="button" onClick={() => onNavigate("DebtorDetail", { debtId: debt.id, customerName: debt.customerName })} className="mt-2 min-h-12 w-full text-center text-lg font-extrabold text-emerald-900 underline">
+        <PosSecondaryButton type="button" onClick={() => onNavigate("DebtorDetail", { debtId: debt.id, customerName: debt.customerName })} className="mt-2 w-full">
           {t("collect.seeDetails", { name: displayName(debt.customerName) })}
-        </button>
+        </PosSecondaryButton>
       </section>
     </div>
   );
@@ -545,18 +545,18 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
       )}
       {receiptsOn && !receiptPhone && !undone && (
         <div className="text-center">
-          <button type="button" onClick={() => setContactEditorOpen(true)} className="min-h-11 text-center font-extrabold text-emerald-900 underline">
+          <AddButton onClick={() => setContactEditorOpen(true)}>
             {t("collect.addPhoneForReceipt")}
-          </button>
+          </AddButton>
           <p className="text-sm font-semibold text-slate-700">{t("collect.addPhoneForReceiptHint")}</p>
         </div>
       )}
       <p className="text-center text-[17px] text-slate-800">
         <Clock3 size={16} className="mr-1 inline" aria-hidden="true" />{t("collect.undoWindow", { seconds: Math.floor(COLLECTION_UNDO_WINDOW_MS / 1000) })}
       </p>
-      <button type="button" onClick={() => onNavigate("DebtorDetail", { debtId: result.debtId, customerName: result.customerName })} className="min-h-12 text-center text-lg font-extrabold text-emerald-900 underline">
+      <PosSecondaryButton type="button" onClick={() => onNavigate("DebtorDetail", { debtId: result.debtId, customerName: result.customerName })} className="w-full">
         {t("collect.seeDetails", { name: displayName(result.customerName) })}
-      </button>
+      </PosSecondaryButton>
       <div className="flex-1" />
       <PosPrimaryButton type="button" onClick={onHome} className="h-[68px] min-h-0 rounded-[20px] text-2xl">{t("collect.done")}</PosPrimaryButton>
       {contactEditorOpen && (
