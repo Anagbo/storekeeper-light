@@ -191,14 +191,17 @@ test("Back and Escape act as Not now", async () => {
   assert.equal((await db.reminders.toArray()).length, 0);
 });
 
-test("Send again is the strong primary button; Not now is outlined", async () => {
+test("Send again is the strong primary button; Not now is the grey leave look", async () => {
   const { view, find } = await SCREENS["29 debtor detail"]({ lastReminderAt: Date.now() - DAY });
   await find().props.onClick(freshTap());
   view.rerender();
   assert.match(inSheet(view, "Send again").props.className, /bg-emerald-900/);
   assert.match(inSheet(view, "Send again").props.className, /text-white/);
   assert.match(inSheet(view, "Not now").props.className, /bg-white/);
-  assert.match(inSheet(view, "Not now").props.className, /border-\[3px\]/);
+  // rules_global.button_system.leave (17 Nov 2026): the shared LeaveButton, as tall as Send again.
+  assert.equal(inSheet(view, "Not now").props["data-look"], "leave");
+  assert.match(inSheet(view, "Not now").props.className, /border-\[#64748B\]/);
+  assert.match(inSheet(view, "Not now").props.className, /min-h-\[60px\]!/);
   const order = [...walk(sheetOf(view))];
   assert.ok(order.indexOf(inSheet(view, "Send again")) < order.indexOf(inSheet(view, "Not now")));
 });

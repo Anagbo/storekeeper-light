@@ -9,7 +9,7 @@ import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { amountTextToPesewas, COUNT_KEYPAD, countFromKeypadText, MONEY_KEYPAD, pressAmountKey } from "./amountKeypad.js";
 import { posText as t } from "./i18n.js";
 import AmountKeypad from "./AmountKeypad.jsx";
-import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
+import { LeaveButton, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
 import { useBackBlock } from "./browserBack.js";
 import { useFormErrors } from "./formErrors.js";
 
@@ -170,7 +170,8 @@ export function WhatDoYouSell({ selected, onSelectedChange, onBack, onNavigate, 
       )}
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
       <div className="mt-auto grid grid-cols-2 gap-2">
-        <PosSecondaryButton type="button" disabled={saving} onClick={() => void skipSetup()}>{t("setup.skip")}</PosSecondaryButton>
+        {/* rules_global.button_system.leave: Skip for now is the grey leave look, in its place beside Continue. */}
+        <LeaveButton disabled={saving} onClick={() => void skipSetup()}>{t("setup.skip")}</LeaveButton>
         <PosPrimaryButton type="button" disabled={saving || selected.length === 0} onClick={continueToItems}>
           {t("setup.continueItems")}
         </PosPrimaryButton>

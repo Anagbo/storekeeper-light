@@ -270,7 +270,11 @@ test("72 is built for the customer's hand: text 18px or more, buttons 52px or mo
   for (const size of box.matchAll(/text-(xs|sm|base|\[1[0-7]px\])\b/g)) assert.fail(`small text ${size[0]} in the signature box`);
   assert.match(source, /h-\[60px\] w-full[^"]*">\s*\{saving \? t\("signature\.saving"\) : t\("signature\.done"\)\}/, "Done full width, 60px");
   assert.match(source, /h-\[60px\] w-full[^"]*">\s*\{t\("signature\.clear"\)\}/, "Clear full width, 60px");
-  assert.match(source, /h-\[52px\] w-full[^"]*border-2 border-\[#64748B\] bg-white[^"]*font-bold text-\[#334155\][^"]*">\s*\{t\("signature\.skip"\)\}/, "Skip for now: grey outline, full width, 52px");
+  // rules_global.button_system.shared (17 Nov 2026): Skip for now is the shared LeaveButton (grey
+  // outline, full width, 52px), checked in PosComponents.
+  assert.match(source, /<LeaveButton onClick=\{skip\}[^>]*>\s*\{t\("signature\.skip"\)\}/, "Skip for now: the shared LeaveButton");
+  const components = readFileSync(new URL("../src/pos/PosComponents.jsx", import.meta.url), "utf8");
+  assert.match(components, /export function LeaveButton[\s\S]*?min-h-\[52px\] w-full[^"]*border-2 border-\[#64748B\] bg-white[^"]*font-bold leading-tight text-\[#334155\]/, "LeaveButton: grey outline, full width, 52px");
   assert.match(box, /h-\[190px\][^"]*border-dashed/, "dashed 190px box");
   assert.equal((box.match(/touchAction: "none"/g) ?? []).length, 2, "touch-action none on the box and the canvas");
 });

@@ -8,7 +8,7 @@ import { formatGhs, toPesewas } from "../lib/money.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { posText as t } from "./i18n.js";
 import { shortSaveName } from "./saveLabel.js";
-import { PosBackButton, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
+import { LeaveButton, PosBackButton, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { useBackBlock } from "./browserBack.js";
 import { useFormErrors } from "./formErrors.js";
 import AmountTextInput from "./AmountTextInput.jsx";
@@ -341,9 +341,9 @@ function StarterList({ grouped = false, params, onBack, onAdd, onCompleteSetup }
         {saving ? t("items.saving") : t("setup.continueCount", { count: selectedCount })}
       </PosPrimaryButton>
       {params.setupFlow && (
-        <PosSecondaryButton type="button" disabled={saving} onClick={() => void finishSetup()}>
+        <LeaveButton disabled={saving} onClick={() => void finishSetup()}>
           {t("setup.finish")}
-        </PosSecondaryButton>
+        </LeaveButton>
       )}
     </PosPage>
   );

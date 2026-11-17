@@ -9,7 +9,7 @@ import { formatGhs } from "../lib/money.js";
 import { isValidDateString } from "../utils/installments.js";
 import { useBackBlock } from "./browserBack.js";
 import { posText as t } from "./i18n.js";
-import { PosBackButton, PosPage } from "./PosComponents.jsx";
+import { LeaveButton, PosBackButton, PosPage } from "./PosComponents.jsx";
 import SignatureBox from "./SignatureBox.jsx";
 
 // Wiring 72 "Customer signs" (rules_global.customer_proof, 16 Nov 2026). The credit is ALREADY saved
@@ -107,9 +107,9 @@ export default function CustomerSignature({ params = {}, onFinish, shopName }) {
         {t("signature.clear")}
       </button>
       {/* Skip for now: grey outline (rules_global.button_system.leave), full width, 52px, below Clear. */}
-      <button type="button" onClick={skip} disabled={saving} className="h-[52px] w-full rounded-2xl border-2 border-[#64748B] bg-white px-2 text-[19px] font-bold text-[#334155] disabled:opacity-50">
+      <LeaveButton onClick={skip} disabled={saving}>
         {t("signature.skip")}
-      </button>
+      </LeaveButton>
     </PosPage>
   );
 }
