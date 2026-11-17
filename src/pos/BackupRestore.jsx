@@ -141,8 +141,8 @@ export default function BackupRestore({ onBack }) {
           <p className="text-base font-bold">{pending.count === 1 ? t("backup.foundOne") : t("backup.foundMany", { count: pending.count })}</p>
           <p className="text-base text-slate-800">{t("backup.confirmBody")}</p>
           <div className="grid grid-cols-2 gap-2">
-            <PosSecondaryButton type="button" onClick={() => void restore()} disabled={busy} className="min-h-14 border-slate-900 text-lg">{t("backup.restore")}</PosSecondaryButton>
-            <PosSecondaryButton type="button" autoFocus onClick={() => setPending(null)} disabled={busy} className="min-h-14 border-slate-900 text-lg">{t("backup.cancel")}</PosSecondaryButton>
+            <PosSecondaryButton type="button" onClick={() => void restore()} disabled={busy}>{t("backup.restore")}</PosSecondaryButton>
+            <PosSecondaryButton type="button" autoFocus onClick={() => setPending(null)} disabled={busy}>{t("backup.cancel")}</PosSecondaryButton>
           </div>
         </section>
       )}

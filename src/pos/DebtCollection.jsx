@@ -531,7 +531,7 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
 
       <CollectionError>{error}</CollectionError>
       <div className={`grid gap-2 ${receiptsOn ? "grid-cols-2" : "grid-cols-1"}`}>
-        <PosSecondaryButton type="button" disabled={busy || remainingSeconds <= 0 || undone} onClick={() => void undo()} className="h-14 min-h-0 rounded-2xl border-rose-900 text-[17px] text-rose-900">
+        <PosSecondaryButton type="button" disabled={busy || remainingSeconds <= 0 || undone} onClick={() => void undo()} className="border-rose-900! text-rose-900!">
           <Undo2 size={22} aria-hidden="true" /> {t("collect.undo")}
         </PosSecondaryButton>
         {/* Without a valid phone, Send receipt opens the share sheet (receiptShare.sendReceipt). Only the Undo window holds it back. */}
