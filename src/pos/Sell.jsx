@@ -12,6 +12,10 @@ import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { useBackBlock } from "./browserBack.js";
 import { useFormErrors } from "./formErrors.js";
+
+// Keypad keys on 15: 62px, shorter on short screens (never under 48px; the gaps stay 8px) so that Done
+// fits above the bottom bar without scrolling where it can.
+const KEY_HEIGHT_15 = "54px";
 import { getSplitPaymentParams } from "./routes.js";
 import AmountKeypad from "./AmountKeypad.jsx";
 import { pesewasToAmountText, pressAmountKey } from "./amountKeypad.js";
@@ -130,20 +134,20 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
   }, [amount, canSave, busy, paymentMethod, largeAmount.open]);
 
   return (
-    // The bottom bar (PosBottomNav, below lg) is fixed over the page: 3px border + 4px + 76px + its
-    // safe-bottom padding. The page keeps that much room at its end, and Done sticks just above the bar.
-    <PosPage style={{ paddingTop: 14 }} className="flex flex-col gap-3 overflow-visible! pb-[calc(83px+max(1rem,env(safe-area-inset-bottom)))]! lg:max-w-5xl lg:justify-center lg:pb-10!">
+    // Wiring 15 "Done on 15" (17 Nov 2026, second decision): Done is NOT pinned. It is the last thing in
+    // the content, and the page keeps room below it so that, scrolled to the end, Done ends above the
+    // fixed bottom bar (PosBottomNav, below lg: 3px border + 4px + 76px + its safe-bottom padding, and the
+    // raised Sell circle 22px higher, so 103px) with 8px to spare. Nothing floats over the content.
+    <PosPage style={{ paddingTop: 14 }} className="flex flex-col gap-3 pb-[calc(111px+max(0px,env(safe-area-inset-bottom)-1rem))]! lg:max-w-5xl lg:justify-center lg:pb-10!">
       <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.9fr)] lg:items-start lg:gap-6">
         <div className="flex flex-col gap-3">
           <PosCard className="amount-fit-container rounded-[20px] px-4 py-3 text-right lg:px-6 lg:py-5">
             <p className="text-base font-bold text-slate-700 lg:text-lg">{t("sell.customerPays")}</p>
             <output aria-live="polite" className="amount-fit font-extrabold">{formatGhs(amountPesewas ?? 0)}</output>
           </PosCard>
-          <AmountKeypad label={t("sell.enterAmount")} disabled={hasSaleItems} onKey={appendDigit} />
+          <AmountKeypad label={t("sell.enterAmount")} disabled={hasSaleItems} onKey={appendDigit} keyHeight={KEY_HEIGHT_15} />
         </div>
-        {/* Below lg this column is display: contents, so the pinned Done row can stick anywhere in the
-            page (a sticky row cannot rise above its own parent); on lg it is the right-hand column. */}
-        <div className="contents lg:flex lg:flex-col lg:gap-3 lg:pt-1">
+        <div className="flex flex-col gap-3 lg:pt-1">
           {/* Wiring 15 "Done on 15" (17 Nov 2026): "+ Add items" is the add look at the compact 44px, the
               one allowed use of the compact size. */}
           <AddButton size="compact" onClick={() => onNavigate("SellWithItems", { amountPesewas, saleItems })}>
@@ -197,14 +201,9 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
           </div>
           {(amountErrors.message || error) && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 text-base font-semibold text-rose-950">{amountErrors.message || error}</p>}
           <SaveAttemptNotice saveAttempt={saveAttempt} busy={busy} onTryAgain={() => void saveSale(true)} />
-          {/* Wiring 15 "Done on 15" (17 Nov 2026): Done is pinned at the bottom of the screen (60px, solid
-              green) and the content above it scrolls under it, so Done is fully visible at 340x667, 340x640
-              and 360x667. On the wide layout it stays in the right column. */}
-          <div data-bottom-row="" className="sticky bottom-[calc(83px+max(1rem,env(safe-area-inset-bottom)))] z-10 -mx-4 bg-white px-4 pb-3 pt-2 sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:p-0">
-            <PosPrimaryButton type="button" onClick={() => void saveSale()} disabled={!canSave || busy} className="h-[60px] min-h-0 rounded-[20px] border-0 text-[26px] lg:h-20 lg:text-3xl">
-              <Check size={32} aria-hidden="true" /> {busy ? t("sell.saving") : t("sell.done")}
-            </PosPrimaryButton>
-          </div>
+          <PosPrimaryButton type="button" onClick={() => void saveSale()} disabled={!canSave || busy} className="h-[60px] min-h-0 rounded-[20px] border-0 text-[26px] lg:h-20 lg:text-3xl">
+            <Check size={32} aria-hidden="true" /> {busy ? t("sell.saving") : t("sell.done")}
+          </PosPrimaryButton>
         </div>
       </div>
       {largeAmount.dialog}
