@@ -1,0 +1,70 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { browser, sleep, withEdgeApp } from "./helpers/edgeApp.js";
+import { ENV, SEEDS, checkControls } from "./helpers/lookChecks.js";
+
+// rules_global.button_system.add (17 Nov 2026), real Edge at 340, 360 and 393px: every action that adds
+// something is the shared AddButton: dashed 2px dark-green border, 14px corners, bold dark-green text,
+// no fill, the "+" and the word on one line, inside the screen, no overflow. Standard size is full width
+// and 52px; the 20 tile keeps 72px in the grid (taller only when the item tile beside it is). Every other control with a look on the same screen
+// (main, other, leave) also fits: inside the screen, no overflow, at most two lines.
+// The font is the machine's (Segoe UI on Windows), not a phone font.
+
+// Tailwind 4 gives emerald-900 (the app's dark green) as oklch.
+const GREEN = /^(oklch\(0\.378 0\.077 168\.94\)|rgb\(6, 78, 59\))$/;
+
+// Each visit: the seed, the taps that reach the screen, and the add buttons it must show
+// (text as shown, height, and whether it spans the screen's content width).
+const VISITS = [
+  { name: "20 Sell with items", seed: "base", steps: ["^Sell$", "Add items"], add: [{ text: "+ New item", height: 72, atLeast: true }] },
+  { name: "32 People who owe you", seed: "base", steps: ["^Owed$"], add: [{ text: "+ Add debt", height: 52, full: true }] },
+  { name: "17 Who owes you", seed: "base", steps: ["^Sell$", "^5$", "^Owe$"], add: [{ text: "+ New person", height: 52, full: true }] },
+  { name: "17 Who owes you (Add debt)", seed: "base", steps: ["^Owed$", "Add debt$"], add: [{ text: "+ New person", height: 52, full: true }] }
+];
+
+const WIDTHS = [340, 360, 393];
+
+test("the add look fits at 340, 360 and 393px: dashed 2px green, 14px corners, no fill, one line", { skip: browser ? false : "no Chrome or Edge found (set HEADER_TEST_BROWSER)", timeout: 900_000 }, async () => {
+  const notes = [];
+  await withEdgeApp({ seeds: SEEDS, env: ENV }, async (app) => {
+    for (const visit of VISITS) {
+      for (const width of WIDTHS) {
+        const label = `${visit.name} ${width}px`;
+        try {
+          await app.open(visit.seed, width, 800);
+          for (const step of visit.steps) {
+            await app.click(step);
+            await sleep(150);
+          }
+          for (const { text } of visit.add) await app.shows(text.replace(/[+]/g, "\\+"));
+        } catch (error) {
+          throw new Error(`${label}: ${error.message}`);
+        }
+        await sleep(300);
+        const m = await app.measure();
+        const content = m.innerWidth - 32;
+        for (const expected of visit.add) {
+          const c = m.controls.find((control) => control.look === "add" && control.text === expected.text);
+          assert.ok(c, `${label}: "${expected.text}" is an add button (${m.controls.filter((x) => x.look === "add").map((x) => x.text).join(", ")})`);
+          const what = `${label}: "${expected.text}"`;
+          assert.match(c.border, /^dashed 2px /, `${what}: dashed 2px border`);
+          assert.match(c.border.replace(/^dashed 2px /, ""), GREEN, `${what}: dark-green border`);
+          assert.equal(c.radius, "14px", `${what}: 14px corners`);
+          assert.match(c.color, GREEN, `${what}: dark-green text`);
+          assert.ok(Number(c.fontWeight) >= 700, `${what}: bold`);
+          assert.equal(c.background, "rgba(0, 0, 0, 0)", `${what}: no fill`);
+          assert.ok(!c.underline, `${what}: not underlined`);
+          assert.equal(c.lines, 1, `${what}: one line`);
+          assert.ok(!c.overflow, `${what}: no overflow`);
+          assert.ok(c.left >= -0.5 && c.right <= m.innerWidth + 0.5, `${what}: inside the screen`);
+          assert.ok(Math.abs(c.height - expected.height) < 0.5 || ((expected.atLeast || expected.height === 52) && c.height >= expected.height), `${what}: ${expected.height}px (${c.height})`);
+          if (expected.full) assert.ok(c.width >= content - 16.5, `${what}: full width (${c.width} of about ${content})`);
+        }
+        notes.push(...checkControls(m, label, { looks: ["main", "other", "leave"] }));
+        const adds = m.controls.filter((control) => control.look === "add");
+        for (const c of adds) assert.ok(!c.overflow && c.lines === 1, `${label}: add "${c.text}" on one line without overflow`);
+      }
+    }
+  });
+  if (notes.length) console.log(notes.join("\n"));
+});

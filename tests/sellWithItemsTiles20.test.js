@@ -151,9 +151,10 @@ test("20 new item: a newly created item appears as a tile and selects like any o
 
 // Wiring 20 (16 Nov 2026): "+ New item" never sits alone in a half-width row. One rule on the item
 // tile count: even (zero included, or a search that matches nothing) spans the whole row; odd stays
-// one tile wide beside the last tile. Same 72px height and dashed 3px border either way.
+// one tile wide beside the last tile. Same 72px height and the add look either way (rules_global.button_system.add,
+// 17 Nov 2026: the shared AddButton, dashed 2px dark-green border, 14px corners, data-look="add").
 const classes = (node) => node.props.className.split(/\s+/);
-const SAME_LOOK = ["min-h-[72px]", "border-[3px]", "border-dashed", "border-emerald-900", "rounded-[18px]"];
+const SAME_LOOK = ["min-h-[72px]", "border-2", "border-dashed", "border-emerald-900", "rounded-[14px]"];
 const SUGAR = { id: 3, name: "Sugar", default_price: 5 };
 const OIL = { id: 4, name: "Oil", default_price: 30 };
 

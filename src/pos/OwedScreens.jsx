@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Banknote, Phone, Plus, UserRound, UserRoundPen } from "lucide-react";
+import { Banknote, Phone, UserRound, UserRoundPen } from "lucide-react";
 import { db } from "../db/db.js";
 import { formatGhs } from "../lib/money.js";
 import { hasSearchText, squashSearchText } from "../lib/searchMatch.js";
@@ -9,7 +9,7 @@ import { displayName } from "../lib/displayName.js";
 import { getDebtDueDate, groupUnpaidDebts, isDebtDueSoon, isDebtLate, loadAllUnpaidDebts, loadUnpaidDebtPage, matchesOwedSearch, OWED_PAGE_SIZE } from "./owed.js";
 import SearchField from "./SearchField.jsx";
 import { DueTag } from "./PartyCard.jsx";
-import { PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
+import { AddButton, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { generateWhatsAppLink } from "../utils/whatsapp.js";
 import { latestReminderAt, loadReminderEvents } from "../db/reminders.js";
 import { useReminderCheck } from "./ReminderCheck.jsx";
@@ -153,9 +153,7 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
   }
 
   const addDebtButton = (
-    <PosPrimaryButton type="button" onClick={openAddDebt} className="!border-[3px] !border-emerald-900 !bg-white !text-xl !text-emerald-900">
-      <Plus size={27} aria-hidden="true" /> Add debt
-    </PosPrimaryButton>
+    <AddButton onClick={openAddDebt}>Add debt</AddButton>
   );
 
   return (

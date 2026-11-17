@@ -4,7 +4,7 @@ import { Minus, Plus, Search, Trash2 } from "lucide-react";
 import { db } from "../db/db.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
-import { PosCard, PosPage, PosPrimaryButton, PosBackButton } from "./PosComponents.jsx";
+import { AddButton, PosCard, PosPage, PosPrimaryButton, PosBackButton } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
 
 const STEP_CLASS = "grid h-11 w-11 shrink-0 place-items-center rounded-[12px] border-2 border-slate-500 bg-white text-xl font-extrabold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800";
@@ -137,13 +137,10 @@ export default function SellWithItems({ params = {}, onBack, onNavigate, onUpdat
           {/* "+ New item" never sits alone in a half-width row: with an even number of item tiles
               (zero included, and a search that matches nothing) it spans the whole row; with an odd
               number it is the last tile, beside the last item. One rule on the tile count. */}
-          <button
-            type="button"
-            onClick={() => onNavigate("NewItem")}
-            className={`${products.length % 2 === 0 ? "col-span-full " : ""}min-h-[72px] rounded-[18px] border-[3px] border-dashed border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800`}
-          >
-            + {t("sellItems.newItem")}
-          </button>
+          {/* rules_global.button_system.add: the shared AddButton as the 72px grid tile. */}
+          <AddButton size="tile" onClick={() => onNavigate("NewItem")} className={products.length % 2 === 0 ? "col-span-full" : ""}>
+            {t("sellItems.newItem")}
+          </AddButton>
           {/* Wiring 20 "Empty and search states": no items at all and nothing typed says how to add
               the first one; "No items match that search." only when something typed matches nothing.
               "+ New item" is a <strong> in the tile label's dark green; the rest is regular weight. */}

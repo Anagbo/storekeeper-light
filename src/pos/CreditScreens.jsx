@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Banknote, Check, Plus, Smartphone, UserRoundPlus } from "lucide-react";
+import { Banknote, Check, Plus, Smartphone } from "lucide-react";
 import SearchField from "./SearchField.jsx";
 import { hasSearchText, matchesSearch } from "../lib/searchMatch.js";
 import { db } from "../db/db.js";
@@ -13,7 +13,7 @@ import { PLAN_ERROR } from "../lib/planErrors.js";
 import { addDueCycles, dayAfter, getCreditBalanceAfterSale, getNextCycleDate, isValidDateString, localDateString, PAYMENT_FREQUENCIES, prepareInstallmentPlan } from "../utils/installments.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { getCreditAmountOwedPesewas } from "./creditAmount.js";
-import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
+import { AddButton, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
 import { shortSaveName } from "./saveLabel.js";
 import { CopyReceiptButton, ReceiptFailedLine, ReceiptOfflineLine, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
 import { buildCreditSaleReceipt, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
@@ -169,9 +169,8 @@ function WhoOwesYou({ params, onBack, onNavigate, onUpdateParams }) {
         </div>
       )}
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
-      <PosSecondaryButton type="button" onClick={() => onNavigate("NewPerson", { ...params })} className={params.manualDebt ? "border-dashed text-emerald-900" : undefined}>
-        <UserRoundPlus size={22} aria-hidden="true" /> {t("credit.newPerson")}
-      </PosSecondaryButton>
+      {/* rules_global.button_system.open_text_sweep: "+ New person" is the add look on every path. */}
+      <AddButton onClick={() => onNavigate("NewPerson", { ...params })}>{t("credit.newPerson")}</AddButton>
       <div className="mt-auto grid grid-cols-[auto_minmax(0,1fr)] gap-2">
         <PosBackButton onClick={onBack} className="h-14!" />
         <PosPrimaryButton type="button" disabled={!selectedCustomer || loading} onClick={continueToPaymentDate}>
