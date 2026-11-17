@@ -113,6 +113,17 @@ const ACTIONS = [
   ["45 Show all suppliers", "SupplierScreens.jsx", "PosSecondaryButton", /data-show-all=""/, /t\("expense\.showAllSuppliers"/],
   ["29/43 Correct balance", "DebtCollection.jsx", "PosSecondaryButton", /openCorrection\(\)/, /^Correct balance$/],
   ["29/43 Correct this entry", "DebtCollection.jsx", "PosSecondaryButton", /openCorrection\(debt, true\)/, /^Correct this entry$/],
+  // Decisions 17 Nov 2026 (second report): the ones left outside the four looks.
+  ["72 Clear", "CustomerSignature.jsx", "PosSecondaryButton", /setStrokes\(\[\]\)/, /t\("signature\.clear"\)/],
+  ["29/43 Show {Name} the record", "DebtCollection.jsx", "PosSecondaryButton", /data-show-record=""/, /the record/],
+  ["22 + Add contact", "Home.jsx", "AddButton", /editContact: true/, /t\("contact\.add"\)/],
+  ["Large amount: Change amount (main)", "LargeAmountConfirm.jsx", "PosPrimaryButton", /onClick=\{onChange\}/, /t\("largeAmount\.change"\)/],
+  ["Large amount: Yes, save (other)", "LargeAmountConfirm.jsx", "PosSecondaryButton", /onClick=\{onConfirm\}/, /t\("largeAmount\.save"\)/],
+  ["Leave draft: Stay (main)", "LeaveDraftDialog.jsx", "PosPrimaryButton", /onClick=\{onStay\}/, /t\("leaveDraft\.stay"\)/],
+  ["Leave draft: Leave (leave)", "LeaveDraftDialog.jsx", "LeaveButton", /onClick=\{onLeave\}/, /t\("leaveDraft\.leave"\)/],
+  ["15 Split (other, with its icon)", "Sell.jsx", "PosSecondaryButton", /aria-label=\{t\("sell\.split"\)\}/, /<SplitIcons withOwe/],
+  ["55 Split (other, with its icon)", "ReviewAndPay.jsx", "PosSecondaryButton", /data-split-55=""/, /<SplitIcons withOwe[\s\S]*t\("review\.split"\)/],
+  ["25 + Split payment", "DebtCollection.jsx", "AddButton", /onClick=\{onSplit\}/, /t\("collect\.splitPayment"\)/],
   // rules_global.button_system.danger: the shared variant, never a screen's own red outline.
   ["28 Undo (danger)", "DebtCollection.jsx", "PosSecondaryButton", /tone="danger"/, /t\("collect\.undo"\)/],
   ["40 Delete (danger)", "ItemScreens.jsx", "PosSecondaryButton", /tone="danger"/, /t\("items\.delete"\)/],

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { formatGhs } from "../lib/money.js";
 import { posText as t } from "./i18n.js";
+import { LeaveButton, PosPrimaryButton } from "./PosComponents.jsx";
 
 // Wiring 16 (11 Nov 2026): leaving a sale draft that holds MoMo money already received asks first.
 // Stay is the default (focused first, and what Escape and the phone back do); only Leave continues.
@@ -42,23 +43,13 @@ export default function LeaveDraftDialog({ amountPesewas, onStay, onLeave }) {
         <p id="leave-draft-question" className="text-xl font-extrabold text-slate-950 [overflow-wrap:anywhere]">
           {t("leaveDraft.receivedMomo", { amount: formatGhs(amountPesewas) })}
         </p>
-        <button
-          ref={stayRef}
-          type="button"
-          autoFocus
-          onClick={onStay}
-          className="min-h-[60px] rounded-[18px] border-[3px] border-emerald-900 bg-emerald-900 px-4 text-xl font-extrabold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
-        >
+        {/* open_text_sweep (17 Nov 2026): the shared main and leave buttons (Leave goes without doing it), kept 60px. */}
+        <PosPrimaryButton ref={stayRef} type="button" autoFocus onClick={onStay} className="min-h-[60px]!">
           {t("leaveDraft.stay")}
-        </button>
-        <button
-          ref={leaveRef}
-          type="button"
-          onClick={onLeave}
-          className="min-h-[60px] rounded-[18px] border-[3px] border-slate-900 bg-white px-4 text-xl font-extrabold text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
-        >
+        </PosPrimaryButton>
+        <LeaveButton ref={leaveRef} onClick={onLeave} className="min-h-[60px]!">
           {t("leaveDraft.leave")}
-        </button>
+        </LeaveButton>
       </section>
     </div>
   );

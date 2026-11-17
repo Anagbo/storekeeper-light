@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { formatGhs } from "../lib/money.js";
 import { posText as t } from "./i18n.js";
+import { PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { isLargeAmount } from "./largeAmount.js";
 import { useBackHandler } from "./browserBack.js";
 
@@ -86,23 +87,13 @@ function LargeAmountDialog({ amountPesewas, momo = false, onChange, onConfirm })
       >
         <h2 id="large-amount-title" className="text-2xl font-extrabold">{t("largeAmount.title")}</h2>
         <p id="large-amount-body" className="text-lg font-semibold text-slate-900">{t(momo ? "largeAmount.momoBody" : "largeAmount.body", { amount: formatGhs(amountPesewas) })}</p>
-        <button
-          ref={changeRef}
-          type="button"
-          autoFocus
-          onClick={onChange}
-          className="min-h-[60px] rounded-[18px] border-[3px] border-emerald-900 bg-emerald-900 px-4 text-xl font-extrabold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
-        >
+        {/* open_text_sweep (17 Nov 2026): the shared main and other buttons, kept 60px. */}
+        <PosPrimaryButton ref={changeRef} type="button" autoFocus onClick={onChange} className="min-h-[60px]!">
           {t("largeAmount.change")}
-        </button>
-        <button
-          ref={confirmRef}
-          type="button"
-          onClick={onConfirm}
-          className="min-h-[60px] rounded-[18px] border-[3px] border-slate-900 bg-white px-4 text-xl font-extrabold text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
-        >
+        </PosPrimaryButton>
+        <PosSecondaryButton ref={confirmRef} type="button" onClick={onConfirm} className="min-h-[60px]! w-full">
           {t("largeAmount.save")}
-        </button>
+        </PosSecondaryButton>
       </section>
     </div>
   );

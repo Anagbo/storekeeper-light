@@ -21,6 +21,13 @@ const VISITS = [
   { name: "29 Edit contact", seed: "base", steps: ["^Owed$", "^Amoto", "^Edit contact"], expect: ["Cancel"] },
   { name: "54 Correct balance", seed: "base", steps: ["^Owed$", "^Amoto", "^Correct balance"], expect: ["Cancel"] },
   { name: "22 Home", seed: "base", steps: [], expect: ["Today’s transactions"] },
+  // 15 and 55: Split is an other button with its Cash + MoMo + Owe icon (open_text_sweep, 17 Nov 2026).
+  { name: "15 Sell", seed: "base", steps: ["^Sell$"], expect: ["Split"] },
+  { name: "55 Review and pay", seed: "base", steps: ["^Sell$", "Add items", "^Rice", "^Add 1", "^Next"], expect: ["Split payment"] },
+  // The large amount dialog: Change amount is the main button, Yes, save the other (both 60px).
+  { name: "Large amount dialog", seed: "base", steps: ["^Sell$", "^9$", "^0$", "^0$", "^0$", "^0$", "^Done"], expect: ["Yes, save"] },
+  // 72: Clear is an other button (60px), Skip for now the leave button.
+  { name: "72 Customer signs", seed: "base", steps: ["^Owed$", "^Kwabena", "^Get signature"], expect: ["Clear"], leave: ["Skip for now"] },
   { name: "25 Collect", seed: "base", steps: ["^Owed$", "^Collect from Amoto"], expect: ["See Amoto’s details"] },
   { name: "28 Payment received", seed: "base", steps: ["^Owed$", "^Collect from Amoto", "^Received$"], expect: ["See Amoto’s details"], danger: ["Undo"] },
   { name: "63 How customers pay me", seed: "base", steps: ["^Menu", "^Settings", "^MoMo payments"], expect: ["Set up"] },

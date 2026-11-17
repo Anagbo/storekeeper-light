@@ -112,15 +112,10 @@ function PaymentMethodPicker({ value, onChange, onSplit, splitDisabled = false }
             <span className="w-full min-w-0 truncate text-center">{t(label)}</span>
           </button>
         ))}
-        <button
-          type="button"
-          disabled={splitDisabled}
-          onClick={onSplit}
-          className="flex min-h-14 min-w-0 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-2xl border-[3px] border-emerald-900 bg-white px-1 text-xs font-extrabold text-emerald-900 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-16 sm:gap-1 sm:px-2 sm:text-base"
-        >
-          <SplitIcons size={16} />
+        {/* open_text_sweep (17 Nov 2026): "+ Split payment" adds a second way to pay, so it is the add look. */}
+        <AddButton disabled={splitDisabled} onClick={onSplit} className="min-h-14 flex-col gap-0.5! overflow-hidden px-1! text-xs! sm:min-h-16 sm:px-2! sm:text-base! [&>span:first-child]:text-xl!">
           <span className="w-full min-w-0 truncate text-center">{t("collect.splitPayment")}</span>
-        </button>
+        </AddButton>
       </div>
     </fieldset>
   );
@@ -831,17 +826,17 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
           <p data-last-reminder="" className="text-center text-base text-slate-800">{lastReminderLabel}</p>
           {/* Wiring 29/43 (16 Nov 2026): "Show {Name} the record" under the Last reminder line opens 73,
               look-only, for the customer to read. One line: a long name is cut, never the words around it. */}
-          <button
+          <PosSecondaryButton
             type="button"
             data-show-record=""
             aria-label={t("record.show", { name: displayName(data.name) })}
             onClick={() => onNavigate("CustomerRecordView", { customerId: data.customerId, customerName: data.name })}
-            className="flex h-[52px] w-full min-w-0 items-center justify-center gap-1 whitespace-nowrap rounded-[14px] border-2 border-[#0F172A] bg-white px-3 text-lg font-extrabold text-[#0F172A]"
+            className="w-full min-w-0 gap-1! whitespace-nowrap px-3!"
           >
             <span className="shrink-0">Show</span>{" "}
             <span className="min-w-0 truncate">{displayName(data.name)}</span>{" "}
             <span className="shrink-0">the record</span>
-          </button>
+          </PosSecondaryButton>
           {balanceReceiptText && (
             <>
               <div className="flex flex-col gap-2">

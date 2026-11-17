@@ -27,9 +27,13 @@ const VISITS = [
   // 28 (receipts on, no phone saved): "+ Add phone".
   { name: "28 Payment received", seed: "base", steps: ["^Owed$", "^Collect from Amoto", "^Received$"], add: [{ text: "+ Add phone", height: 52, full: true }] },
   // 29: "+ Add to debt" on its own line under What happened; GH₵27 is under the signature threshold.
-  { name: "29 Debtor detail", seed: "base", steps: ["^Owed$", "^Amoto"], add: [{ text: "+ Add to debt", height: 52, full: true }], other: ["Correct balance"] },
+  { name: "29 Debtor detail", seed: "base", steps: ["^Owed$", "^Amoto"], add: [{ text: "+ Add to debt", height: 52, full: true }], other: ["Correct balance", "Show Amoto the record"] },
   // 43 (late): GH₵90 unsigned is at or above the threshold, so its card offers Get signature (no "+").
-  { name: "43 Debtor detail (late)", seed: "base", steps: ["^Owed$", "^Kwabena"], add: [{ text: "+ Add to debt", height: 52, full: true }, { text: "Get signature", height: 52 }], other: ["Correct balance"] }
+  { name: "43 Debtor detail (late)", seed: "base", steps: ["^Owed$", "^Kwabena"], add: [{ text: "+ Add to debt", height: 52, full: true }, { text: "Get signature", height: 52 }], other: ["Correct balance", "Show Kwabena Asamoah-Boateng the record"] },
+  // 22 Home: "+ Add contact" beside Collect (the late person has no phone); Collect still fits on one line.
+  { name: "22 Home", seed: "base", steps: [], add: [{ text: "+ Add contact", height: 52 }], fit: ["Collect"] },
+  // 25: "+ Split payment" is a tile in the row of payment tiles: the "+" above the words, like the icons beside it.
+  { name: "25 Collect", seed: "base", steps: ["^Owed$", "^Collect from Amoto"], add: [{ text: "+ Split payment", height: 56, atLeast: true, lines: 2 }] }
 ];
 
 const WIDTHS = [340, 360, 393];
@@ -61,7 +65,7 @@ test("the add look fits at 340, 360 and 393px: dashed 2px green, 14px corners, n
           assert.ok(Number(c.fontWeight) >= 700, `${what}: bold`);
           assert.equal(c.background, "rgba(0, 0, 0, 0)", `${what}: no fill`);
           assert.ok(!c.underline, `${what}: not underlined`);
-          assert.equal(c.lines, 1, `${what}: one line`);
+          assert.equal(c.lines, expected.lines ?? 1, `${what}: ${expected.lines ?? 1} line(s): the words on one line`);
           assert.ok(!c.overflow, `${what}: no overflow`);
           assert.ok(c.left >= -0.5 && c.right <= m.innerWidth + 0.5, `${what}: inside the screen`);
           assert.ok(Math.abs(c.height - expected.height) < 0.5 || ((expected.atLeast || expected.height === 52) && c.height >= expected.height), `${what}: ${expected.height}px (${c.height})`);
@@ -71,10 +75,14 @@ test("the add look fits at 340, 360 and 393px: dashed 2px green, 14px corners, n
           }
           if (expected.full) assert.ok(c.width >= content - 16.5, `${what}: full width (${c.width} of about ${content})`);
         }
+        for (const text of visit.fit ?? []) {
+          const c = m.controls.find((control) => control.text === text);
+          assert.ok(c && !c.overflow && c.lines === 1 && c.right <= m.innerWidth + 0.5, `${label}: "${text}" still fits on one line (${c?.width}px)`);
+        }
         for (const text of visit.other ?? []) assert.ok(m.controls.some((c) => c.look === "other" && c.text === text), `${label}: "${text}" is an other button`);
         notes.push(...checkControls(m, label, { looks: ["main", "other", "leave"] }));
         const adds = m.controls.filter((control) => control.look === "add");
-        for (const c of adds) assert.ok(!c.overflow && c.lines === 1, `${label}: add "${c.text}" on one line without overflow`);
+        for (const c of adds) assert.ok(!c.overflow && c.lines <= (visit.add.find((a) => a.text === c.text)?.lines ?? 1), `${label}: add "${c.text}" on one line without overflow`);
       }
     }
   });

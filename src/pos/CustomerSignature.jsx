@@ -9,7 +9,7 @@ import { formatGhs } from "../lib/money.js";
 import { isValidDateString } from "../utils/installments.js";
 import { useBackBlock } from "./browserBack.js";
 import { posText as t } from "./i18n.js";
-import { LeaveButton, PosBackButton, PosPage } from "./PosComponents.jsx";
+import { LeaveButton, PosBackButton, PosPage, PosSecondaryButton } from "./PosComponents.jsx";
 import SignatureBox from "./SignatureBox.jsx";
 
 // Wiring 72 "Customer signs" (rules_global.customer_proof, 16 Nov 2026). The credit is ALREADY saved
@@ -103,9 +103,9 @@ export default function CustomerSignature({ params = {}, onFinish, shopName }) {
       <button type="button" onClick={() => void done()} disabled={!hasInk || saving || !event} className="h-[60px] w-full rounded-2xl border-[3px] border-emerald-900 bg-emerald-900 px-2 text-xl font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-45">
         {saving ? t("signature.saving") : t("signature.done")}
       </button>
-      <button type="button" onClick={() => { setStrokes([]); setError(""); }} disabled={saving} className="h-[60px] w-full rounded-2xl border-[3px] border-slate-500 bg-white px-2 text-xl font-extrabold text-slate-900 disabled:opacity-50">
+      <PosSecondaryButton type="button" onClick={() => { setStrokes([]); setError(""); }} disabled={saving} data-clear-72="" className="h-[60px] w-full">
         {t("signature.clear")}
-      </button>
+      </PosSecondaryButton>
       {/* Skip for now: grey outline (rules_global.button_system.leave), full width, 52px, below Clear. */}
       <LeaveButton onClick={skip} disabled={saving}>
         {t("signature.skip")}
