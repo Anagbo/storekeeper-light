@@ -6,6 +6,7 @@ import { db } from "../src/db/db.js";
 import { setPreference } from "../src/db/preferences.js";
 import { FEATURE_FLAGS } from "../src/config/features.js";
 import { getMerchantMomoSettings } from "../src/pos/momoConfig.js";
+import { flushEffects, loadJsx, render, textOf, walk } from "./helpers/renderJsx.js";
 
 after(async () => {
   db.close();
@@ -37,10 +38,33 @@ test("screen 61 shows the Phone request tile disabled with Not available yet", (
   assert.match(choice, /PHONE_REQUEST_ENABLED \?[\s\S]+: "Not available yet"/);
 });
 
-test("screen 63 shows Coming soon instead of Set up, and hides Always: phone request, while Phone request is off", () => {
-  const settings = section(momoSource, "PaymentSettings", "MoMoSetup");
-  assert.match(settings, /PHONE_REQUEST_ENABLED\s*\?\s*<button[^>]*onClick=\{\(\) => onNavigate\("MoMoSetup"\)\}[^>]*>Set up<\/button>\s*:\s*<PosStatusTag>Coming soon<\/PosStatusTag>/);
-  assert.match(settings, /\.\.\.\(PHONE_REQUEST_ENABLED \? \[\["phone", "Always: phone request"\]\] : \[\]\)/);
+// Screen 63 rendered with the flag off and on (behaviour, not markup): off shows the "Coming soon" tag,
+// no "Set up" button and no "Always: phone request" choice; on shows "Set up" (it opens 60) and no tag.
+async function render63(env) {
+  const { PaymentSettings } = await loadJsx("src/pos/MoMoScreens.jsx", env);
+  const navigated = [];
+  const view = render({ type: PaymentSettings, props: { onBack() {}, onNavigate: (...args) => navigated.push(args) } });
+  flushEffects(view);
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  view.rerender();
+  flushEffects(view);
+  const nodes = [...walk(view.tree)];
+  const buttons = nodes.filter((node) => node.type === "button" || (typeof node.type === "function" && /Button$/.test(node.type.name)));
+  const setUp = buttons.find((node) => textOf(node).trim() === "Set up");
+  return { text: textOf(view.tree), setUp, navigated };
+}
+
+test("screen 63 shows Coming soon instead of Set up, and hides Always: phone request, while Phone request is off", async () => {
+  const off = await render63({});
+  assert.match(off.text, /Coming soon/, "flag off: the Coming soon tag");
+  assert.equal(off.setUp, undefined, "flag off: no Set up button");
+  assert.doesNotMatch(off.text, /Always: phone request/, "flag off: no Always: phone request choice");
+
+  const on = await render63({ VITE_ENABLE_MOMO_PHONE_REQUEST: "true" });
+  assert.ok(on.setUp, "flag on: a Set up button");
+  assert.doesNotMatch(on.text, /Coming soon/, "flag on: no Coming soon tag");
+  on.setUp.props.onClick();
+  assert.deepEqual(on.navigated.at(-1)?.[0], "MoMoSetup", "flag on: Set up opens 60");
 });
 
 test("screens 56 and 68 cannot send a request while Phone request is off", () => {
