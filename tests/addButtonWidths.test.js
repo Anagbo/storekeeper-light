@@ -32,8 +32,8 @@ const VISITS = [
   { name: "43 Debtor detail (late)", seed: "base", steps: ["^Owed$", "^Kwabena"], add: [{ text: "+ Add to debt", height: 52, full: true }, { text: "Get signature", height: 52 }], other: ["Correct balance", "Show Kwabena Asamoah-Boateng the record"] },
   // 22 Home: "+ Add contact" beside Collect (the late person has no phone); Collect still fits on one line.
   { name: "22 Home", seed: "base", steps: [], add: [{ text: "+ Add contact", height: 52 }], fit: ["Collect"] },
-  // 25: "+ Split payment" is a tile in the row of payment tiles: the "+" above the words, like the icons beside it.
-  { name: "25 Collect", seed: "base", steps: ["^Owed$", "^Collect from Amoto"], add: [{ text: "+ Split payment", height: 56, atLeast: true, lines: 2 }] }
+  // 25: Split payment is a dashed tile in the row of payment tiles: the joined Cash + MoMo icons above the words (the measured text "+Split payment" is the plus between the icons, so 2 text lines: icons row and label; the label is truncate, never wrapped).
+  { name: "25 Collect", seed: "base", steps: ["^Owed$", "^Collect from Amoto"], add: [{ text: "+Split payment", height: 56, atLeast: true, lines: 2 }] }
 ];
 
 const WIDTHS = [340, 360, 393];
