@@ -52,9 +52,19 @@ function MyItems({ onBack, onNavigate }) {
     return (result?.products ?? []).filter((item) => item.name.toLowerCase().includes(normalizedQuery));
   }, [query, result]);
 
+  // Empty list on 39 (17 Nov 2026): with no items the hint is plain text (17px, no box) right under the Back
+  // and title row, then Find item, "+ New item" and "+ Add from starter list" together. With items the order
+  // is Find item, "+ New item", the list, then "+ Add from starter list" at the end.
+  const empty = Boolean(result) && !result.error && result.products.length === 0;
+  const starterButton = (
+    // rules_global.button_system.open_text_sweep: "+ Add from starter list" is the add look.
+    <AddButton onClick={() => onNavigate("YourStarterList", { returnRoute: "MyItems" })}>{t("items.starterList")}</AddButton>
+  );
+
   return (
     <PosPage className="flex flex-col gap-3">
       <ScreenHeader title={t("items.title")} onBack={onBack} />
+      {empty && <p data-empty-hint="" className="text-[17px] font-semibold">{t("items.empty")}</p>}
       <label className="flex min-h-14 items-center gap-2 rounded-2xl border-[3px] border-slate-500 px-3">
         <Search size={24} aria-hidden="true" />
         <span className="sr-only">{t("items.find")}</span>
@@ -62,7 +72,7 @@ function MyItems({ onBack, onNavigate }) {
       </label>
       {/* rules_global.button_system.open_text_sweep: "+ New item" is the add look (was solid green). */}
       <AddButton onClick={() => onNavigate("NewItem")}>{t("items.new")}</AddButton>
-      {result === undefined ? (
+      {empty ? starterButton : result === undefined ? (
         <p role="status" className="rounded-xl bg-slate-100 p-3 font-semibold">{t("items.loading")}</p>
       ) : result.error ? (
         <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{result.error}</p>
@@ -78,12 +88,9 @@ function MyItems({ onBack, onNavigate }) {
           ))}
         </div>
       ) : (
-        <p className="rounded-xl border-2 border-slate-300 bg-white p-4 font-semibold">
-          {query ? t("items.noMatches") : t("items.empty")}
-        </p>
+        <p className="rounded-xl border-2 border-slate-300 bg-white p-4 font-semibold">{t("items.noMatches")}</p>
       )}
-      {/* rules_global.button_system.open_text_sweep: "+ Add from starter list" is the add look. */}
-      <AddButton onClick={() => onNavigate("YourStarterList", { returnRoute: "MyItems" })}>{t("items.starterList")}</AddButton>
+      {!empty && starterButton}
     </PosPage>
   );
 }
