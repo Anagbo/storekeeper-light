@@ -106,9 +106,13 @@ export async function getPlanLastUsedMethod() {
 
 // The 69 rows, built from the stored plan payment (K15; wiring 69 "Key-value rows", 16 Nov 2026): "Plan runs
 // to" (dd/mm/yyyy via formatDate, never "19 Dec"), "Paid by" ("MoMo, phone request", "MoMo" or "Cash") and
-// "Status" ("Verified" or "Not verified"). Only a confirmed payment has a plan period: anything else has no rows.
-// Only a Paystack phone request is verified. The end date is the payment time plus the plan length.
+// "Status". Only a confirmed payment has a plan period: anything else has no rows. The end date is the payment
+// time plus the plan length.
+// Status row (decided 20 Nov 2026): only for a payment that has a verification state. Only a Paystack phone
+// request is verified by the payment provider, so it shows "Verified"; cash and direct MoMo have no
+// verification state and show no Status row.
 const PLAN_PAID_BY_KEYS = Object.freeze({ cash: "kv.paidByCash", momo_direct: "kv.paidByMomo", momo_paystack: "kv.paidByPhoneRequest" });
+const VERIFIED_METHODS = new Set(["momo_paystack"]);
 
 export function planPaymentRows(payment) {
   if (!payment || payment.status !== "confirmed" || !Object.hasOwn(PLAN_PAID_BY_KEYS, payment.method)) return [];
@@ -117,7 +121,7 @@ export function planPaymentRows(payment) {
   return [
     { name: "plan-runs-to", label: t("kv.planRunsTo"), value: formatDate(addSubscriptionMonths(paidAt, PLAN_CONFIG.months)) },
     { name: "paid-by", label: t("kv.paidBy"), value: t(PLAN_PAID_BY_KEYS[payment.method]) },
-    { name: "status", label: t("kv.status"), value: t(payment.method === "momo_paystack" ? "kv.verified" : "kv.notVerified") }
+    ...(VERIFIED_METHODS.has(payment.method) ? [{ name: "status", label: t("kv.status"), value: t("kv.verified") }] : [])
   ];
 }
 

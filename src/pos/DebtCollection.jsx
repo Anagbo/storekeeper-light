@@ -977,9 +977,13 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
           <section role="dialog" aria-modal="true" aria-labelledby="pos-correction-title" className="safe-bottom max-h-[92dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-[28px] border-t-[3px] border-slate-900 bg-white px-4 pb-4 pt-3 shadow-xl sm:rounded-t-[28px]">
             <div className="mx-auto mb-2 h-1.5 w-12 rounded-full bg-slate-500" aria-hidden="true" />
             <div className="mb-2 flex items-center justify-between gap-3">
-              <div>
-                <h2 id="pos-correction-title" className="text-2xl font-extrabold">Correct balance</h2>
-                <p className="text-base text-slate-800">{displayName(data.name)} · now owed <strong>{formatGhs(correctionCurrentBalancePesewas)}</strong></p>
+              {/* Sheet header (decided 20 Nov 2026): the title is the person's name; "Now owed" is a key-value
+                  row under it, never the name and the amount joined on one line. */}
+              <div className="min-w-0 flex-1">
+                <h2 id="pos-correction-title" className="text-2xl font-extrabold [overflow-wrap:anywhere]">{displayName(data.name)}</h2>
+                <KeyValueRows name="correction-header" className="mt-1">
+                  <EventDetail label={t("kv.nowOwed")} name="now-owed">{formatGhs(correctionCurrentBalancePesewas)}</EventDetail>
+                </KeyValueRows>
               </div>
               <button type="button" onClick={() => setCorrectionOpen(false)} aria-label="Close balance correction" className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-[14px] border-2 border-slate-900 bg-white text-slate-900">
                 <X size={18} aria-hidden="true" />

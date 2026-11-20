@@ -10,7 +10,10 @@ test("the correction surface (DebtCollection) exposes the safe screen 54 contrac
   const sources = await Promise.all(correctionSurfaces.map((path) => readFile(path, "utf8")));
 
   for (const source of sources) {
-    assert.match(source, /now owed/i);
+    // Sheet header (20 Nov 2026): the name is the title and "Now owed" is a key-value row under it.
+    assert.match(source, /<h2 id="pos-correction-title"[^>]*>\{displayName\(data\.name\)\}<\/h2>/);
+    assert.match(source, /label=\{t\("kv\.nowOwed"\)\} name="now-owed">\{formatGhs\(correctionCurrentBalancePesewas\)\}/);
+    assert.doesNotMatch(source, /· now owed/);
     assert.match(source, /This lowers the debt by/);
     assert.match(source, /Corrections cannot increase debt\. Use Add to debt\./);
     assert.match(source, /No cash moves\. Use Collect for money received\./);

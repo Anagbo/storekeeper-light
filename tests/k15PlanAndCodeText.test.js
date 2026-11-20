@@ -59,8 +59,10 @@ test("K15: the 69 rows are built from the stored plan payment, never fixed text"
   const createdAt = new Date(2026, 10, 19, 10).getTime();
   const rows = (payment) => planPaymentRows(payment).map(({ label, value }) => [label, value]);
   assert.deepEqual(rows({ method: "momo_paystack", status: "confirmed", createdAt }), [["Plan runs to", "19/12/2026"], ["Paid by", "MoMo, phone request"], ["Status", "Verified"]]);
-  assert.deepEqual(rows({ method: "momo_direct", status: "confirmed", createdAt }), [["Plan runs to", "19/12/2026"], ["Paid by", "MoMo"], ["Status", "Not verified"]]);
-  assert.deepEqual(rows({ method: "cash", status: "confirmed", createdAt }), [["Plan runs to", "19/12/2026"], ["Paid by", "Cash"], ["Status", "Not verified"]]);
+  // Status row (20 Nov 2026): only with a verification state; cash and direct MoMo have none, so no Status row.
+  assert.deepEqual(rows({ method: "momo_direct", status: "confirmed", createdAt }), [["Plan runs to", "19/12/2026"], ["Paid by", "MoMo"]]);
+  assert.deepEqual(rows({ method: "cash", status: "confirmed", createdAt }), [["Plan runs to", "19/12/2026"], ["Paid by", "Cash"]]);
+  assert.doesNotMatch(JSON.stringify(rows({ method: "cash", status: "confirmed", createdAt })), /Not verified/);
   assert.deepEqual(rows({ method: "momo_paystack", status: "waiting", createdAt }), [], "a waiting payment has no plan period yet");
   assert.deepEqual(rows(undefined), []);
 });
