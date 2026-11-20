@@ -46,14 +46,14 @@ test("30 with the recorded sale from the bug: payment_method is null and the scr
   assert.equal(getSaleReceiptDetails(JUJU_SALE).paymentMethod, "owe");
   const text = await show(JUJU_SALE);
   assert.match(text, /Sale recorded/);
-  assert.match(text, /Juju owes GH₵8\.00 from this sale/);
+  assert.match(text, /Juju owesfrom this saleGH₵8\.00/);
   assert.doesNotMatch(text, /Cash|MoMo/, "no paid part is shown when nothing was paid");
 });
 
 test("30: a credit sale partly paid shows only the paid part and what is still owed", async () => {
   const text = await show({ ...JUJU_SALE, payment_method: "momo", momoReceivedPesewas: 300, creditExtendedPesewas: 500 });
   assert.match(text, /MoMoGH₵3\.00/);
-  assert.match(text, /Juju owes GH₵5\.00 from this sale/);
+  assert.match(text, /Juju owesfrom this saleGH₵5\.00/);
   assert.doesNotMatch(text, /Cash/);
 });
 

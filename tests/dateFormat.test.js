@@ -3,7 +3,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { describeSplitPart } from "../src/pos/splitTender.js";
+import { splitPartRows } from "../src/pos/splitTender.js";
 import { findButton, loadJsx, render, textOf } from "./helpers/renderJsx.js";
 
 // Cleanup batch, commit 1 (b): every date a person reads is day/month/year (16/11/2026, as on 53),
@@ -28,9 +28,9 @@ test("the Owe row shows 'First payment 07/03/2099', not the ISO date", async () 
   for (let index = 0; index < 5; index += 1) await new Promise((resolve) => setImmediate(resolve));
   assert.equal(returned.length, 1, "19 returned to 16");
   assert.equal(returned[0].payBackLabel, "First payment 07/03/2099");
-  const row = describeSplitPart({ paymentMethod: "owe", amountPesewas: 200 }, returned[0]);
-  assert.match(row, /Ama · .*first payment 07\/03\/2099$/);
-  assert.doesNotMatch(row, /2099-03-07/);
+  const rows = splitPartRows({ paymentMethod: "owe", amountPesewas: 200 }, returned[0]);
+  assert.deepEqual(rows.at(-1), { name: "first-payment", label: "First payment", value: "07/03/2099" });
+  assert.doesNotMatch(JSON.stringify(rows), /2099-03-07/);
   assert.equal(returned[0].installmentPlan.nextDueDate, FAR, "the plan itself keeps the ISO date");
 });
 

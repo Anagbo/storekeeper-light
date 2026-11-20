@@ -7,7 +7,12 @@ import { loadJsx, render, walk, textOf } from "./helpers/renderJsx.js";
 // must read (the person, the terms, the first payment date), so they keep the same text colour as
 // Cash and MoMo. Only a saving screen (busy) dims every row.
 
-const OWE_DETAIL = "Ama · GH₵1.00 every week · First payment 07/03/2099";
+// Status rows (17 Nov 2026): the Owe terms are label-value rows.
+const OWE_ROWS = [
+  { name: "person", label: "Person", value: "Ama" },
+  { name: "payment", label: "Payment", value: "GH₵1.00 weekly" },
+  { name: "first-payment", label: "First payment", value: "07/03/2099" }
+];
 const parts = [
   { paymentMethod: "cash", amountPesewas: 200 },
   { paymentMethod: "momo", amountPesewas: 400, momoMethod: "paystack", verification: "verified", confirmedPesewas: 400 },
@@ -18,7 +23,7 @@ async function rows({ busy = false } = {}) {
   const { default: SplitPayment } = await loadJsx("src/pos/SplitPayment.jsx");
   const view = render({ type: SplitPayment, props: {
     totalPesewas: 800, totalLabel: "Total", doneLabel: "Done", allowOwe: true, busy, onBack() {}, onDone() {},
-    initialParts: parts, partDetail: (part) => (part.paymentMethod === "owe" ? OWE_DETAIL : "")
+    initialParts: parts, partRows: (part) => (part.paymentMethod === "owe" ? OWE_ROWS : [])
   } });
   // The row's name element: a button on an editable row, plain text on a read-only one (wiring 16:
   // Owe and a locked MoMo row are not tappable).
@@ -38,10 +43,10 @@ test("the Owe row and a verified MoMo row are not dimmed; they stay read-only", 
     assert.doesNotMatch(button.props.className, /opacity/, `${name} row text is not dimmed`);
   }
   assert.equal(owe.props.className, cash.props.className, "same classes as the Cash row, so the same text colour");
-  // Wiring 16 row layout (12 Nov 2026): the terms are on the row's own status line, not in the name.
+  // Wiring 16 row layout (12 Nov 2026): the terms are in the row's own status rows, not in the name.
   const oweRow = [...walk(view.tree)].find((node) => node.props?.["data-split-row"] === "owe");
   const status = [...walk(oweRow)].find((node) => node.props?.["data-row-status"] !== undefined);
-  assert.equal(textOf(status), OWE_DETAIL);
+  assert.equal(textOf(status), "PersonAmaPaymentGH₵1.00 weeklyFirst payment07/03/2099");
   assert.doesNotMatch(status.props.className, /opacity/);
 });
 
@@ -68,10 +73,11 @@ test("contrast: the row text and its detail line pass 4.5:1; the old 50% dimming
   assert.ok(atHalfOpacity(SLATE_700) < 3, `the old dimmed detail was ${atHalfOpacity(SLATE_700).toFixed(2)}:1`);
 });
 
-test("the detail line keeps text-slate-700 and the page keeps text-slate-950 (the colours checked above)", async () => {
+test("the status row labels keep text-slate-700 and the page keeps text-slate-950 (the colours checked above)", async () => {
   const { readFileSync } = await import("node:fs");
-  const split = readFileSync(new URL("../src/pos/SplitPayment.jsx", import.meta.url), "utf8");
+  const rows = readFileSync(new URL("../src/pos/EventRows.jsx", import.meta.url), "utf8");
   const app = readFileSync(new URL("../src/pos/PosApp.jsx", import.meta.url), "utf8");
-  assert.match(split, /"font-semibold text-slate-700"/);
+  // Status rows (17 Nov 2026) use the shared row: grey label (slate-700), dark bold value.
+  assert.match(rows, /light: \{ row: "border-slate-300", label: "text-slate-700" \}/);
   assert.match(app, /pos-app [^"]*text-slate-950/);
 });

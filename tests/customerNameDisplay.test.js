@@ -7,7 +7,7 @@ import { setPreference } from "../src/db/preferences.js";
 import { resetBrowserBack } from "../src/pos/browserBack.js";
 import { buildCollectionReceiptMessage } from "../src/pos/collectionReceipt.js";
 import { buildCustomerBalanceReceipt } from "../src/pos/receiptTemplates.js";
-import { describeSplitPart } from "../src/pos/splitTender.js";
+import { splitPartRows } from "../src/pos/splitTender.js";
 import { createPosTransactionRows, describeTransactionRow } from "../src/pos/transactionFeed.js";
 import { createInstallmentReminderLink } from "../src/utils/installments.js";
 import { generateWhatsAppLink } from "../src/utils/whatsapp.js";
@@ -118,7 +118,7 @@ test("Home, 32 Owed, 17, 18, 31, the contact sheet and 43 show Juju and Junior; 
 
 test("16 and 27: the Owe row names the person with a capital", () => {
   const params = { customer: { name: "junior" }, installmentPlan: { isInstallmentPlan: true, installmentAmount: 500, frequency: "weekly", nextDueDate: "2026-11-19" } };
-  assert.equal(describeSplitPart({ paymentMethod: "owe", amountPesewas: 700 }, params), "Junior · GH₵5.00 every week · first payment 19/11/2026");
+  assert.equal(splitPartRows({ paymentMethod: "owe", amountPesewas: 700 }, params)[0].value, "Junior");
   assert.equal(params.customer.name, "junior");
 });
 
@@ -130,7 +130,7 @@ test("30: \"Junior owes GH₵5.00 from this sale\"", async () => {
     items_json: JSON.stringify([{ name: "Sale", quantity: 1, total_amount: 800 }]), createdAt: Date.now(), timestamp: Date.now()
   };
   const text = textOf(render({ type: SaleRecorded, props: { transaction, shopName: "Shop", onDone() {}, onNewSale() {} } }).tree);
-  assert.match(text, /Junior owes GH₵5.00 from this sale/);
+  assert.match(text, /Junior owesfrom this saleGH₵5.00/);
   assert.doesNotMatch(text, /\bjunior\b/);
   assert.equal(transaction.customer_name, "junior");
 });

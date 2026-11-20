@@ -94,7 +94,7 @@ for (const [name, back] of [["on-screen Back", (app) => app.tap("Back")], ["phon
     await app.tap(/Split payment$/);
     assert.equal(app.route, "SplitPayment");
     assert.deepEqual(sorted(partsOf(app)), EXPECTED);
-    assert.match(app.text().replace(/\s+/g, " "), /Customer sends · not confirmed yet/);
+    assert.match(app.text().replace(/\s+/g, " "), /Status ?Not confirmed yet/);
     assert.equal(app.button(/^Done$/).props.disabled, false, "the parts add up");
   });
 }

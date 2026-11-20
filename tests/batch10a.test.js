@@ -26,29 +26,33 @@ const section = (start, end) => {
 };
 const hasLink = (from, action, to) => POS_LINKS.some((link) => link.from === from && link.action === action && link.to === to);
 
-test("K3: rows on 16 show the MoMo method and the Owe person and terms", () => {
-  const { describeSplitPart } = splitTender;
-  assert.equal(typeof describeSplitPart, "function");
-  // Wiring 16 (11 Nov 2026): a Direct row before 62 is "not confirmed yet"; a received row says "Customer sent · received ✓" (12 Nov 2026).
-  assert.equal(describeSplitPart({ paymentMethod: "momo", momoMethod: "direct" }), "Customer sends · not confirmed yet");
-  assert.equal(describeSplitPart({ paymentMethod: "momo", momoMethod: "direct", verification: "merchant_confirmed" }), "Customer sent · received ✓");
-  assert.equal(describeSplitPart({ paymentMethod: "momo", momoMethod: "paystack", verification: "verified" }), "Customer sent · received ✓");
-  assert.equal(describeSplitPart({ paymentMethod: "momo", momoMethod: "paystack" }), "Phone request");
-  assert.equal(describeSplitPart({ paymentMethod: "momo" }), "");
-  assert.equal(describeSplitPart({ paymentMethod: "cash" }), "");
-  assert.equal(describeSplitPart({ paymentMethod: "owe" }, {}), "");
-  assert.equal(
-    describeSplitPart({ paymentMethod: "owe" }, { customer: { name: "Amoto" }, installmentPlan: { isInstallmentPlan: true, installmentAmount: 250, frequency: "weekly" }, payBackLabel: "First payment today" }),
-    "Amoto · GH₵2.50 every week · First payment today"
+// Status rows on 16 (17 Nov 2026) replace the one-line status: label-value pairs from splitPartRows.
+const pairs = (rows) => rows.map((row) => [row.label, row.value]);
+
+test("K3: rows on 16 show the MoMo status and the Owe person and terms", () => {
+  const { splitPartRows } = splitTender;
+  assert.equal(typeof splitPartRows, "function");
+  assert.deepEqual(pairs(splitPartRows({ paymentMethod: "momo", momoMethod: "direct" })), [["Status", "Not confirmed yet"]]);
+  assert.deepEqual(pairs(splitPartRows({ paymentMethod: "momo", momoMethod: "direct", verification: "merchant_confirmed" })), [["Status", "Received ✓"]]);
+  assert.deepEqual(pairs(splitPartRows({ paymentMethod: "momo", momoMethod: "paystack", verification: "verified" })), [["Status", "Received ✓"]]);
+  assert.deepEqual(pairs(splitPartRows({ paymentMethod: "momo", momoMethod: "paystack" })), [["Status", "Not confirmed yet"]]);
+  assert.deepEqual(splitPartRows({ paymentMethod: "momo" }), []);
+  assert.deepEqual(splitPartRows({ paymentMethod: "cash" }), []);
+  assert.deepEqual(splitPartRows({ paymentMethod: "owe" }, {}), []);
+  assert.deepEqual(
+    pairs(splitPartRows({ paymentMethod: "owe" }, { customer: { name: "Amoto" }, installmentPlan: { isInstallmentPlan: true, installmentAmount: 250, frequency: "weekly" }, firstPaymentDate: "2026-11-20" })),
+    [["Person", "Amoto"], ["Payment", "GH₵2.50 weekly"], ["First payment", "20/11/2026"]]
   );
-  assert.equal(describeSplitPart({ paymentMethod: "owe" }, { customer: { name: "Kofi" }, payBackLabel: "In 1 week" }), "Kofi · In 1 week");
+  assert.deepEqual(pairs(splitPartRows({ paymentMethod: "owe" }, { customer: { name: "Kofi" }, dueDate: "2099-03-07", payBackLabel: "In 1 week" })), [["Person", "Kofi"], ["Due", "07/03/2099"]]);
+  // 19's Paying today panel keeps its one-line MoMo status.
+  assert.equal(splitTender.describeSplitPart({ paymentMethod: "momo", momoMethod: "direct" }), "Customer sends · not confirmed yet");
 });
 
-test("K3: 16 passes the row detail to the shared split screen, which shows it under the method", () => {
-  assert.match(read("SaleSplitPayment.jsx"), /partDetail=\{\(part\) => describeSplitPart\(part, params\)\}/);
+test("K3: 16 passes the status rows to the shared split screen, which shows them under the method", () => {
+  assert.match(read("SaleSplitPayment.jsx"), /partRows=\{\(part\) => splitPartRows\(part, params\)\}/);
   const split = read("SplitPayment.jsx");
-  assert.match(split, /partDetail = \(\) => ""/);
-  assert.match(split, /const detail = partDetail\(part\);/);
+  assert.match(split, /partRows = \(\) => \[\]/);
+  assert.match(split, /const rows = partRows\(part\);/);
 });
 
 test("K6: the Split button on 19 is named Split payment; 27 opened from 19 says Done (12 Nov 2026)", () => {

@@ -83,7 +83,7 @@ for (const screen of ["28", "29", "43", "30", "31"]) {
     assert.ok(send >= 0 && line >= 0 && copy >= 0, "all three are shown");
     assert.ok(send < line && line < copy, `order is Send receipt, line, Copy receipt (got ${send}, ${line}, ${copy})`);
     // The smallest box holding Send receipt and the line spaces them 8px apart (gap-2) and does
-    // not hold Copy receipt. On 28 and 30 that box is Send receipt's two-button row, so the line
+    // not hold Copy receipt. On 28 that box is Send receipt's two-button row, so the line
     // spans the row under it; nothing tappable sits between them outside that row.
     const box = nodes.filter((node) => typeof node.type === "string" && contains(node, isSend) && contains(node, isLine)).at(-1);
     assert.match(box.props.className, /(^|\s)gap-2(\s|$)/);

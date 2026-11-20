@@ -3198,7 +3198,8 @@
     "The history row and the customer record 73 show \"Balance corrected\", the new balance GH₵0.00 with \"Was GH₵old\", and the reason, so a debt set to zero is never silent (layout: \"Balance corrected row\" rule on 29, 43 and 73).",
     "Empty field on 54: no message at all (not \"New balance must be lower.\"). Save correction is only disabled. Messages appear only for an increase (\"Corrections cannot increase debt\") or a value that is not allowed.",
     "When the sheet first opens (decided 16 Nov 2026): the field is pre-filled with the current balance, selected, and NO message is shown until the owner changes the value. Save correction is disabled. If the owner then types a value equal to the current balance, show \"New balance must be lower.\"; for an increase \"Corrections cannot increase debt\".",
-    "Key-value rows (decided 16 Nov 2026): same row style as the card on 72 and the What happened cards: grey label on the left (never wraps), bold value on the right (wraps inside its own column), thin divider between rows, no divider after the last row. Shared row component. The summary above the correction form uses the same rows as 43: \"Last reminder\", and in the plan card \"Payment\", \"Paid so far\", \"Was due\" (or \"Next payment\" when not late)."
+    "Key-value rows (decided 16 Nov 2026): same row style as the card on 72 and the What happened cards: grey label on the left (never wraps), bold value on the right (wraps inside its own column), thin divider between rows, no divider after the last row. Shared row component. The summary above the correction form uses the same rows as 43: \"Last reminder\", and in the plan card \"Payment\", \"Paid so far\", \"Was due\" (or \"Next payment\" when not late).",
+    "Sheet header (decided 20 Nov 2026): the title is the person’s name; \"Now owed\" is a key-value row (label left, GH₵x right) under it, not \"{Name} · now owed GH₵x\"."
    ]
   },
   "55": {
@@ -3793,7 +3794,8 @@
    "change_request": "2026-11-07 MoMo choice and plan payments",
    "rules": [
     "Fee shown through the formatter from configuration (e.g. Fee GH₵0.59). No developer placeholder text.",
-    "Key-value rows (decided 16 Nov 2026): same row style as the card on 72 and the What happened cards: grey label on the left (never wraps), bold value on the right (wraps inside its own column), thin divider between rows, no divider after the last row. Shared row component. Under the amount: rows \"Fee\" and \"You pay\". Replaces \"Fee GH₵x · you pay GH₵y\"."
+    "Key-value rows (decided 16 Nov 2026): same row style as the card on 72 and the What happened cards: grey label on the left (never wraps), bold value on the right (wraps inside its own column), thin divider between rows, no divider after the last row. Shared row component. Under the amount: rows \"Fee\" and \"You pay\". Replaces \"Fee GH₵x · you pay GH₵y\".",
+    "Fee and You pay (decided 20 Nov 2026, replaces the Fee and You pay rows above until the owner decides who bears the fee for subscriptions): 68 shows one row, \"You pay\", equal to the plan price that Send request saves as the plan payment. The Fee row is not shown. When the fee decision is made (merchant pays it, platform absorbs it), the plan price and the fee are stored as separate fields and 68 and 69 show both."
    ]
   },
   "69": {
@@ -3819,7 +3821,8 @@
     "reversed": "Payment reversed"
    },
    "rules": [
-    "Key-value rows (decided 16 Nov 2026): same row style as the card on 72 and the What happened cards: grey label on the left (never wraps), bold value on the right (wraps inside its own column), thin divider between rows, no divider after the last row. Shared row component. In the Plan paid card, under \"✓ GH₵x received\": rows \"Plan runs to\" (dd/mm/yyyy via formatDate, never \"19 Dec\"), \"Paid by\" (\"MoMo, phone request\" or \"MoMo\") and \"Status\" (\"Verified\" or \"Not verified\"). Replaces the line \"Plan runs to 19 Dec · Phone request · MoMo · verified\"."
+    "Key-value rows (decided 16 Nov 2026): same row style as the card on 72 and the What happened cards: grey label on the left (never wraps), bold value on the right (wraps inside its own column), thin divider between rows, no divider after the last row. Shared row component. In the Plan paid card, under \"✓ GH₵x received\": rows \"Plan runs to\" (dd/mm/yyyy via formatDate, never \"19 Dec\"), \"Paid by\" (\"MoMo, phone request\" or \"MoMo\") and \"Status\" (\"Verified\" or \"Not verified\"). Replaces the line \"Plan runs to 19 Dec · Phone request · MoMo · verified\".",
+    "Status row (decided 20 Nov 2026): shown only when a payment has a verification state (\"Verified\" / \"Not verified\" as the rule gives). Cash and direct MoMo payments show no Status row, as before."
    ]
   },
   "70": {
@@ -4071,7 +4074,7 @@
    "data": "A new local 'reminder sent' event: person, time, channel. Stored on the device, included in backup and restore. Appended only, never edited.",
    "scope": "Per person, not per screen. Every reminder button (Home Collect first tile 22, Owed list rows 32, debtor detail 29/43 and wide D3) goes through ONE shared check and ONE shared record. Receipts do not count. The Last reminder line is shown only on debtor detail 29/43 and the wide detail pane D3; the Home tile and Owed rows stay clean.",
    "check": "Within 7 days of the last reminder the Send another reminder? sheet appears; Send again is the strong button.",
-   "wording": "today HH:mm, yesterday HH:mm, else dd/mm/yyyy HH:mm; 'No reminder sent yet' when none. Never says delivered."
+   "wording": "today HH:mm, yesterday HH:mm, else dd/mm/yyyy HH:mm. When no reminder was ever sent, the Last reminder row is not shown on 29 or 43 (decided 20 Nov 2026). Never says delivered."
   },
   "form_errors": "Errors on every form (decided 16 Nov 2026): a message appears only after the owner taps the main button with a problem, names only what is wrong, and disappears as soon as that problem is fixed (no second tap needed). A fresh or returning form never shows an error. One shared behaviour; a test per form that has an error box.",
   "customer_proof": {

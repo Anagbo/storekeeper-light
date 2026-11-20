@@ -134,7 +134,7 @@ test("30: Cash and MoMo are separate rows and the GH₵3.00 owed is its own row 
   const owedText = app.text().replace(/\s+/g, " ");
   assert.equal(cash.length, 1, show(rows));
   assert.equal(momo.length, 1, show(rows));
-  assert.match(owedText, /Juju owes GH₵3.00 from this sale/, "the owed part is its own line");
+  assert.match(owedText, /Juju owesfrom this saleGH₵3.00/, "the owed part is its own line");
   assert.equal(cash[0].amount, 3);
   assert.equal(momo[0].amount, 2);
   assert.ok(owedText.indexOf("Juju owes") > owedText.search(/MoMo/), "owed line comes after the paid rows");

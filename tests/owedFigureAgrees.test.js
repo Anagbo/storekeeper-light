@@ -158,7 +158,7 @@ test("(b) split from 16 with an Owe part: 18, Home 22, 32 and 43 say GH₵15.00;
   assert.equal(stillOwedLine(app), null, "16 has no Still owed line");
   await app.tap(/^Done$/);
   assert.equal(app.route, "SaleRecorded");
-  assert.equal(amountAfter(app, /Kofi owes (GH₵[\d,]+\.\d{2}) from this sale/, "30"), 500);
+  assert.equal(amountAfter(app, /Kofi owesfrom this sale(GH₵[\d,]+\.\d{2})/, "30"), 500);
   const after = await balanceScreens(app);
   assert.deepEqual(after, { home22: 1500, list32: 1500, detail43: 1500, chip24: 500 });
 });

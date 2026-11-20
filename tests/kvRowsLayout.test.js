@@ -91,11 +91,13 @@ const MEASURE = `(frame, win, doc) => {
 const EXPECTED_ROWS = {
   "29": ["last-reminder", "payment", "paid-so-far", "next-payment"],
   "43": ["last-reminder", "payment", "paid-so-far", "was-due"],
-  "54": ["last-reminder", "payment", "paid-so-far", "was-due"],
+  // 54: the sheet header's Now owed row (20 Nov 2026) comes after the page's rows (the sheet is last).
+  "54": ["last-reminder", "payment", "paid-so-far", "was-due", "now-owed"],
   "53 from 29": ["debt", "payment", "due", "paid", "still-needed", "payments-left", "next-payment"],
   "53 from 17": ["debt", "payment", "due", "paid", "still-needed", "payments-left", "next-payment"],
   "56": ["fee", "you-receive"],
-  "68": ["fee", "you-pay"],
+  // 68 (20 Nov 2026): one row, You pay; the Fee row is not shown until the fee decision.
+  "68": ["you-pay"],
   "69": ["plan-runs-to", "paid-by", "status"],
   "64": ["active-until", "days-left"]
 };
@@ -140,9 +142,6 @@ test("scan: no ' · ' joins two facts on 29, 43, 54, 53, 56 (green card), 68, 69
     let text = page.html.replace(/<[^>]+>/g, "\n");
     // 56: "Saved as MoMo · you confirmed." under the buttons is one method label (decided earlier), not two facts.
     if (page.name === "56") text = text.replace("Saved as MoMo · you confirmed.", "");
-    // 54: the sheet's own header "{Name} · now owed GH₵x" is not one of the lines the Key-value rows rule replaces
-    // (the rule on 54 covers the summary above the form); left as it is and reported to the owner (20 Nov 2026).
-    if (page.name === "54") text = text.replace(`${LONG_NAME} · now owed`, "");
     assert.doesNotMatch(text, / · /, `${page.name}: no facts joined with " · "`);
   }
 });

@@ -22,11 +22,18 @@ function readReceipt(transaction, shopName) {
   }
 }
 
+// The owe row's name: at most 10 characters, then an ellipsis (Owe line on 30).
+const NAME_MAX = 10;
+function shortName(name) {
+  const chars = [...name];
+  return chars.length > NAME_MAX ? `${chars.slice(0, NAME_MAX).join("").trimEnd()}…` : name;
+}
+
 function SaleSaved({ onDone }) {
   return (
     <PosPage className="flex flex-col gap-3">
       <section className="pt-2 text-center">
-        <div className="mx-auto mb-3 grid h-24 w-24 place-items-center rounded-full bg-emerald-900 text-white">
+        <div data-check-circle="" className="mx-auto mb-3 grid h-20 w-20 place-items-center rounded-full bg-emerald-900 text-white">
           <Check size={56} aria-hidden="true" />
         </div>
         <h1 className="text-2xl font-extrabold">{t("saleRecorded.savedFallback")}</h1>
@@ -64,7 +71,7 @@ export default function SaleRecorded({ transaction, creditResult, shopName, onDo
   return (
     <PosPage className="flex flex-col gap-3">
       <section className="pt-2 text-center">
-        <div className="mx-auto mb-3 grid h-24 w-24 place-items-center rounded-full bg-emerald-900 text-white">
+        <div data-check-circle="" className="mx-auto mb-3 grid h-20 w-20 place-items-center rounded-full bg-emerald-900 text-white">
           <Check size={56} aria-hidden="true" />
         </div>
         <h1 className="text-xl font-bold">{t("saleRecorded.title")}</h1>
@@ -106,11 +113,18 @@ export default function SaleRecorded({ transaction, creditResult, shopName, onDo
               )}
               {owedPesewas > 0 && (
                 <div className={paidPesewas > 0 || isSplit ? "border-t-2 border-dashed border-slate-400 pt-1" : undefined}>
-                  <p className="font-bold text-rose-900 [overflow-wrap:anywhere]">
-                    {customerName
-                      ? t("saleRecorded.owesFromSale", { name: displayName(customerName), amount: formatGhs(owedPesewas) })
-                      : t("saleRecorded.owesFromSaleNoName", { amount: formatGhs(owedPesewas) })}
-                  </p>
+                  {/* Owe line on 30 (final, 17 Nov 2026): the last row of the sale card. Label "{Name} owes" (name cut
+                      at 10 characters with an ellipsis, one line) with "from this sale" small and grey under it;
+                      the amount bold dark red on the right, centred against the two lines. */}
+                  <div data-owe-row="" className="flex items-center justify-between gap-2">
+                    <span className="min-w-0">
+                      <span data-owe-label="" className="block whitespace-nowrap">
+                        {customerName ? t("saleRecorded.owesLabel", { name: shortName(displayName(customerName)) }) : t("saleRecorded.owedLabel")}
+                      </span>
+                      <span data-owe-sub="" className="block text-sm text-slate-700">{t("saleRecorded.fromThisSale")}</span>
+                    </span>
+                    <strong data-owe-amount="" className="shrink-0 whitespace-nowrap text-rose-900">{formatGhs(owedPesewas)}</strong>
+                  </div>
                   {earlierBalance && (
                     <p data-total-owed="" className="text-base text-slate-700">{t("saleRecorded.totalOwed", { amount: formatGhs(creditResult.totalDebtPesewas) })}</p>
                   )}
@@ -126,15 +140,21 @@ export default function SaleRecorded({ transaction, creditResult, shopName, onDo
         </div>
       </PosCard>
 
-      <div className={`grid gap-2 ${receiptsOn ? "grid-cols-2" : "grid-cols-1"}`}>
-        {receiptsOn && <SendReceiptButton onClick={() => void actions.send()} />}
-        <PosSecondaryButton type="button" onClick={onDone}>
-          {t("saleRecorded.done")}
-        </PosSecondaryButton>
-        {receiptsOn && <ReceiptOfflineLine online={actions.online} className="col-span-full" />}
-      </div>
-      {receiptsOn && <CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} />}
+      {/* Buttons on 30 (17 Nov 2026): all stacked, full width, never side by side. Send receipt (other, WhatsApp
+          icon), the offline line 8px under it, Copy receipt (other), Done (other), New sale (main). The receipt
+          buttons only with the receipts flag on. */}
+      {/* As on 31: the stack follows the card and the main button sits at the bottom. */}
+      {receiptsOn && (
+        <div className="flex flex-col gap-2">
+          <SendReceiptButton look="other" onClick={() => void actions.send()} />
+          <ReceiptOfflineLine online={actions.online} />
+        </div>
+      )}
+      {receiptsOn && <CopyReceiptButton look="other" onClick={() => void actions.copy()} copied={actions.copied} />}
       {receiptsOn && <ReceiptFailedLine failed={actions.failed} />}
+      <PosSecondaryButton type="button" className="w-full" onClick={onDone}>
+        {t("saleRecorded.done")}
+      </PosSecondaryButton>
       <PosPrimaryButton type="button" onClick={onNewSale} className="mt-auto h-[68px] text-2xl">
         <Plus size={28} aria-hidden="true" />{t("saleRecorded.newSale")}
       </PosPrimaryButton>

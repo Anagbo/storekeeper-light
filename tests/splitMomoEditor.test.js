@@ -100,7 +100,7 @@ test("GH₵60: Cash 20, then MoMo opens the editor at GH₵40; 20 goes to 61 and
   assert.match(await run61And62(app), /send ?GH₵20\.00/);
   assert.equal(app.state.current, POS_ROUTES.SplitPayment);
   view = mount();
-  assert.match(textOf(view.tree), /MoMoGH₵20.00Customer sent · received ✓/);
+  assert.match(textOf(view.tree), /MoMoGH₵20.00StatusReceived ✓/);
   assert.match(textOf(view.tree), /Left to payGH₵20\.00/);
   tileOf(view.tree, "Owe").props.onClick();
   assert.equal(app.state.current, POS_ROUTES.WhoOwesYou);
@@ -189,7 +189,7 @@ test("a direct (you confirmed) MoMo row is locked too: no pencil, no x (wiring 1
   const view = (await mountFor(app))();
   assert.equal(rowOf(view.tree, "MoMo"), undefined, "not tappable");
   assert.equal(removeButton(view.tree, "MoMo"), undefined, "no x");
-  assert.match(textOf(view.tree), /MoMoGH₵20.00Customer sent · received ✓/);
+  assert.match(textOf(view.tree), /MoMoGH₵20.00StatusReceived ✓/);
 });
 
 // ---- 27 and 27 from 19 -----------------------------------------------------------------------------
