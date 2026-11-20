@@ -57,6 +57,20 @@ test("30, receipts on, offline: Send receipt, offline line, Copy receipt, Done, 
   assert.equal(all.filter((node) => /grid-cols-2/.test(cls(node))).length, 0);
 });
 
+test("30: the check circle is 80px (h-20 w-20) on the receipt and on the Sale saved fallback", async () => {
+  setOnline(true);
+  const circles = (tree) => nodes(tree).filter((node) => node.props["data-check-circle"] !== undefined);
+  const receipt = circles((await show({})).tree);
+  const { default: SaleRecorded } = await loadJsx("src/pos/SaleRecorded.jsx", {});
+  const quiet = console.warn; console.warn = () => {};
+  let fallback;
+  try { fallback = circles(render({ type: SaleRecorded, props: { transaction: { id: "bad" }, shopName: "Shop", onDone() {}, onNewSale() {} } }).tree); } finally { console.warn = quiet; }
+  for (const [where, found] of [["receipt", receipt], ["fallback", fallback]]) {
+    assert.equal(found.length, 1, `${where}: one circle`);
+    assert.match(cls(found[0]), /(^|\s)h-20 w-20(\s|$)/, `${where}: 80px`);
+  }
+});
+
 test("30, receipts off: only Done (other) and New sale (main)", async () => {
   setOnline(false);
   const view = await show({});

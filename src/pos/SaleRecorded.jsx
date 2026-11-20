@@ -33,7 +33,7 @@ function SaleSaved({ onDone }) {
   return (
     <PosPage className="flex flex-col gap-3">
       <section className="pt-2 text-center">
-        <div className="mx-auto mb-3 grid h-24 w-24 place-items-center rounded-full bg-emerald-900 text-white">
+        <div data-check-circle="" className="mx-auto mb-3 grid h-20 w-20 place-items-center rounded-full bg-emerald-900 text-white">
           <Check size={56} aria-hidden="true" />
         </div>
         <h1 className="text-2xl font-extrabold">{t("saleRecorded.savedFallback")}</h1>
@@ -71,7 +71,7 @@ export default function SaleRecorded({ transaction, creditResult, shopName, onDo
   return (
     <PosPage className="flex flex-col gap-3">
       <section className="pt-2 text-center">
-        <div className="mx-auto mb-3 grid h-24 w-24 place-items-center rounded-full bg-emerald-900 text-white">
+        <div data-check-circle="" className="mx-auto mb-3 grid h-20 w-20 place-items-center rounded-full bg-emerald-900 text-white">
           <Check size={56} aria-hidden="true" />
         </div>
         <h1 className="text-xl font-bold">{t("saleRecorded.title")}</h1>

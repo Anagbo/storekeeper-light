@@ -242,13 +242,28 @@ test("30 fits without scrolling at 360x740 (receipts on online, receipts off)", 
   }
 });
 
-// Reported to the owner (20 Nov 2026), not fixed: with the receipts flag on AND offline, the offline line adds
-// 48px and New sale ends 9px below the screen at 360x740 (749 of 740). Making it fit needs a change outside this
-// item (a smaller check circle at the top, a lower New sale, or less shell padding).
-test("30 fits without scrolling at 360x740, receipts on and offline", { skip, todo: "New sale ends 9px below the screen (reported)", timeout: 300_000 }, async () => {
-  const { m } = await visit30(CASES_30[1][1], true, 360, 740);
-  const newSale = m.controls.find((c) => c.text === "New sale");
-  assert.ok(newSale.bottom <= m.innerHeight + 0.5, `New sale ends at ${newSale.bottom} of ${m.innerHeight}`);
+// Owner's decision (20 Nov 2026): with the receipts flag on AND offline, New sale ended 9px below the screen at
+// 360x740 (749 of 740), so the check circle at the top of 30 is 16px smaller (80px, every state); nothing else
+// changed. It now fits.
+test("30 fits without scrolling at 360x740, receipts on and offline (80px check circle)", { skip, timeout: 300_000 }, async () => {
+  let circle = null;
+  let result = null;
+  await withEdgeApp({ seeds: SEEDS, env: CASES_30[1][1] }, async (app) => {
+    await app.open("base", 360, 740);
+    await app.send("Network.enable");
+    await app.send("Network.emulateNetworkConditions", { offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+    await app.steps(["^Sell$", "^5$", "^Done"]);
+    await app.shows("New sale$");
+    await sleep(300);
+    result = await app.measure();
+    circle = await app.evaluate(`(() => { const r = document.querySelector("[data-check-circle]").getBoundingClientRect(); return { width: r.width, height: r.height, offline: !!document.querySelector("[data-receipt-offline]"), scrollTop: document.querySelector("[data-page-area]").scrollTop }; })()`);
+    await app.send("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+  });
+  assert.deepEqual([circle.width, circle.height], [80, 80], "the check circle is 80px");
+  assert.equal(circle.offline, true, "the offline line shows");
+  assert.equal(circle.scrollTop, 0);
+  const newSale = result.controls.find((c) => c.text === "New sale");
+  assert.ok(newSale.bottom <= result.innerHeight + 0.5, `New sale ends at ${newSale.bottom} of ${result.innerHeight}`);
 });
 
 // Item 5: no " · " joins two facts in these screens' text. Named exceptions: 30's "Today · {time}" under the
