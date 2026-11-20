@@ -8,20 +8,18 @@ import { loadJsx, render, setLiveQuery, textOf, walk } from "./helpers/renderJsx
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("68: no developer text; the fee is shown through the formatter from configuration", async () => {
+test("68: no developer text; one You pay row through the formatter, no Fee row", async () => {
   assert.match(wiring.screens["68"].rules[0], /No developer placeholder text/);
-  const { PlanPayPhone } = await loadJsx("src/pos/PlanScreens.jsx");
-  const { MOMO_CONFIG } = await import("../src/pos/momoConfig.js");
+  const { PlanPayPhone } = await loadJsx("src/pos/PlanScreens.jsx", { VITE_ENABLE_MOMO_PHONE_REQUEST: "true", VITE_MOMO_PHONE_REQUEST_FEE_PESEWAS: "125" });
   const view = render({ type: PlanPayPhone, props: { onBack() {}, onNavigate() {} } });
   const text = textOf(view.tree);
   assert.doesNotMatch(text, /configuration-driven/);
-  // Wiring 68 "Key-value rows" (16 Nov 2026): rows Fee and You pay (the plan price plus the fee) under the amount.
+  // Wiring 68 "Fee and You pay" (20 Nov 2026): one row, You pay = the plan price; no Fee row, even with a fee set.
   const { PLAN_CONFIG } = await import("../src/pos/planPayments.js");
-  const rowText = (name) => textOf([...walk(view.tree)].find((node) => node.props?.["data-event-detail"] === name));
-  assert.equal(rowText("fee"), `Fee${formatGhs(MOMO_CONFIG.phoneRequestFeePesewas)}`);
-  assert.equal(rowText("you-pay"), `You pay${formatGhs(PLAN_CONFIG.amountPesewas + MOMO_CONFIG.phoneRequestFeePesewas)}`);
+  const rows = [...walk(view.tree)].filter((node) => node.props?.["data-event-detail"] !== undefined && typeof node.type === "string");
+  assert.deepEqual(rows.map((node) => textOf(node)), [`You pay${formatGhs(PLAN_CONFIG.amountPesewas)}`]);
+  assert.doesNotMatch(text, /Fee/);
   assert.doesNotMatch(text, / · /);
-  assert.match(read("src/pos/PlanScreens.jsx"), /`Fee \$\{formatGhs\(MOMO_CONFIG\.phoneRequestFeePesewas\)\}`/);
 });
 
 test("60: no 'Account name will appear after verification' text while nothing verifies names", () => {

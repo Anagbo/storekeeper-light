@@ -96,7 +96,8 @@ const EXPECTED_ROWS = {
   "53 from 29": ["debt", "payment", "due", "paid", "still-needed", "payments-left", "next-payment"],
   "53 from 17": ["debt", "payment", "due", "paid", "still-needed", "payments-left", "next-payment"],
   "56": ["fee", "you-receive"],
-  "68": ["fee", "you-pay"],
+  // 68 (20 Nov 2026): one row, You pay; the Fee row is not shown until the fee decision.
+  "68": ["you-pay"],
   "69": ["plan-runs-to", "paid-by", "status"],
   "64": ["active-until", "days-left"]
 };
