@@ -177,14 +177,14 @@ async function screen30(props) {
 
 test("30 without an earlier balance: \"Juju owes GH₵5.00 from this sale\", no Total owed line", async () => {
   const text = await screen30({ transaction: sale(), creditResult: { previousDebtPesewas: 0, totalDebtPesewas: 500 } });
-  assert.match(text, /Juju owes GH₵5\.00 from this sale/);
+  assert.match(text, /Juju owesfrom this saleGH₵5\.00/);
   assert.doesNotMatch(text, /Total owed/);
   assert.doesNotMatch(text, /still owes/);
 });
 
 test("30 with an earlier balance: one quiet \"Total owed GH₵15.00\" line under it", async () => {
   const text = await screen30({ transaction: sale(), creditResult: { previousDebtPesewas: 1000, totalDebtPesewas: 1500 } });
-  assert.match(text, /Juju owes GH₵5\.00 from this saleTotal owed GH₵15\.00/);
+  assert.match(text, /Juju owesfrom this saleGH₵5\.00Total owed GH₵15\.00/);
   assert.equal(text.match(/Total owed/g).length, 1);
 });
 
@@ -216,6 +216,9 @@ test("displayName: Title Case also capitalises the letter after a hyphen; stored
 test("a hyphenated customer shows Title Case on 30 and the stored name is unchanged", async () => {
   const transaction = sale({ customer_name: "FRIMPOMAA-BOATENG", customerName: "FRIMPOMAA-BOATENG" });
   const text = await screen30({ transaction, creditResult: { previousDebtPesewas: 0, totalDebtPesewas: 500 } });
-  assert.match(text, /Frimpomaa-Boateng owes GH₵5\.00 from this sale/);
+  // Owe line on 30 (17 Nov 2026): the name is cut at 10 characters with an ellipsis.
+  assert.match(text, /Frimpomaa-… owesfrom this saleGH₵5\.00/);
+  const short = await screen30({ transaction: sale({ customer_name: "ama serwaa", customerName: "ama serwaa" }), creditResult: { previousDebtPesewas: 0, totalDebtPesewas: 500 } });
+  assert.match(short, /Ama Serwaa owesfrom this sale/, "10 characters: not cut");
   assert.equal(transaction.customer_name, "FRIMPOMAA-BOATENG");
 });

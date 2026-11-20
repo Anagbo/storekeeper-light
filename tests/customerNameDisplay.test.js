@@ -130,7 +130,7 @@ test("30: \"Junior owes GH₵5.00 from this sale\"", async () => {
     items_json: JSON.stringify([{ name: "Sale", quantity: 1, total_amount: 800 }]), createdAt: Date.now(), timestamp: Date.now()
   };
   const text = textOf(render({ type: SaleRecorded, props: { transaction, shopName: "Shop", onDone() {}, onNewSale() {} } }).tree);
-  assert.match(text, /Junior owes GH₵5.00 from this sale/);
+  assert.match(text, /Junior owesfrom this saleGH₵5.00/);
   assert.doesNotMatch(text, /\bjunior\b/);
   assert.equal(transaction.customer_name, "junior");
 });

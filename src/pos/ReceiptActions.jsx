@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { posText as t } from "./i18n.js";
 import { useOnline } from "./useOnline.js";
 import { copyReceiptText, sendReceipt } from "./receiptShare.js";
+import { PosSecondaryButton } from "./PosComponents.jsx";
 
 const COPIED_MS = 2000;
 
@@ -47,7 +48,17 @@ export function useReceiptActions(text, phone = "") {
   return { online, copied, failed, send, copy };
 }
 
-export function SendReceiptButton({ onClick, disabled = false, label = t("saleRecorded.sendReceipt"), className = "" }) {
+// look="other" (30, "Buttons on 30", 17 Nov 2026): the shared "other" button (PosSecondaryButton), full
+// width; Send receipt keeps its WhatsApp icon. Without it (28, 31) the buttons keep their own looks.
+export function SendReceiptButton({ onClick, disabled = false, label = t("saleRecorded.sendReceipt"), look = "", className = "" }) {
+  if (look === "other") {
+    return (
+      <PosSecondaryButton type="button" data-send-receipt="" onClick={onClick} disabled={disabled} className={`w-full ${className}`}>
+        <WhatsAppIcon size={26} />
+        <span>{label}</span>
+      </PosSecondaryButton>
+    );
+  }
   return (
     <button type="button" onClick={onClick} disabled={disabled} className={`flex h-14 min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-center text-[17px] font-extrabold text-emerald-900 disabled:border-slate-400 disabled:bg-slate-100 disabled:text-slate-600 ${className}`}>
       <WhatsAppIcon size={26} />
@@ -56,7 +67,14 @@ export function SendReceiptButton({ onClick, disabled = false, label = t("saleRe
   );
 }
 
-export function CopyReceiptButton({ onClick, copied, disabled = false, className = "" }) {
+export function CopyReceiptButton({ onClick, copied, disabled = false, look = "", className = "" }) {
+  if (look === "other") {
+    return (
+      <PosSecondaryButton type="button" onClick={onClick} disabled={disabled} className={`w-full ${className}`}>
+        <span aria-live="polite">{copied ? t("receipt.copied") : t("receipt.copy")}</span>
+      </PosSecondaryButton>
+    );
+  }
   return (
     <button type="button" onClick={onClick} disabled={disabled} className={`flex h-12 w-full items-center justify-center rounded-2xl border-2 border-slate-900 bg-white px-3 text-[17px] font-extrabold text-slate-900 disabled:border-slate-400 disabled:text-slate-600 ${className}`}>
       <span aria-live="polite">{copied ? t("receipt.copied") : t("receipt.copy")}</span>

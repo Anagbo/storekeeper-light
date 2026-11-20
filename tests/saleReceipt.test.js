@@ -64,6 +64,8 @@ test("sell result renders split entries like the collection result", () => {
   const source = readFileSync(new URL("../src/pos/SaleRecorded.jsx", import.meta.url), "utf8");
   assert.match(source, /t\("saleRecorded\.method\.cash"\)/);
   assert.match(source, /t\("saleRecorded\.method\.momo"\)/);
-  assert.match(source, /t\("saleRecorded\.owesFromSale", \{ name: displayName\(customerName\)/);
+  // Owe line on 30 (17 Nov 2026): a label-value row, "{Name} owes" over "from this sale".
+  assert.match(source, /t\("saleRecorded\.owesLabel", \{ name: shortName\(displayName\(customerName\)\) \}\)/);
+  assert.match(source, /t\("saleRecorded\.fromThisSale"\)/);
   assert.match(source, /border-t-2 border-dashed border-slate-400/);
 });

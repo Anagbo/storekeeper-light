@@ -234,7 +234,7 @@ test("split, GH₵3.00 cash + GH₵5.00 owed with a plan: 30 shows Cash GH₵3.0
   assert.equal(app.route, "SaleRecorded");
   assertNoScreenError(app);
   assert.match(shown(app), /CashGH₵3\.00/);
-  assert.match(shown(app), /Juju owes GH₵5\.00 from this sale/);
+  assert.match(shown(app), /Juju owesfrom this saleGH₵5\.00/);
   assert.match(shown(app), /Total owed GH₵(?!5\.00)\d/, "earlier balance: one quiet Total owed line");
   assert.doesNotMatch(shown(app), /CashGH₵8\.00/);
   const data = await ledger("Juju");
@@ -270,7 +270,7 @@ test("split, MoMo GH₵3.00 + GH₵5.00 owed: ends on 30 with MoMo and the GH₵
   assertNoScreenError(app);
   assert.match(shown(app), /MoMo[^G]{0,30}GH₵3\.00/, "the MoMo part with its amount");
   assert.doesNotMatch(shown(app), /CashGH₵/, "no cash part");
-  assert.match(shown(app), /Juju owes GH₵5\.00 from this sale/);
+  assert.match(shown(app), /Juju owesfrom this saleGH₵5\.00/);
   const data = await ledger("Juju");
   assert.equal(data.sales.filter((row) => row.amountPesewas === 800).length, 1, "saved once");
   assert.equal(data.balancePesewas, 19620 + 500);
