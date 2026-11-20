@@ -82,8 +82,8 @@ test("73 shows You owe, then every event newest first with its own card", async 
   assert.equal(corrected.dashed, true, "Balance corrected is a dashed card");
   assert.equal(corrected.text, `Balance correctedWas${formatGhs(9000)}New balance${formatGhs(8000)}Time${when(T0 + 5 * DAY)}ReasonWrong amount typed`);
   assert.equal(paid.text, `Paid${formatGhs(1000)}Time${when(T0 + 4 * DAY)}Paid withCash ${formatGhs(600)}, MoMo ${formatGhs(400)}`);
-  assert.equal(noReason.text, `Took on credit${formatGhs(1000)}Time${when(T0 + 3 * DAY)}ReasonNo reason writtenSignatureNot signed`);
-  assert.equal(schoolFees.text, `Took on credit${formatGhs(3000)}Time${when(T0 + 2 * DAY)}ReasonSchool feesSignatureNot signed`);
+  assert.equal(noReason.text, `Took on credit${formatGhs(1000)}Time${when(T0 + 3 * DAY)}ReasonNo reason written`, "GH₵10.00, never signed: no Signature row (threshold_scope)");
+  assert.equal(schoolFees.text, `Took on credit${formatGhs(3000)}Time${when(T0 + 2 * DAY)}ReasonSchool fees`, "GH₵30.00, never signed: no Signature row");
   assert.equal(rice.text, `Took on credit${formatGhs(6000)}Time${when(T0 + DAY)}ReasonRiceSignatureSigned ✓`);
   assert.match(text, /You owe ?GH₵80\.00 ?Nothing can be changed here\./, "the notice is right under You owe");
   assert.doesNotMatch(text, /read only|hand the phone back/i);

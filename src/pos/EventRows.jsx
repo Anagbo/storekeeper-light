@@ -1,3 +1,4 @@
+import { needsSignature } from "../config/features.js";
 import { formatGhs } from "../lib/money.js";
 import { CREDIT_ROW_TYPES, correctionReason, paidParts, rowReason, rowTime } from "./historyRows.js";
 import { posText as t } from "./i18n.js";
@@ -83,9 +84,14 @@ export default function EventRows({ event, creditTitle, signatureAction = null }
         <Details>
           <EventDetail label={t("event.time")} name="time" valueProps={{ "data-when": "" }}>{rowTime(event)}</EventDetail>
           <EventDetail label={t("event.reason")} name="reason" valueProps={{ "data-reason": "" }}>{rowReason(event)}</EventDetail>
-          <EventDetail label={t("event.signature")} name="signature">
-            <SignedTag signed={event.signed} />
-          </EventDetail>
+          {/* rules_global.customer_proof.threshold_scope (17 Nov 2026): the Signature row only when the event
+              is signed or its own amount is at or above the threshold; a small unsigned credit has Time and
+              Reason only, and no Get signature. */}
+          {(event.signed || needsSignature(event.amountPesewas)) && (
+            <EventDetail label={t("event.signature")} name="signature">
+              <SignedTag signed={event.signed} />
+            </EventDetail>
+          )}
         </Details>
         {signatureAction && <div data-signature-action="" className="pt-1">{signatureAction}</div>}
       </Card>

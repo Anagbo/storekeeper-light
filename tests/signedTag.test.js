@@ -26,7 +26,9 @@ const MEASURE = `(frame, win, doc) => [...doc.querySelectorAll("[data-signed]")]
 })`;
 
 test("Signed ✓ and Not signed look the same on 29, 43 and 73 at 340, 360 and 393px", { skip }, async () => {
-  const pages = await proofPages([creditRow("c1", 6000, "Rice", true), creditRow("c2", 3000, "School fees", false)]);
+  // The unsigned credit is at or above the signature threshold: a smaller one has no Signature row at all
+  // (rules_global.customer_proof.threshold_scope, 17 Nov 2026).
+  const pages = await proofPages([creditRow("c1", 6000, "Rice", true), creditRow("c2", 5000, "School fees", false)]);
   const results = measureInFrames({ pages, css: await appCss(), widths: [340, 360, 393], height: 2000, measure: `(f, w, d) => ({ tags: (${MEASURE})(f, w, d) })` });
   assert.equal(results.length, 9);
   const reference = {};
