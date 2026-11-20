@@ -51,20 +51,23 @@ test("K15: screen 65 tags Last used only on the stored last-used method", async 
   assert.match(method, /lastUsed === "momo_direct"/);
 });
 
-test("K15: the 69 line is built from the stored plan payment, never fixed text", () => {
-  const { describePlanPayment } = planPayments;
-  assert.equal(typeof describePlanPayment, "function");
+// Wiring 69 "Key-value rows" (16 Nov 2026): rows Plan runs to (dd/mm/yyyy, never "19 Dec"), Paid by and
+// Status replace the line "Plan runs to 19 Dec · Phone request · MoMo · verified".
+test("K15: the 69 rows are built from the stored plan payment, never fixed text", () => {
+  const { planPaymentRows } = planPayments;
+  assert.equal(typeof planPaymentRows, "function");
   const createdAt = new Date(2026, 10, 19, 10).getTime();
-  assert.equal(describePlanPayment({ method: "momo_paystack", status: "confirmed", createdAt }), "Plan runs to 19/12/2026 · Phone request · MoMo · verified");
-  assert.equal(describePlanPayment({ method: "cash", status: "confirmed", createdAt }), "Plan runs to 19/12/2026 · Cash");
-  assert.equal(describePlanPayment({ method: "momo_direct", status: "confirmed", createdAt }), "Plan runs to 19/12/2026 · Mobile money");
-  assert.equal(describePlanPayment({ method: "momo_paystack", status: "waiting", createdAt }), "", "a waiting payment has no plan period yet");
-  assert.equal(describePlanPayment(undefined), "");
+  const rows = (payment) => planPaymentRows(payment).map(({ label, value }) => [label, value]);
+  assert.deepEqual(rows({ method: "momo_paystack", status: "confirmed", createdAt }), [["Plan runs to", "19/12/2026"], ["Paid by", "MoMo, phone request"], ["Status", "Verified"]]);
+  assert.deepEqual(rows({ method: "momo_direct", status: "confirmed", createdAt }), [["Plan runs to", "19/12/2026"], ["Paid by", "MoMo"], ["Status", "Not verified"]]);
+  assert.deepEqual(rows({ method: "cash", status: "confirmed", createdAt }), [["Plan runs to", "19/12/2026"], ["Paid by", "Cash"], ["Status", "Not verified"]]);
+  assert.deepEqual(rows({ method: "momo_paystack", status: "waiting", createdAt }), [], "a waiting payment has no plan period yet");
+  assert.deepEqual(rows(undefined), []);
 });
 
-test("K15: screen 69 shows describePlanPayment and no fixed confirmation text", () => {
+test("K15: screen 69 shows the plan payment rows and no fixed confirmation text", () => {
   const result = between(planSource, "PlanPaymentResult");
-  assert.match(result, /describePlanPayment\(params\.payment\)/);
+  assert.match(result, /planPaymentRows\(params\.payment\)/);
   assert.doesNotMatch(result, /Plan payment confirmed\./);
   assert.doesNotMatch(result, /Plan runs to 19\/12\/2026|MoMo · verified/);
 });

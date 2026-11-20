@@ -4,6 +4,7 @@ import { formatDate } from "../lib/formatDate.js";
 import { createId } from "../lib/ids.js";
 import { addSubscriptionMonths } from "../lib/subscriptionDates.js";
 import { PLAN_PRICES_PESEWAS } from "../config/plans.js";
+import { posText as t } from "./i18n.js";
 
 const CLIENT_ENV = import.meta.env ?? {};
 
@@ -103,20 +104,21 @@ export async function getPlanLastUsedMethod() {
   return Object.hasOwn(PLAN_METHOD_LABELS, value) ? value : "";
 }
 
-// The 69 line, built from the stored plan payment (K15): "Plan runs to {end} · {method}
-// · {verification}". Only a confirmed payment has a plan period. Only a Paystack phone
-// request is verified; cash and direct MoMo are confirmed by a StoreKeeper agent, so they
-// carry no MoMo verification label. The end date is the payment time plus the plan length.
-export function describePlanPayment(payment) {
-  if (!payment || payment.status !== "confirmed" || !Object.hasOwn(PLAN_METHOD_LABELS, payment.method)) return "";
+// The 69 rows, built from the stored plan payment (K15; wiring 69 "Key-value rows", 16 Nov 2026): "Plan runs
+// to" (dd/mm/yyyy via formatDate, never "19 Dec"), "Paid by" ("MoMo, phone request", "MoMo" or "Cash") and
+// "Status" ("Verified" or "Not verified"). Only a confirmed payment has a plan period: anything else has no rows.
+// Only a Paystack phone request is verified. The end date is the payment time plus the plan length.
+const PLAN_PAID_BY_KEYS = Object.freeze({ cash: "kv.paidByCash", momo_direct: "kv.paidByMomo", momo_paystack: "kv.paidByPhoneRequest" });
+
+export function planPaymentRows(payment) {
+  if (!payment || payment.status !== "confirmed" || !Object.hasOwn(PLAN_PAID_BY_KEYS, payment.method)) return [];
   const paidAt = Number(payment.createdAt);
-  if (!Number.isFinite(paidAt)) return "";
-  const end = formatDate(addSubscriptionMonths(paidAt, PLAN_CONFIG.months));
+  if (!Number.isFinite(paidAt)) return [];
   return [
-    `Plan runs to ${end}`,
-    PLAN_METHOD_LABELS[payment.method],
-    payment.method === "momo_paystack" ? "MoMo · verified" : ""
-  ].filter(Boolean).join(" · ");
+    { name: "plan-runs-to", label: t("kv.planRunsTo"), value: formatDate(addSubscriptionMonths(paidAt, PLAN_CONFIG.months)) },
+    { name: "paid-by", label: t("kv.paidBy"), value: t(PLAN_PAID_BY_KEYS[payment.method]) },
+    { name: "status", label: t("kv.status"), value: t(payment.method === "momo_paystack" ? "kv.verified" : "kv.notVerified") }
+  ];
 }
 
 export async function getPlanPaymentConfiguration() {

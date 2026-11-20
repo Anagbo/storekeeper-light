@@ -3,7 +3,7 @@ import { Banknote, Check, Smartphone } from "lucide-react";
 import { formatDate } from "../lib/formatDate.js";
 import { formatGhs } from "../lib/money.js";
 import { getPreference } from "../db/preferences.js";
-import { appendPlanPayment, createPlanCashCode, describePlanPayment, getPlanLastUsedMethod, getPlanPaymentConfiguration, groupPlanPayments, listPlanPayments, PLAN_CONFIG, planMethodLabel, planStatusLabel } from "./planPayments.js";
+import { appendPlanPayment, createPlanCashCode, getPlanLastUsedMethod, getPlanPaymentConfiguration, groupPlanPayments, listPlanPayments, PLAN_CONFIG, planMethodLabel, planPaymentRows, planStatusLabel } from "./planPayments.js";
 import { MOMO_CONFIG, PHONE_REQUEST_ENABLED } from "./momoConfig.js";
 import { PosCard, PosPage, PosPrimaryButton, PosStatusTag, PosBackButton } from "./PosComponents.jsx";
 import { useBackBlock } from "./browserBack.js";
@@ -148,5 +148,5 @@ export function PlanPayPhone({ onBack, onNavigate }) {
 
 export function PlanPaymentResult({ params = {}, onNavigate }) {
   const waiting = params.state === "waiting";
-  return <PosPage className="flex flex-col gap-3"><h1 className="text-2xl font-extrabold">{waiting ? planStatusLabel("waiting") : "Plan paid"}</h1><PosCard>{waiting ? <><h2 className="text-xl font-extrabold">We have your payment details</h2><p>Waiting for confirmation. Your plan starts when we confirm. You can keep selling.</p></> : <><h2 className="text-2xl font-extrabold text-emerald-900">✓ {formatGhs(params.payment?.amountPesewas ?? PLAN_CONFIG.amountPesewas)} received</h2>{describePlanPayment(params.payment) && <p>{describePlanPayment(params.payment)}</p>}</>}</PosCard><PosPrimaryButton type="button" onClick={() => onNavigate("MyPlan")}> <Check size={24} aria-hidden="true" />Done</PosPrimaryButton></PosPage>;
+  return <PosPage className="flex flex-col gap-3"><h1 className="text-2xl font-extrabold">{waiting ? planStatusLabel("waiting") : "Plan paid"}</h1><PosCard>{waiting ? <><h2 className="text-xl font-extrabold">We have your payment details</h2><p>Waiting for confirmation. Your plan starts when we confirm. You can keep selling.</p></> : <><h2 className="text-2xl font-extrabold text-emerald-900">✓ {formatGhs(params.payment?.amountPesewas ?? PLAN_CONFIG.amountPesewas)} received</h2>{planPaymentRows(params.payment).length > 0 && <KeyValueRows name="plan-paid">{planPaymentRows(params.payment).map((row) => <EventDetail key={row.name} label={row.label} name={row.name}>{row.value}</EventDetail>)}</KeyValueRows>}</>}</PosCard><PosPrimaryButton type="button" onClick={() => onNavigate("MyPlan")}> <Check size={24} aria-hidden="true" />Done</PosPrimaryButton></PosPage>;
 }
