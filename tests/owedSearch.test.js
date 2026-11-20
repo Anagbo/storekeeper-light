@@ -286,3 +286,17 @@ test("17 matches like 32: case and spaces ignored, by name or phone", async () =
   view.rerender();
   assert.equal(choices().length, 5, "spaces only is no search");
 });
+// ---- phone search with a leading 0 (rules_global.phone_search, 4b) --------------------------------------------------------
+
+test("32: 024, 24 and +233 24 find the same person, and 0 or + alone hide nobody", async () => {
+  const view = await openOwed();
+  for (const typed of ["024", "24", "024 123", "+233 24 123 4567", "233241234567", "00233 24 123 4567"]) {
+    type(view, typed);
+    assert.deepEqual(names(view), ["Ama Mensah"], JSON.stringify(typed));
+  }
+  for (const typed of ["0", "+", "233", " "]) {
+    type(view, typed);
+    assert.equal(rowCount(view), 25, `${JSON.stringify(typed)} leaves the list as it is`);
+  }
+  setLiveQuery(null);
+});

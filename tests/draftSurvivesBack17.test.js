@@ -73,3 +73,20 @@ test("17: header Home clears the search; a new sale starts with an empty search"
   await to17(app);
   assert.equal(app.input(SEARCH).props.value, "");
 });
+
+test("17: typing 024 and 24 shows the same person; 0 alone hides nobody (phone search, 4b)", async () => {
+  await db.customers.clear();
+  await db.debts.clear();
+  await recordCreditSale({ name: "Ama", phone: "+233241234567", amountPesewas: 900, now: Date.now() - 86_400_000 });
+  await recordCreditSale({ name: "Juju", phone: "0551112222", amountPesewas: 500, now: Date.now() - 86_400_000 });
+  const app = await open();
+  await to17(app);
+  for (const typed of ["024", "24", "024 123 4567", "+233 24 123"]) {
+    await app.type(SEARCH, typed);
+    assert.match(app.text(), /Ama/, typed);
+    assert.doesNotMatch(app.text(), /Juju/, typed);
+  }
+  await app.type(SEARCH, "0");
+  assert.match(app.text(), /Ama/);
+  assert.match(app.text(), /Juju/);
+});
