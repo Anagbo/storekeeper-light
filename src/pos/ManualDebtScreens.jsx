@@ -11,7 +11,7 @@ import { sendReceipt } from "./receiptShare.js";
 import { useReminderCheck } from "./ReminderCheck.jsx";
 import { isValidInstallmentPlanForBalance, localDateString } from "../utils/installments.js";
 import { OTHER_BUTTON_CLASS, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
-import { EventDetail } from "./EventRows.jsx";
+import { EventDetail, KeyValueRows } from "./EventRows.jsx";
 import { getDebtDueLabel } from "./money.js";
 import { posText as t } from "./i18n.js";
 import { displayName } from "../lib/displayName.js";
@@ -160,56 +160,58 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, o
       <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={continueFlow} />
       {(hasPlanRecord || hasDueDate) && (
         <section className="min-w-0 rounded-3xl border-2 border-emerald-900 bg-green-100 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <strong className="text-lg">{t("manualDebt.existingTerms")}</strong>
-            <button
-              type="button"
-              disabled={!amountValid}
-              className="min-h-11 rounded-xl border-2 border-emerald-900 bg-white px-3 font-extrabold text-emerald-900 disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={() => {
-                if (amountValid) onNavigate("WhenWillTheyPay", { ...params, amountPesewas, note, takenOn });
-              }}
-            >
-              {t("manualDebt.change")}
-            </button>
-          </div>
-          <p className="mt-1 text-base text-slate-800">
-            {t(hasPlanRecord ? "manualDebt.planForDebt" : "manualDebt.dueForDebt", { amount: formatGhs(existingBalancePesewas) })}
-          </p>
+          <strong className="block text-lg">{t("manualDebt.existingTerms")}</strong>
+          {/* Contract 53 existing_terms_card.rows_final (17 Nov 2026): label-value rows like the card on 72, short
+              labels (rules_global.kv_labels), the period only in the Payment value. Debt replaces the line
+              "Plan for the debt of …". The bar sits between Due and Paid. */}
+          <KeyValueRows name="existing-terms" className="mt-1">
+            <EventDetail label={t("kv.debt")} name="debt">{formatGhs(existingBalancePesewas)}</EventDetail>
+            {hasPlan && (
+              <>
+                <EventDetail label={t("kv.payment")} name="payment">{t(`kv.paymentEvery.${frequencyKey}`, { amount: formatGhs(debt.installmentAmount) })}</EventDetail>
+                <EventDetail label={t("kv.due")} name="due">
+                  <span className="inline-flex min-h-8 items-center rounded-xl border-2 border-emerald-900 px-2 font-extrabold text-emerald-950">
+                    {getDebtDueLabel(debt.nextDueDate)}
+                  </span>
+                </EventDetail>
+              </>
+            )}
+            {hasDueDate && <EventDetail label={t("kv.due")} name="due">{existingNextDate}</EventDetail>}
+          </KeyValueRows>
           {hasPlan ? (
             <>
-              <div className="mt-2 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                <p className="min-w-0 truncate text-[clamp(0.9rem,5vw,1.125rem)]">
-                  {t(`manualDebt.every.${frequencyKey}`, { amount: formatGhs(debt.installmentAmount) })}
-                </p>
-                <span className="inline-flex min-h-8 shrink-0 items-center rounded-xl border-2 border-emerald-900 px-2 font-extrabold text-emerald-950">
-                  {getDebtDueLabel(debt.nextDueDate)}
-                </span>
-              </div>
               <div
                 role="progressbar"
-                aria-label={t(`manualDebt.paidThis.${frequencyKey}`, { amount: formatGhs(existingInstallmentCarry) })}
+                aria-label={t("kv.paid")}
                 aria-valuemin={0}
                 aria-valuemax={debt.installmentAmount}
                 aria-valuenow={existingInstallmentCarry}
-                className="mt-2 h-4 overflow-hidden rounded-full border-2 border-emerald-900 bg-white"
+                className="my-2 h-4 overflow-hidden rounded-full border-2 border-emerald-900 bg-white"
               >
                 <div className="h-full bg-emerald-900" style={{ width: `${cycleProgress}%` }} />
               </div>
-              <div className="mt-2 grid min-w-0 grid-cols-1 gap-1 text-sm font-bold sm:grid-cols-2 sm:gap-x-3">
-                <span>{t(`manualDebt.paidThis.${frequencyKey}`, { amount: formatGhs(existingInstallmentCarry) })}</span>
-                <span className="sm:text-right">{t(`manualDebt.stillNeeded.${frequencyKey}`, { amount: formatGhs(existingInstallmentStillNeeded) })}</span>
-              </div>
-              <div className="mt-2 flex flex-wrap justify-between gap-2 font-extrabold">
-                <span>{paymentsLeftNow === 1 ? t("manualDebt.paymentLeftNow") : t("manualDebt.paymentsLeftNow", { count: paymentsLeftNow })}</span>
-                <span>{t("manualDebt.next", { date: existingNextDate })}</span>
-              </div>
+              <KeyValueRows name="existing-progress">
+                <EventDetail label={t("kv.paid")} name="paid">{formatGhs(existingInstallmentCarry)}</EventDetail>
+                <EventDetail label={t("kv.stillNeeded")} name="still-needed">{formatGhs(existingInstallmentStillNeeded)}</EventDetail>
+                <EventDetail label={t("kv.paymentsLeft")} name="payments-left">{paymentsLeftNow}</EventDetail>
+                <EventDetail label={t("kv.nextPayment")} name="next-payment">{existingNextDate}</EventDetail>
+              </KeyValueRows>
             </>
-          ) : hasPlanRecord ? (
+          ) : hasPlanRecord && (
             <p className="mt-2 text-lg font-bold text-rose-950">{t("manualDebt.invalidTerms")}</p>
-          ) : (
-            <p className="mt-2 text-lg">{t("manualDebt.due", { date: existingNextDate })}</p>
           )}
+          {/* Change at the bottom of the card, full width, 52px, the "other" look; disabled until an amount is
+              typed; goes to 18 with the amount and note. */}
+          <PosSecondaryButton
+            type="button"
+            disabled={!amountValid}
+            className="mt-3 w-full"
+            onClick={() => {
+              if (amountValid) onNavigate("WhenWillTheyPay", { ...params, amountPesewas, note, takenOn });
+            }}
+          >
+            {t("manualDebt.change")}
+          </PosSecondaryButton>
         </section>
       )}
       <PosPrimaryButton type="button" disabled={saving || !Number.isSafeInteger(amountPesewas) || amountPesewas <= 0} onClick={continueFlow}>
