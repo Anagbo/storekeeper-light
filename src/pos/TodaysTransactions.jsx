@@ -14,6 +14,8 @@ import { PosBackButton, PosPage } from "./PosComponents.jsx";
 import { createPosTransactionRows, describeTransactionRow, filterPosTransactionRows } from "./transactionFeed.js";
 
 const FILTERS = ["all", "sold", "spent", "credit"];
+// The Spent and Given on credit amounts: 22px bold, smaller only when the tile is too narrow for it.
+const TILE_AMOUNT = "whitespace-nowrap text-[length:min(22px,14.3cqi)] font-extrabold leading-tight";
 
 // Amount colours (wiring 24): money in green with +, spent amber-brown with −, credit-only dark red
 // with no sign (nothing was received).
@@ -128,14 +130,16 @@ export default function TodaysTransactions({ onBack }) {
             <div className="grid grid-cols-2 gap-2">
               {/* Calmer colours (20 Nov 2026): white cards, 2px light grey border, a 6px coloured left edge
                   (amber for Spent, red for Given on credit) like the debt tiles on My money; dark numbers, dark
-                  red only for Given on credit above zero. Never a coloured fill. */}
-              <div data-summary="spent" className="min-w-0 rounded-[18px] border-2 border-l-[6px] border-slate-300 border-l-amber-700 bg-white px-2 py-2 sm:px-3 text-[#0F172A]">
+                  red only for Given on credit above zero. Never a coloured fill. The borders take 8px of the
+                  width, so, like the My money tiles, the amount follows the tile width (22px at most) and
+                  GH₵12,345.00 is never clipped at 340px. */}
+              <div data-summary="spent" className="amount-fit-container min-w-0 rounded-[18px] border-2 border-l-[6px] border-slate-300 border-l-amber-700 bg-white px-1.5 py-2 sm:px-3 text-[#0F172A]">
                 <p className="text-base font-bold">{t("transactions.spent")}</p>
-                <p className="whitespace-nowrap text-[22px] font-extrabold leading-tight">{formatGhs(data.totals.expenses)}</p>
+                <p className={TILE_AMOUNT}>{formatGhs(data.totals.expenses)}</p>
               </div>
-              <div data-summary="given-on-credit" className="min-w-0 rounded-[18px] border-2 border-l-[6px] border-slate-300 border-l-rose-900 bg-white px-2 py-2 sm:px-3 text-[#0F172A]">
+              <div data-summary="given-on-credit" className="amount-fit-container min-w-0 rounded-[18px] border-2 border-l-[6px] border-slate-300 border-l-rose-900 bg-white px-1.5 py-2 sm:px-3 text-[#0F172A]">
                 <p className="text-base font-bold">{t("transactions.givenOnCredit")}</p>
-                <p data-credit-amount="" className={`whitespace-nowrap text-[22px] font-extrabold leading-tight ${data.totals.creditGiven > 0 ? "text-[#7F1D1D]" : ""}`}>{formatGhs(data.totals.creditGiven)}</p>
+                <p data-credit-amount="" className={`${TILE_AMOUNT} ${data.totals.creditGiven > 0 ? "text-[#7F1D1D]" : ""}`}>{formatGhs(data.totals.creditGiven)}</p>
               </div>
             </div>
           </section>
