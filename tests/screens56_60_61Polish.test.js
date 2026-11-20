@@ -53,19 +53,23 @@ async function screen56(env) {
 test("56: no fee text when Phone request is off, and You receive is the full amount", async () => {
   const text = await screen56({});
   assert.doesNotMatch(text, /Fee/);
-  assert.match(text, /You receive GH₵13\.00/);
+  assert.match(text, /You receiveGH₵13\.00/);
 });
 
 test("56: no fee text when the fee is 0 or missing, or the fee is set but Phone request is off", async () => {
   for (const env of [ON(), ON("0"), { VITE_ENABLE_MOMO_PHONE_REQUEST: "false", VITE_MOMO_PHONE_REQUEST_FEE_PESEWAS: "25" }]) {
     const text = await screen56(env);
     assert.doesNotMatch(text, /Fee/, JSON.stringify(env));
-    assert.match(text, /You receive GH₵13\.00/, JSON.stringify(env));
+    assert.match(text, /You receiveGH₵13\.00/, JSON.stringify(env));
   }
 });
 
-test("56: the prototype's line, Fee … · You receive …, shows for a real fee with Phone request on", async () => {
-  assert.match(await screen56(ON("25")), /Fee GH₵0\.25 · You receive GH₵12\.75/);
+// Wiring 56 "Key-value rows" (16 Nov 2026): rows Fee and You receive replace "Fee … · You receive …".
+test("56: rows Fee and You receive show for a real fee with Phone request on", async () => {
+  const text = await screen56(ON("25"));
+  assert.match(text, /FeeGH₵0\.25You receiveGH₵12\.75/);
+  // The green card only: "Saved as MoMo · you confirmed." under the buttons is one method label, not two facts.
+  assert.doesNotMatch(text.slice(0, text.indexOf("Customer’s network")), / · /);
 });
 
 // ---- 61 Phone request tile ---------------------------------------------------------------------

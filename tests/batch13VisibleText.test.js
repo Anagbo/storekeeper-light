@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import wiring from "../src/pos/wiring.json" with { type: "json" };
 import { formatGhs } from "../src/lib/formatGhs.js";
-import { loadJsx, render, setLiveQuery, textOf } from "./helpers/renderJsx.js";
+import { loadJsx, render, setLiveQuery, textOf, walk } from "./helpers/renderJsx.js";
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
@@ -15,7 +15,12 @@ test("68: no developer text; the fee is shown through the formatter from configu
   const view = render({ type: PlanPayPhone, props: { onBack() {}, onNavigate() {} } });
   const text = textOf(view.tree);
   assert.doesNotMatch(text, /configuration-driven/);
-  assert.match(text, new RegExp(`Fee ${formatGhs(MOMO_CONFIG.phoneRequestFeePesewas).replace(".", "\\.")}`));
+  // Wiring 68 "Key-value rows" (16 Nov 2026): rows Fee and You pay (the plan price plus the fee) under the amount.
+  const { PLAN_CONFIG } = await import("../src/pos/planPayments.js");
+  const rowText = (name) => textOf([...walk(view.tree)].find((node) => node.props?.["data-event-detail"] === name));
+  assert.equal(rowText("fee"), `Fee${formatGhs(MOMO_CONFIG.phoneRequestFeePesewas)}`);
+  assert.equal(rowText("you-pay"), `You pay${formatGhs(PLAN_CONFIG.amountPesewas + MOMO_CONFIG.phoneRequestFeePesewas)}`);
+  assert.doesNotMatch(text, / · /);
   assert.match(read("src/pos/PlanScreens.jsx"), /`Fee \$\{formatGhs\(MOMO_CONFIG\.phoneRequestFeePesewas\)\}`/);
 });
 

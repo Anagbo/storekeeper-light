@@ -712,6 +712,9 @@ const ENGLISH = Object.freeze({
   "kv.paid": "Paid",
   "kv.stillNeeded": "Still needed",
   "kv.paymentsLeft": "Payments left",
+  "kv.fee": "Fee",
+  "kv.youReceive": "You receive",
+  "kv.youPay": "You pay",
   // "1 of 3": payments made of all the plan's payments.
   "kv.countOf": "{done} of {total}",
   // The payment frequency after the amount (decided 17 Nov 2026): "GH₵2.00 weekly".
