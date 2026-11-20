@@ -35,12 +35,14 @@ function planStatus(expiry, trialActive, trialExpiry) {
   const today = startOfToday();
   if (Number.isFinite(time) && time >= today + 86400000) {
     const days = daysLeft(expiry);
-    return { kind: "active", label: "Active", tone: "green", line: `Active until ${formatDate(expiry)} · ${days} ${days === 1 ? "day" : "days"} left` };
+    // Wiring 64 "Key-value rows" (16 Nov 2026): rows Active until (dd/mm/yyyy) and Days left (a number).
+    return { kind: "active", label: "Active", tone: "green", rows: [{ name: "active-until", label: t("kv.activeUntil"), value: formatDate(expiry) }, { name: "days-left", label: t("kv.daysLeft"), value: String(days) }] };
   }
   if (Number.isFinite(time) && time >= today) return { kind: "due", label: "Due today", tone: "amber", line: "Due today" };
   if (trialActive && Number.isFinite(Date.parse(trialExpiry))) {
     const days = Math.max(1, daysLeft(trialExpiry));
-    return { kind: "trial", label: "Trial", tone: "neutral", line: `Trial · ${days} ${days === 1 ? "day" : "days"} left` };
+    // The Trial tag is on the card header; the days left are a row, like the active plan.
+    return { kind: "trial", label: "Trial", tone: "neutral", rows: [{ name: "days-left", label: t("kv.daysLeft"), value: String(days) }] };
   }
   return {
     kind: "ended",
@@ -66,7 +68,10 @@ export function MyPlan({
     <PosCard className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3"><h2 className="text-xl font-extrabold">Shop plan</h2><PosStatusTag tone={status.tone}>{status.label}</PosStatusTag></div>
       <p className="flex items-baseline gap-2"><span className="text-4xl font-extrabold">{formatGhs(PLAN_CONFIG.amountPesewas)}</span><span className="text-base font-semibold">a month</span></p>
-      <p className={`text-base font-bold ${status.kind === "active" ? "text-emerald-900" : "text-slate-800"}`}>{status.line}</p>
+      {/* Late or ended, and Due today, keep their existing wording (rule on 64). */}
+      {status.rows
+        ? <KeyValueRows name="plan-status">{status.rows.map((row) => <EventDetail key={row.name} label={row.label} name={row.name}>{row.value}</EventDetail>)}</KeyValueRows>
+        : <p className="text-base font-bold text-slate-800">{status.line}</p>}
       {status.kind !== "ended" && <p className="text-sm">Your sales and records stay safe if a payment is late.</p>}
       <PosPrimaryButton type="button" onClick={() => onNavigate("PlanPayMethod")} className="mt-1 h-14 min-h-0">Pay now</PosPrimaryButton>
     </PosCard>

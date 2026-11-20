@@ -346,11 +346,11 @@ test("64: My plan has no View subscription or Subscribe button and no pop-up; Pa
   const { MyPlan } = await loadJsx("src/pos/PlanScreens.jsx");
   const base = { expiry: "", onBack() {}, onNavigate() {} };
   const on = render({ type: MyPlan, props: { ...base, subscriptionExpiry: "2026-12-05T00:00:00.000Z", subscriptionEnabled: true, hasActiveSubscription: true } });
-  assert.match(textOf(on.tree), /Active until 05\/12\/2026/);
+  assert.match(textOf(on.tree), /Active until05\/12\/2026/, "the Active until row (Key-value rows, 16 Nov 2026)");
   assert.doesNotMatch(textOf(on.tree), /View subscription|Subscribe|Paystack/);
   assert.ok(findButton(on.tree, "Pay now"));
   const trial = render({ type: MyPlan, props: { ...base, trialActive: true, trialExpiry: new Date(Date.now() + 5 * 86400000).toISOString() } });
-  assert.match(textOf(trial.tree), /Trial · 5 days left/);
+  assert.match(textOf(trial.tree), /Trial.*Days left5/, "the Trial tag and the Days left row");
   assert.doesNotMatch(textOf(trial.tree), /Subscribe/);
   assert.doesNotMatch(read("src/pos/PosApp.jsx"), /SubscriptionModal|onOpenSubscription/);
 });
