@@ -113,7 +113,10 @@ function PaymentMethodPicker({ value, onChange, onSplit, splitDisabled = false }
           </button>
         ))}
         {/* open_text_sweep (17 Nov 2026): "+ Split payment" adds a second way to pay, so it is the add look. */}
-        <AddButton disabled={splitDisabled} onClick={onSplit} className="min-h-14 flex-col gap-0.5! overflow-hidden px-1! text-xs! sm:min-h-16 sm:px-2! sm:text-base! [&>span:first-child]:text-xl!">
+        {/* split_icons (20 Nov 2026): the tile keeps the joined Cash + MoMo icons (the plus signs between them),
+            with no separate "+" before the label; Owe cannot be part of a collection split. */}
+        <AddButton plus={false} disabled={splitDisabled} onClick={onSplit} aria-label={t("collect.splitPayment")} data-split-tile="" className="min-h-14 flex-col gap-0.5! overflow-hidden px-1! text-xs! sm:min-h-16 sm:gap-1! sm:px-2! sm:text-base!">
+          <SplitIcons size={16} />
           <span className="w-full min-w-0 truncate text-center">{t("collect.splitPayment")}</span>
         </AddButton>
       </div>

@@ -123,7 +123,8 @@ const ACTIONS = [
   ["Leave draft: Leave (leave)", "LeaveDraftDialog.jsx", "LeaveButton", /onClick=\{onLeave\}/, /t\("leaveDraft\.leave"\)/],
   ["15 Split (other, with its icon)", "Sell.jsx", "PosSecondaryButton", /aria-label=\{t\("sell\.split"\)\}/, /<SplitIcons withOwe/],
   ["55 Split (other, with its icon)", "ReviewAndPay.jsx", "PosSecondaryButton", /data-split-55=""/, /<SplitIcons withOwe[\s\S]*t\("review\.split"\)/],
-  ["25 + Split payment", "DebtCollection.jsx", "AddButton", /onClick=\{onSplit\}/, /t\("collect\.splitPayment"\)/],
+  // split_icons (20 Nov 2026): the dashed tile keeps its joined icons, so the children now start with <SplitIcons>.
+  ["25 Split payment (dashed, joined icons, no +)", "DebtCollection.jsx", "AddButton", /plus=\{false\}[\s\S]*onClick=\{onSplit\}/, /<SplitIcons size=\{16\} \/>[\s\S]*t\("collect\.splitPayment"\)/],
   // rules_global.button_system.danger: the shared variant, never a screen's own red outline.
   ["28 Undo (danger)", "DebtCollection.jsx", "PosSecondaryButton", /tone="danger"/, /t\("collect\.undo"\)/],
   ["40 Delete (danger)", "ItemScreens.jsx", "PosSecondaryButton", /tone="danger"/, /t\("items\.delete"\)/],
