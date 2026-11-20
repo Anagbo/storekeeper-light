@@ -3,12 +3,12 @@ import assert from "node:assert/strict";
 import { after, test } from "node:test";
 import { db } from "../src/db/db.js";
 import { recordReminderSent } from "../src/db/reminders.js";
-import { formatLastReminder } from "../src/pos/reminderLabel.js";
+import { lastReminderValue } from "../src/pos/reminderLabel.js";
 import { loadJsx, render, setLiveQuery, textOf, walk } from "./helpers/renderJsx.js";
 
-// Wiring 29/43 "Last reminder line": under the action buttons and above Correct balance,
-// "Last reminder: today 14:05", "yesterday 14:05" or "dd/mm/yyyy HH:mm" (24-hour), "No reminder sent
-// yet" when none. Per person. Never says delivered.
+// Wiring 29/43 "Last reminder line", now a "Last reminder" row (Key-value rows, 16 Nov 2026; was the line
+// "Last reminder: …"): under the action buttons and above Correct balance, the value "today 14:05",
+// "yesterday 14:05" or "dd/mm/yyyy HH:mm" (24-hour); no row when none (rule on 43). Per person. Never says delivered.
 
 after(async () => {
   setLiveQuery(null);
@@ -24,19 +24,19 @@ const dayOffset = (days) => {
 
 test("wording: today, yesterday, an older date, and none", () => {
   const now = new Date(2026, 10, 15, 16, 0);
-  assert.equal(formatLastReminder(new Date(2026, 10, 15, 14, 5).getTime(), now), "Last reminder: today 14:05");
-  assert.equal(formatLastReminder(new Date(2026, 10, 14, 23, 59).getTime(), now), "Last reminder: yesterday 23:59");
-  assert.equal(formatLastReminder(new Date(2026, 10, 13, 9, 3).getTime(), now), "Last reminder: 13/11/2026 09:03");
-  assert.equal(formatLastReminder(new Date(2026, 0, 2, 0, 0).getTime(), now), "Last reminder: 02/01/2026 00:00");
-  assert.equal(formatLastReminder(0, now), "No reminder sent yet");
-  assert.equal(formatLastReminder(undefined, now), "No reminder sent yet");
-  assert.equal(formatLastReminder("14:05", now), "No reminder sent yet");
+  assert.equal(lastReminderValue(new Date(2026, 10, 15, 14, 5).getTime(), now), "today 14:05");
+  assert.equal(lastReminderValue(new Date(2026, 10, 14, 23, 59).getTime(), now), "yesterday 23:59");
+  assert.equal(lastReminderValue(new Date(2026, 10, 13, 9, 3).getTime(), now), "13/11/2026 09:03");
+  assert.equal(lastReminderValue(new Date(2026, 0, 2, 0, 0).getTime(), now), "02/01/2026 00:00");
+  assert.equal(lastReminderValue(0, now), "", "no reminder: no row");
+  assert.equal(lastReminderValue(undefined, now), "", "no reminder: no row");
+  assert.equal(lastReminderValue("14:05", now), "", "no reminder: no row");
 });
 
 test("the wording never says delivered, sent to the customer or read", () => {
   const now = new Date(2026, 10, 15, 16, 0);
   for (const at of [0, new Date(2026, 10, 15, 1).getTime(), new Date(2026, 10, 14, 1).getTime(), new Date(2026, 9, 1).getTime()]) {
-    assert.doesNotMatch(formatLastReminder(at, now), /deliver|received|read|seen/i);
+    assert.doesNotMatch(lastReminderValue(at, now), /deliver|received|read|seen/i);
   }
 });
 
@@ -64,16 +64,20 @@ for (const late of [false, true]) {
       const actions = nodes.find((node) => node.props?.["data-row"] === "debtor-actions");
       const correct = nodes.find((node) => node.type === "button" && textOf(node).includes("Correct balance"));
       assert.ok(line && actions && correct);
-      assert.equal(textOf(line), formatLastReminder(at));
+      // Wiring 29/43/54 "Key-value rows" (16 Nov 2026): a "Last reminder" row, the value like "today 14:05".
+      assert.equal(textOf(line), lastReminderValue(at));
+      const row = nodes.find((node) => node.props?.["data-event-detail"] === "last-reminder");
+      assert.equal(textOf(row), `Last reminder${lastReminderValue(at)}`, "label left, value right");
       assert.ok(nodes.indexOf(actions) < nodes.indexOf(line), "under the action buttons");
       assert.ok(nodes.indexOf(line) < nodes.indexOf(correct), "above Correct balance");
       assert.equal(nodes.filter((node) => /Last reminder|No reminder/.test(typeof node.props?.children === "string" ? node.props.children : "")).length, 1, "shown once");
     });
   }
-  test(`${late ? 43 : 29}: No reminder sent yet when none was recorded`, async () => {
+  test(`${late ? 43 : 29}: no Last reminder row when none was recorded`, async () => {
     const view = await detail(detailData({ late, lastReminderAt: 0 }));
-    const line = [...walk(view.tree)].find((node) => node.props?.["data-last-reminder"] !== undefined);
-    assert.equal(textOf(line), "No reminder sent yet");
+    const nodes = [...walk(view.tree)];
+    assert.equal(nodes.find((node) => node.props?.["data-last-reminder"] !== undefined), undefined);
+    assert.doesNotMatch(textOf(view.tree), /Last reminder|No reminder sent yet/);
   });
 }
 
