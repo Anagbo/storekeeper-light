@@ -82,7 +82,7 @@ test("24: the person chip is pink only when it says someone owes; Payment collec
   assert.match(cls(owes), /bg-\[#FECDD3\]/, "owes: pink");
   assert.equal(paid.props["data-owes"], "false");
   assert.doesNotMatch(cls(paid), /FECDD3|rose|pink/, "paid only: not pink");
-  for (const part of ["border-2", "border-[#64748B]", "bg-white"]) assert.ok(cls(paid).split(/\s+/).includes(part), `paid chip: ${part}`);
+  for (const part of ["border-2", "border-slate-500", "bg-white"]) assert.ok(cls(paid).split(/\s+/).includes(part), `paid chip: ${part}`);
   assert.ok(all(paid, (node) => typeof node.type === "function" || node.type === "svg").length > 0, "the small person icon stays");
   // Payment chips are unchanged.
   const payment = all(tree, (node) => node.type === "span" && node.props["data-chip"] === "payment")[0];
@@ -111,7 +111,7 @@ test("24: contrast of the new text and edges on white", () => {
   for (const [what, colour] of [["dark numbers and labels #0F172A", "#0F172A"], ["Given on credit #7F1D1D", "#7F1D1D"], ["neutral chip text #0F172A", "#0F172A"]]) {
     assert.ok(onWhite(colour) >= 4.5, `${what}: ${onWhite(colour).toFixed(2)}:1`);
   }
-  for (const [what, colour] of [["amber edge (amber-700 #B45309)", "#B45309"], ["red edge (rose-900 #881337)", "#881337"], ["chip outline #64748B", "#64748B"]]) {
+  for (const [what, colour] of [["amber edge (amber-700 #B45309)", "#B45309"], ["red edge (rose-900 #881337)", "#881337"], ["chip outline slate-500 (about #62748E)", "#62748E"]]) {
     assert.ok(onWhite(colour) >= 3, `${what}: ${onWhite(colour).toFixed(2)}:1`);
   }
 });

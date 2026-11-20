@@ -32,7 +32,7 @@ const AMOUNT_TONES = {
 const CHIP_STYLES = {
   payment: "py-0.5 bg-[#CBD5E1] text-[#0F172A]",
   person: "py-0.5 bg-[#FECDD3] text-[#0F172A]",
-  personNeutral: "border-2 border-[#64748B] bg-white py-0 text-[#0F172A]",
+  personNeutral: "border-2 border-slate-500 bg-white py-0 text-[#0F172A]",
   category: "py-0.5 bg-[#FDE68A] text-[#0F172A]",
   reason: "py-0.5 bg-[#CBD5E1] text-[#0F172A]",
   credit: "py-0.5 bg-rose-100 text-rose-950"
@@ -132,7 +132,7 @@ export default function TodaysTransactions({ onBack }) {
                   (amber for Spent, red for Given on credit) like the debt tiles on My money; dark numbers, dark
                   red only for Given on credit above zero. Never a coloured fill. The borders take 8px of the
                   width, so, like the My money tiles, the amount follows the tile width (22px at most) and
-                  GH₵12,345.00 is never clipped at 340px. */}
+                  a five-digit cedi amount is never clipped at 340px. */}
               <div data-summary="spent" className="amount-fit-container min-w-0 rounded-[18px] border-2 border-l-[6px] border-slate-300 border-l-amber-700 bg-white px-1.5 py-2 sm:px-3 text-[#0F172A]">
                 <p className="text-base font-bold">{t("transactions.spent")}</p>
                 <p className={TILE_AMOUNT}>{formatGhs(data.totals.expenses)}</p>
