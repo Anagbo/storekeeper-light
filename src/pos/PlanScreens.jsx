@@ -3,10 +3,12 @@ import { Banknote, Check, Smartphone } from "lucide-react";
 import { formatDate } from "../lib/formatDate.js";
 import { formatGhs } from "../lib/money.js";
 import { getPreference } from "../db/preferences.js";
-import { appendPlanPayment, createPlanCashCode, describePlanPayment, getPlanLastUsedMethod, getPlanPaymentConfiguration, groupPlanPayments, listPlanPayments, PLAN_CONFIG, planMethodLabel, planStatusLabel } from "./planPayments.js";
+import { appendPlanPayment, createPlanCashCode, getPlanLastUsedMethod, getPlanPaymentConfiguration, groupPlanPayments, listPlanPayments, PLAN_CONFIG, planMethodLabel, planPaymentRows, planStatusLabel } from "./planPayments.js";
 import { MOMO_CONFIG, PHONE_REQUEST_ENABLED } from "./momoConfig.js";
 import { PosCard, PosPage, PosPrimaryButton, PosStatusTag, PosBackButton } from "./PosComponents.jsx";
 import { useBackBlock } from "./browserBack.js";
+import { EventDetail, KeyValueRows } from "./EventRows.jsx";
+import { posText as t } from "./i18n.js";
 
 const NETWORKS = ["MTN", "Telecel", "AirtelTigo"];
 
@@ -33,12 +35,14 @@ function planStatus(expiry, trialActive, trialExpiry) {
   const today = startOfToday();
   if (Number.isFinite(time) && time >= today + 86400000) {
     const days = daysLeft(expiry);
-    return { kind: "active", label: "Active", tone: "green", line: `Active until ${formatDate(expiry)} · ${days} ${days === 1 ? "day" : "days"} left` };
+    // Wiring 64 "Key-value rows" (16 Nov 2026): rows Active until (dd/mm/yyyy) and Days left (a number).
+    return { kind: "active", label: "Active", tone: "green", rows: [{ name: "active-until", label: t("kv.activeUntil"), value: formatDate(expiry) }, { name: "days-left", label: t("kv.daysLeft"), value: String(days) }] };
   }
   if (Number.isFinite(time) && time >= today) return { kind: "due", label: "Due today", tone: "amber", line: "Due today" };
   if (trialActive && Number.isFinite(Date.parse(trialExpiry))) {
     const days = Math.max(1, daysLeft(trialExpiry));
-    return { kind: "trial", label: "Trial", tone: "neutral", line: `Trial · ${days} ${days === 1 ? "day" : "days"} left` };
+    // The Trial tag is on the card header; the days left are a row, like the active plan.
+    return { kind: "trial", label: "Trial", tone: "neutral", rows: [{ name: "days-left", label: t("kv.daysLeft"), value: String(days) }] };
   }
   return {
     kind: "ended",
@@ -64,7 +68,10 @@ export function MyPlan({
     <PosCard className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3"><h2 className="text-xl font-extrabold">Shop plan</h2><PosStatusTag tone={status.tone}>{status.label}</PosStatusTag></div>
       <p className="flex items-baseline gap-2"><span className="text-4xl font-extrabold">{formatGhs(PLAN_CONFIG.amountPesewas)}</span><span className="text-base font-semibold">a month</span></p>
-      <p className={`text-base font-bold ${status.kind === "active" ? "text-emerald-900" : "text-slate-800"}`}>{status.line}</p>
+      {/* Late or ended, and Due today, keep their existing wording (rule on 64). */}
+      {status.rows
+        ? <KeyValueRows name="plan-status">{status.rows.map((row) => <EventDetail key={row.name} label={row.label} name={row.name}>{row.value}</EventDetail>)}</KeyValueRows>
+        : <p className="text-base font-bold text-slate-800">{status.line}</p>}
       {status.kind !== "ended" && <p className="text-sm">Your sales and records stay safe if a payment is late.</p>}
       <PosPrimaryButton type="button" onClick={() => onNavigate("PlanPayMethod")} className="mt-1 h-14 min-h-0">Pay now</PosPrimaryButton>
     </PosCard>
@@ -141,10 +148,10 @@ export function PlanPayPhone({ onBack, onNavigate }) {
   const [number, setNumber] = useState("");
   const { saving, save, errorMessage } = useSavePlanPayment(onNavigate);
   useEffect(() => { getPreference("momoReceivingNumber", "").then(setNumber).catch((error) => console.error("Could not load MoMo number.", error)); }, []);
-  return <PosPage className="flex flex-col gap-3"><BackTitle title="Phone request" onBack={onBack} /><p className="text-2xl font-extrabold">{formatGhs(PLAN_CONFIG.amountPesewas)}</p><p className="font-semibold">{`Fee ${formatGhs(MOMO_CONFIG.phoneRequestFeePesewas)}`}</p><fieldset><legend className="font-bold">Your network</legend><div className="grid grid-cols-3 gap-2">{NETWORKS.map((item) => <button key={item} type="button" aria-label={`Network ${item}`} aria-pressed={network === item} onClick={() => setNetwork(item)} className={`min-h-14 rounded-xl border-2 font-bold ${network === item ? "border-emerald-900 bg-green-200" : "border-slate-700 bg-white"}`}>Network {item}</button>)}</div></fieldset><label className="font-bold">Your MoMo number<input value={number} onChange={(event) => setNumber(event.target.value)} className="mt-1 h-14 w-full rounded-xl border-2 border-slate-700 px-3 text-xl" /></label>{errorMessage}<PosPrimaryButton type="button" disabled={!PHONE_REQUEST_ENABLED || !number.trim() || saving} onClick={() => void save({ method: "momo_paystack" })}>Send request</PosPrimaryButton><p className="text-sm">Each month you get a new request. It does not renew by itself.</p></PosPage>;
+  return <PosPage className="flex flex-col gap-3"><BackTitle title="Phone request" onBack={onBack} /><p className="text-2xl font-extrabold">{formatGhs(PLAN_CONFIG.amountPesewas)}</p>{/* Wiring 68 "Key-value rows" (16 Nov 2026): rows Fee and You pay (the plan price plus the fee) under the amount. */}<KeyValueRows name="plan-fee"><EventDetail label={t("kv.fee")} name="fee">{formatGhs(MOMO_CONFIG.phoneRequestFeePesewas)}</EventDetail><EventDetail label={t("kv.youPay")} name="you-pay">{formatGhs(PLAN_CONFIG.amountPesewas + MOMO_CONFIG.phoneRequestFeePesewas)}</EventDetail></KeyValueRows><fieldset><legend className="font-bold">Your network</legend><div className="grid grid-cols-3 gap-2">{NETWORKS.map((item) => <button key={item} type="button" aria-label={`Network ${item}`} aria-pressed={network === item} onClick={() => setNetwork(item)} className={`min-h-14 rounded-xl border-2 font-bold ${network === item ? "border-emerald-900 bg-green-200" : "border-slate-700 bg-white"}`}>Network {item}</button>)}</div></fieldset><label className="font-bold">Your MoMo number<input value={number} onChange={(event) => setNumber(event.target.value)} className="mt-1 h-14 w-full rounded-xl border-2 border-slate-700 px-3 text-xl" /></label>{errorMessage}<PosPrimaryButton type="button" disabled={!PHONE_REQUEST_ENABLED || !number.trim() || saving} onClick={() => void save({ method: "momo_paystack" })}>Send request</PosPrimaryButton><p className="text-sm">Each month you get a new request. It does not renew by itself.</p></PosPage>;
 }
 
 export function PlanPaymentResult({ params = {}, onNavigate }) {
   const waiting = params.state === "waiting";
-  return <PosPage className="flex flex-col gap-3"><h1 className="text-2xl font-extrabold">{waiting ? planStatusLabel("waiting") : "Plan paid"}</h1><PosCard>{waiting ? <><h2 className="text-xl font-extrabold">We have your payment details</h2><p>Waiting for confirmation. Your plan starts when we confirm. You can keep selling.</p></> : <><h2 className="text-2xl font-extrabold text-emerald-900">✓ {formatGhs(params.payment?.amountPesewas ?? PLAN_CONFIG.amountPesewas)} received</h2>{describePlanPayment(params.payment) && <p>{describePlanPayment(params.payment)}</p>}</>}</PosCard><PosPrimaryButton type="button" onClick={() => onNavigate("MyPlan")}> <Check size={24} aria-hidden="true" />Done</PosPrimaryButton></PosPage>;
+  return <PosPage className="flex flex-col gap-3"><h1 className="text-2xl font-extrabold">{waiting ? planStatusLabel("waiting") : "Plan paid"}</h1><PosCard>{waiting ? <><h2 className="text-xl font-extrabold">We have your payment details</h2><p>Waiting for confirmation. Your plan starts when we confirm. You can keep selling.</p></> : <><h2 className="text-2xl font-extrabold text-emerald-900">✓ {formatGhs(params.payment?.amountPesewas ?? PLAN_CONFIG.amountPesewas)} received</h2>{planPaymentRows(params.payment).length > 0 && <KeyValueRows name="plan-paid">{planPaymentRows(params.payment).map((row) => <EventDetail key={row.name} label={row.label} name={row.name}>{row.value}</EventDetail>)}</KeyValueRows>}</>}</PosCard><PosPrimaryButton type="button" onClick={() => onNavigate("MyPlan")}> <Check size={24} aria-hidden="true" />Done</PosPrimaryButton></PosPage>;
 }

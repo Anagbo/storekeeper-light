@@ -1,3 +1,4 @@
+import { needsSignature } from "../config/features.js";
 import { formatGhs } from "../lib/money.js";
 import { CREDIT_ROW_TYPES, correctionReason, paidParts, rowReason, rowTime } from "./historyRows.js";
 import { posText as t } from "./i18n.js";
@@ -32,17 +33,32 @@ function TitleRow({ title, amount, amountClass }) {
   );
 }
 
-export function EventDetail({ label, name, valueProps, children }) {
+// The shared label-value row (wiring "Key-value rows", 16 Nov 2026): used by the What happened cards and by
+// the summaries on 29, 43, 54, 56, 64, 68 and 69. Label grey and regular on the left (never wraps), value
+// bold on the right (wraps inside its own column), a thin line above each row. `tone="onDark"` is the light-on-dark variant for
+// the green card on 56: white text, the line in white at about 35% opacity.
+const ROW_TONES = {
+  light: { row: "border-slate-300", label: "text-slate-700" },
+  onDark: { row: "border-white/35", label: "text-white" }
+};
+
+export function EventDetail({ label, name, valueProps, tone = "light", children }) {
+  const colours = ROW_TONES[tone] ?? ROW_TONES.light;
   return (
-    <div data-event-detail={name} className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-3 border-t border-slate-300 py-1.5 last:pb-0">
-      <dt className="whitespace-nowrap font-normal text-slate-700">{label}</dt>
+    <div data-event-detail={name} className={`grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-3 border-t ${colours.row} py-1.5 last:pb-0`}>
+      <dt className={`whitespace-nowrap font-normal ${colours.label}`}>{label}</dt>
       <dd {...valueProps} className="min-w-0 text-right font-bold [overflow-wrap:anywhere]">{children}</dd>
     </div>
   );
 }
 
+// The block that holds the rows (a description list). 18px like the card on 72.
+export function KeyValueRows({ name, className = "", children, ...rest }) {
+  return <dl {...rest} data-kv-rows={name} className={["flex min-w-0 flex-col text-lg", className].filter(Boolean).join(" ")}>{children}</dl>;
+}
+
 function Details({ children }) {
-  return <dl data-event-details="" className="flex min-w-0 flex-col text-lg">{children}</dl>;
+  return <KeyValueRows data-event-details="">{children}</KeyValueRows>;
 }
 
 // `signatureAction`: 29/43 "Get signature" (wiring "Signature row and Get signature", 17 Nov 2026): on its
@@ -83,9 +99,14 @@ export default function EventRows({ event, creditTitle, signatureAction = null }
         <Details>
           <EventDetail label={t("event.time")} name="time" valueProps={{ "data-when": "" }}>{rowTime(event)}</EventDetail>
           <EventDetail label={t("event.reason")} name="reason" valueProps={{ "data-reason": "" }}>{rowReason(event)}</EventDetail>
-          <EventDetail label={t("event.signature")} name="signature">
-            <SignedTag signed={event.signed} />
-          </EventDetail>
+          {/* rules_global.customer_proof.threshold_scope (17 Nov 2026): the Signature row only when the event
+              is signed or its own amount is at or above the threshold; a small unsigned credit has Time and
+              Reason only, and no Get signature. */}
+          {(event.signed || needsSignature(event.amountPesewas)) && (
+            <EventDetail label={t("event.signature")} name="signature">
+              <SignedTag signed={event.signed} />
+            </EventDetail>
+          )}
         </Details>
         {signatureAction && <div data-signature-action="" className="pt-1">{signatureAction}</div>}
       </Card>

@@ -22,13 +22,14 @@ export function reminderWhen(lastReminderAt, now = new Date()) {
   };
 }
 
-// The Last reminder line on 29/43 (and the wide detail pane D3).
-export function formatLastReminder(lastReminderAt, now = new Date()) {
+// The value of the "Last reminder" row on 29, 43 and 54 (wiring "Key-value rows", 16 Nov 2026): "today 14:05",
+// "yesterday 14:05" or "dd/mm/yyyy HH:mm". "" with no reminder: then there is no row at all.
+export function lastReminderValue(lastReminderAt, now = new Date()) {
   const when = reminderWhen(lastReminderAt, now);
-  if (!when) return t("collect.noReminderYet");
-  if (when.day === "today") return t("collect.lastReminderToday", { time: when.time });
-  if (when.day === "yesterday") return t("collect.lastReminderYesterday", { time: when.time });
-  return t("collect.lastReminderOn", { date: when.date, time: when.time });
+  if (!when) return "";
+  if (when.day === "today") return t("kv.reminderToday", { time: when.time });
+  if (when.day === "yesterday") return t("kv.reminderYesterday", { time: when.time });
+  return t("kv.reminderOn", { date: when.date, time: when.time });
 }
 
 // The shared 7-day check (rules_global.reminders): a reminder to this person recorded less than

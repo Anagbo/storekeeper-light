@@ -188,7 +188,10 @@ test("64: one plan card shows Shop plan, the status tag, a large price with a mo
   assert.match(text, /Active/);
   assert.match(text, /GH₵\d+\.\d{2}/);
   assert.match(text, /a month/);
-  assert.ok(text.includes(`Active until ${dmy(expiry)} · 12 days left`), "status line with date and days left");
+  // Wiring 64 "Key-value rows" (16 Nov 2026): rows Active until and Days left replace "Active until … · 12 days left".
+  const rows = nodes(view).filter((node) => node.props?.["data-event-detail"] !== undefined).map((node) => [node.props["data-event-detail"], textOf(node)]);
+  assert.deepEqual(rows, [["active-until", `Active until${dmy(expiry)}`], ["days-left", "Days left12"]], "rows with the date and the days left");
+  assert.doesNotMatch(text, / · /);
   assert.match(text, /Your sales and records stay safe if a payment is late\./);
   assert.doesNotMatch(text, /Your monthly subscription is active/, "the duplicate line is gone");
   const cards = nodes(view).filter((node) => typeof node.type === "function" && node.type.name === "PosCard");
@@ -209,11 +212,12 @@ test("64: Pay now is the solid green 56px button and the only button; no View su
   }
 });
 
-test("64: status line by state (active, trial, due today, ended, no plan); Pay now in every state; never red", async () => {
+// Active and Trial show rows (Key-value rows, 16 Nov 2026); Due today and an ended plan keep their wording.
+test("64: status by state (active, trial, due today, ended, no plan); Pay now in every state; never red", async () => {
   const ended = iso(-9);
   const cases = [
-    [{ expiry: iso(12) }, /Active until .* · 12 days left/, "green"],
-    [{ expiry: "", trialActive: true, trialExpiry: iso(5) }, /Trial · 5 days left/, "neutral"],
+    [{ expiry: iso(12) }, /Active until\d\d\/\d\d\/\d{4}Days left12/, "green"],
+    [{ expiry: "", trialActive: true, trialExpiry: iso(5) }, /Trial.*Days left5/, "neutral"],
     [{ expiry: iso(0) }, /Due today/, "amber"],
     [{ expiry: ended }, new RegExp(`Your plan ended on ${dmy(ended)}\\. Your sales and records are safe\\.`), "amber"],
     [{ expiry: "" }, /Your plan is not active\. Your sales and records are safe\./, "amber"]
@@ -231,7 +235,7 @@ test("64: status line by state (active, trial, due today, ended, no plan); Pay n
 test("64: a paid plan wins over the trial", async () => {
   const view = await screen64({ expiry: iso(12), trialActive: true, trialExpiry: iso(3) });
   assert.match(textOf(view.tree), /Active until/);
-  assert.doesNotMatch(textOf(view.tree), /Trial ·/);
+  assert.doesNotMatch(textOf(view.tree), /Trial/);
 });
 
 test("64: each Payments row shows the method, the date, the amount and a status tag", async () => {

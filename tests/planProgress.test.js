@@ -253,21 +253,27 @@ async function detail(debt, planPaidPesewas) {
 }
 const progressBar = (tree) => [...walk(tree)].find((node) => node.props?.role === "progressbar");
 
-test("43 plan card: amos shows 'GH₵21.00 paid · 42 payments left' and a bar of about 2.5%", async () => {
+// Wiring 29/43/54 "Key-value rows" (16 Nov 2026): the plan card shows the rows "Payment", the bar, "Paid so far"
+// ("1 of 3": payments made of all payments, from money only, never the stored counters) and "Next payment" or
+// "Was due". Replaces "GH₵21.00 paid · 42 payments left".
+const planRows = (tree) => Object.fromEntries([...walk(tree)]
+  .filter((node) => node.props?.["data-event-detail"] && ["payment", "paid-so-far", "next-payment", "was-due"].includes(node.props["data-event-detail"]))
+  .map((node) => [node.props["data-event-detail"], textOf(node)]));
+
+test("plan card: amos shows Paid so far 1 of 43 and a bar of about 2.5%", async () => {
   const view = await detail(planDebt(), 2100);
-  assert.match(textOf(view.tree), /GH₵21\.00 paid · 42 payments left/);
-  assert.doesNotMatch(textOf(view.tree), /(?<![.\d])\d+ paid/, "no count of payments paid");
+  assert.equal(planRows(view.tree)["paid-so-far"], "Paid so far1 of 43");
+  assert.doesNotMatch(textOf(view.tree), / · /, "no facts joined with a dot");
   const bar = progressBar(view.tree);
   const width = Number.parseFloat([...walk(bar)].find((node) => node.props?.style?.width)?.props.style.width);
   assert.ok(width > 2.4 && width < 2.5, `bar width ${width}%`);
 });
 
-test("43 plan card: nothing paid, exact multiples and one payment left", async () => {
+test("plan card: nothing paid, exact multiples and one payment left", async () => {
   const none = await detail(planDebt({ amountPesewas: 3000, installmentAmount: 1000 }), 0);
-  assert.match(textOf(none.tree), /GH₵0\.00 paid · 3 payments left/);
+  assert.equal(planRows(none.tree)["paid-so-far"], "Paid so far0 of 3");
   const exact = await detail(planDebt({ amountPesewas: 3000, installmentAmount: 1000 }), 2000);
-  assert.match(textOf(exact.tree), /GH₵20\.00 paid · 3 payments left/);
+  assert.equal(planRows(exact.tree)["paid-so-far"], "Paid so far2 of 5");
   const one = await detail(planDebt({ amountPesewas: 500, installmentAmount: 1000 }), 2500);
-  assert.match(textOf(one.tree), /GH₵25\.00 paid · 1 payment left/);
-  assert.doesNotMatch(textOf(one.tree), /1 payments left/);
+  assert.equal(planRows(one.tree)["paid-so-far"], "Paid so far2 of 3");
 });

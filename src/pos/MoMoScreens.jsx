@@ -10,6 +10,8 @@ import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { useBackBlock } from "./browserBack.js";
 import { useFormErrors } from "./formErrors.js";
+import { EventDetail, KeyValueRows } from "./EventRows.jsx";
+import { posText as t } from "./i18n.js";
 
 const NETWORKS = ["MTN", "Telecel", "AirtelTigo"];
 
@@ -348,7 +350,12 @@ export function MoMoPayment({ params = {}, onBack, onNavigate, onUpdateParams })
     <section className="rounded-[20px] bg-emerald-900 p-3 text-white">
       <p className="text-lg font-bold text-white">Customer pays</p>
       <p className="text-4xl font-extrabold text-white">{formatGhs(paymentAmountPesewas)}</p>
-      <p className="text-base text-white">{showFee ? `Fee ${formatGhs(feePesewas)} · ` : ""}You receive {formatGhs(merchantReceivesPesewas)}</p>
+      {/* Wiring 56 "Key-value rows" (16 Nov 2026): rows Fee and You receive under the amount, white on the green
+          card, the line in white at about 35% opacity. A zero fee is never shown. */}
+      <KeyValueRows name="momo-fee" className="mt-1">
+        {showFee && <EventDetail tone="onDark" label={t("kv.fee")} name="fee">{formatGhs(feePesewas)}</EventDetail>}
+        <EventDetail tone="onDark" label={t("kv.youReceive")} name="you-receive">{formatGhs(merchantReceivesPesewas)}</EventDetail>
+      </KeyValueRows>
     </section>
     <fieldset>
       <legend className="mb-2 text-lg font-extrabold">Customer’s network</legend>

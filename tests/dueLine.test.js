@@ -80,13 +80,16 @@ test("an installment plan keeps its own line and gets no fixed-date line (on tim
   const plan = { isInstallmentPlan: true, installmentAmount: 1000, frequency: "weekly", installmentsRemaining: 3, totalInstallments: 3 };
   const onTime = await detail({ ...plan, nextDueDate: dateOffset(5), dueDate: "" });
   assert.deepEqual(dueLines(onTime.tree), []);
-  assert.match(textOf(onTime.tree), /GH₵10\.00 every week/);
-  assert.match(textOf(onTime.tree), new RegExp(`Next payment ${formatDate(dateOffset(5)).replaceAll("/", "\\/")}`));
+  // The plan card rows (Key-value rows, 16 Nov 2026): "Payment" GH₵10.00 weekly, "Next payment" dd/mm/yyyy,
+  // "Was due" when late.
+  assert.match(textOf(onTime.tree), /PaymentGH₵10\.00 weekly/);
+  assert.match(textOf(onTime.tree), new RegExp(`Next payment${formatDate(dateOffset(5)).replaceAll("/", "\\/")}`));
   assert.match(textOf(onTime.tree), /In 5 days/);
 
   const late = await detail({ ...plan, nextDueDate: dateOffset(-3), dueDate: "" });
   assert.deepEqual(dueLines(late.tree), []);
   assert.match(textOf(late.tree), /Late 3 days/, "the plan's late wording is unchanged");
+  assert.match(textOf(late.tree), new RegExp(`Was due${formatDate(dateOffset(-3)).replaceAll("/", "\\/")}`), "late: Was due");
   assert.equal(hasReminder(late.tree), true);
 });
 

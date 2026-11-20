@@ -93,9 +93,11 @@ test("My plan: an unknown stored code never shows as a raw code", () => {
   }
 });
 
-test("My plan: the payment rows use the label, and the screen 69 line uses the same labels", () => {
+// Wiring 69 "Key-value rows" (16 Nov 2026): the Paid by row has its own words ("MoMo, phone request", "MoMo",
+// "Cash") from the translation file, never the raw stored code.
+test("My plan: the payment rows use the label, and the screen 69 Paid by row maps the stored method", () => {
   const screen = read("src/pos/PlanScreens.jsx");
   assert.match(screen, /\{planMethodLabel\(payment\.method\)\}/);
   assert.doesNotMatch(screen, /\{payment\.method\}/);
-  assert.match(read("src/pos/planPayments.js"), /PLAN_METHOD_LABELS\[payment\.method\]/);
+  assert.match(read("src/pos/planPayments.js"), /PLAN_PAID_BY_KEYS\[payment\.method\]/);
 });

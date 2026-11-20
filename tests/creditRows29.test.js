@@ -66,12 +66,12 @@ function creditRows(app) {
   });
 }
 
-test("every credit row: what for, Signed ✓ / Not signed, and Get signature only on unsigned entries at or above GH₵50.00", async () => {
+test("every credit row: what for, Signed ✓ / Not signed (no Signature row on a small unsigned credit), and Get signature only on unsigned entries at or above GH₵50.00", async () => {
   const app = await openKofi();
   const rows = creditRows(app);
   assert.deepEqual(rows.map(({ reason, tag, getSignature }) => ({ reason, tag, getSignature })), [
     { reason: "No reason written", tag: "Not signed", getSignature: "Get signature" }, // GH₵70.00, no note
-    { reason: "School fees", tag: "Not signed", getSignature: null }, // GH₵49.99: below the threshold
+    { reason: "School fees", tag: "", getSignature: null }, // GH₵49.99, never signed: below the threshold, no Signature row (threshold_scope)
     { reason: "No reason written", tag: "Not signed", getSignature: "Get signature" }, // GH₵50.00 keypad sale ("Sale")
     { reason: "Rice", tag: "Signed ✓", getSignature: null }
   ]);
@@ -147,6 +147,6 @@ test("43 (late) shows the same credit rows", async () => {
   assert.match(app.text(), /Late /);
   const rows = creditRows(app);
   assert.equal(rows.length, 4);
-  assert.deepEqual(rows.map((row) => row.tag), ["Not signed", "Not signed", "Not signed", "Signed ✓"]);
+  assert.deepEqual(rows.map((row) => row.tag), ["Not signed", "", "Not signed", "Signed ✓"]);
   assert.equal(rows.filter((row) => row.getSignature).length, 2);
 });

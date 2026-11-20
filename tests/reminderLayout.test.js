@@ -29,13 +29,19 @@ async function detail({ late, phone, lastReminderAt, env = {} }) {
 const OLDER = new Date(2026, 10, 3, 23, 58).getTime();
 const RECENT_OLDER_DAY = () => { const d = new Date(); d.setDate(d.getDate() - 5); d.setHours(23, 58, 0, 0); return d.getTime(); };
 
+// The Last reminder row (Key-value rows, 16 Nov 2026): the whole row (label and value) is measured. No
+// reminder yet: no row at all.
 const LINE_MEASURE = `(frame, win, doc) => {
-  const line = doc.querySelector("[data-last-reminder]");
+  const value = doc.querySelector("[data-last-reminder]");
+  if (!value) return { none: true, text: doc.body.textContent, pageOverflow: doc.scrollingElement.scrollWidth > win.innerWidth };
+  const line = value.closest('[data-event-detail="last-reminder"]');
+  const label = line.querySelector("dt");
   const row = doc.querySelector('[data-row="debtor-actions"]');
   const correct = [...doc.querySelectorAll("button")].find((el) => el.textContent.trim() === "Correct balance");
   const r = line.getBoundingClientRect();
   const lineHeight = parseFloat(win.getComputedStyle(line).lineHeight);
   return {
+    labelLines: Math.round(label.getBoundingClientRect().height / parseFloat(win.getComputedStyle(label).lineHeight)),
     text: line.textContent, top: r.top, bottom: r.bottom, left: r.left, right: r.right, height: r.height, lineHeight,
     rowBottom: row.getBoundingClientRect().bottom,
     correctTop: correct ? correct.getBoundingClientRect().top : null,
@@ -69,7 +75,7 @@ const SHEET_MEASURE = `(frame, win, doc) => {
   };
 }`;
 
-test("29 and 43 at 340, 360 and 393px: the Last reminder line fits on one line between the actions and Correct balance", { skip: browser ? false : "no Chrome or Edge found (set HEADER_TEST_BROWSER)" }, async () => {
+test("29 and 43 at 340, 360 and 393px: the Last reminder row fits on one line between the actions and Correct balance; no row without a reminder", { skip: browser ? false : "no Chrome or Edge found (set HEADER_TEST_BROWSER)" }, async () => {
   const pages = [];
   for (const late of [false, true]) {
     for (const [label, at] of [["date", OLDER], ["none", 0], ["yesterday", Date.now() - 24 * 3600 * 1000]]) {
@@ -87,6 +93,12 @@ test("29 and 43 at 340, 360 and 393px: the Last reminder line fits on one line b
     const where = `${result.page} at ${result.width}px`;
     assert.equal(result.innerWidth, result.width, `${where}: frame width`);
     assert.equal(result.pageOverflow, false, `${where}: no horizontal page scroll`);
+    if (result.page.includes("|none|")) {
+      assert.equal(result.none, true, `${where}: no reminder, no row`);
+      assert.doesNotMatch(result.text, /Last reminder|No reminder sent yet/, `${where}: no reminder text`);
+      continue;
+    }
+    assert.equal(result.labelLines, 1, `${where}: the label never wraps`);
     assert.equal(result.overflowX, false, `${where}: the line is not clipped`);
     assert.ok(result.height <= result.lineHeight * 1.5, `${where}: one line (${result.height}px for a ${result.lineHeight}px line): "${result.text}"`);
     assert.ok(result.top >= result.rowBottom - 0.5, `${where}: under the action buttons`);

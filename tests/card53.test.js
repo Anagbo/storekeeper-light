@@ -6,6 +6,11 @@ import { localDateString } from "../src/utils/installments.js";
 import wiring from "../src/pos/wiring.json" with { type: "json" };
 import { findButton, loadJsx, render, textOf, walk } from "./helpers/renderJsx.js";
 
+// 53 "Existing payment terms" card. Contract 53 existing_terms_card.rows_final (17 Nov 2026): label-value rows
+// like the card on 72, short labels (rules_global.kv_labels): Debt, Payment (GH₵y weekly | bi-weekly | monthly),
+// Due (the tag), the progress bar, Paid, Still needed, Payments left, Next payment. Change at the bottom of the
+// card, full width, 52px, the "other" look, disabled until an amount is typed.
+
 const source = readFileSync(new URL("../src/pos/ManualDebtScreens.jsx", import.meta.url), "utf8");
 const i18n = readFileSync(new URL("../src/pos/i18n.js", import.meta.url), "utf8");
 const inDays = (days) => {
@@ -13,6 +18,7 @@ const inDays = (days) => {
   date.setDate(date.getDate() + days);
   return localDateString(date);
 };
+const ddmmyyyy = (iso) => iso.split("-").reverse().join("/");
 const planDebt = (overrides = {}) => ({
   id: "d1",
   amountPesewas: 15000,
@@ -39,6 +45,10 @@ async function renderCard(debt) {
   const card = [...walk(view.tree)].find((node) => node.type === "section" && textOf(node).includes("Existing payment terms"));
   return { view, calls, card: () => [...walk(view.tree)].find((node) => node.type === "section" && textOf(node).includes("Existing payment terms")), first: card };
 }
+// [name, label + value] for each row, in order, and "bar" for the progress bar.
+const rows = (card) => [...walk(card)].filter((node) => node.props?.["data-event-detail"] !== undefined || node.props?.role === "progressbar")
+  .map((node) => (node.props.role === "progressbar" ? "bar" : [node.props["data-event-detail"], textOf(node)]));
+const row = (card, name) => rows(card).find((entry) => entry[0] === name)?.[1];
 const type = (view, digits) => {
   for (const digit of digits) [...walk(view.tree)].find((node) => node.type === "button" && textOf(node) === digit).props.onClick();
   view.rerender();
@@ -51,17 +61,39 @@ test("53 card: no '{paid} paid' line; the contract removes it", async () => {
   assert.doesNotMatch(textOf(first), /\bpaid ·|\d+ paid\b/);
 });
 
-test("53 card: '{n} payments left now' is computed live after adding the new amount, not read from the stored counter", async () => {
+test("53 card: the rows in order (Debt, Payment, Due tag, bar, Paid, Still needed, Payments left, Next payment), then Change", async () => {
+  const { card } = await renderCard(planDebt());
+  assert.deepEqual(rows(card()), [
+    ["debt", "DebtGH₵150.00"],
+    ["payment", "PaymentGH₵10.00 weekly"],
+    ["due", "DueIn 3 days"],
+    "bar",
+    ["paid", "PaidGH₵4.00"],
+    ["still-needed", "Still neededGH₵6.00"],
+    ["payments-left", "Payments left15"],
+    ["next-payment", `Next payment${ddmmyyyy(inDays(3))}`]
+  ]);
+  const nodes = [...walk(card())];
+  const change = nodes.filter((node) => node.type === "button").at(-1);
+  assert.equal(textOf(change), "Change", "Change is the last control of the card");
+  assert.equal(change.props["data-look"], "other", "the other look");
+  assert.match(change.props.className, /\bw-full\b/, "full width");
+  assert.match(change.props.className, /min-h-\[52px\]/, "52px");
+  assert.ok(nodes.indexOf(change) > nodes.findIndex((node) => node.props?.["data-event-detail"] === "next-payment"), "below the rows");
+  assert.doesNotMatch(textOf(card()), / · |Plan for the debt of|every week|this week/);
+});
+
+test("53 card: Payments left is computed live after adding the new amount, not read from the stored counter", async () => {
   const { view, card } = await renderCard(planDebt({ installmentsRemaining: 99 }));
-  assert.match(textOf(card()), /15 payments left now/, "before typing: ceil(150.00 ÷ 10.00)");
+  assert.equal(row(card(), "payments-left"), "Payments left15", "before typing: ceil(150.00 ÷ 10.00)");
   type(view, ["2", "5"]); // the shared keypad fills whole cedis (15 Nov 2026)
-  assert.match(textOf(card()), /18 payments left now/, "after adding GH₵25.00: ceil(175.00 ÷ 10.00)");
+  assert.equal(row(card(), "payments-left"), "Payments left18", "after adding GH₵25.00: ceil(175.00 ÷ 10.00)");
   assert.doesNotMatch(textOf(card()), /99/);
 });
 
-test("53 card: one payment left reads '1 payment left now'", async () => {
+test("53 card: one payment left reads Payments left 1", async () => {
   const { card } = await renderCard(planDebt({ amountPesewas: 1000, installmentsRemaining: 1, installmentPaymentCarryPesewas: 0 }));
-  assert.match(textOf(card()), /1 payment left now/);
+  assert.equal(row(card(), "payments-left"), "Payments left1");
 });
 
 test("53 card: the button is Change, disabled until an amount is typed, and goes to 18 with the amount and note", async () => {
@@ -78,24 +110,20 @@ test("53 card: the button is Change, disabled until an amount is typed, and goes
   assert.equal(calls[0][1].amountPesewas, 500);
 });
 
-test("53 card: a line names the debt the card describes", async () => {
+test("53 card: the Debt row names the debt the card describes; a due date without a plan shows Debt and Due", async () => {
   const { card } = await renderCard(planDebt());
-  assert.match(textOf(card()), /Plan for the debt of GH₵150\.00/);
+  assert.equal(row(card(), "debt"), "DebtGH₵150.00");
   const due = await renderCard({ id: "d2", amountPesewas: 4000, status: "unpaid", isInstallmentPlan: false, dueDate: inDays(5) });
-  assert.match(textOf(due.card()), /Due date for the debt of GH₵40\.00/);
+  assert.deepEqual(rows(due.card()), [["debt", "DebtGH₵40.00"], ["due", `Due${ddmmyyyy(inDays(5))}`]]);
 });
 
-for (const [frequency, every, paid, needed] of [
-  ["weekly", "every week", "Paid this week", "Still needed this week"],
-  ["bi-weekly", "every 2 weeks", "Paid in these 2 weeks", "Still needed in these 2 weeks"],
-  ["monthly", "every month", "Paid this month", "Still needed this month"]
-]) {
-  test(`53 card: ${frequency} wording follows the frequency`, async () => {
+// rules_global.kv_labels: the period words are not in the labels; the Payment value carries the frequency.
+for (const frequency of ["weekly", "bi-weekly", "monthly"]) {
+  test(`53 card: ${frequency} follows the amount in the Payment row; Paid and Still needed keep short labels`, async () => {
     const { card } = await renderCard(planDebt({ frequency }));
-    const text = textOf(card());
-    assert.match(text, new RegExp(`GH₵10\\.00 ${every}`));
-    assert.match(text, new RegExp(`${paid}: GH₵4\\.00`));
-    assert.match(text, new RegExp(`${needed}: GH₵6\\.00`));
+    assert.equal(row(card(), "payment"), `PaymentGH₵10.00 ${frequency}`);
+    assert.equal(row(card(), "paid"), "PaidGH₵4.00");
+    assert.equal(row(card(), "still-needed"), "Still neededGH₵6.00");
   });
 }
 
@@ -108,10 +136,9 @@ test("53 card: the progress bar shows this cycle's progress (paid toward this in
 });
 
 test("53 card: all the card's words come from the translation file", () => {
-  for (const words of ["every week", "every 2 weeks", "every month", "Paid this week", "Paid in these 2 weeks", "Paid this month",
-    "Still needed this week", "Still needed in these 2 weeks", "Still needed this month", "payments left now", "Plan for the debt of",
-    "Existing payment terms", "Change"]) {
-    assert.ok(i18n.includes(words), `i18n.js has "${words}"`);
+  for (const words of ["\"Debt\"", "\"Payment\"", "\"Due\"", "\"Paid\"", "\"Still needed\"", "\"Payments left\"", "\"Next payment\"",
+    "{amount} weekly", "{amount} bi-weekly", "{amount} monthly", "Existing payment terms", "\"Change\""]) {
+    assert.ok(i18n.includes(words), `i18n.js has ${words}`);
   }
   const card = source.slice(source.indexOf("(hasPlanRecord || hasDueDate) && ("), source.indexOf("<PosPrimaryButton", source.indexOf("(hasPlanRecord || hasDueDate) && (")));
   // Text nodes between tags; JSX code such as ") : hasPlanRecord ? (" is not text.

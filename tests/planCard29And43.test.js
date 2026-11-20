@@ -3,10 +3,11 @@ import { test } from "node:test";
 import { localDateString } from "../src/utils/installments.js";
 import { loadJsx, render, setLiveQuery, textOf, walk } from "./helpers/renderJsx.js";
 
-// Wiring 29 and 43, plan card (decided 12 Nov 2026): two full-width lines, never two wrapped
-// columns: "GH₵{paid} paid · {left} payments left", then "Next payment {dd/mm/yyyy}". The
-// "In n days" tag stays on the card header and follows the shared DueTag colours (grey more than
-// 3 days, amber 3 days or less or today, red late).
+// Wiring 29, 43 and 54, plan card ("Key-value rows", decided 16 Nov 2026; replaces the two lines of 12 Nov):
+// rows "Payment" (GH₵x weekly | bi-weekly | monthly), then the progress bar, then "Paid so far" ("1 of 3") and
+// "Next payment" (dd/mm/yyyy) on 29, or "Was due" on a late debt (43, and 54 over it). The "In n days" tag
+// stays on the card header and follows the shared DueTag colours (grey more than 3 days, amber 3 days or less
+// or today, red late).
 
 const dateOffset = (days) => {
   const date = new Date();
@@ -35,30 +36,34 @@ const cls = (node) => String(node.props.className ?? "").split(/\s+/);
 const planCard = (tree) => nodes(tree).find((node) => node.type === "section" && textOf(node).startsWith("A little at a time"));
 const tagOf = (card) => nodes(card).find((node) => typeof node.type === "function" && node.type.name === "PosStatusTag");
 
-test("plan card: GH₵142.00 paid · 4 payments left and Next payment 18/11/2026 are two separate full-width lines", async () => {
-  const view = await detail({ nextDueDate: "2026-11-18" });
+const rowsIn = (card) => nodes(card).filter((node) => node.props["data-event-detail"] !== undefined || node.props.role === "progressbar")
+  .map((node) => (node.props.role === "progressbar" ? "bar" : [node.props["data-event-detail"], textOf(node)]));
+
+test("plan card on 29: Payment, the bar, Paid so far and Next payment as label-value rows", async () => {
+  const view = await detail({ nextDueDate: "2099-11-18" });
   const card = planCard(view.tree);
   assert.ok(card, "plan card");
-  const lines = nodes(card).filter((node) => node.props["data-plan-line"] !== undefined);
-  assert.deepEqual(lines.map(textOf), ["GH₵142.00 paid · 4 payments left", "Next payment 18/11/2026"]);
-  for (const line of lines) {
-    assert.equal(line.type, "p", "each is its own block line");
-    assert.ok(cls(line).includes("w-full"), "full card width");
+  // GH₵142.00 paid of GH₵20.00 payments: 7 made; GH₵80.00 left: 4 more. 7 of 11.
+  assert.deepEqual(rowsIn(card), [
+    ["payment", "PaymentGH₵20.00 weekly"],
+    "bar",
+    ["paid-so-far", "Paid so far7 of 11"],
+    ["next-payment", "Next payment18/11/2099"]
+  ]);
+  for (const row of nodes(card).filter((node) => node.props["data-event-detail"] !== undefined)) {
+    const [label] = [...walk(row)].filter((node) => node.type === "dt");
+    assert.ok(cls(label).includes("whitespace-nowrap"), "the label never wraps");
   }
-  const wrapper = nodes(card).find((node) => node.props["data-plan-lines"] !== undefined);
-  assert.ok(cls(wrapper).includes("flex-col"), "stacked, never side by side");
-  assert.ok(!cls(wrapper).some((c) => /^(justify-between|flex-row|grid-cols-)/.test(c)), "no two-column layout");
+  assert.doesNotMatch(textOf(card), / · /, "no facts joined with a dot");
 });
 
-test("plan card: the same lines at 360 and 393px (no width-specific classes); each line fits the card", async () => {
-  const view = await detail({ nextDueDate: "2026-11-18" });
-  const card = planCard(view.tree);
-  for (const node of nodes(card)) {
-    assert.ok(!cls(node).some((c) => /^(sm|md|lg|xl|max-\[[^\]]+\]|min-\[[^\]]+\]):/.test(c)), `no breakpoint classes (${node.props.className})`);
+test("plan card on 43 (late): Was due instead of Next payment; bi-weekly and monthly words", async () => {
+  const late = planCard((await detail({ nextDueDate: dateOffset(-2) })).tree);
+  assert.deepEqual(rowsIn(late).at(-1), ["was-due", `Was due${dateOffset(-2).split("-").reverse().join("/")}`]);
+  for (const [frequency, word] of [["bi-weekly", "bi-weekly"], ["monthly", "monthly"]]) {
+    const card = planCard((await detail({ nextDueDate: "2099-11-18", frequency })).tree);
+    assert.deepEqual(rowsIn(card)[0], ["payment", `PaymentGH₵20.00 ${word}`]);
   }
-  // Measured in headless Edge (Segoe UI, bold 14px): "GH₵142.00 paid · 4 payments left" is about
-  // 225px. Card inside width = width - 32 (page gutters) - 4 (border) - 28 (padding).
-  for (const width of [360, 393]) assert.ok(225 <= width - 32 - 4 - 28, `one line at ${width}px`);
 });
 
 test("plan card header: the In n days tag follows the shared DueTag colours", async () => {

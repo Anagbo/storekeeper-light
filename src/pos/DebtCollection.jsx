@@ -4,7 +4,7 @@ import { Banknote, Check, Clock3, Phone, Plus, ReceiptText, Smartphone, Undo2, U
 import { db } from "../db/db.js";
 import { COLLECTION_UNDO_WINDOW_MS, undoDebtCollection } from "../db/debts.js";
 import { correctDebtBalance } from "../db/debtLedger.js";
-import { formatLastReminder } from "./reminderLabel.js";
+import { lastReminderValue } from "./reminderLabel.js";
 import { useReminderCheck } from "./ReminderCheck.jsx";
 import { latestReminderAt, loadReminderEvents } from "../db/reminders.js";
 import { formatDate } from "../lib/formatDate.js";
@@ -40,7 +40,7 @@ import { useFormErrors } from "./formErrors.js";
 import AmountTextInput from "./AmountTextInput.jsx";
 import { formatHistoryRowTimestamp, groupCollectionHistory } from "./historyRows.js";
 import { needsSignature } from "../config/features.js";
-import EventRows from "./EventRows.jsx";
+import EventRows, { EventDetail, KeyValueRows } from "./EventRows.jsx";
 
 const PAYMENT_METHODS = [
   { value: "cash", label: "collect.cash", icon: Banknote },
@@ -640,7 +640,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
   const phone = normalizeWhatsAppPhone(data?.phone);
   const reminderLink = data && generateWhatsAppLink(data.phone, data.name, data.balancePesewas, shopName);
   const lastReminderAt = data?.lastReminderAt ?? 0;
-  const lastReminderLabel = formatLastReminder(lastReminderAt);
+  const lastReminder = lastReminderValue(lastReminderAt);
   // rules_global.reminders: both WhatsApp reminder controls go through the shared path, which
   // records a reminder for this person when the app hands over to WhatsApp.
   const reminders = useReminderCheck();
@@ -684,9 +684,10 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
   });
   const installmentProgress = planProgress.progress * 100;
   const nextDueDate = dueDate ? formatDate(dueDate) : t("collect.notSet");
-  const installmentFrequency = ["weekly", "bi-weekly", "monthly"].includes(data?.debt?.frequency)
-    ? t(`collect.installmentFrequency.${data.debt.frequency}`)
-    : t("collect.notSet");
+  // The Payment row: "GH₵2.00 weekly | bi-weekly | monthly" (rules_global.kv_labels, from the translation file).
+  const installmentPayment = ["weekly", "bi-weekly", "monthly"].includes(data?.debt?.frequency)
+    ? t(`kv.paymentEvery.${data.debt.frequency}`, { amount: formatGhs(data.debt.installmentAmount) })
+    : formatGhs(data?.debt?.installmentAmount);
   const correctionCurrentBalancePesewas = correctionDebtSnapshot?.amountPesewas ?? 0;
   const correctionNewBalancePesewas = toPesewas(correctionAmount);
   const correctionAmountValid = correctionAmount.trim() !== "" &&
@@ -821,9 +822,14 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                   <Phone size={26} aria-hidden="true" /><span>{t("collect.call")}</span>
                 </button>}
           </div>
-          {/* Wiring 29/43: Last reminder, under the action buttons and above Correct balance. Per
-              person; it says when the reminder was handed to WhatsApp, never that it was delivered. */}
-          <p data-last-reminder="" className="text-center text-base text-slate-800">{lastReminderLabel}</p>
+          {/* Wiring 29/43/54 "Key-value rows" (16 Nov 2026): a "Last reminder" row in the same place as the old
+              line, under the action buttons. Per person; it says when the reminder was handed to WhatsApp,
+              never that it was delivered. No reminder yet: no row (rule on 43). */}
+          {lastReminder && (
+            <KeyValueRows name="last-reminder">
+              <EventDetail label={t("kv.lastReminder")} name="last-reminder" valueProps={{ "data-last-reminder": "" }}>{lastReminder}</EventDetail>
+            </KeyValueRows>
+          )}
           {/* Wiring 29/43 (16 Nov 2026): "Show {Name} the record" under the Last reminder line opens 73,
               look-only, for the customer to read. One line: a long name is cut, never the words around it. */}
           <PosSecondaryButton
@@ -859,7 +865,9 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                 {/* The shared due tag colours: grey more than 3 days, amber 3 days or less or today, red late. */}
                 <DueTag dueDate={dueDate} />
               </div>
-              <p>{formatGhs(data.debt.installmentAmount)} {installmentFrequency}</p>
+              <KeyValueRows name="plan-payment">
+                <EventDetail label={t("kv.payment")} name="payment">{installmentPayment}</EventDetail>
+              </KeyValueRows>
               <div
                 role="progressbar"
                 aria-label={t("collect.installmentTitle")}
@@ -870,14 +878,12 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               >
                 <span className="block h-full bg-emerald-900" style={{ width: `${installmentProgress}%` }} />
               </div>
-              {/* Wiring 29/43 plan card (12 Nov 2026): two full-width lines, never two wrapped columns. */}
-              <div data-plan-lines="" className="flex flex-col gap-0.5 text-sm font-extrabold">
-                <p data-plan-line="paid" className="w-full">{t(planProgress.left === 1 ? "collect.installmentPaidOne" : "collect.installmentPaid", {
-                  paid: formatGhs(data?.planPaidPesewas ?? 0),
-                  left: planProgress.left
-                })}</p>
-                <p data-plan-line="next" className="w-full">{t("collect.nextPaymentLine", { date: nextDueDate })}</p>
-              </div>
+              {/* Wiring 29/43/54 "Key-value rows" (16 Nov 2026): under the bar, "Paid so far" ("1 of 3") and
+                  "Next payment" (29), or "Was due" when late (43, 54). Replaces "1 paid · 2 left" and "Next: …". */}
+              <KeyValueRows name="plan">
+                <EventDetail label={t("kv.paidSoFar")} name="paid-so-far">{t("kv.countOf", { done: planProgress.paid, total: planProgress.total })}</EventDetail>
+                <EventDetail label={t(isLate ? "kv.wasDue" : "kv.nextPayment")} name={isLate ? "was-due" : "next-payment"}>{nextDueDate}</EventDetail>
+              </KeyValueRows>
             </section>
           )}
           {/* Wiring 29/43 "No open debt entries" (15 Nov 2026): no heading and no line without an open entry. */}
