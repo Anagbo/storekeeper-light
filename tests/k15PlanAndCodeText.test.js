@@ -32,11 +32,12 @@ test("K15: screen 58 shows both helper texts from the wiring file", () => {
   for (const text of wiring.screens["58"].helper_texts) assert.ok(code.includes(plain(text)), plain(text));
 });
 
-test("K15: screen 65 shows the helper texts and the Free and Fee tags from the wiring file", () => {
+test("K15: screen 65 shows the helper texts and the Free tags from the wiring file; no Fee tag", () => {
   const method = between(planSource, "PlanPayMethod", "PlanPayCash");
   for (const text of Object.values(wiring.screens["65"].helper_texts)) assert.ok(method.includes(text), text);
   assert.equal((method.match(/>Free</g) ?? []).length, 2, "Cash and Mobile money are tagged Free");
-  assert.match(method, /Fee \$\{formatGhs\(MOMO_CONFIG\.phoneRequestFeePesewas\)\}/);
+  // 20 Nov 2026: as on 68, the plan fee is not shown until the owner decides who bears it.
+  assert.doesNotMatch(method, /Fee \$\{|phoneRequestFeePesewas/);
 });
 
 test("K15: screen 65 tags Last used only on the stored last-used method", async () => {

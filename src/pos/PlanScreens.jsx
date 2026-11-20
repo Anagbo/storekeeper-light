@@ -4,7 +4,7 @@ import { formatDate } from "../lib/formatDate.js";
 import { formatGhs } from "../lib/money.js";
 import { getPreference } from "../db/preferences.js";
 import { appendPlanPayment, createPlanCashCode, getPlanLastUsedMethod, getPlanPaymentConfiguration, groupPlanPayments, listPlanPayments, PLAN_CONFIG, planMethodLabel, planPaymentRows, planStatusLabel } from "./planPayments.js";
-import { MOMO_CONFIG, PHONE_REQUEST_ENABLED } from "./momoConfig.js";
+import { PHONE_REQUEST_ENABLED } from "./momoConfig.js";
 import { PosCard, PosPage, PosPrimaryButton, PosStatusTag, PosBackButton } from "./PosComponents.jsx";
 import { useBackBlock } from "./browserBack.js";
 import { EventDetail, KeyValueRows } from "./EventRows.jsx";
@@ -99,7 +99,7 @@ export function PlanPayMethod({ onBack, onNavigate }) {
   return <PosPage className="flex flex-col gap-3"><BackTitle title="Pay for my plan" onBack={onBack} /><p className="text-[22px] font-extrabold">{formatGhs(PLAN_CONFIG.amountPesewas)} for 1 month</p><h2 className="text-lg font-bold">How do you want to pay?</h2>
     <MethodTile icon={Banknote} title="Cash" detail="Give cash to a StoreKeeper agent." onClick={() => onNavigate("PlanPayCash")}>{lastUsed === "cash" && <PosStatusTag compact>Last used</PosStatusTag>}<PosStatusTag compact>Free</PosStatusTag></MethodTile>
     <MethodTile icon={Smartphone} title="Mobile money" detail="Send to our number. Enter the message code." onClick={() => onNavigate("PlanPayMoMo")}>{lastUsed === "momo_direct" && <PosStatusTag compact>Last used</PosStatusTag>}<PosStatusTag compact>Free</PosStatusTag></MethodTile>
-    <MethodTile icon={Smartphone} title="Phone request" detail={PHONE_REQUEST_ENABLED ? "Approve on your phone. Confirmed by itself." : "Not available yet"} disabled={!PHONE_REQUEST_ENABLED} onClick={() => onNavigate("PlanPayPhone")}>{PHONE_REQUEST_ENABLED && lastUsed === "momo_paystack" && <PosStatusTag compact>Last used</PosStatusTag>}<PosStatusTag compact>{`Fee ${formatGhs(MOMO_CONFIG.phoneRequestFeePesewas)}`}</PosStatusTag></MethodTile>
+    <MethodTile icon={Smartphone} title="Phone request" detail={PHONE_REQUEST_ENABLED ? "Approve on your phone. Confirmed by itself." : "Not available yet"} disabled={!PHONE_REQUEST_ENABLED} onClick={() => onNavigate("PlanPayPhone")}>{PHONE_REQUEST_ENABLED && lastUsed === "momo_paystack" && <PosStatusTag compact>Last used</PosStatusTag>}{/* No Fee tag (20 Nov 2026): as on 68, the plan fee is not shown until the owner decides who bears it. */}</MethodTile>
   </PosPage>;
 }
 
