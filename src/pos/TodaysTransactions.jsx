@@ -24,17 +24,22 @@ const AMOUNT_TONES = {
   neutral: { className: "text-slate-800", sign: "" }
 };
 
+// Calmer colours (20 Nov 2026): a person chip is pink only when it says someone owes money; a person who
+// only paid (or a chip with only the name) gets a neutral white chip with a 2px grey outline (py-0 keeps
+// it the same height as the filled chips). Payment chips are unchanged.
 const CHIP_STYLES = {
-  payment: "bg-[#CBD5E1] text-[#0F172A]",
-  person: "bg-[#FECDD3] text-[#0F172A]",
-  category: "bg-[#FDE68A] text-[#0F172A]",
-  reason: "bg-[#CBD5E1] text-[#0F172A]",
-  credit: "bg-rose-100 text-rose-950"
+  payment: "py-0.5 bg-[#CBD5E1] text-[#0F172A]",
+  person: "py-0.5 bg-[#FECDD3] text-[#0F172A]",
+  personNeutral: "border-2 border-[#64748B] bg-white py-0 text-[#0F172A]",
+  category: "py-0.5 bg-[#FDE68A] text-[#0F172A]",
+  reason: "py-0.5 bg-[#CBD5E1] text-[#0F172A]",
+  credit: "py-0.5 bg-rose-100 text-rose-950"
 };
+const chipStyle = (chip) => (chip.kind === "person" && !chip.owes ? CHIP_STYLES.personNeutral : CHIP_STYLES[chip.kind] ?? CHIP_STYLES.payment);
 
 function Chip({ chip }) {
   return (
-    <span data-chip={chip.kind} className={`inline-flex max-w-full items-center gap-1 rounded-[10px] px-2 py-0.5 text-base font-bold [overflow-wrap:anywhere] ${CHIP_STYLES[chip.kind] ?? CHIP_STYLES.payment}`}>
+    <span data-chip={chip.kind} data-owes={chip.kind === "person" ? String(Boolean(chip.owes)) : undefined} className={`inline-flex max-w-full items-center gap-1 rounded-[10px] px-2 text-base font-bold [overflow-wrap:anywhere] ${chipStyle(chip)}`}>
       {chip.kind === "person" && <UserRound size={16} aria-hidden="true" className="shrink-0" />}
       {chip.label}
     </span>
@@ -121,13 +126,16 @@ export default function TodaysTransactions({ onBack }) {
               <p className="whitespace-nowrap text-[34px] font-extrabold leading-tight">{formatGhs(data.totals.cashInflow)}</p>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <div data-summary="spent" className="min-w-0 rounded-[18px] bg-[#FEF3C7] px-2 py-2 sm:px-3 text-[#0F172A]">
+              {/* Calmer colours (20 Nov 2026): white cards, 2px light grey border, a 6px coloured left edge
+                  (amber for Spent, red for Given on credit) like the debt tiles on My money; dark numbers, dark
+                  red only for Given on credit above zero. Never a coloured fill. */}
+              <div data-summary="spent" className="min-w-0 rounded-[18px] border-2 border-l-[6px] border-slate-300 border-l-amber-700 bg-white px-2 py-2 sm:px-3 text-[#0F172A]">
                 <p className="text-base font-bold">{t("transactions.spent")}</p>
                 <p className="whitespace-nowrap text-[22px] font-extrabold leading-tight">{formatGhs(data.totals.expenses)}</p>
               </div>
-              <div data-summary="given-on-credit" className="min-w-0 rounded-[18px] bg-[#FECDD3] px-2 py-2 sm:px-3 text-[#7F1D1D]">
+              <div data-summary="given-on-credit" className="min-w-0 rounded-[18px] border-2 border-l-[6px] border-slate-300 border-l-rose-900 bg-white px-2 py-2 sm:px-3 text-[#0F172A]">
                 <p className="text-base font-bold">{t("transactions.givenOnCredit")}</p>
-                <p className="whitespace-nowrap text-[22px] font-extrabold leading-tight">{formatGhs(data.totals.creditGiven)}</p>
+                <p data-credit-amount="" className={`whitespace-nowrap text-[22px] font-extrabold leading-tight ${data.totals.creditGiven > 0 ? "text-[#7F1D1D]" : ""}`}>{formatGhs(data.totals.creditGiven)}</p>
               </div>
             </div>
           </section>

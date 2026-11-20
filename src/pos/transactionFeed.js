@@ -189,10 +189,13 @@ export function createPosTransactionRows(transactions, supplierNames = new Map()
 // sale's amount is what was received (+); the owed part is a pink person chip. A credit-only sale
 // shows its amount with no sign (nothing was received). The sum of the "+" amounts equals Money in.
 //   tone: "in" (green, +), "spent" (amber-brown, −), "credit" (dark red, no sign), "neutral".
-//   chips: { kind: "payment" | "person" | "category" | "credit", label }
+//   chips: { kind: "payment" | "person" | "category" | "credit", label, owes? }
+// Calmer colours (20 Nov 2026): a person chip is pink only when it says someone owes money (owes: true:
+// "{Name} owes GH₵x", "{Name} owes GH₵x now", "You owe {Supplier} GH₵x"); a chip with only the name is neutral.
 export function describeTransactionRow(row) {
   const name = displayName(row.customerName);
   const person = (label) => ({ kind: "person", label });
+  const owing = (label) => ({ kind: "person", label, owes: true });
   const paymentChips = () => [
     ...(row.cashPesewas > 0 ? [{ kind: "payment", label: `${t("transactions.tag.cash")} ${formatGhs(row.cashPesewas)}` }] : []),
     ...(row.momoPesewas > 0 ? [{ kind: "payment", label: `${t("transactions.tag.momo")} ${formatGhs(row.momoPesewas)}` }] : [])
@@ -205,7 +208,7 @@ export function describeTransactionRow(row) {
         title: t("transactions.row.soldOnCredit"),
         amountPesewas: row.owedPesewas,
         tone: "credit",
-        chips: [person(t("transactions.row.owes", { name: name || t("home.unnamedCustomer"), amount: formatGhs(row.owedPesewas) }))]
+        chips: [owing(t("transactions.row.owes", { name: name || t("home.unnamedCustomer"), amount: formatGhs(row.owedPesewas) }))]
       };
     }
     if (row.owedPesewas > 0) {
@@ -213,7 +216,7 @@ export function describeTransactionRow(row) {
         title: t("transactions.row.saleOf", { amount: formatGhs(received + row.owedPesewas) }),
         amountPesewas: received,
         tone: "in",
-        chips: [...paymentChips(), person(t("transactions.row.owes", { name: name || t("home.unnamedCustomer"), amount: formatGhs(row.owedPesewas) }))]
+        chips: [...paymentChips(), owing(t("transactions.row.owes", { name: name || t("home.unnamedCustomer"), amount: formatGhs(row.owedPesewas) }))]
       };
     }
     return { title: t("transactions.row.sale"), amountPesewas: received, tone: "in", chips: paymentChips() };
@@ -228,13 +231,13 @@ export function describeTransactionRow(row) {
     // (credit rows look the same, 15 Nov 2026).
     const supplier = displayName(row.supplierName) || t("expense.supplier");
     if (row.kind === "credit") {
-      return { title: t("transactions.row.stockOnCredit"), amountPesewas: row.owedPesewas, tone: "credit", chips: [person(t("transactions.row.youOweAmount", { name: supplier, amount: formatGhs(row.owedPesewas) }))] };
+      return { title: t("transactions.row.stockOnCredit"), amountPesewas: row.owedPesewas, tone: "credit", chips: [owing(t("transactions.row.youOweAmount", { name: supplier, amount: formatGhs(row.owedPesewas) }))] };
     }
     return {
       title: t("transactions.row.stock"),
       amountPesewas: row.amountPesewas,
       tone: "spent",
-      chips: [person(t("transactions.row.youOweAmount", { name: supplier, amount: formatGhs(row.owedPesewas) }))]
+      chips: [owing(t("transactions.row.youOweAmount", { name: supplier, amount: formatGhs(row.owedPesewas) }))]
     };
   }
   if (row.kind === "spent" || row.kind === "credit") {
@@ -255,7 +258,8 @@ export function describeTransactionRow(row) {
       ? who
       : t("transactions.row.owesNow", { name: who, amount: formatGhs(row.adjustmentNewBalancePesewas) });
     const title = t("transactions.row.balanceCorrected");
-    const chips = [person(personLabel), ...(row.adjustmentReason ? [{ kind: "reason", label: row.adjustmentReason }] : [])];
+    // Pink only while money is still owed: "{Name} owes GH₵0.00 now" is a neutral chip.
+    const chips = [row.adjustmentNewBalancePesewas > 0 ? owing(personLabel) : person(personLabel), ...(row.adjustmentReason ? [{ kind: "reason", label: row.adjustmentReason }] : [])];
     return {
       title,
       amountPesewas: lowered,
