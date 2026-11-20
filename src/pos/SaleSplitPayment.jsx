@@ -6,7 +6,7 @@ import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { getInitialPaymentParts, getPaidPaymentPesewas } from "./paymentAmount.js";
 import SplitPayment from "./SplitPayment.jsx";
-import { confirmDirectMomoParts, describeSplitPart, isUnconfirmedDirectMomo } from "./splitTender.js";
+import { confirmDirectMomoParts, splitPartRows, isUnconfirmedDirectMomo } from "./splitTender.js";
 import { useBackBlock } from "./browserBack.js";
 
 export default function SaleSplitPayment({ params = {}, onBack, onNavigate, onUpdateParams, onSaveSale }) {
@@ -113,7 +113,7 @@ export default function SaleSplitPayment({ params = {}, onBack, onNavigate, onUp
         confirmAtDone: true
       })}
       initialParts={getInitialPaymentParts({ ...params, amountPesewas: totalPesewas }, totalPesewas)}
-      partDetail={(part) => describeSplitPart(part, params)}
+      partRows={(part) => splitPartRows(part, params)}
     />
     {largeAmount.dialog}
     </>

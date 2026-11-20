@@ -18,7 +18,9 @@ const LABELS = [
   // 69
   "kv.planRunsTo", "kv.paidBy", "kv.status",
   // 64
-  "kv.activeUntil", "kv.daysLeft"
+  "kv.activeUntil", "kv.daysLeft",
+  // 16 and 27 status rows (Status, Person, Payment, First payment, Due)
+  "kv.person", "kv.firstPayment"
 ];
 
 test("every key-value label built for these screens is 14 characters or fewer and has no period words", () => {

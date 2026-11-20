@@ -42,19 +42,22 @@ const ROW_TONES = {
   onDark: { row: "border-white/35", label: "text-white" }
 };
 
-export function EventDetail({ label, name, valueProps, tone = "light", children }) {
+// `valueClass` colours the value (the 16/27 "Received ✓" is green); dark by default.
+export function EventDetail({ label, name, valueProps, valueClass = "", tone = "light", children }) {
   const colours = ROW_TONES[tone] ?? ROW_TONES.light;
   return (
     <div data-event-detail={name} className={`grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-3 border-t ${colours.row} py-1.5 last:pb-0`}>
       <dt className={`whitespace-nowrap font-normal ${colours.label}`}>{label}</dt>
-      <dd {...valueProps} className="min-w-0 text-right font-bold [overflow-wrap:anywhere]">{children}</dd>
+      <dd {...valueProps} className={["min-w-0 text-right font-bold [overflow-wrap:anywhere]", valueClass].filter(Boolean).join(" ")}>{children}</dd>
     </div>
   );
 }
 
-// The block that holds the rows (a description list). 18px like the card on 72.
-export function KeyValueRows({ name, className = "", children, ...rest }) {
-  return <dl {...rest} data-kv-rows={name} className={["flex min-w-0 flex-col text-lg", className].filter(Boolean).join(" ")}>{children}</dl>;
+// The block that holds the rows (a description list). 18px like the card on 72; `size="base"` is the 16px
+// status rows under the chips on 16 and 27.
+const ROW_SIZES = { lg: "text-lg", base: "text-base" };
+export function KeyValueRows({ name, size = "lg", className = "", children, ...rest }) {
+  return <dl {...rest} data-kv-rows={name} className={["flex min-w-0 flex-col", ROW_SIZES[size] ?? ROW_SIZES.lg, className].filter(Boolean).join(" ")}>{children}</dl>;
 }
 
 function Details({ children }) {

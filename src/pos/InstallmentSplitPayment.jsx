@@ -2,7 +2,7 @@ import { toPesewas } from "../lib/money.js";
 import { posText as t } from "./i18n.js";
 import { getInitialPaymentParts } from "./paymentAmount.js";
 import SplitPayment from "./SplitPayment.jsx";
-import { describeSplitPart } from "./splitTender.js";
+import { splitPartRows } from "./splitTender.js";
 
 export default function InstallmentSplitPayment({ params = {}, onBack, onReturnTo, onNavigate, onUpdateParams }) {
   const totalPesewas = Number.isSafeInteger(params.splitTotalPesewas)
@@ -53,7 +53,7 @@ export default function InstallmentSplitPayment({ params = {}, onBack, onReturnT
         confirmAtDone: true
       })}
       initialParts={getInitialPaymentParts({ ...params, splitTotalPesewas: totalPesewas }, totalPesewas)}
-      partDetail={(part) => describeSplitPart(part, params)}
+      partRows={(part) => splitPartRows(part, params)}
     />
   );
 }

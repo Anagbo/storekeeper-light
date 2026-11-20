@@ -203,7 +203,8 @@ test("27 from 19: Direct returns to 27 not confirmed; Done returns to 19 with no
   await split27From19(app);
   assert.equal(app.route, "SplitPayment", "Direct returns to 27");
   assert.equal(momoOf(app.params.splitParts).verification, undefined);
-  assert.match(shown(app), /not confirmed yet/);
+  // 27's status row (17 Nov 2026): Status / Not confirmed yet.
+  assert.match(shown(app), /StatusNot confirmed yet/);
   await app.tap(/^Done$/);
   assert.equal(app.route, "ALittleAtATime", "Done returns to 19, no 62 yet");
   assert.deepEqual(await counts(), before);

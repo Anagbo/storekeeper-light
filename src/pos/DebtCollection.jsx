@@ -30,7 +30,7 @@ import { useSaveAttempt } from "./useSaveAttempt.js";
 import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
 import SplitPayment from "./SplitPayment.jsx";
 import { getInitialPaymentParts } from "./paymentAmount.js";
-import { confirmDirectMomoParts, describeSplitPart, isUnconfirmedDirectMomo } from "./splitTender.js";
+import { confirmDirectMomoParts, splitPartRows, isUnconfirmedDirectMomo } from "./splitTender.js";
 import { getMomoDisplayLabel } from "./momoMapping.js";
 import { secondsUntil } from "../lib/countdown.js";
 import { useBackBlock, useBackHandler } from "./browserBack.js";
@@ -346,7 +346,7 @@ export function CollectSplitPayment({ params, onBack, onNavigate, onUpdateParams
         confirmAtDone: true
       })}
       initialParts={getInitialPaymentParts({ ...params, splitTotalPesewas: totalPesewas }, totalPesewas)}
-      partDetail={(part) => describeSplitPart(part, params)}
+      partRows={(part) => splitPartRows(part, params)}
     />
   );
 }

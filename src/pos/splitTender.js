@@ -2,37 +2,49 @@ import { formatGhs } from "../lib/money.js";
 import { formatDate } from "../lib/formatDate.js";
 import { posText as t } from "./i18n.js";
 import { displayName } from "../lib/displayName.js";
+import { localDateString } from "../utils/installments.js";
 
-// Row status on 16 and 27 (wiring "Row layout on 16 and 27", 12 Nov 2026): MoMo not confirmed
-// "Customer sends · not confirmed yet", MoMo received "Customer sent · received ✓", Owe
-// "{Name} · GH₵{amount} {every week | every 2 weeks | every month} · first payment {dd/mm/yyyy}". Cash has no status line.
-export function describeSplitPart(part, params = {}) {
-  if (part?.paymentMethod === "momo") {
-    if (isLockedMomoRow(part)) return t("split.receivedRow");
-    if (part.momoMethod === "direct") return t("split.directNotConfirmed");
-    if (part.momoMethod === "paystack") return "Phone request";
-    return "";
-  }
-  if (part?.paymentMethod !== "owe") return "";
-  const name = typeof params.customer?.name === "string" ? displayName(params.customer.name) : "";
-  if (!name) return "";
-  const plan = params.installmentPlan?.isInstallmentPlan ? params.installmentPlan : null;
-  return [
-    name,
-    plan ? [
-      Number.isSafeInteger(plan.installmentAmount) ? formatGhs(plan.installmentAmount) : "",
-      t(`split.every.${plan.frequency}`)
-    ].filter(Boolean).join(" ") : "",
-    oweWhenLabel(plan, params)
-  ].filter(Boolean).join(" · ");
+// The one-line MoMo status on 19's "Paying today" panel: "Customer sends · not confirmed yet" before the
+// money is confirmed, "Customer sent · received ✓" after. 16 and 27 use splitPartRows below instead.
+export function describeSplitPart(part) {
+  if (part?.paymentMethod !== "momo") return "";
+  if (isLockedMomoRow(part)) return t("split.receivedRow");
+  if (part.momoMethod === "direct") return t("split.directNotConfirmed");
+  if (part.momoMethod === "paystack") return "Phone request";
+  return "";
 }
 
-// A plan names its first payment day (today when it starts today); a fixed due date from 18 keeps
-// 18's own label ("In 1 week").
-function oweWhenLabel(plan, params) {
-  const firstDate = plan ? (params.firstPaymentDate || plan.nextDueDate) : "";
-  if (plan && firstDate) return t("split.firstPaymentOn", { date: formatDate(firstDate) });
-  return typeof params.payBackLabel === "string" ? params.payBackLabel : "";
+// Status rows on 16 and 27 (wiring "Row layout on 16 and 27", status rows decided 17 Nov 2026): label-value
+// rows under the chip row, each { name, label, value }.
+//   MoMo: Status / Not confirmed yet, or Status / Received ✓.
+//   Owe with a plan: Person, Payment (GH₵x weekly | bi-weekly | monthly, the payment each time), First payment.
+//   Owe with a due date after today: Person, Due. Owe due today or with no date: Person only.
+//   Cash: no rows.
+export function splitPartRows(part, params = {}) {
+  if (part?.paymentMethod === "momo") {
+    if (isLockedMomoRow(part)) return [{ name: "status", label: t("kv.status"), value: t("split.received"), received: true }];
+    if (part.momoMethod === "direct" || part.momoMethod === "paystack") return [{ name: "status", label: t("kv.status"), value: t("split.notConfirmed") }];
+    return [];
+  }
+  if (part?.paymentMethod !== "owe") return [];
+  const name = typeof params.customer?.name === "string" ? displayName(params.customer.name) : "";
+  if (!name) return [];
+  const rows = [{ name: "person", label: t("kv.person"), value: name }];
+  const plan = params.installmentPlan?.isInstallmentPlan ? params.installmentPlan : null;
+  if (plan) {
+    if (Number.isSafeInteger(plan.installmentAmount) && plan.installmentAmount > 0) {
+      rows.push({ name: "payment", label: t("kv.payment"), value: t(`kv.paymentEvery.${plan.frequency}`, { amount: formatGhs(plan.installmentAmount) }) });
+    }
+    // A plan names its first payment day (today when it starts today; 19 passes the date it chose).
+    const firstDate = params.firstPaymentDate || plan.nextDueDate;
+    if (firstDate) rows.push({ name: "first-payment", label: t("kv.firstPayment"), value: formatDate(firstDate) });
+    return rows;
+  }
+  // 18 stores the due date (yyyy-mm-dd); "Today" stores today's date and shows no Due row.
+  if (typeof params.dueDate === "string" && params.dueDate > localDateString()) {
+    rows.push({ name: "due", label: t("kv.due"), value: formatDate(params.dueDate) });
+  }
+  return rows;
 }
 
 function sumPartsPesewas(parts) {

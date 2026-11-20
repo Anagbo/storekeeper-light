@@ -9,6 +9,7 @@ import StillOwedRow from "./StillOwedRow.jsx";
 import { addRemainingToPart, isLockedMomoRow, removePart, setPartAmount } from "./splitTender.js";
 import { useFormErrors } from "./formErrors.js";
 import AmountTextInput from "./AmountTextInput.jsx";
+import { EventDetail, KeyValueRows } from "./EventRows.jsx";
 
 const METHOD_ICONS = { cash: Banknote, momo: Smartphone, owe: UserRound };
 
@@ -36,7 +37,8 @@ export default function SplitPayment({
   onOwe,
   onMoMo,
   initialParts = [],
-  partDetail = () => ""
+  // The status rows under each part's chip row: [{ name, label, value, received? }] (splitPartRows).
+  partRows = () => []
 }) {
   const [parts, setParts] = useState(initialParts);
   const [draft, setDraft] = useState(null);
@@ -110,7 +112,7 @@ export default function SplitPayment({
       {parts.map((part) => {
         const Icon = METHOD_ICONS[part.paymentMethod];
         const name = t(`sell.${part.paymentMethod}`);
-        const detail = partDetail(part);
+        const rows = partRows(part);
         const editable = isEditablePart(part);
         const locked = isLockedMomoRow(part);
         // 16 and 27: the amount is a chip (grey, 2px border, bold 21px, 48px tall). An editable row's
@@ -151,8 +153,14 @@ export default function SplitPayment({
                 </button>}
               </div>
             </div>
-            {detail && (
-              <p data-row-status="" className={`line-clamp-2 w-full text-[15px] leading-snug [overflow-wrap:anywhere] ${locked ? "font-bold text-emerald-900" : "font-semibold text-slate-700"}${busy ? " opacity-50" : ""}`}>{detail}</p>
+            {/* Status rows (17 Nov 2026): label-value rows across the full card width under the chip row,
+                16px, the shared row of the What happened cards. Cash has none. */}
+            {rows.length > 0 && (
+              <KeyValueRows name="split-status" size="base" data-row-status="" className={`w-full${busy ? " opacity-50" : ""}`}>
+                {rows.map((row) => (
+                  <EventDetail key={row.name} label={row.label} name={row.name} valueClass={row.received ? "text-emerald-900" : ""}>{row.value}</EventDetail>
+                ))}
+              </KeyValueRows>
             )}
           </div>
         );

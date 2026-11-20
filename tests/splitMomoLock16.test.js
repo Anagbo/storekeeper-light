@@ -15,7 +15,7 @@ import { loadJsx, render, textOf, walk } from "./helpers/renderJsx.js";
 // phone request is verified, or the owner tapped "Money received" on 62 for a Direct MoMo. No
 // pencil, no x, a plain amount (not a chip), a green-check "Received" status line, not tappable;
 // setPartAmount and remove refuse it in code. An unconfirmed Direct row stays editable with
-// "Customer sends · not confirmed yet". Cash is never locked.
+// the status row "Status / Not confirmed yet" (17 Nov 2026). Cash is never locked.
 
 after(async () => {
   db.close();
@@ -101,9 +101,10 @@ function assertLocked(tree, amount) {
   assert.equal(textOf(plain), amount);
   assert.doesNotMatch(String(plain.props.className), /border|bg-|rounded/, "a plain amount, not a chip");
   const status = [...walk(row)].find((node) => node.props?.["data-row-status"] !== undefined);
-  // Wiring 16 row layout (12 Nov 2026): the green check is part of the status wording.
-  assert.equal(textOf(status), "Customer sent · received ✓");
-  assert.match(String(status.props.className), /text-emerald-900/);
+  // Status rows (17 Nov 2026): Status / Received ✓, the value in green.
+  assert.equal(textOf(status), "StatusReceived ✓");
+  const value = [...walk(status)].find((node) => node.type === "dd");
+  assert.match(String(value.props.className), /text-emerald-900/);
 }
 
 test("16: a Direct MoMo confirmed on 62 after Done is locked, and stays locked on 16 after the commit fails", async () => {
@@ -156,7 +157,7 @@ test("16: an unconfirmed Direct MoMo row stays editable and removable, with \"no
   assert.ok(labels(view.tree).includes("Edit MoMo amount"));
   assert.ok(labels(view.tree).includes("Remove MoMo"));
   assert.ok(pencilsIn(row).length > 0, "a pencil");
-  assert.equal(textOf([...walk(row)].find((node) => node.props?.["data-row-status"] !== undefined)), "Customer sends · not confirmed yet");
+  assert.equal(textOf([...walk(row)].find((node) => node.props?.["data-row-status"] !== undefined)), "StatusNot confirmed yet");
   // Editing sets the amount and marks nothing as confirmed.
   [...walk(view.tree)].find((node) => node.props?.["aria-label"] === "Edit MoMo amount").props.onClick();
   view.rerender();

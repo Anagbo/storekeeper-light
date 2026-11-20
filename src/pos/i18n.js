@@ -201,10 +201,7 @@ const ENGLISH = Object.freeze({
   "split.received": "Received ✓",
   "split.receivedRow": "Customer sent · received ✓",
   "split.directNotConfirmed": "Customer sends · not confirmed yet",
-  "split.every.weekly": "every week",
-  "split.every.bi-weekly": "every 2 weeks",
-  "split.every.monthly": "every month",
-  "split.firstPaymentOn": "first payment {date}",
+  "split.notConfirmed": "Not confirmed yet",
   "split.howMuch": "How much {method}?",
   "split.collectPays": "{name} pays",
   "split.saleTotal": "Sale total",
@@ -725,6 +722,8 @@ const ENGLISH = Object.freeze({
   "kv.notVerified": "Not verified",
   "kv.activeUntil": "Active until",
   "kv.daysLeft": "Days left",
+  "kv.person": "Person",
+  "kv.firstPayment": "First payment",
   // "1 of 3": payments made of all the plan's payments.
   "kv.countOf": "{done} of {total}",
   // The payment frequency after the amount (decided 17 Nov 2026): "GH₵2.00 weekly".
