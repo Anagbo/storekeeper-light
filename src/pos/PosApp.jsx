@@ -487,6 +487,7 @@ export default function PosApp() {
     <Home
       onNavigate={navigate}
       notice={notice}
+      shopName={shopName}
     />
   ) : route === POS_ROUTES.HowDoYouWantToSell ? (
     <HowDoYouWantToSell onNavigate={navigate} onCompleteSetup={completePosSetup} />
@@ -624,7 +625,7 @@ export default function PosApp() {
     <TodaysTransactions onBack={navigateBack} />
   ) : isCollectSheet ? (
     <>
-      <Home onNavigate={navigate} notice={notice} />
+      <Home onNavigate={navigate} notice={notice} shopName={shopName} />
       <CollectPayment
         params={routeState.params}
         onClose={() => switchTab(POS_ROUTES.Home)}

@@ -1,6 +1,3 @@
-import { displayName } from "../lib/displayName.js";
-import { normalizeWhatsAppPhone } from "./whatsapp.js";
-import { formatGhs } from "../lib/formatGhs.js";
 import { PLAN_ERROR, planError } from "../lib/planErrors.js";
 
 export function localDateString(date = new Date()) {
@@ -417,20 +414,4 @@ export function getInstallmentAlertStatus(nextDueDate, frequency, today = localD
   if (daysUntilDue === 0) return { showAlert: true, type: "due_today", days: 0 };
   if (daysUntilDue <= threshold) return { showAlert: true, type: "due_soon", days: daysUntilDue };
   return { showAlert: false, type: "upcoming", days: daysUntilDue };
-}
-
-export function createInstallmentReminderLink(phone, customerName, installmentAmountPesewas, alertStatus) {
-  const normalizedPhone = normalizeWhatsAppPhone(phone);
-  if (!normalizedPhone) return null;
-  // The customer's name with a capital first letter, as on screen; the stored name is not changed.
-  const name = typeof customerName === "string" ? displayName(customerName) : "";
-  if (!name || !Number.isSafeInteger(installmentAmountPesewas) || installmentAmountPesewas <= 0) return null;
-
-  const duePhrase = alertStatus?.type === "overdue"
-    ? `was due ${alertStatus.days} day${alertStatus.days === 1 ? "" : "s"} ago`
-    : alertStatus?.type === "due_soon"
-      ? `is due in ${alertStatus.days} day${alertStatus.days === 1 ? "" : "s"}`
-      : "is due today";
-  const message = `Hi ${name}, gentle reminder that your installment of ${formatGhs(installmentAmountPesewas)} ${duePhrase}. Thank you!`;
-  return `https://wa.me/${normalizedPhone.slice(1)}?text=${encodeURIComponent(message)}`;
 }

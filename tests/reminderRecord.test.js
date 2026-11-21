@@ -4,6 +4,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { after, beforeEach, test } from "node:test";
 import { db } from "../src/db/db.js";
 import { loadUnpaidDebtPage } from "../src/pos/owed.js";
+import { ANDROID_UA, withPhone } from "./helpers/fakePhone.js";
 import { flushEffects, loadJsx, render, setLiveQuery, textOf, walk } from "./helpers/renderJsx.js";
 
 // rules_global.reminders (record it): a tap on any WhatsApp reminder button (Home Collect first 22,
@@ -28,14 +29,9 @@ beforeEach(async () => {
   await Promise.all(["debts", "customers", "reminders"].map((name) => db.table(name).clear()));
 });
 
-function withNavigator(value, run) {
-  const original = Object.getOwnPropertyDescriptor(globalThis, "navigator");
-  Object.defineProperty(globalThis, "navigator", { configurable: true, value });
-  return Promise.resolve(run()).finally(() => {
-    if (original) Object.defineProperty(globalThis, "navigator", original);
-    else delete globalThis.navigator;
-  });
-}
+// The phone the shared WhatsApp opener runs on (tests/helpers/fakePhone.js); `run` gets the links opened.
+const withNavigator = withPhone;
+const onAndroid = (run) => withPhone({ userAgent: ANDROID_UA }, run);
 
 async function detail({ late = false, phone = PHONE, env = {} } = {}) {
   const { DebtorDetail } = await loadJsx("src/pos/DebtCollection.jsx", env);
@@ -83,13 +79,15 @@ async function owedView(reminderEvents = []) {
 const stored = () => db.reminders.toArray();
 
 for (const late of [false, true]) {
-  test(`${late ? 43 : 29}: tapping the WhatsApp reminder link records one reminder for the person and opens WhatsApp`, async () => {
+  test(`${late ? 43 : 29}: tapping the WhatsApp reminder button records one reminder for the person and opens WhatsApp`, async () => {
     const view = await detail({ late });
-    const link = detailReminder(view, late);
-    assert.equal(link.type, "a");
+    const button = detailReminder(view, late);
+    assert.equal(button.type, "button", "a button that calls the shared opener (no wa.me link)");
     const event = freshTap();
-    await link.props.onClick(event);
-    assert.equal(event.prevented, false, "the link itself opens WhatsApp");
+    const opened = await onAndroid(async (links) => { await button.props.onClick(event); return links; });
+    assert.equal(event.prevented, false);
+    assert.equal(opened.length, 1);
+    assert.match(opened[0], /^whatsapp:\/\/send\?phone=233241234567&text=/, "her chat in the installed app");
     const events = await stored();
     assert.equal(events.length, 1);
     assert.equal(events[0].customerId, "c1");
@@ -111,17 +109,19 @@ test("29/43 with no phone: a finished share records a reminder, a closed share s
 });
 
 test("recording works offline (it is written only on this phone)", async () => {
-  await withNavigator({ userAgent: "Android", onLine: false }, async () => {
+  const opened = await withNavigator({ userAgent: ANDROID_UA, onLine: false }, async (links) => {
     await detailReminder(await detail(), false).props.onClick(freshTap());
+    return links;
   });
   assert.equal((await stored()).length, 1);
+  assert.match(opened[0], /^whatsapp:\/\//, "offline the installed app opens, not a wa.me web page");
 });
 
 test("22: the Collect first WhatsApp button records a reminder for that person", async () => {
   const view = await homeView();
   const link = control(view, (node) => node.props["aria-label"] === "WhatsApp Ama");
   assert.ok(link, "the WhatsApp button on the tile");
-  await link.props.onClick(freshTap());
+  await onAndroid(() => link.props.onClick(freshTap()));
   const [event] = await stored();
   assert.equal(event.customerId, "c1");
   assert.equal(event.customerName, "Ama");
@@ -136,7 +136,7 @@ test("32: an Owed row's WhatsApp button records a reminder for that row's person
   const view = await owedView();
   const link = control(view, (node) => node.props["aria-label"] === "WhatsApp Ama");
   assert.ok(link);
-  await link.props.onClick(freshTap());
+  await onAndroid(() => link.props.onClick(freshTap()));
   const [event] = await stored();
   assert.equal(event.customerId, "c1");
 });

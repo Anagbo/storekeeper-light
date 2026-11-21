@@ -90,10 +90,11 @@ export function PartyCard({
         <button type="button" aria-label={action.ariaLabel} onClick={action.onClick} className="flex h-[52px] min-w-0 flex-1 items-center justify-center gap-2 rounded-[14px] border-2 border-emerald-950 bg-emerald-900 px-4 text-lg font-extrabold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">
           {ActionIcon && <ActionIcon size={22} aria-hidden="true" />}{action.label}
         </button>
-        {whatsapp?.href && (
-          <a href={whatsapp.href} target="_blank" rel="noopener noreferrer" onClick={whatsapp.onClick} aria-label={whatsapp.label} className={`${SQUARE} border-emerald-900 text-emerald-900`}>
+        {/* rules_global.whatsapp_links: a button that calls the shared opener (src/lib/openWhatsApp.js). */}
+        {whatsapp?.onClick && (
+          <button type="button" onClick={whatsapp.onClick} aria-label={whatsapp.label} className={`${SQUARE} border-emerald-900 text-emerald-900`}>
             {whatsapp.icon}
-          </a>
+          </button>
         )}
         {callHref && (
           <a href={callHref} aria-label={callLabel} className={`${SQUARE} border-[#0F172A] text-[#0F172A]`}>

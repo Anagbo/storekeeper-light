@@ -43,15 +43,5 @@ export function buildWhatsAppReminderText(customerName, debtAmountPesewas, shopN
   if (!name || !shop) return null;
   return `Hello *${name}*, this is a gentle reminder from *${shop}* regarding your outstanding balance of *${formatGhs(debtAmountPesewas)}*. Kindly arrange payment at your earliest convenience. Thank you!`;
 }
-
-export function generateWhatsAppLink(
-  customerPhone,
-  customerName,
-  debtAmountPesewas,
-  shopName = "StoreKeeper Light"
-) {
-  const phone = normalizeWhatsAppPhone(customerPhone);
-  const message = buildWhatsAppReminderText(customerName, debtAmountPesewas, shopName);
-  if (!phone || !message) return null;
-  return `https://wa.me/${phone.slice(1)}?text=${encodeURIComponent(message)}`;
-}
+// Opening WhatsApp with this text: src/lib/openWhatsApp.js (rules_global.whatsapp_links), the only
+// place that builds a WhatsApp link.

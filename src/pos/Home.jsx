@@ -12,7 +12,8 @@ import {
   summarizePosMoneySafely
 } from "../lib/money.js";
 import { displayName } from "../lib/displayName.js";
-import { generateWhatsAppLink } from "../utils/whatsapp.js";
+import { openWhatsApp } from "../lib/openWhatsApp.js";
+import { buildWhatsAppReminderText } from "../utils/whatsapp.js";
 import { posText as t } from "./i18n.js";
 import {
   getMoneyPeriodRange,
@@ -45,7 +46,7 @@ export function countUncountedInPeriod(skipped = [], range, transactions = []) {
   return { sales: inPeriod.filter((record) => isSaleRecord(record)).length, other: inPeriod.filter((record) => !isSaleRecord(record)).length };
 }
 
-export default function Home({ onNavigate, notice = "" }) {
+export default function Home({ onNavigate, notice = "", shopName }) {
   const range = useMemo(() => getMoneyPeriodRange("day"), []);
   const data = useLiveQuery(async () => {
     // rules_global.hide_amounts: the setting loads with the figures, so they never show before it is known.
@@ -76,18 +77,18 @@ export default function Home({ onNavigate, notice = "" }) {
   }, [range.start, range.end], null);
   const urgentDebt = data?.urgentDebt;
   const urgentName = urgentDebt ? displayName(urgentDebt.customerName) : "";
-  // WhatsApp and Call only with a valid number (PartyCard); never a greyed, disabled button.
-  const whatsappLink = urgentDebt && callHrefFor(urgentDebt.phone) ? generateWhatsAppLink(
-    urgentDebt.phone,
-    urgentDebt.customerName,
-    urgentDebt.amountPesewas
-  ) : null;
-  // rules_global.reminders: the WhatsApp button goes through the shared check and records the reminder.
+  // WhatsApp and Call only with a valid number (PartyCard); never a greyed, disabled button. The text
+  // names the real shop, as on 32, 29/43 and Debt saved.
+  const reminderText = urgentDebt && callHrefFor(urgentDebt.phone)
+    ? buildWhatsAppReminderText(urgentDebt.customerName, urgentDebt.amountPesewas, shopName)
+    : null;
+  // rules_global.reminders: the WhatsApp button goes through the shared check and records the reminder;
+  // rules_global.whatsapp_links: it opens WhatsApp through the shared opener.
   const reminders = useReminderCheck();
   const onWhatsApp = (event) => reminders.onReminder(event, {
     person: data?.urgentPerson ?? { customerId: "", name: urgentDebt?.customerName ?? "" },
     lastReminderAt: data?.urgentLastReminderAt ?? 0,
-    href: whatsappLink
+    share: () => openWhatsApp({ text: reminderText, phone: urgentDebt.phone, title: t("collect.remindOnWhatsApp") })
   });
   const owedPeople = data?.owed?.people ?? 0;
   const owedLate = data?.owed?.late ?? 0;
@@ -166,7 +167,7 @@ export default function Home({ onNavigate, notice = "" }) {
                   amountSize={22}
                   dueDate={urgentDebt.dueDate}
                   action={{ label: t("home.collect"), ariaLabel: t("home.collectPayment", { name: urgentName }), icon: Banknote, onClick: () => onNavigate("CollectPayment", urgentDebt) }}
-                  whatsapp={whatsappLink ? { href: whatsappLink, onClick: onWhatsApp, label: t("home.whatsappCustomer", { name: urgentName }), icon: <WhatsAppIcon size={24} /> } : null}
+                  whatsapp={reminderText ? { onClick: onWhatsApp, label: t("home.whatsappCustomer", { name: urgentName }), icon: <WhatsAppIcon size={24} /> } : null}
                   phone={urgentDebt.phone}
                   callLabel={t("home.callCustomer", { name: urgentName })}
                   extra={callHrefFor(urgentDebt.phone) ? null : (

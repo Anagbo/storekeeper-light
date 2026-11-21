@@ -33,12 +33,27 @@ beforeEach(async () => {
   await Promise.all(["debts", "customers", "reminders"].map((name) => db.table(name).clear()));
 });
 
+// The phone (navigator) and the window the shared opener writes the whatsapp:// link to.
+// `opened` collects every link opened (window.location.href on a phone, window.open on a desktop).
+const opened = [];
 function withNavigator(value, run) {
   const original = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  opened.length = 0;
   Object.defineProperty(globalThis, "navigator", { configurable: true, value });
+  const win = originalWindow?.value ?? {};
+  const saved = { location: Object.getOwnPropertyDescriptor(win, "location"), open: win.open };
+  Object.defineProperty(win, "location", { configurable: true, value: { set href(link) { opened.push(link); } } });
+  win.open = (link) => { opened.push(link); };
+  if (!originalWindow) globalThis.window = win;
   return Promise.resolve(run()).finally(() => {
     if (original) Object.defineProperty(globalThis, "navigator", original);
     else delete globalThis.navigator;
+    if (saved.location) Object.defineProperty(win, "location", saved.location);
+    else delete win.location;
+    if (saved.open) win.open = saved.open;
+    else delete win.open;
+    if (!originalWindow) delete globalThis.window;
   });
 }
 
@@ -79,7 +94,7 @@ const SCREENS = {
       owed: { people: 1, late: 1 }, uncounted: { sales: 0, other: 0 }
     }));
     const view = render({ type: Home, props });
-    return { view, find: () => [...walk(view.tree)].find((node) => node.type === "a" && node.props["aria-label"] === "WhatsApp Ama") };
+    return { view, find: () => [...walk(view.tree)].find((node) => node.type === "button" && node.props["aria-label"] === "WhatsApp Ama") };
   },
   "32 Owed row": async ({ lastReminderAt }) => {
     await db.debts.put({ id: "d1", customerId: "c1", customerName: "Ama", phone: PHONE, status: "unpaid", amountPesewas: 8000, total_owed: 8000, dueDate: dayOffset(-3), isInstallmentPlan: false });
@@ -91,7 +106,7 @@ const SCREENS = {
     const view = render({ type: PeopleWhoOweYou, props });
     flushEffects(view);
     view.rerender();
-    return { view, find: () => [...walk(view.tree)].find((node) => node.type === "a" && node.props["aria-label"] === "WhatsApp Ama") };
+    return { view, find: () => [...walk(view.tree)].find((node) => node.type === "button" && node.props["aria-label"] === "WhatsApp Ama") };
   },
   "ManualDebtSaved (debt added)": (state) => manualDebtSaved({ ...state, phone: PHONE }),
   "ManualDebtSaved (debt added), no phone (share sheet)": (state) => manualDebtSaved({ ...state, phone: "" }),
@@ -143,13 +158,12 @@ for (const [name, open] of Object.entries(SCREENS)) {
       await find().props.onClick(freshTap());
       view.rerender();
       const again = inSheet(view, "Send again");
-      if (find().type === "a") {
-        assert.equal(again.type, "a", "a link to WhatsApp, like the button");
-        assert.equal(again.props.href, find().props.href);
-      }
+      assert.equal(again.type, "button", "a button that calls the shared opener, not a wa.me link");
+      assert.equal(find().type, "button");
       await again.props.onClick(freshTap());
       view.rerender();
       assert.equal(sheetOf(view), undefined);
+      assert.deepEqual(opened.map((link) => link.split("&")[0]), name.includes("no phone") ? [] : ["whatsapp://send?phone=233241234567"], "the person's chat in the app");
       const events = await db.reminders.toArray();
       assert.equal(events.length, 1);
       assert.equal(events[0].nameLower, "ama");
@@ -168,6 +182,11 @@ for (const [name, open] of Object.entries(SCREENS)) {
         assert.equal(sheetOf(view), undefined, "no sheet");
         assert.equal((await db.reminders.toArray()).length, 1);
       }
+      // With a saved number the chat opens in the installed app (never wa.me on a phone); without one
+      // the share sheet opens and no link is written.
+      const links = opened.splice(0);
+      if (name.includes("no phone")) assert.deepEqual(links, []);
+      else for (const link of links) assert.match(link, /^whatsapp:\/\/send\?phone=233241234567&text=Hello%20\*Ama\*/);
     });
   });
 }
@@ -232,13 +251,12 @@ test("every reminder button on 22, 32, 29 and 43 goes through the one shared che
     assert.match(source, /useReminderCheck\(\)/, `${file} uses the shared check`);
     assert.match(source, /\{reminders\.sheet\}/, `${file} renders the shared sheet`);
     assert.doesNotMatch(source, /needsReminderCheck|REMINDER_REPEAT_WINDOW_MS|reminders\.add\(/, `${file} has no copy of the check or the record`);
-    // Every WhatsApp reminder link or button on the screen calls onReminder.
-    const reminderControls = source.match(/<a href=\{(whatsappUrl|reminderLink|whatsappLink)\}[^\n]*/g) ?? [];
-    if (file === "src/pos/Home.jsx") assert.match(source, /whatsapp=\{whatsappLink \? \{ href: whatsappLink, onClick: onWhatsApp,/, "22: the tile's WhatsApp (in PartyCard) gets the check");
-    else assert.ok(reminderControls.length > 0, `${file} has its WhatsApp reminder link`);
-    for (const control of reminderControls) assert.match(control, /onReminder|onWhatsApp/, `${file}: ${control}`);
+    // Every WhatsApp reminder is a button whose share opens the shared opener; no <a href> link is left.
+    assert.doesNotMatch(source, /<a href=\{(whatsappUrl|reminderLink|whatsappLink)\}/, `${file} has no WhatsApp link left`);
+    assert.match(source, /share: (shareReminder|\(\) => openWhatsApp\()/, `${file}: the reminder opens WhatsApp through the shared opener`);
+    if (file === "src/pos/Home.jsx") assert.match(source, /whatsapp=\{reminderText \? \{ onClick: onWhatsApp,/, "22: the tile's WhatsApp (in PartyCard) gets the check");
   }
-  assert.match(read("src/pos/PartyCard.jsx"), /onClick=\{whatsapp\.onClick\}/, "22's PartyCard WhatsApp passes the tap on");
+  assert.match(read("src/pos/PartyCard.jsx"), /<button type="button" onClick=\{whatsapp\.onClick\}/, "22's PartyCard WhatsApp is a button that passes the tap on");
   assert.match(read("src/pos/DebtCollection.jsx"), /reminders\.onReminder\(event, \{ person: reminderPerson, lastReminderAt, share: shareReminder \}\)/, "the share-sheet button too");
 });
 

@@ -5,12 +5,12 @@ import AmountKeypad from "./AmountKeypad.jsx";
 import { amountTextToPesewas, pressAmountKey } from "./amountKeypad.js";
 import { formatGhs } from "../lib/money.js";
 import { useLiveQuery } from "dexie-react-hooks";
-import { buildWhatsAppReminderText, generateWhatsAppLink } from "../utils/whatsapp.js";
+import { buildWhatsAppReminderText } from "../utils/whatsapp.js";
 import { latestReminderAt, loadReminderEvents } from "../db/reminders.js";
-import { sendReceipt } from "./receiptShare.js";
+import { openWhatsApp } from "../lib/openWhatsApp.js";
 import { useReminderCheck } from "./ReminderCheck.jsx";
 import { isValidInstallmentPlanForBalance, localDateString } from "../utils/installments.js";
-import { OTHER_BUTTON_CLASS, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
+import { PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
 import { EventDetail, KeyValueRows } from "./EventRows.jsx";
 import { getDebtDueLabel } from "./money.js";
 import { posText as t } from "./i18n.js";
@@ -229,9 +229,9 @@ export function ManualDebtSaved({ params, onDone, onNavigate, shopName }) {
     : 0;
   const initialPaymentPesewas = result?.initialPaymentPesewas ?? params.initialPaymentPesewas ?? 0;
   const initialPaymentParts = result?.initialPaymentParts ?? params.initialPaymentParts ?? [];
-  const whatsappLink = generateWhatsAppLink(params.customer?.phone, params.customer?.name, balance, shopName);
-  // rules_global.reminders: this WhatsApp link goes through the same shared check and record as
-  // 22, 32, 29 and 43. Without a valid phone it opens the share sheet with the reminder text, as on 29/43.
+  // rules_global.reminders: this WhatsApp button goes through the same shared check and record as
+  // 22, 32, 29 and 43. rules_global.whatsapp_links: the shared opener, the person's chat with a valid
+  // number, the share sheet with the reminder text without one, as on 29/43.
   const reminders = useReminderCheck();
   const reminderCustomerId = result?.customer?.id ?? params.customer?.id ?? "";
   const reminderName = params.customer?.name ?? "";
@@ -243,7 +243,7 @@ export function ManualDebtSaved({ params, onDone, onNavigate, shopName }) {
   const lastReminderAt = typeof lastReminderResult === "number" ? lastReminderResult : 0;
   const reminderPerson = { customerId: reminderCustomerId, name: reminderName };
   const reminderText = buildWhatsAppReminderText(reminderName, balance, shopName);
-  const shareReminder = () => sendReceipt({ text: reminderText, title: t("collect.remindOnWhatsApp") });
+  const shareReminder = () => openWhatsApp({ text: reminderText, phone: params.customer?.phone ?? "", title: t("collect.remindOnWhatsApp") });
   return (
     <PosPage className="flex flex-col gap-4 text-center">
       <div className="pt-2 text-center">
@@ -295,11 +295,7 @@ export function ManualDebtSaved({ params, onDone, onNavigate, shopName }) {
       {/* Buttons on this screen (wiring ManualDebtSaved rules): "WhatsApp {Name}" and "See {Name}’s details"
           are other buttons, full width, 52px, stacked; Done is the main button at the bottom. */}
       <div data-debt-saved-actions="" className="flex flex-col gap-2">
-        {whatsappLink ? (
-          <a href={whatsappLink} target="_blank" rel="noreferrer" data-look="other" onClick={(event) => reminders.onReminder(event, { person: reminderPerson, lastReminderAt, href: whatsappLink })} className={`${OTHER_BUTTON_CLASS} w-full`}>{t("debtSaved.whatsapp", { name: displayName(params.customer?.name) })}</a>
-        ) : (
-          <PosSecondaryButton type="button" disabled={!reminderText} onClick={(event) => reminders.onReminder(event, { person: reminderPerson, lastReminderAt, share: shareReminder })} className="w-full">{t("debtSaved.whatsapp", { name: displayName(params.customer?.name) })}</PosSecondaryButton>
-        )}
+        <PosSecondaryButton type="button" disabled={!reminderText} onClick={(event) => reminders.onReminder(event, { person: reminderPerson, lastReminderAt, share: shareReminder })} className="w-full">{t("debtSaved.whatsapp", { name: displayName(params.customer?.name) })}</PosSecondaryButton>
         <PosSecondaryButton type="button" className="w-full" onClick={() => onNavigate("DebtorDetail", { customerId: result?.customer?.id ?? params.customer?.id, customerName: params.customer?.name, debtId: result?.debt?.id })}>{t("credit.seeDetails", { name: displayName(params.customer?.name) })}</PosSecondaryButton>
       </div>
       <div className="mt-auto grid gap-2">

@@ -151,7 +151,10 @@ for (const [screen, dueDate] of [["29", dayOffset(7)], ["43", dayOffset(-3)]]) {
     assertFlag(tree, false, screen);
     const text = textOf(tree);
     assert.match(text, /Collect/);
-    assert.ok([...walk(tree)].some((node) => node.type === "a" && String(node.props.href).startsWith("https://wa.me/233241234567?text=Hello")), "the WhatsApp reminder stays");
+    // rules_global.whatsapp_links: the reminder is a button that calls the shared opener, not a wa.me link.
+    const reminder = [...walk(tree)].find((node) => node.type === "button" && (node.props["aria-label"] === "WhatsApp reminder for Ama" || textOf(node).includes("Send reminder on WhatsApp")));
+    assert.ok(reminder && !reminder.props.disabled, "the WhatsApp reminder stays");
+    assert.ok(![...walk(tree)].some((node) => node.type === "a" && /wa\.me|whatsapp:/.test(String(node.props.href))), "no WhatsApp link");
     assert.ok([...walk(tree)].some((node) => node.type === "a" && String(node.props.href).startsWith("tel:")), "Call stays");
   });
   test(`${screen} flag on: Receipt button for the latest payment`, async () => {
