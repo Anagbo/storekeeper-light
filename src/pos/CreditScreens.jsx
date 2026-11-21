@@ -887,14 +887,15 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
                 </button>
               ))}
               {/* split_payment_look (21 Nov 2026): the add look with the joined cash + phone icons and the
-                  label; chosen, it keeps the dashed border with the green fill of the tiles beside it. */}
+                  label; chosen, it keeps the dashed border with the green fill of the tiles beside it. The
+                  corners are 12px (rounded-xl) like Cash and MoMo beside it (owner's decision, 21 Nov 2026). */}
               <AddButton
                 plus={false}
                 pressed={paymentMethod === "split"}
                 aria-label={t("split.title")}
                 data-split-19=""
                 onClick={() => choosePaymentMethod("split")}
-                className="min-h-12! flex-col gap-0.5! overflow-hidden px-1! py-1! text-xs! sm:text-sm!"
+                className="min-h-12! flex-col gap-0.5! overflow-hidden rounded-xl! px-1! py-1! text-xs! sm:text-sm!"
               >
                 <SplitIcons size={16} />
                 <span className="w-full min-w-0 truncate text-center">{t("split.title")}</span>

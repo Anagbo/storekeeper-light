@@ -40,7 +40,8 @@ const VISITS = [
   // (The measured text also holds "Split payment" from the label that shows only from 640px; it has no box below that.)
   { name: "15 Sell", seed: "base", steps: ["^Sell$"], add: [{ text: "++SplitSplit payment", height: 56, lines: 2, label: "Split" }] },
   { name: "55 Review and pay", seed: "base", steps: ["^Sell$", "Add items", "^Rice", "^Add 1", "^Next"], add: [{ text: "++ Split payment", height: 68, atLeast: true, full: true, lines: 2, label: "Split payment" }] },
-  { name: "19 A little at a time", seed: "base", steps: ["^Sell$", "^5$", "^Owe$", "^[AK]?Amoto", "^Next", "^A little at a time", "^Today$"], add: [{ text: "+Split payment", height: 48, atLeast: true, lines: 2, label: "Split payment" }] }
+  // 19 (owner's decision, 21 Nov 2026): 12px corners like the Cash and MoMo tiles beside it.
+  { name: "19 A little at a time", seed: "base", steps: ["^Sell$", "^5$", "^Owe$", "^[AK]?Amoto", "^Next", "^A little at a time", "^Today$"], add: [{ text: "+Split payment", height: 48, atLeast: true, lines: 2, label: "Split payment", radius: "12px", sameRadiusAs: "Cash" }] }
 ];
 
 const WIDTHS = [340, 360, 393];
@@ -67,7 +68,11 @@ test("the add look fits at 340, 360 and 393px: dashed 2px green, 14px corners, n
           const what = `${label}: "${expected.text}"`;
           assert.match(c.border, /^dashed 2px /, `${what}: dashed 2px border`);
           assert.match(c.border.replace(/^dashed 2px /, ""), GREEN, `${what}: dark-green border`);
-          assert.equal(c.radius, "14px", `${what}: 14px corners`);
+          assert.equal(c.radius, expected.radius ?? "14px", `${what}: ${expected.radius ?? "14px"} corners`);
+          if (expected.sameRadiusAs) {
+            const sibling = m.controls.find((control) => control.text === expected.sameRadiusAs);
+            assert.ok(sibling && sibling.radius === c.radius, `${what}: the same corners as "${expected.sameRadiusAs}" (${sibling?.radius})`);
+          }
           assert.match(c.color, GREEN, `${what}: dark-green text`);
           assert.ok(Number(c.fontWeight) >= 700, `${what}: bold`);
           assert.equal(c.background, "rgba(0, 0, 0, 0)", `${what}: no fill`);
