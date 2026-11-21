@@ -4,6 +4,7 @@ import { buildCollectionReceiptMessage } from "./collectionReceipt.js";
 import { buildSaleReceiptMessage, getSaleReceiptDetails } from "./saleReceipt.js";
 import { formatDate, formatTime } from "../lib/formatDate.js";
 import { formatGhs } from "../lib/formatGhs.js";
+import { receiptDueLines } from "./receiptDueLine.js";
 
 // Receipts are built only from these fields. Customer phone and Ghana Card numbers are never read.
 
@@ -89,10 +90,11 @@ export function buildSaleReceipt({
 //   Received from {Name}: GH₵x (Cash|MoMo)
 //   Balance owed now: GH₵y                ("Nothing owed now" when zero)
 //   Next payment: GH₵x on dd/mm/yyyy      (only with a payment plan and something still owed)
+//   or Due on dd/mm/yyyy                  (a one-time debt with a due date, something still owed)
 //   Thank you!
 // A payment split between Cash and MoMo names both parts: (Cash GH₵a, MoMo GH₵b).
-// `plan` is the person's open debt when it is a payment plan ({ isInstallmentPlan, installmentAmount,
-// nextDueDate }); x is the next installment, never more than what is owed.
+// `plan` is the person's open debt as it stands now (a plan or a one-time debt); x is the plan card's
+// Still needed, never more than what is owed (receiptDueLines).
 export function buildPaymentReceipt({
   shopName,
   customerName,
@@ -119,48 +121,38 @@ export function buildPaymentReceipt({
     `${formatDate(when)} ${formatTime(when)}`,
     `Received from ${customer}: ${amount(paidPesewas)} (${method})`,
     remainingPesewas === 0 ? "Nothing owed now" : `Balance owed now: ${amount(remainingPesewas)}`,
-    ...nextPaymentLine(plan, remainingPesewas),
+    ...receiptDueLines(plan, remainingPesewas),
     "Thank you!"
   ].join("\n");
 }
 
-// A plan whose installment or date cannot be read gives no line rather than no receipt (28 builds the
-// text while it renders).
-function nextPaymentLine(plan, remainingPesewas) {
-  if (!plan?.isInstallmentPlan || !(remainingPesewas > 0)) return [];
-  if (!Number.isSafeInteger(plan.installmentAmount) || plan.installmentAmount <= 0) return [];
-  let due;
-  try {
-    due = formatDueDate(plan.nextDueDate);
-  } catch {
-    return [];
-  }
-  return [`Next payment: ${amount(Math.min(remainingPesewas, plan.installmentAmount))} on ${due}`];
-}
-
+// paidThisPeriodPesewas is the money already paid toward the installment now due (the debt's
+// installmentPaymentCarryPesewas); dueDate is a one-time debt's date when there is no plan.
 export function buildCustomerBalanceReceipt({
   shopName,
   customerName,
   timestamp = Date.now(),
   balancePesewas,
   installmentPesewas = 0,
-  nextDueDate = ""
+  nextDueDate = "",
+  paidThisPeriodPesewas = 0,
+  dueDate = ""
 }) {
   const shop = requireName(shopName, "A shop name is required for the receipt.");
   const customer = displayName(requireName(customerName, "A customer name is required for the receipt."));
   if (!Number.isSafeInteger(balancePesewas) || balancePesewas < 0) {
     throw new RangeError("The customer balance is invalid.");
   }
-  const hasNextPayment = installmentPesewas > 0 && balancePesewas > 0;
+  const debt = installmentPesewas > 0
+    ? { isInstallmentPlan: true, installmentAmount: installmentPesewas, nextDueDate, installmentPaymentCarryPesewas: paidThisPeriodPesewas }
+    : { isInstallmentPlan: false, dueDate };
 
   return [
     `Receipt from ${shop}`,
     formatDateTime(timestamp),
     `For: ${customer}`,
     `Balance owed as of ${formatDateTime(timestamp)}: ${amount(balancePesewas)}`,
-    ...(hasNextPayment
-      ? [`Next payment: ${amount(Math.min(balancePesewas, installmentPesewas))} on ${formatDueDate(nextDueDate)}`]
-      : []),
+    ...receiptDueLines(debt, balancePesewas),
     "Thank you!"
   ].join("\n");
 }
@@ -216,10 +208,13 @@ export function buildCreditSaleReceipt(result, shopName) {
     throw new RangeError("The remaining credit balance is invalid.");
   }
 
-  const plan = result.debtAfter?.isInstallmentPlan ? result.debtAfter : null;
   if (result.debtAfter === undefined) {
     throw new TypeError("The reconciled credit balance is required for the receipt.");
   }
+  // The plan as it stands after the sale (debtAfter); without a plan, the sale's own due date.
+  const debt = result.debtAfter?.isInstallmentPlan
+    ? result.debtAfter
+    : { isInstallmentPlan: false, dueDate: result.installmentPlan ? "" : result.dueDate ?? "" };
   return [
     `Receipt from ${shop}`,
     formatDateTime(transaction.timestamp ?? transaction.createdAt),
@@ -228,9 +223,7 @@ export function buildCreditSaleReceipt(result, shopName) {
       ? [`Paid today: ${amount(paidPesewas)} (${paymentParts(cashPesewas, momoPesewas).join(", ")})`]
       : []),
     `Balance owed as of ${formatDateTime(transaction.timestamp ?? transaction.createdAt)}: ${amount(result.totalDebtPesewas)}`,
-    ...(plan && result.totalDebtPesewas > 0
-      ? [`Next payment: ${amount(Math.min(result.totalDebtPesewas, plan.installmentAmount))} on ${formatDueDate(plan.nextDueDate)}`]
-      : []),
+    ...receiptDueLines(debt, result.totalDebtPesewas),
     "Thank you!"
   ].join("\n");
 }

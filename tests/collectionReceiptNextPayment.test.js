@@ -39,7 +39,11 @@ test("the text: with a plan the Next payment line sits after the balance; withou
   const base = { shopName: "Shop", customerName: "Ama", timestamp: AT, cashPesewas: 3000, remainingPesewas: 5000 };
   assert.equal(buildPaymentReceipt({ ...base, plan: PLAN }), WITH_PLAN);
   assert.equal(buildPaymentReceipt(base), NO_PLAN);
-  assert.equal(buildPaymentReceipt({ ...base, plan: { isInstallmentPlan: false, dueDate: "2026-11-22" } }), NO_PLAN);
+  // Changed 21 Nov 2026 (wiring 28 "Collection receipt: next payment and due date"): a one-time debt
+  // with a due date now gets "Due on dd/mm/yyyy"; without a date, still no line.
+  assert.equal(buildPaymentReceipt({ ...base, plan: { isInstallmentPlan: false, dueDate: "2026-11-22" } }),
+    NO_PLAN.replace("\nThank you!", "\nDue on 22/11/2026\nThank you!"));
+  assert.equal(buildPaymentReceipt({ ...base, plan: { isInstallmentPlan: false, dueDate: "" } }), NO_PLAN);
 });
 
 test("the text: the next payment is never more than what is owed, and nothing owed gives no line", () => {
@@ -86,11 +90,15 @@ test("28 with a plan: Send receipt and Copy receipt carry the Next payment line"
   assert.equal(calls.copy[0], WITH_PLAN);
 });
 
-test("28 without a plan: no Next payment line", async () => {
+// Changed 21 Nov 2026 (item 4j): a one-time debt with a due date gets "Due on"; without a date, no line.
+test("28 without a plan: no Next payment line; Due on with a due date", async () => {
   const calls = setNavigator();
   const view = await show28(ON, { isInstallmentPlan: false, dueDate: "2026-11-22" });
   await findButton(view.tree, "Copy receipt").props.onClick();
-  assert.equal(calls.copy[0], NO_PLAN);
+  assert.equal(calls.copy[0], NO_PLAN.replace("\nThank you!", "\nDue on 22/11/2026\nThank you!"));
+  const noDate = await show28(ON, { isInstallmentPlan: false, dueDate: "" });
+  await findButton(noDate.tree, "Copy receipt").props.onClick();
+  assert.equal(calls.copy[1], NO_PLAN);
 });
 
 test("28 flag off, with a plan: nothing about receipts", async () => {
@@ -139,11 +147,12 @@ for (const late of [false, true]) {
     assert.equal(calls.copy[0], expected);
   });
 
-  test(`${screen} without a plan: no Next payment line`, async () => {
+  // Changed 21 Nov 2026 (item 4j): the one-time debt's due date shows as "Due on", late or not.
+  test(`${screen} without a plan: no Next payment line, Due on the debt's date`, async () => {
     const calls = setNavigator();
-    const { view } = await showDetail(ON, { late, plan: false });
+    const { view, due } = await showDetail(ON, { late, plan: false });
     await findButton(view.tree, "Copy receipt").props.onClick();
-    assert.equal(calls.copy[0], NO_PLAN);
+    assert.equal(calls.copy[0], NO_PLAN.replace("\nThank you!", `\nDue on ${ddmmyyyy(due)}\nThank you!`));
   });
 
   test(`${screen} flag off, with a plan: nothing about receipts`, async () => {
