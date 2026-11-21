@@ -95,7 +95,9 @@ function useCollectionDebt(debtId, customerName) {
   }, [debtId, customerName], undefined);
 }
 
-function PaymentMethodPicker({ value, onChange, onSplit, splitDisabled = false }) {
+// disabled (wiring 26 "Amount above the balance", 21 Nov 2026): while the amount is higher than the
+// balance, Cash, MoMo and Split payment are all disabled (faded, not tappable) and the taps are ignored.
+function PaymentMethodPicker({ value, onChange, onSplit, splitDisabled = false, disabled = false }) {
   return (
     <fieldset>
       <legend className="mb-2 text-lg font-extrabold">{t("collect.howPaying")}</legend>
@@ -105,8 +107,9 @@ function PaymentMethodPicker({ value, onChange, onSplit, splitDisabled = false }
             key={method}
             type="button"
             aria-pressed={value === method}
-            onClick={() => onChange(method)}
-            className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-2xl border-[3px] px-1 text-xs font-extrabold sm:min-h-16 sm:gap-1 sm:px-2 sm:text-base ${value === method ? "border-emerald-900 bg-green-200 text-slate-950" : "border-slate-500 bg-white text-slate-950"}`}
+            disabled={disabled}
+            onClick={() => { if (!disabled) onChange(method); }}
+            className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-2xl border-[3px] px-1 text-xs font-extrabold disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-16 sm:gap-1 sm:px-2 sm:text-base ${value === method ? "border-emerald-900 bg-green-200 text-slate-950" : "border-slate-500 bg-white text-slate-950"}`}
           >
             <Icon size={20} className="shrink-0 sm:h-[22px] sm:w-[22px]" aria-hidden="true" />
             <span className="w-full min-w-0 truncate text-center">{t(label)}</span>
@@ -115,7 +118,7 @@ function PaymentMethodPicker({ value, onChange, onSplit, splitDisabled = false }
         {/* open_text_sweep (17 Nov 2026): "+ Split payment" adds a second way to pay, so it is the add look. */}
         {/* split_icons (20 Nov 2026): the tile keeps the joined Cash + MoMo icons (the plus signs between them),
             with no separate "+" before the label; Owe cannot be part of a collection split. */}
-        <AddButton plus={false} disabled={splitDisabled} onClick={onSplit} aria-label={t("collect.splitPayment")} data-split-tile="" className="min-h-14 flex-col gap-0.5! overflow-hidden px-1! text-xs! sm:min-h-16 sm:gap-1! sm:px-2! sm:text-base!">
+        <AddButton plus={false} disabled={disabled || splitDisabled} onClick={() => { if (!disabled && !splitDisabled) onSplit(); }} aria-label={t("collect.splitPayment")} data-split-tile="" className="min-h-14 flex-col gap-0.5! overflow-hidden px-1! text-xs! sm:min-h-16 sm:gap-1! sm:px-2! sm:text-base!">
           <SplitIcons size={16} />
           <span className="w-full min-w-0 truncate text-center">{t("collect.splitPayment")}</span>
         </AddButton>
@@ -150,6 +153,9 @@ function CollectionSheet({ debt, params = {}, onClose, onNavigate, onUpdateParam
     ? Math.min(debt.amountPesewas, debt.installmentAmount)
     : debt.amountPesewas;
   const amountPesewas = mode === "all" ? debt.amountPesewas : dueAmount;
+  // Wiring 25: same rule as on 26. Due now and Pay all are never above the balance today; the guard keeps
+  // it that way if they ever are.
+  const aboveBalance = amountPesewas > debt.amountPesewas;
   // Wiring 25: only for Due now, from money (never "Payment x of y").
   const paymentsLeft = getInstallmentsLeft(debt);
   const dueNowLine = mode !== "due" || paymentsLeft <= 0
@@ -159,7 +165,7 @@ function CollectionSheet({ debt, params = {}, onClose, onNavigate, onUpdateParam
       : t("collect.leftAfterThis", { left: paymentsLeft - 1 });
 
   async function receivePayment() {
-    if (busy || amountPesewas <= 0) return;
+    if (busy || amountPesewas <= 0 || aboveBalance) return;
     setBusy(true);
     setError("");
     try {
@@ -206,10 +212,13 @@ function CollectionSheet({ debt, params = {}, onClose, onNavigate, onUpdateParam
 
         <div className="mt-3"><SheetAmount amountPesewas={amountPesewas} /></div>
         {dueNowLine && <p className="mt-2 text-sm font-semibold text-slate-700">{dueNowLine}</p>}
+        {aboveBalance && <div className="mt-2"><CollectionError>{t("collect.amountTooHigh")}</CollectionError></div>}
         <div className="mt-4">
           <PaymentMethodPicker
             value={paymentMethod}
+            disabled={aboveBalance}
             onChange={(method) => {
+              if (aboveBalance) return;
               if (method === "momo") {
                 onNavigate("MoMoChoice", { debtId: debt.id, amountPesewas });
               } else {
@@ -218,6 +227,7 @@ function CollectionSheet({ debt, params = {}, onClose, onNavigate, onUpdateParam
             }}
             splitDisabled={busy || amountPesewas <= 0}
             onSplit={() => {
+              if (aboveBalance) return;
               // Wiring 27 (12 Nov 2026, as from 26): the parts kept after Back from 27 come back while
               // the amount (Due now / Pay all) is unchanged; a changed amount clears them.
               const kept = params.collectSplitDraft;
@@ -234,7 +244,7 @@ function CollectionSheet({ debt, params = {}, onClose, onNavigate, onUpdateParam
         </div>
         <CollectionError>{error}</CollectionError>
         <SaveAttemptNotice saveAttempt={saveAttempt} busy={busy} onTryAgain={() => void receivePayment()} />
-        <PosPrimaryButton type="button" onClick={() => void receivePayment()} disabled={busy || amountPesewas <= 0} className="mt-4 h-[68px] min-h-0 rounded-[20px] text-2xl">
+        <PosPrimaryButton type="button" onClick={() => void receivePayment()} disabled={busy || amountPesewas <= 0 || aboveBalance} className="mt-4 h-[68px] min-h-0 rounded-[20px] text-2xl">
           <Check size={28} aria-hidden="true" /> {busy ? t("collect.saving") : t("collect.received")}
         </PosPrimaryButton>
         <PosSecondaryButton type="button" onClick={() => onNavigate("DebtorDetail", { debtId: debt.id, customerName: debt.customerName })} className="mt-2 w-full">
@@ -289,7 +299,12 @@ export function CollectSplitPayment({ params, onBack, onNavigate, onUpdateParams
   }, [debt]);
 
   if (debt === undefined) return <PosPage><p role="status">{t("collect.loading")}</p></PosPage>;
-  if (!debt || !Number.isSafeInteger(totalPesewas) || totalPesewas <= 0 || totalPesewas > debt.amountPesewas) {
+  // Wiring 26/27 "Amount above the balance" (21 Nov 2026): 27 never offers Cash, MoMo or Done for a total
+  // above the balance; it names the reason (the debt was found) instead of "could not be found".
+  if (debt && Number.isSafeInteger(totalPesewas) && totalPesewas > debt.amountPesewas) {
+    return <PosPage><CollectionError>{t("collect.amountTooHigh")}</CollectionError></PosPage>;
+  }
+  if (!debt || !Number.isSafeInteger(totalPesewas) || totalPesewas <= 0) {
     return <PosPage><CollectionError>{t("collect.notFound")}</CollectionError></PosPage>;
   }
 
@@ -366,6 +381,9 @@ function CollectPayPartScreen({ params, onBack, onNavigate, onUpdateParams, onRe
   const saveAttempt = useSaveAttempt();
   const amountPesewas = toPesewas(amount);
   const canReceive = debt && Number.isSafeInteger(amountPesewas) && amountPesewas > 0 && amountPesewas <= debt.amountPesewas;
+  // Wiring 26 "Amount above the balance" (21 Nov 2026): Cash, MoMo, Split payment and Received are all
+  // disabled and ignore taps; the keypad stays active so the amount can be corrected.
+  const aboveBalance = Boolean(debt) && amountPesewas > debt.amountPesewas;
 
   async function receivePayment() {
     if (busy || !canReceive) return;
@@ -396,7 +414,7 @@ function CollectPayPartScreen({ params, onBack, onNavigate, onUpdateParams, onRe
             <output aria-live="polite" aria-label={t("collect.amountToCollect")} className="amount-fit block font-extrabold">{formatGhs(amountPesewas ?? 0)}</output>
             <p className="text-lg font-bold text-rose-900">{t("collect.leftToPay", { amount: formatGhs(Math.max(0, debt.amountPesewas - (amountPesewas ?? 0))) })}</p>
           </section>
-          {amountPesewas > debt.amountPesewas && <CollectionError>{t("collect.amountTooHigh")}</CollectionError>}
+          {aboveBalance && <CollectionError>{t("collect.amountTooHigh")}</CollectionError>}
           <AmountKeypad label={t("collect.enterAmount")} onKey={(digit) => {
             const next = pressAmountKey(amount, digit);
             setAmount(next);
@@ -405,7 +423,9 @@ function CollectPayPartScreen({ params, onBack, onNavigate, onUpdateParams, onRe
           }} disabled={busy} />
           <PaymentMethodPicker
             value={paymentMethod}
+            disabled={aboveBalance}
             onChange={(method) => {
+              if (aboveBalance) return;
               if (method === "momo") {
                 onNavigate("MoMoChoice", { ...params, amountPesewas });
               } else {
@@ -416,6 +436,7 @@ function CollectPayPartScreen({ params, onBack, onNavigate, onUpdateParams, onRe
             }}
             splitDisabled={!canReceive || busy}
             onSplit={() => {
+              if (!canReceive || busy) return;
               // Wiring 27 (12 Nov 2026): the parts kept after Back from 27 come back while the amount
               // is unchanged; a changed amount clears them and 27 starts with the new amount.
               const kept = params?.collectSplitDraft;
