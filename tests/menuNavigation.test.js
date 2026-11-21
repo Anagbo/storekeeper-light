@@ -90,11 +90,14 @@ test("22 header: the Menu button is first (hamburger + Menu, 48px), then the sho
   assert.ok(![...walk(view.tree)].some((node) => /bg-emerald-900/.test(node.props?.className ?? "")), "no green tile");
 });
 
-test("the Menu button is not hidden on wide screens yet (the wide sidebar with Settings and Items comes after the merge)", async () => {
+// wide_layout (21 Nov 2026): the sidebar now has every Menu destination, so the Menu button is phone-only.
+// The decision is layout.js's (PosApp leaves the header out), never a CSS breakpoint on the button.
+// tests/wideShell.test.js checks it in the running app at 767, 768 and wider.
+test("the Menu button carries no CSS breakpoint of its own (layout.js decides)", async () => {
   const { PosHeader } = await loadJsx("src/pos/PosComponents.jsx");
   const view = render({ type: PosHeader, props: { shopName: "Shop", statusLabel: "", onMenu() {} } });
   const menu = [...walk(view.tree)].find((node) => node.props?.["aria-label"] === "Open menu");
-  assert.doesNotMatch(menu.props.className, /(md|lg):hidden/);
+  assert.doesNotMatch(menu.props.className, /(sm|md|lg|xl):hidden/);
 });
 
 test("25: the header behind the Collect sheet is covered by the sheet (z-50 over the header's z-30)", () => {
@@ -322,7 +325,8 @@ test("23 focus: returns to the header Menu button when the drawer closes", async
 test("the Menu page is gone from the route table; PosApp draws MenuDrawer, not a Menu page", () => {
   assert.equal(POS_ROUTES.Menu, undefined);
   const app = read("src/pos/PosApp.jsx");
-  assert.match(app, /\{menuOpen && <MenuDrawer current=\{route\} shopName=\{shopName\} onClose=\{closeMenu\} onChoose=\{chooseFromMenu\} \/>\}/);
+  // wide_layout (21 Nov 2026): the drawer belongs to the phone layout only (layout.js).
+  assert.match(app, /\{!layout\.wide && menuOpen && <MenuDrawer current=\{route\} shopName=\{shopName\} onClose=\{closeMenu\} onChoose=\{chooseFromMenu\} \/>\}/);
   assert.doesNotMatch(app, /POS_ROUTES\.Menu\b/);
   assert.doesNotMatch(app, /from "\.\/Menu\.jsx"/);
   assert.match(app, /useBackHandler\(menuOpen, /, "the phone's Back closes the drawer");

@@ -97,19 +97,43 @@ async function cancelSaleLike59(app) {
   return app.settle();
 }
 
-async function sideNav(app, label) {
-  const button = [...walk(app.view.tree)].find((node) => node.type === "button" && textOf(node).trim() === label && node.props?.["aria-label"] === undefined);
-  await button.props.onClick();
-  return app.settle();
-}
-
+// "Another tab" from 16 was the side menu, which was in the tree (hidden by CSS) on phones; 16 has no
+// bottom bar. Since 21 Nov 2026 (wide_layout.layout_mode_function) the sidebar exists only on wide
+// screens and a tap there pushes like the Menu: the draft is not left, so nothing is asked (tested below).
 const LEAVES = [
   ["Cancel sale (59)", cancelSaleLike59, "Home"],
   ["header Home", headerHome, "Home"],
-  ["another tab (Owed)", (app) => sideNav(app, "Owed"), "PeopleWhoOweYou"],
   ["on-screen Back", (app) => app.tap("Back"), "Sell"],
   ["phone back", (app) => app.phoneBack(), "Sell"]
 ];
+
+test("16 with received MoMo, wide: a sidebar tap (Owed) keeps the draft in history, asks nothing; Back returns to 16 as it was", async () => {
+  const app = await openPosApp({ width: 1280 });
+  after(() => app.restoreConsole());
+  await lockedOn16(app);
+  const before = JSON.stringify(app.params);
+  await app.side("PeopleWhoOweYou");
+  assert.equal(dialogs(app.view.tree).length, 0, "not leaving the draft: no question");
+  assert.equal(app.route, "PeopleWhoOweYou");
+  assert.equal(splitEntries(app).length, 1, "16 is kept behind");
+  await app.phoneBack();
+  assert.equal(app.route, "SplitPayment");
+  assert.equal(JSON.stringify(app.params), before, "16 is unchanged");
+  assert.equal(momoPart(app).verification, "merchant_confirmed");
+  assert.equal((await db.transactions.toArray()).length, 0, "nothing saved");
+});
+
+test("16 with received MoMo, wide: Home from the sidebar asks first (the header Home rule)", async () => {
+  const app = await openPosApp({ width: 1280 });
+  after(() => app.restoreConsole());
+  await lockedOn16(app);
+  await app.side("Home");
+  assert.equal(app.route, "SplitPayment");
+  assert.equal(textOf(dialogs(app.view.tree)[0]).includes(QUESTION), true);
+  await app.tap("Leave");
+  assert.equal(app.route, "Home");
+  assert.deepEqual(splitEntries(app), []);
+});
 
 for (const [name, leave, landing] of LEAVES) {
   test(`16 with received MoMo: ${name} asks first; Stay keeps 16 as it was; Leave discards the whole draft`, async () => {

@@ -128,7 +128,7 @@ test("44: header Home drops the draft", async () => {
   const app = await open();
   await to44(app);
   await app.tap("No");
-  await app.tap(/^Home$/);
+  await app.goHome(); // header Home: Menu > Home on the phone (the hidden side menu is gone)
   await app.tap(/Spent money/);
   assert.equal(inputs(app)[0].props.value, "");
 });

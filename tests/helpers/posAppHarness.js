@@ -19,10 +19,12 @@ function fakeHistory() {
   };
 }
 
-function installWindow() {
+// width: the window width layout.js reads (no width = the phone, as before).
+function installWindow(width) {
   const listeners = {};
   globalThis.window = {
     __listeners: listeners,
+    ...(width === undefined ? {} : { innerWidth: width }),
     history: fakeHistory(),
     location: { href: "http://localhost/" },
     addEventListener(type, listener) { (listeners[type] ??= []).push(listener); },
@@ -36,8 +38,8 @@ function installWindow() {
 const tick = () => new Promise((resolve) => setTimeout(resolve, 2));
 
 // Phone request is on by default here so 61 still asks when the owner has to choose; pass { env: {} } for it off.
-export async function openPosApp({ env = { VITE_ENABLE_MOMO_PHONE_REQUEST: "true" } } = {}) {
-  installWindow();
+export async function openPosApp({ env = { VITE_ENABLE_MOMO_PHONE_REQUEST: "true" }, width } = {}) {
+  installWindow(width);
   const errors = [];
   const warnings = [];
   const originalError = console.error;
@@ -130,14 +132,28 @@ export async function openPosApp({ env = { VITE_ENABLE_MOMO_PHONE_REQUEST: "true
       await button.props.onClick();
       return app.settle();
     },
-    // Home from any screen, as the owner can: Menu > Home where the header has the Menu button (the
-    // header Home tile is gone, wiring 23), otherwise the side menu's Home (wide screens; on 26, 27 for a
-    // collection, 28 and 29 the phone header has neither and the screen's own Back or Done is the way out).
+    // The wide rail or sidebar (layout.js), or null in the phone layout.
+    sideNav() {
+      return [...walk(view.tree)].find((node) => node.type === "nav" && node.props?.["data-side-nav"]) ?? null;
+    },
+    // A sidebar or rail row by its route (Home, Sell, PeopleWhoOweYou, TodaysTransactions, MyMoney, MyItems,
+    // SettingsProfitTools).
+    async side(route) {
+      const nav = app.sideNav();
+      const row = nav && [...walk(nav)].find((node) => node.type === "button" && node.props?.["data-side-row"] === route);
+      if (!row) throw new Error(`No sidebar row "${route}" on ${app.route}`);
+      await row.props.onClick();
+      return app.settle();
+    },
+    // Home from any screen, as the owner can: Menu > Home where the header has the Menu button; the
+    // header Home tile where the header has it instead (26, 27 for a collection, 28, 29, 72, 73); the
+    // sidebar's Home on wide screens.
     async goHome() {
       const hasMenu = [...walk(view.tree)].some((node) => node.type === "button" && node.props?.["aria-label"] === "Open menu");
       if (hasMenu) return app.menu("Home");
-      const side = [...walk(view.tree)].find((node) => node.type === "nav" && /hidden w-60/.test(node.props?.className ?? ""));
-      const home = side && [...walk(side)].find((node) => node.type === "button" && textOf(node).trim() === "Home");
+      if (app.sideNav()) return app.side("Home");
+      const header = [...walk(view.tree)].find((node) => node.type === "header");
+      const home = header && [...walk(header)].find((node) => node.type === "button" && node.props?.["aria-label"] === "Home");
       if (!home) throw new Error(`No way Home on ${app.route}`);
       await home.props.onClick();
       return app.settle();

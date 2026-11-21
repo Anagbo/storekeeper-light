@@ -556,10 +556,19 @@ export function navigateState(state, route, params = {}) {
 // transactions is not one: opened from the Menu drawer, Back returns to the page it was opened on.
 const BACK_TO_HOME = new Set([POS_ROUTES.CollectPayment, POS_ROUTES.PeopleWhoOweYou]);
 
+// wide_layout (21 Nov 2026): a sidebar tap pushes its destination over the page it was opened on (the
+// draft stays there), and marks it with this param. Back from such a screen returns to that page, also
+// on Owed, whose Back otherwise goes Home. The phone never sets it.
+export const VIA_SIDEBAR = "viaSidebar";
+
+export function backGoesHome(state) {
+  return BACK_TO_HOME.has(state.current) && state.params?.[VIA_SIDEBAR] !== true;
+}
+
 // The phone's back button: exactly what the screen's own Back does (the BACK rule). Nothing behind
 // a screen other than Home means Home.
 export function phoneBackState(state) {
-  if (BACK_TO_HOME.has(state.current)) return createRouteState(POS_ROUTES.Home);
+  if (backGoesHome(state)) return createRouteState(POS_ROUTES.Home);
   // 72: the phone back is Skip for now (SIGNED).
   if (state.current === POS_ROUTES.CustomerSignature) return signedState(state);
   return backRoute(state);

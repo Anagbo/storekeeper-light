@@ -188,19 +188,25 @@ async function appCss() {
   return compiler.build(scanner.scan()) + readFileSync(join(base, "pos/theme.css"), "utf8");
 }
 
-const WIDTHS = [340, 360, 393, 768, 1280];
+// Phone widths keep the header (wide_layout: below 768px nothing changes). From 768px (layout.js) the
+// rail or sidebar replaces the header, so the wide widths check that it stays on screen the same way.
+const PHONE_WIDTHS = [340, 360, 393];
+const WIDE_WIDTHS = [768, 1280];
 const HEIGHT = 640;
 
-// Each page goes in iframes of each width (a headless window will not size below ~500px); in each,
-// the page area is scrolled down and the header's place on screen and every ancestor's overflow are read.
+// Each page goes in an iframe of the width it was rendered for (a headless window will not size below
+// ~500px); in each, the page area is scrolled down and the header's (or the sidebar's) place on screen
+// and every ancestor's overflow are read.
 function measuringPage(pages, css) {
-  const docs = pages.map(({ name, html }) => ({ name, doc: `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>${css}</style></head><body><div id="root">${html}</div></body></html>` }));
-  const frames = docs.flatMap(({ name, doc }) => WIDTHS.map((width) => `<iframe data-page="${name}" data-width="${width}" style="width:${width}px;height:${HEIGHT}px;border:0;display:block" srcdoc="${escapeHtml(doc)}"></iframe>`)).join("");
+  const frames = pages.map(({ name, width, html }) => {
+    const doc = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>${css}</style></head><body><div id="root">${html}</div></body></html>`;
+    return `<iframe data-page="${name}" data-width="${width}" style="width:${width}px;height:${HEIGHT}px;border:0;display:block" srcdoc="${escapeHtml(doc)}"></iframe>`;
+  }).join("");
   const script = `
     function measure(frame) {
       const win = frame.contentWindow;
       const doc = frame.contentDocument;
-      const header = doc.querySelector("header");
+      const header = doc.querySelector("header") || doc.querySelector("nav[data-side-nav]");
       for (const el of doc.querySelectorAll("*")) for (const a of el.getAnimations ? el.getAnimations() : []) a.finish();
       // rules_global.shell_height: the page area scrolls, never the document.
       const scroller = doc.querySelector("[data-page-area]");
@@ -217,16 +223,16 @@ function measuringPage(pages, css) {
         const r = header.getBoundingClientRect();
         positions.push({ scrollY: Math.round(scroller.scrollTop), docScrollY: win.scrollY, docHeight: doc.documentElement.scrollHeight, top: r.top, bottom: r.bottom });
       }
-      const menu = doc.querySelector('header button[aria-label="Open menu"], header button[aria-label="Home"]');
+      const menu = doc.querySelector('header button[aria-label="Open menu"], header button[aria-label="Home"], nav[data-side-nav] [data-side-row="Home"]');
       scroller.scrollTop = scroller.scrollHeight;
       const m = menu ? menu.getBoundingClientRect() : null;
-      return { page: frame.dataset.page, width: Number(frame.dataset.width), innerWidth: win.innerWidth, headerHeight: before.height, position: win.getComputedStyle(header).position, scrollable, positions, menuTopAtBottom: m && m.top, menuBottomAtBottom: m && m.bottom, ancestors };
+      return { page: frame.dataset.page, width: Number(frame.dataset.width), innerWidth: win.innerWidth, isHeader: header.tagName === "HEADER", hasHeader: Boolean(doc.querySelector("header")), headerHeight: before.height, position: win.getComputedStyle(header).position, scrollable, positions, menuTopAtBottom: m && m.top, menuBottomAtBottom: m && m.bottom, ancestors };
     }
     let pending = document.querySelectorAll("iframe").length;
     const results = [];
     for (const frame of document.querySelectorAll("iframe")) {
       const done = () => { results.push(measure(frame)); if (--pending === 0) { const out = document.createElement("pre"); out.id = "out"; out.textContent = JSON.stringify(results); document.body.appendChild(out); } };
-      if (frame.contentDocument && frame.contentDocument.readyState === "complete" && frame.contentDocument.querySelector("header")) done(); else frame.addEventListener("load", done, { once: true });
+      if (frame.contentDocument && frame.contentDocument.readyState === "complete" && frame.contentDocument.querySelector("header, nav[data-side-nav]")) done(); else frame.addEventListener("load", done, { once: true });
     }`;
   return `<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">${frames}<script>${script}</script></body></html>`;
 }
@@ -245,21 +251,38 @@ function runBrowser(html) {
   }
 }
 
-test("scrolling a long Home and a long Owed list keeps the header at the top of the screen", { skip: browser ? false : "no Chrome or Edge found (set HEADER_TEST_BROWSER)" }, async () => {
-  const app = await open();
-  const pages = [{ name: "Home", html: toHtml(app.view.tree) }];
+// Home and the Owed list as the app renders them at `width` (layout.js reads the window width).
+async function renderPages(width, frameWidths) {
+  resetBrowserBack();
+  const app = await openPosApp(width === undefined ? {} : { width });
+  after(() => app.restoreConsole());
+  const pages = [{ name: "Home", tree: toHtml(app.view.tree) }];
   await goTo(app, "PeopleWhoOweYou");
-  pages.push({ name: "Owed", html: toHtml(app.view.tree) });
+  pages.push({ name: "Owed", tree: toHtml(app.view.tree) });
+  return pages.flatMap(({ name, tree }) => frameWidths.map((frameWidth) => ({ name, width: frameWidth, html: tree })));
+}
+
+test("scrolling a long Home and a long Owed list keeps the header (phone) or the sidebar (wide) on screen", { skip: browser ? false : "no Chrome or Edge found (set HEADER_TEST_BROWSER)" }, async () => {
+  // One app at a time: each one installs its own window.
+  const pages = await renderPages(undefined, PHONE_WIDTHS);
+  for (const width of WIDE_WIDTHS) pages.push(...await renderPages(width, [width]));
   const results = runBrowser(measuringPage(pages, await appCss()));
-  assert.equal(results.length, pages.length * WIDTHS.length);
+  assert.equal(results.length, pages.length);
   const heights = {};
   for (const result of results) {
     const where = `${result.page} at ${result.width}px`;
     assert.equal(result.innerWidth, result.width, `${where}: the frame is that wide`);
-    assert.equal(result.position, "sticky", where);
-    assert.ok(result.scrollable > 100, `${where}: the page is long enough to scroll (${result.scrollable}px)`);
+    if (result.width >= 768) {
+      assert.equal(result.hasHeader, false, `${where}: no header on wide screens (the sidebar replaces it)`);
+      assert.equal(result.isHeader, false, `${where}: the sidebar is measured`);
+    } else {
+      assert.equal(result.isHeader, true, `${where}: the phone keeps the header`);
+      assert.equal(result.position, "sticky", where);
+    }
+    // Wide Home is short (cards side by side); the long Owed list is the one that must scroll there.
+    if (result.width < 768 || result.page === "Owed") assert.ok(result.scrollable > 100, `${where}: the page is long enough to scroll (${result.scrollable}px)`);
     for (const { scrollY, docScrollY, docHeight, top, bottom } of result.positions) {
-      assert.ok(scrollY > 0, `${where}: the page area scrolled`);
+      if (result.scrollable > 0) assert.ok(scrollY > 0, `${where}: the page area scrolled`);
       assert.equal(docScrollY, 0, `${where}: the document does not scroll`);
       assert.equal(docHeight, HEIGHT, `${where}: the document is exactly the screen high`);
       assert.equal(top, 0, `${where}: header top is 0 after scrolling to ${scrollY}`);
@@ -269,7 +292,7 @@ test("scrolling a long Home and a long Owed list keeps the header at the top of 
       assert.ok(["visible", "clip"].includes(ancestor.x) && ["visible", "clip"].includes(ancestor.y), `${where}: <${ancestor.tag} class="${ancestor.cls}"> is overflow ${ancestor.x}/${ancestor.y}; it makes the header stick inside it`);
     }
     assert.ok(result.menuTopAtBottom >= 0 && result.menuBottomAtBottom <= result.headerHeight, `${where}: the Menu button (or home tile) is on screen at the bottom of the page`);
-    heights[`${result.page}@${result.width}`] = result.headerHeight;
+    if (result.isHeader) heights[`${result.page}@${result.width}`] = result.headerHeight;
   }
   console.log(`header heights (Segoe UI, headless ${browser.split(/[\\/]/).pop()}): ${JSON.stringify(heights)}`);
 });

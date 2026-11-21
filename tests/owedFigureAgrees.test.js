@@ -66,7 +66,7 @@ function stillOwedLine(app) {
 }
 
 async function go(app, route, params = {}) {
-  if (!nodes(app.view.tree).find((node) => node.type?.name === "Home")) await app.tap("Home");
+  if (!nodes(app.view.tree).find((node) => node.type?.name === "Home")) await app.goHome();
   nodes(app.view.tree).find((node) => node.type?.name === "Home").props.onNavigate(route, params);
   return app.settle();
 }
@@ -74,7 +74,7 @@ async function go(app, route, params = {}) {
 // What the balance screens say afterwards: Home 22 card, 32 list, 43 balance card. null = Kofi not listed.
 async function balanceScreens(app) {
   const debt = (await db.debts.toArray()).find((row) => (row.customerName ?? "").toLowerCase() === "kofi");
-  await app.tap("Home");
+  await app.goHome();
   liveResults = new Map();
   await app.settle();
   const home = flat(app).match(/Collect first ?Kofi.*?(GH₵[\d,]+\.\d{2})/);
