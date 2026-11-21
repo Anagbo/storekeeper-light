@@ -18,6 +18,11 @@ const root = fileURLToPath(new URL("../..", import.meta.url));
 
 export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// Waits for a slow machine (the full suite starts many browsers): the browser start (DevTools port and page
+// target) and the seeded app get more time than the 20s default; the browser start is tried twice.
+const LAUNCH_WAIT_MS = 45_000;
+const SEED_WAIT_MS = 60_000;
+
 export async function waitFor(check, what, ms = 20_000) {
   const end = Date.now() + ms;
   for (;;) {
@@ -75,7 +80,7 @@ async function launch(dir) {
   const exited = new Promise((resolve) => child.once("exit", resolve));
   try {
     const portFile = join(profile, "DevToolsActivePort");
-    const port = await waitFor(() => existsSync(portFile) && readFileSync(portFile, "utf8").split(/\r?\n/)[0], "the DevTools port");
+    const port = await waitFor(() => existsSync(portFile) && readFileSync(portFile, "utf8").split(/\r?\n/)[0], "the DevTools port", LAUNCH_WAIT_MS);
     const page = await waitFor(async () => {
       try {
         const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
@@ -83,7 +88,7 @@ async function launch(dir) {
       } catch {
         return null;
       }
-    }, "a page target");
+    }, "a page target", LAUNCH_WAIT_MS);
     const socket = new WebSocket(page.webSocketDebuggerUrl);
     await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject; });
     let nextId = 0;
@@ -157,7 +162,7 @@ export async function withEdgeApp({ seeds, env = {} }, run) {
       async open(caseName, width, height) {
         await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 2, mobile: true });
         await send("Page.navigate", { url: `${base}?case=${encodeURIComponent(caseName)}` });
-        await waitFor(() => evaluate("window.__seeded === true && !!document.querySelector('main')"), "the seeded app");
+        await waitFor(() => evaluate("window.__seeded === true && !!document.querySelector('main')"), "the seeded app", SEED_WAIT_MS);
       },
       click: (source) => waitFor(() => evaluate(`(() => {
         const re = new RegExp(${JSON.stringify(source)});
