@@ -8,7 +8,7 @@ import { loadJsx, render, setLiveQuery, textOf, walk } from "./helpers/renderJsx
 // Wiring "Key-value rows" (decided 16 Nov 2026) on 29, 43, 54, 53, 56, 68, 69 and 64, real browser at 340, 360
 // and 393px: no sideways scroll; every label is one line; a value stays in the right column (a long one wraps
 // there, never under the label); the plan card's progress bar sits between its rows (29, 43, 54: after Payment,
-// before Paid so far; 53: after Due, before Paid). 56: white labels on the green card, the line white at about
+// before Paid; 53: after Due, before Paid). 56: white labels on the green card, the line white at about
 // 35% opacity. The font is the machine's (Segoe UI on Windows), not a phone font.
 
 const skip = browser ? false : "no Chrome or Edge found (set HEADER_TEST_BROWSER)";
@@ -22,7 +22,9 @@ async function detailHtml({ late, openCorrection = false }) {
   const { DebtorDetail } = await loadJsx("src/pos/DebtCollection.jsx");
   const debt = {
     id: "d1", customerId: "c1", customerName: LONG_NAME, amountPesewas: 1234500, status: "unpaid", isInstallmentPlan: true,
-    installmentAmount: 1234500 / 5, frequency: "bi-weekly", nextDueDate: inDays(late ? -4 : 9), dueDate: ""
+    installmentAmount: 1234500 / 5, frequency: "bi-weekly", nextDueDate: inDays(late ? -4 : 9), dueDate: "",
+    // Plan card rows (21 Nov 2026): GH₵1,234.56 already paid toward this GH₵2,469.00 payment (long values).
+    installmentPaymentCarryPesewas: 123456
   };
   const data = {
     name: LONG_NAME, customerId: "c1", phone: "+233241234567", ghanaCardNumber: "", balancePesewas: 1234500, debt, unpaidDebts: [debt],
@@ -89,10 +91,10 @@ const MEASURE = `(frame, win, doc) => {
 }`;
 
 const EXPECTED_ROWS = {
-  "29": ["last-reminder", "payment", "paid-so-far", "next-payment"],
-  "43": ["last-reminder", "payment", "paid-so-far", "was-due"],
+  "29": ["last-reminder", "payment", "paid", "still-needed", "payments-left", "next-payment"],
+  "43": ["last-reminder", "payment", "paid", "still-needed", "payments-left", "was-due"],
   // 54: the sheet header's Now owed row (20 Nov 2026) comes after the page's rows (the sheet is last).
-  "54": ["last-reminder", "payment", "paid-so-far", "was-due", "now-owed"],
+  "54": ["last-reminder", "payment", "paid", "still-needed", "payments-left", "was-due", "now-owed"],
   "53 from 29": ["debt", "payment", "due", "paid", "still-needed", "payments-left", "next-payment"],
   "53 from 17": ["debt", "payment", "due", "paid", "still-needed", "payments-left", "next-payment"],
   "56": ["fee", "you-receive"],
@@ -102,7 +104,7 @@ const EXPECTED_ROWS = {
   "64": ["active-until", "days-left"]
 };
 // The bar sits after the first row named and before the second.
-const BAR_BETWEEN = { "29": ["payment", "paid-so-far"], "43": ["payment", "paid-so-far"], "54": ["payment", "paid-so-far"], "53 from 29": ["due", "paid"], "53 from 17": ["due", "paid"] };
+const BAR_BETWEEN = { "29": ["payment", "paid"], "43": ["payment", "paid"], "54": ["payment", "paid"], "53 from 29": ["due", "paid"], "53 from 17": ["due", "paid"] };
 
 test("Key-value rows on 29, 43, 54, 53 (from 29 and 17), 56, 68, 69 and 64 at 340, 360 and 393px", { skip }, async () => {
   const all = await pages();

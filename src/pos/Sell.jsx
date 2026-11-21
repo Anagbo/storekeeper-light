@@ -5,7 +5,7 @@ import { isSaveOutcomeUnknown, isSaveTimeout } from "../lib/saveAttempt.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
-import { AddButton, PosCard, SplitIcons, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
+import { AddButton, PosCard, SplitIcons, PosPage, PosPrimaryButton } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
 import { useLargeAmountConfirm } from "./LargeAmountConfirm.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
@@ -178,10 +178,10 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
                 <span className="w-full min-w-0 truncate text-center">{t(label)}</span>
               </button>
             ))}
-            {/* open_text_sweep (17 Nov 2026): Split is an other button (dark 2px border, dark text), keeping
-                its Cash + MoMo + Owe icon and the tile size of the row. */}
-            <PosSecondaryButton
-              type="button"
+            {/* split_payment_look (21 Nov 2026): Split is the add look (dashed 2px dark green), keeping its
+                Cash + MoMo + Owe icon and the tile size of the row; "Split" on the four-tile row. */}
+            <AddButton
+              plus={false}
               aria-label={t("sell.split")}
               disabled={!canSave || busy}
               onClick={() => {
@@ -197,7 +197,7 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
               <SplitIcons withOwe size={11} />
               <span className="w-full min-w-0 truncate text-center sm:hidden">Split</span>
               <span className="hidden w-full min-w-0 truncate text-center sm:inline">{t("sell.split")}</span>
-            </PosSecondaryButton>
+            </AddButton>
           </div>
           {(amountErrors.message || error) && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 text-base font-semibold text-rose-950">{amountErrors.message || error}</p>}
           <SaveAttemptNotice saveAttempt={saveAttempt} busy={busy} onTryAgain={() => void saveSale(true)} />

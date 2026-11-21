@@ -154,15 +154,18 @@ const ADD_SIZES = {
   tile: "min-h-[72px] justify-center px-2 text-center"
 };
 
-export function AddButton({ children, plus = true, size = "standard", role, checked = false, className = "", ...props }) {
+// pressed (split_payment_look, 21 Nov 2026): a choice tile with a selected state (Split payment on 19)
+// stays dashed and gets the green fill of the tiles beside it; aria-pressed is set either way.
+export function AddButton({ children, plus = true, size = "standard", role, checked = false, pressed, className = "", ...props }) {
   const radio = role === "radio";
   const layout = radio ? "min-h-[60px] w-full justify-start px-3.5 py-2 text-left" : ADD_SIZES[size];
-  const border = radio && checked ? "border-solid bg-emerald-50" : "border-dashed bg-transparent";
+  const border = radio && checked ? "border-solid bg-emerald-50" : pressed ? "border-dashed bg-green-100" : "border-dashed bg-transparent";
   return (
     <button
       type="button"
       data-look="add"
       {...(radio ? { role: "radio", "aria-checked": checked } : {})}
+      {...(pressed !== undefined ? { "aria-pressed": Boolean(pressed) } : {})}
       {...props}
       className={`flex min-w-0 items-center gap-1.5 rounded-[14px] border-2 border-emerald-900 ${border} ${layout} text-[18px] font-extrabold leading-tight text-emerald-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
     >

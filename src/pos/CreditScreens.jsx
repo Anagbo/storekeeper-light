@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Banknote, Check, Plus, Smartphone } from "lucide-react";
+import { Banknote, Check, Smartphone } from "lucide-react";
 import SearchField from "./SearchField.jsx";
 import { hasSearchText, matchesSearch } from "../lib/searchMatch.js";
 import { db } from "../db/db.js";
@@ -13,7 +13,7 @@ import { PLAN_ERROR } from "../lib/planErrors.js";
 import { addDueCycles, dayAfter, getCreditBalanceAfterSale, getNextCycleDate, isValidDateString, localDateString, PAYMENT_FREQUENCIES, prepareInstallmentPlan } from "../utils/installments.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { getCreditAmountOwedPesewas } from "./creditAmount.js";
-import { AddButton, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
+import { AddButton, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton, SplitIcons } from "./PosComponents.jsx";
 import { shortSaveName } from "./saveLabel.js";
 import { CopyReceiptButton, ReceiptFailedLine, ReceiptOfflineLine, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
 import { buildCreditSaleReceipt, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
@@ -873,26 +873,33 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
           ) : (
             <>
             <div className="grid grid-cols-3 gap-2">
-              {["cash", "momo", "split"].map((method) => (
+              {["cash", "momo"].map((method) => (
                 <button
                   key={method}
                   type="button"
                   aria-pressed={paymentMethod === method}
-                  aria-label={method === "split" ? t("split.title") : undefined}
                   onClick={() => {
                     choosePaymentMethod(method);
                   }}
                   className={`min-h-12 rounded-xl border-2 px-1 text-sm font-bold ${paymentMethod === method ? "border-emerald-900 bg-green-100" : "border-slate-500 bg-white"}`}
                 >
-                  {method === "split"
-                    ? <span className="flex items-center justify-center gap-1" aria-hidden="true">
-                        <Banknote size={16} aria-hidden="true" />
-                        <Plus size={12} strokeWidth={3} aria-hidden="true" />
-                        <Smartphone size={16} aria-hidden="true" />
-                      </span>
-                    : t(`credit.method.${method}`)}
+                  {t(`credit.method.${method}`)}
                 </button>
               ))}
+              {/* split_payment_look (21 Nov 2026): the add look with the joined cash + phone icons and the
+                  label; chosen, it keeps the dashed border with the green fill of the tiles beside it. The
+                  corners are 12px (rounded-xl) like Cash and MoMo beside it (owner's decision, 21 Nov 2026). */}
+              <AddButton
+                plus={false}
+                pressed={paymentMethod === "split"}
+                aria-label={t("split.title")}
+                data-split-19=""
+                onClick={() => choosePaymentMethod("split")}
+                className="min-h-12! flex-col gap-0.5! overflow-hidden rounded-xl! px-1! py-1! text-xs! sm:text-sm!"
+              >
+                <SplitIcons size={16} />
+                <span className="w-full min-w-0 truncate text-center">{t("split.title")}</span>
+              </AddButton>
             </div>
             {singlePreviewParts.length > 0 && (
               <div data-single-method-panel="" data-paying-today="" className="mt-3 rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
