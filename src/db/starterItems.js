@@ -89,6 +89,35 @@ export function searchStarterItems(query) {
   return text ? items.filter(({ name }) => name.toLowerCase().includes(text)) : items;
 }
 
+// 36 opened from My items 39 (decided 20 Nov 2026). The chips: "All", the categories chosen at setup
+// (saved when setup reached the starter list), then "More categories" for every other one. With no
+// saved choice the popular categories take their place. "Something else" has no items and is never a chip.
+export function starterChipCategories(savedIds) {
+  const real = starterData.categories;
+  const saved = Array.isArray(savedIds) ? savedIds.filter((id, index) => categoriesById.has(id) && id !== OTHER_CATEGORY_ID && savedIds.indexOf(id) === index) : [];
+  const chosen = saved.length ? saved.map((id) => categoriesById.get(id)) : getPopularCategories();
+  const chosenIds = new Set(chosen.map(({ id }) => id));
+  return { chosen, more: real.filter(({ id }) => !chosenIds.has(id)) };
+}
+
+function uniqueByName(items) {
+  const seen = new Set();
+  return items.filter(({ name }) => !seen.has(key(name)) && seen.add(key(name)));
+}
+
+// The items one chip shows: "all" (the chosen categories first, then every other item), "more" (the
+// categories under More categories) or one category id (its own core then more list).
+export function starterItemsForChip(chip, { chosen, more }) {
+  const ids = (categories) => categories.map(({ id }) => id);
+  const ordered = (categoryIds) => {
+    const { core, more: extra } = mergeStarterItems(categoryIds);
+    return [...core, ...extra];
+  };
+  if (chip === "all") return uniqueByName([...ordered(ids(chosen)), ...ordered(ids(more))]);
+  if (chip === "more") return ordered(ids(more));
+  return categoriesById.has(chip) ? ordered([chip]) : [];
+}
+
 export function findStarterItem(name, category) {
   const text = typeof name === "string" ? key(name) : "";
   return STARTER_CATEGORIES.some((candidate) =>

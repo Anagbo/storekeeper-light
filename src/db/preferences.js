@@ -27,6 +27,22 @@ export async function saveHideAmounts(hidden) {
   return setPreference(HIDE_AMOUNTS_PREFERENCE, hidden);
 }
 
+// The categories chosen at setup that reached the starter list (36/52), for the chips when the starter
+// list is opened again from My items 39. Never set by "Skip for now" on 35 or by "Something else" only.
+export const STARTER_CATEGORIES_PREFERENCE = "starterCategories";
+
+export async function loadStarterCategories() {
+  const value = await getPreference(STARTER_CATEGORIES_PREFERENCE, []);
+  return Array.isArray(value) ? value.filter((id) => typeof id === "string") : [];
+}
+
+export async function saveStarterCategories(categoryIds) {
+  if (!Array.isArray(categoryIds) || categoryIds.some((id) => typeof id !== "string")) {
+    throw new TypeError("Starter categories must be a list of category ids.");
+  }
+  return setPreference(STARTER_CATEGORIES_PREFERENCE, [...categoryIds]);
+}
+
 export async function saveSellMode(sellMode) {
   if (!["numbers", "items"].includes(sellMode)) {
     throw new TypeError("Choose numbers or items as the sell mode.");

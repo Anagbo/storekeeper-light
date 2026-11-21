@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { recordCashSale } from "../db/sales.js";
-import { setPreference, shouldShowPosSetup } from "../db/preferences.js";
+import { saveStarterCategories, setPreference, shouldShowPosSetup } from "../db/preferences.js";
 import { useSync } from "../hooks/useSync.js";
 import { useSubscription } from "../hooks/useSubscription.js";
 import { FEATURE_FLAGS, needsSignature } from "../config/features.js";
@@ -283,7 +283,10 @@ export default function PosApp() {
     setNotice("");
   }
 
-  async function completePosSetup() {
+  // From 36/52 the categories that reached the starter list come along, so 36 opened again from My
+  // items 39 can show them as chips. Saved first: if it fails, setup is not marked complete.
+  async function completePosSetup({ starterCategories } = {}) {
+    if (Array.isArray(starterCategories) && starterCategories.length) await saveStarterCategories(starterCategories);
     await setPreference("posSetupCompleted", true);
     switchTab(POS_ROUTES.Home);
   }

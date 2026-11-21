@@ -3,7 +3,8 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { Check, Search, Trash2 } from "lucide-react";
 import { db } from "../db/db.js";
 import { createProduct, normalizeProductInput, removeProduct, updateProduct, addStarterProducts } from "../db/products.js";
-import { getAllStarterItems, groupCoreItemsByCategory, mergeStarterItems } from "../db/starterItems.js";
+import { getAllStarterItems, groupCoreItemsByCategory, mergeStarterItems, starterChipCategories, starterItemsForChip } from "../db/starterItems.js";
+import { loadStarterCategories } from "../db/preferences.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { posText as t } from "./i18n.js";
@@ -255,7 +256,7 @@ function StarterList({ grouped = false, params, onBack, onAdd, onCompleteSetup }
     try {
       await onAdd(selectedItems);
       void requestBackgroundSync();
-      if (params.setupFlow) await onCompleteSetup();
+      if (params.setupFlow) await onCompleteSetup({ starterCategories: params.starterCategories });
       else onBack();
     } catch (saveError) {
       console.error("Could not add starter items.", saveError);
@@ -270,7 +271,7 @@ function StarterList({ grouped = false, params, onBack, onAdd, onCompleteSetup }
     setSaving(true);
     setError("");
     try {
-      await onCompleteSetup();
+      await onCompleteSetup({ starterCategories: params.starterCategories });
     } catch (saveError) {
       console.error("Could not finish POS setup.", saveError);
       setError(t("setup.saveFailed"));
@@ -354,6 +355,135 @@ function StarterList({ grouped = false, params, onBack, onAdd, onCompleteSetup }
   );
 }
 
+// The categories saved at setup (preferences.loadStarterCategories); undefined while loading.
+function useSetupCategories() {
+  return useLiveQuery(async () => {
+    try {
+      return { setupCategories: await loadStarterCategories() };
+    } catch (error) {
+      console.error("Could not load the setup categories.", error);
+      return { setupCategories: [] };
+    }
+  }, ["starterCategories"], undefined);
+}
+
+const chipClass = (pressed) => `min-h-11 rounded-full border-2 px-4 text-base font-bold ${pressed ? "border-emerald-900 bg-emerald-900 text-white" : "border-slate-500 bg-white text-slate-900"}`;
+
+// 36 opened from My items 39, the second mode of the starter list (decided 20 Nov 2026; setup 35/36/51/52
+// unchanged): "Add from starter list", nothing ticked, category chips (All, the setup categories or the
+// popular ones, More categories), search across every category, items already in My items shown as
+// "Added" and not tickable (name, case ignored), "Add N items" disabled at 0, Back only, back to 39.
+function StarterBrowse({ onBack, onAdd }) {
+  const result = useActiveProducts();
+  const setup = useSetupCategories();
+  const chips = useMemo(() => starterChipCategories(setup?.setupCategories), [setup]);
+  const [chip, setChip] = useState("all");
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [selected, setSelected] = useState(() => new Map());
+  const [query, setQuery] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  useBackBlock(saving);
+  const existingNames = new Set((result?.products ?? []).map((product) => product.name.trim().toLowerCase()));
+  const isAdded = ({ name }) => existingNames.has(name.trim().toLowerCase());
+  const searchText = query.trim().toLowerCase();
+  const items = searchText
+    ? starterItemsForChip("all", chips).filter(({ name }) => name.toLowerCase().includes(searchText))
+    : starterItemsForChip(chip, chips);
+  // Ticks are kept by name; an item that is now in My items never counts.
+  const selectedItems = [...selected.values()].filter((item) => !isAdded(item));
+  const selectedCount = selectedItems.length;
+
+  function toggle(item) {
+    if (isAdded(item)) return;
+    setSelected((current) => {
+      const next = new Map(current);
+      const itemKey = item.name.toLowerCase();
+      if (next.has(itemKey)) next.delete(itemKey);
+      else next.set(itemKey, { name: item.name, category: item.category });
+      return next;
+    });
+  }
+
+  function pickChip(id) {
+    setChip(id);
+    if (id === "more") setMoreOpen(true);
+    else if (!chips.more.some((category) => category.id === id)) setMoreOpen(false);
+  }
+
+  async function addSelected() {
+    if (saving || selectedCount === 0) return;
+    setSaving(true);
+    setError("");
+    try {
+      await onAdd(selectedItems);
+      void requestBackgroundSync();
+      onBack();
+    } catch (saveError) {
+      console.error("Could not add starter items.", saveError);
+      setError(t("items.starterFailed"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const chipButton = ({ id, name }) => (
+    <button key={id} type="button" aria-pressed={chip === id} onClick={() => pickChip(id)} className={chipClass(chip === id)}>{name}</button>
+  );
+
+  return (
+    <PosPage className="flex flex-col gap-3">
+      <ScreenHeader title={t("items.starterBrowseTitle")} onBack={onBack} />
+      <p className="text-base text-slate-800">{t("items.starterBrowseHint")}</p>
+      {result === undefined || setup === undefined ? <p role="status">{t("items.loading")}</p> : (
+        <div className="flex flex-col gap-2">
+          <div role="group" aria-label={t("items.starterCategories")} className="flex flex-wrap gap-2">
+            {chipButton({ id: "all", name: t("items.starterAll") })}
+            {chips.chosen.map(chipButton)}
+            <button type="button" aria-pressed={chip === "more"} aria-expanded={moreOpen} onClick={() => pickChip("more")} className={chipClass(chip === "more")}>{t("setup.moreCategories")}</button>
+          </div>
+          {moreOpen && (
+            <div role="group" aria-label={t("setup.moreCategories")} className="flex flex-wrap gap-2">
+              {chips.more.map(chipButton)}
+            </div>
+          )}
+          <label className="flex min-h-14 items-center gap-2 rounded-2xl border-[3px] border-slate-500 px-3">
+            <Search size={24} aria-hidden="true" />
+            <span className="sr-only">{t("items.starterSearch")}</span>
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("items.starterSearch")} className="min-w-0 flex-1 bg-transparent text-lg font-semibold outline-none" />
+          </label>
+          {items.map((item) => {
+            if (isAdded(item)) {
+              return (
+                // Not a control: already in My items, so it cannot be ticked again.
+                <div key={item.name} data-added="" className="flex min-h-14 items-center gap-3 rounded-2xl border-2 border-slate-300 bg-slate-50 px-3 text-lg font-extrabold text-slate-700">
+                  <span className="min-w-0 flex-1 break-words">{item.name}</span>
+                  <span className="shrink-0 rounded-full bg-slate-200 px-3 py-0.5 text-base font-bold text-slate-800">{t("items.added")}</span>
+                </div>
+              );
+            }
+            const checked = selected.has(item.name.toLowerCase());
+            return (
+              <button key={item.name} type="button" aria-pressed={checked} onClick={() => toggle(item)} className="flex min-h-14 items-center gap-3 rounded-2xl border-2 border-slate-500 bg-white px-3 text-left text-lg font-extrabold">
+                <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg border-[3px] ${checked ? "border-emerald-900 bg-emerald-900 text-white" : "border-slate-500 bg-white"}`}>
+                  {checked && <Check size={21} aria-hidden="true" />}
+                </span>
+                <span className="min-w-0 flex-1 break-words">{item.name}</span>
+              </button>
+            );
+          })}
+          {!items.length && searchText && <p className="rounded-xl border-2 border-slate-300 bg-white p-4 font-semibold">{t("items.starterNoMatch")}</p>}
+        </div>
+      )}
+      <p className="text-sm text-slate-700">{t("items.priceLater")}</p>
+      {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
+      <PosPrimaryButton type="button" disabled={saving || result === undefined || selectedCount === 0} onClick={() => void addSelected()} className="mt-auto">
+        {saving ? t("items.saving") : t(selectedCount === 1 ? "items.addOne" : "items.addCount", { count: selectedCount })}
+      </PosPrimaryButton>
+    </PosPage>
+  );
+}
+
 export default function ItemScreens({ route, params = {}, onBack, onNavigate, onReturnToItems, onCompleteSetup }) {
   if (route === "MyItems") return <MyItems onBack={onBack} onNavigate={onNavigate} />;
   if (route === "NewItem") return <ItemEditor onBack={onBack} onSave={createProduct} onNavigate={onNavigate} setupFlow={params.setupFlow === true} onCompleteSetup={onCompleteSetup} />;
@@ -364,6 +494,7 @@ export default function ItemScreens({ route, params = {}, onBack, onNavigate, on
     return <DeleteItem itemId={params.itemId} itemName={params.itemName ?? t("items.nameFallback")} onBack={onBack} onReturnToItems={onReturnToItems} onDelete={removeProduct} />;
   }
   if (route === "YourStarterListGrouped") return <StarterList grouped params={params} onBack={onBack} onAdd={addStarterProducts} onCompleteSetup={onCompleteSetup} />;
+  if (route === "YourStarterList" && params.setupFlow !== true) return <StarterBrowse onBack={onBack} onAdd={addStarterProducts} />;
   if (route === "YourStarterList") return <StarterList params={params} onBack={onBack} onAdd={addStarterProducts} onCompleteSetup={onCompleteSetup} />;
   return null;
 }
