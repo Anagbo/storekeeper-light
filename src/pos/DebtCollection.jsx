@@ -12,8 +12,8 @@ import { formatGhs, toPesewas } from "../lib/money.js";
 import { formatGhanaCard } from "../utils/formatters.js";
 import { loadCustomerHistory } from "../utils/loadCustomerDebtHistory.js";
 import { getOutstandingDebtPesewas } from "../lib/money.js";
-import { buildWhatsAppReminderText, generateWhatsAppLink, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
-import { sendReceipt } from "./receiptShare.js";
+import { openWhatsApp } from "../lib/openWhatsApp.js";
+import { buildWhatsAppReminderText, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { CopyReceiptButton, ReceiptFailedLine, ReceiptOfflineLine, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
 import { buildLatestPaymentReceipt, getCollectionReceiptText, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
 import AmountKeypad from "./AmountKeypad.jsx";
@@ -641,22 +641,19 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
     }
   }, [params?.editContact, data]);
   const phone = normalizeWhatsAppPhone(data?.phone);
-  const reminderLink = data && generateWhatsAppLink(data.phone, data.name, data.balancePesewas, shopName);
   const lastReminderAt = data?.lastReminderAt ?? 0;
   const lastReminder = lastReminderValue(lastReminderAt);
   // rules_global.reminders: both WhatsApp reminder controls go through the shared path, which
   // records a reminder for this person when the app hands over to WhatsApp.
   const reminders = useReminderCheck();
   const reminderPerson = data ? { customerId: data.customerId ?? "", name: data.name } : null;
-  // 29/43 with no valid phone: WhatsApp stays on and opens the share sheet with the reminder text, the
-  // owner picks the chat (the same share logic as the receipts). A closed share sheet records nothing.
+  // rules_global.whatsapp_links: the shared opener. With a valid saved number, that person's chat in
+  // the installed app; with no valid number, WhatsApp stays on and opens the share sheet with the
+  // reminder text, the owner picks the chat. A closed share sheet records nothing.
   const reminderText = data ? buildWhatsAppReminderText(data.name, data.balancePesewas, shopName) : null;
-  const shareReminder = () => sendReceipt({ text: reminderText, title: t("collect.remindOnWhatsApp") });
-  // The WhatsApp control: a direct link to the saved number, or the share sheet without one.
+  const shareReminder = () => openWhatsApp({ text: reminderText, phone: phone ?? "", title: t("collect.remindOnWhatsApp") });
+  // The WhatsApp control: one button for both cases.
   function reminderControl({ label, ariaLabel, className, children }) {
-    if (phone && reminderLink) {
-      return <a href={reminderLink} target="_blank" rel="noopener noreferrer" onClick={(event) => reminders.onReminder(event, { person: reminderPerson, lastReminderAt, href: reminderLink })} aria-label={ariaLabel} className={className}>{children}</a>;
-    }
     return <button type="button" disabled={!reminderText} onClick={(event) => (reminderText ? reminders.onReminder(event, { person: reminderPerson, lastReminderAt, share: shareReminder }) : undefined)} aria-label={ariaLabel ?? label} className={className}>{children}</button>;
   }
   // Wiring 29/43 "Collection receipt" (15 Nov 2026): Receipt and Copy receipt cover the person's latest

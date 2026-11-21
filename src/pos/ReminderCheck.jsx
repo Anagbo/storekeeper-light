@@ -15,12 +15,13 @@ import { needsReminderCheck, reminderAgainText } from "./reminderLabel.js";
 // and records a new reminder; Not now (and Back, and Escape) closes it, records nothing and leaves the
 // merchant on the same screen. After 7 days, or with no reminder, WhatsApp opens directly.
 //
-// Each screen calls useReminderCheck() once, renders `sheet`, and passes every reminder control's tap
+// Each screen calls useReminderCheck() once, renders `sheet`, and passes every reminder button's tap
 // to onReminder:
-//   <a href={waLink} onClick={(event) => reminders.onReminder(event, { person, lastReminderAt, href: waLink })}>
 //   <button onClick={(event) => reminders.onReminder(event, { person, lastReminderAt, share })}>
-// `person` is { customerId, name }. `share` (no valid phone) opens the share sheet and returns
-// "cancelled" when the merchant closed it; nothing is recorded then.
+// `person` is { customerId, name }. `share` opens WhatsApp through the shared opener
+// (src/lib/openWhatsApp.js, rules_global.whatsapp_links): the person's chat in the installed app with
+// a valid number, the share sheet without one. It returns "cancelled" when the merchant closed the
+// share sheet; nothing is recorded then.
 // The window and the wording live in reminderLabel.js (needsReminderCheck, reminderAgainText).
 export function useReminderCheck({ record = recordReminderSent, now = () => Date.now() } = {}) {
   const [pending, setPending] = useState(null);
@@ -53,7 +54,6 @@ export function useReminderCheck({ record = recordReminderSent, now = () => Date
   }
 
   async function handOver({ person, share }) {
-    if (!share) return save(person);
     let result;
     try {
       result = await share();
@@ -91,7 +91,7 @@ export function useReminderCheck({ record = recordReminderSent, now = () => Date
     return guarded(() => handOver(request));
   }
 
-  // Send again: a link opens WhatsApp itself (the tap is the browser's), so only the record is ours.
+  // Send again opens WhatsApp the same way as the first tap, and records.
   function sendAgain(event) {
     const request = pending;
     if (busy.current || !request) {
@@ -99,13 +99,12 @@ export function useReminderCheck({ record = recordReminderSent, now = () => Date
       return undefined;
     }
     close();
-    return guarded(() => (request.href ? save(request.person) : handOver(request)));
+    return guarded(() => handOver(request));
   }
 
   const sheet = pending ? (
     <ReminderAgainSheet
       text={reminderAgainText(pending.person?.name ?? "", pending.lastReminderAt, new Date(now()))}
-      href={pending.href}
       onSendAgain={sendAgain}
       onNotNow={close}
     />
@@ -117,7 +116,7 @@ export function useReminderCheck({ record = recordReminderSent, now = () => Date
 const STRONG = "flex min-h-[60px] w-full items-center justify-center rounded-[18px] border-[3px] border-emerald-900 bg-emerald-900 px-4 text-xl font-extrabold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800";
 
 // "Send another reminder?": a bottom sheet on a phone, a centred dialog on wide screens.
-export function ReminderAgainSheet({ text, href, onSendAgain, onNotNow }) {
+export function ReminderAgainSheet({ text, onSendAgain, onNotNow }) {
   const notNowRef = useRef(null);
   useEffect(() => {
     if (typeof document === "undefined") return undefined;
@@ -145,11 +144,7 @@ export function ReminderAgainSheet({ text, href, onSendAgain, onNotNow }) {
       >
         <h2 id="reminder-again-title" className="text-[22px] font-extrabold leading-tight text-slate-950">{t("reminderAgain.title")}</h2>
         <p id="reminder-again-text" className="text-lg text-slate-900 [overflow-wrap:anywhere]">{text}</p>
-        {href ? (
-          <a href={href} target="_blank" rel="noopener noreferrer" onClick={onSendAgain} className={STRONG}>{t("reminderAgain.sendAgain")}</a>
-        ) : (
-          <button type="button" onClick={onSendAgain} className={STRONG}>{t("reminderAgain.sendAgain")}</button>
-        )}
+        <button type="button" onClick={onSendAgain} className={STRONG}>{t("reminderAgain.sendAgain")}</button>
         {/* rules_global.button_system.leave: Not now is the grey leave look, as tall as Send again. */}
         <LeaveButton ref={notNowRef} onClick={onNotNow} className="min-h-[60px]!">{t("reminderAgain.notNow")}</LeaveButton>
       </section>

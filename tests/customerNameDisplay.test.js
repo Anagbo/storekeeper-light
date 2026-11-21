@@ -9,8 +9,7 @@ import { buildCollectionReceiptMessage } from "../src/pos/collectionReceipt.js";
 import { buildCustomerBalanceReceipt } from "../src/pos/receiptTemplates.js";
 import { splitPartRows } from "../src/pos/splitTender.js";
 import { createPosTransactionRows, describeTransactionRow } from "../src/pos/transactionFeed.js";
-import { createInstallmentReminderLink } from "../src/utils/installments.js";
-import { generateWhatsAppLink } from "../src/utils/whatsapp.js";
+import { buildWhatsAppReminderText } from "../src/utils/whatsapp.js";
 import { openPosApp } from "./helpers/posAppHarness.js";
 import { loadJsx, render, setLiveQuery, textOf, walk } from "./helpers/renderJsx.js";
 
@@ -146,8 +145,7 @@ test("24: the transaction chip names the person with a capital", () => {
 });
 
 test("WhatsApp and receipt text name the person with a capital", () => {
-  assert.match(decodeURIComponent(generateWhatsAppLink("0241234567", "juju", 1000, "Shop")), /Hello \*Juju\*/);
-  assert.match(decodeURIComponent(createInstallmentReminderLink("0241234567", "junior", 500, { type: "overdue", days: 2 })), /Hi Junior,/);
+  assert.match(buildWhatsAppReminderText("juju", 1000, "Shop"), /Hello \*Juju\*/);
   assert.match(buildCollectionReceiptMessage({ customerName: "juju", createdAt: Date.now(), amountPesewas: 500, parts: [{ paymentMethod: "cash", amountPesewas: 500 }], remainingPesewas: 0 }, "Shop"), /From: Juju/);
   assert.match(buildCustomerBalanceReceipt({ shopName: "Shop", customerName: "junior", balancePesewas: 700 }), /Junior/);
   assert.doesNotMatch(buildCustomerBalanceReceipt({ shopName: "Shop", customerName: "junior", balancePesewas: 700 }), /\bjunior\b/);

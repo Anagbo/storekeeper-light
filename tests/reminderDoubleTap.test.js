@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { after, beforeEach, test } from "node:test";
 import { db } from "../src/db/db.js";
 import { loadUnpaidDebtPage } from "../src/pos/owed.js";
+import { ANDROID_UA, withPhone } from "./helpers/fakePhone.js";
 import { flushEffects, loadJsx, render, setLiveQuery, textOf, walk } from "./helpers/renderJsx.js";
 
 // A6: while a reminder tap is being handled, further taps on any reminder button are ignored, so two
@@ -28,14 +29,9 @@ beforeEach(async () => {
   await Promise.all(["debts", "customers", "reminders"].map((name) => db.table(name).clear()));
 });
 
-function withNavigator(value, run) {
-  const original = Object.getOwnPropertyDescriptor(globalThis, "navigator");
-  Object.defineProperty(globalThis, "navigator", { configurable: true, value });
-  return Promise.resolve(run()).finally(() => {
-    if (original) Object.defineProperty(globalThis, "navigator", original);
-    else delete globalThis.navigator;
-  });
-}
+// The phone the shared WhatsApp opener runs on (tests/helpers/fakePhone.js).
+const withNavigator = withPhone;
+const onAndroid = (body) => async () => withPhone({ userAgent: ANDROID_UA }, body);
 
 async function detail({ phone = PHONE, lastReminderAt = 0 } = {}) {
   const { DebtorDetail } = await loadJsx("src/pos/DebtCollection.jsx");
@@ -48,16 +44,17 @@ async function detail({ phone = PHONE, lastReminderAt = 0 } = {}) {
 const sheetOf = (view) => [...walk(view.tree)].find((node) => node.props?.["data-reminder-again"] !== undefined);
 const inSheet = (view, label) => [...walk(sheetOf(view))].find((node) => (node.type === "a" || node.type === "button") && textOf(node) === label);
 
-test("two quick taps on a WhatsApp link record one reminder; the second does not open WhatsApp", async () => {
+test("two quick taps on a WhatsApp button record one reminder; the second does not open WhatsApp", onAndroid(async (opened) => {
   const { button } = await detail();
   const first = freshTap();
   const second = freshTap();
   const handling = [button().props.onClick(first), button().props.onClick(second)];
   await Promise.all(handling);
   assert.equal(first.prevented, false, "the first tap opens WhatsApp");
+  assert.equal(opened.length, 1, "WhatsApp opens once");
   assert.equal(second.prevented, true, "the second tap is ignored");
   assert.equal((await db.reminders.toArray()).length, 1);
-});
+}));
 
 test("with no phone: taps while the share sheet is open are ignored; the share opens once", async () => {
   let shares = 0;
@@ -74,7 +71,7 @@ test("with no phone: taps while the share sheet is open are ignored; the share o
   assert.equal((await db.reminders.toArray()).length, 1);
 });
 
-test("a tap right after a recorded reminder asks Send another reminder? instead of recording again", async () => {
+test("a tap right after a recorded reminder asks Send another reminder? instead of recording again", onAndroid(async (opened) => {
   const { view, button } = await detail();
   await button().props.onClick(freshTap());
   // The screen's own query has not re-read the log yet (lastReminderAt is still 0 in its data).
@@ -85,9 +82,9 @@ test("a tap right after a recorded reminder asks Send another reminder? instead 
   assert.ok(sheetOf(view), "the sheet opens");
   assert.match(textOf(sheetOf(view)), /You sent Ama a reminder today at/);
   assert.equal((await db.reminders.toArray()).length, 1);
-});
+}));
 
-test("two quick taps on Send again record one reminder", async () => {
+test("two quick taps on Send again record one reminder", onAndroid(async (opened) => {
   const { view, button } = await detail({ lastReminderAt: Date.now() - DAY });
   await button().props.onClick(freshTap());
   view.rerender();
@@ -96,9 +93,9 @@ test("two quick taps on Send again record one reminder", async () => {
   await Promise.all([sendAgain.props.onClick(freshTap()), sendAgain.props.onClick(second)]);
   assert.equal(second.prevented, true);
   assert.equal((await db.reminders.toArray()).length, 1);
-});
+}));
 
-test("32: a quick tap on another row's WhatsApp while the first is handled is ignored too", async () => {
+test("32: a quick tap on another row's WhatsApp while the first is handled is ignored too", onAndroid(async (opened) => {
   await db.debts.bulkAdd([
     { id: "d1", customerId: "c1", customerName: "Ama", phone: PHONE, status: "unpaid", amountPesewas: 8000, total_owed: 8000, dueDate: dayOffset(-3), isInstallmentPlan: false },
     { id: "d2", customerId: "c2", customerName: "Kofi", phone: "+233241234568", status: "unpaid", amountPesewas: 5000, total_owed: 5000, dueDate: dayOffset(-2), isInstallmentPlan: false }
@@ -110,7 +107,7 @@ test("32: a quick tap on another row's WhatsApp while the first is handled is ig
   const view = render({ type: PeopleWhoOweYou, props });
   flushEffects(view);
   view.rerender();
-  const link = (name) => [...walk(view.tree)].find((node) => node.type === "a" && node.props["aria-label"] === `WhatsApp ${name}`);
+  const link = (name) => [...walk(view.tree)].find((node) => node.type === "button" && node.props["aria-label"] === `WhatsApp ${name}`);
   const kofi = freshTap();
   await Promise.all([link("Ama").props.onClick(freshTap()), link("Kofi").props.onClick(kofi)]);
   assert.equal(kofi.prevented, true);
@@ -119,4 +116,4 @@ test("32: a quick tap on another row's WhatsApp while the first is handled is ig
   // Once the first is done, Kofi's button works again.
   await link("Kofi").props.onClick(freshTap());
   assert.equal((await db.reminders.toArray()).length, 2);
-});
+}));

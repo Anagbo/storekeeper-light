@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { generateWhatsAppLink, normalizeWhatsAppPhone } from "../src/utils/whatsapp.js";
+import { buildWhatsAppReminderText, normalizeWhatsAppPhone } from "../src/utils/whatsapp.js";
 
 test("normalizes common Ghana phone number formats to +233", () => {
   for (const phone of [
@@ -56,18 +56,12 @@ test("rejects invalid or unsupported phone number input", () => {
   assert.equal(normalizeWhatsAppPhone(null), null);
 });
 
-test("generates a WhatsApp link with the localized, encoded reminder", () => {
-  const link = generateWhatsAppLink("024 123 4567", "Ama Mensah", 1250, "Market Shop");
-  const url = new URL(link);
-
-  assert.equal(url.origin + url.pathname, "https://wa.me/233241234567");
-  assert.equal(url.searchParams.get("text"), "Hello *Ama Mensah*, this is a gentle reminder from *Market Shop* regarding your outstanding balance of *GH₵12.50*. Kindly arrange payment at your earliest convenience. Thank you!");
+test("builds the reminder text (src/lib/openWhatsApp.js opens WhatsApp with it)", () => {
+  assert.equal(buildWhatsAppReminderText("Ama Mensah", 1250, "Market Shop"), "Hello *Ama Mensah*, this is a gentle reminder from *Market Shop* regarding your outstanding balance of *GH₵12.50*. Kindly arrange payment at your earliest convenience. Thank you!");
 });
 
 test("uses the default shop name and rejects invalid reminder details", () => {
-  const link = generateWhatsAppLink("+233241234567", "Ama", 100);
-  assert.match(decodeURIComponent(link), /from \*StoreKeeper Light\*/);
-  assert.equal(generateWhatsAppLink("invalid", "Ama", 100), null);
-  assert.equal(generateWhatsAppLink("0241234567", "Ama", 0), null);
-  assert.equal(generateWhatsAppLink("0241234567", "", 100), null);
+  assert.match(buildWhatsAppReminderText("Ama", 100), /from \*StoreKeeper Light\*/);
+  assert.equal(buildWhatsAppReminderText("Ama", 0), null);
+  assert.equal(buildWhatsAppReminderText("", 100), null);
 });

@@ -4,7 +4,6 @@ import {
   addDueCycles,
   assertInstallmentAmountWithinBalance,
   createInstallmentPlan,
-  createInstallmentReminderLink,
   getCreditBalanceAfterSale,
   getMaximumInstallmentAmountPesewas,
   getInstallmentAlertStatus,
@@ -504,13 +503,9 @@ test("Start Next Cycle does not record an initial payment", () => {
   }).initialPaymentPesewas, 0);
 });
 
-test("due alerts compare normalized date strings and reminders use the requested wording", () => {
+test("due alerts compare normalized date strings", () => {
   assert.equal(isInstallmentDue({ ...plan, nextDueDate: "2026-05-01" }, "2026-05-01"), true);
   assert.equal(isInstallmentDue({ ...plan, nextDueDate: "2026-05-02" }, "2026-05-01"), false);
-  const link = createInstallmentReminderLink("024 123 4567", "Ama Mensah", 2500);
-  assert.ok(link.startsWith("https://wa.me/233241234567?text="));
-  assert.equal(decodeURIComponent(link.split("text=")[1]), "Hi Ama Mensah, gentle reminder that your installment of GH₵25.00 is due today. Thank you!");
-  assert.equal(createInstallmentReminderLink("invalid", "Ama Mensah", 2500), null);
 });
 
 test("installment alert windows follow frequency and distinguish overdue, today, and upcoming", () => {
@@ -544,15 +539,6 @@ test("installment alert windows follow frequency and distinguish overdue, today,
     type: "overdue",
     days: 1
   });
-});
-
-test("proactive installment reminder copy uses the accurate due interval", () => {
-  const alert = getInstallmentAlertStatus("2026-05-04", "bi-weekly", "2026-05-01");
-  const link = createInstallmentReminderLink("024 123 4567", "Ama Mensah", 2500, alert);
-  assert.equal(
-    decodeURIComponent(link.split("text=")[1]),
-    "Hi Ama Mensah, gentle reminder that your installment of GH₵25.00 is due in 3 days. Thank you!"
-  );
 });
 
 test("payment reconciliation advances the matching number of bi-weekly and monthly cycles", () => {

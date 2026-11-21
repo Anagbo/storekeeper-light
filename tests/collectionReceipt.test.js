@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildCollectionReceiptLink, buildCollectionReceiptMessage } from "../src/pos/collectionReceipt.js";
+import { buildCollectionReceiptMessage } from "../src/pos/collectionReceipt.js";
 
 const collection = {
   amountPesewas: 1250,
@@ -39,15 +39,10 @@ test("receipt omits the next-payment line when the debt is not an active install
   assert.doesNotMatch(message, /Next payment:/);
 });
 
-test("receipt validates totals and creates a WhatsApp link only for a valid Ghana mobile number", () => {
+test("receipt validates totals", () => {
   assert.throws(() => buildCollectionReceiptMessage({
     ...collection,
     amountPesewas: 1300
   }, "Ama's Store"), /do not match/);
-
-  const message = buildCollectionReceiptMessage(collection, "Ama's Store");
-  const link = buildCollectionReceiptLink("024 123 4567", message);
-  assert.match(link, /^https:\/\/wa\.me\/233241234567\?text=/);
-  assert.equal(decodeURIComponent(link.split("?text=")[1]), message);
-  assert.equal(buildCollectionReceiptLink("not a phone", message), null);
+  assert.ok(buildCollectionReceiptMessage(collection, "Ama's Store"));
 });

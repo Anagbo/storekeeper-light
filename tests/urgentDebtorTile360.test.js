@@ -49,8 +49,9 @@ test("22/25 tile: Collect fills the row; WhatsApp and Call are 52px squares besi
   assert.ok(collect);
   assert.ok(has(collect, "flex-1") && has(collect, "min-w-0") && has(collect, "h-[52px]"));
   assert.equal(textOf(collect), "Collect");
-  for (const label of [/^WhatsApp /, /^Call /]) {
-    const square = nodes.find((node) => node.type === "a" && label.test(node.props["aria-label"] ?? ""));
+  // WhatsApp is a button that calls the shared opener (rules_global.whatsapp_links); Call stays a tel: link.
+  for (const [label, type] of [[/^WhatsApp /, "button"], [/^Call /, "a"]]) {
+    const square = nodes.find((node) => node.type === type && label.test(node.props["aria-label"] ?? ""));
     assert.ok(square, String(label));
     assert.ok(has(square, "h-[52px]") && has(square, "w-[52px]") && has(square, "shrink-0"));
   }

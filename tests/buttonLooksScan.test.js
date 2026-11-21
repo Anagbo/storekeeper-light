@@ -105,7 +105,7 @@ const ACTIONS = [
   ["25 See {Name}’s details", "DebtCollection.jsx", "PosSecondaryButton", /debtId: debt\.id/, /t\("collect\.seeDetails"/],
   ["28 See {Name}’s details", "DebtCollection.jsx", "PosSecondaryButton", /debtId: result\.debtId/, /t\("collect\.seeDetails"/],
   ["Debt saved See {Name}’s details", "ManualDebtScreens.jsx", "PosSecondaryButton", /"DebtorDetail"/, /t\("credit\.seeDetails"/],
-  ["Debt saved WhatsApp {Name} (no phone)", "ManualDebtScreens.jsx", "PosSecondaryButton", /shareReminder/, /t\("debtSaved\.whatsapp"/],
+  ["Debt saved WhatsApp {Name} (with or without a phone)", "ManualDebtScreens.jsx", "PosSecondaryButton", /shareReminder/, /t\("debtSaved\.whatsapp"/],
   ["31 See {Name}’s details", "CreditScreens.jsx", "PosSecondaryButton", /"DebtorDetail"/, /t\("credit\.seeDetails"/],
   ["56 Customer already paid me directly", "MoMoScreens.jsx", "PosSecondaryButton", /"MoMoDirect"/, /^Customer already paid me directly$/],
   ["59 Cancel sale", "MoMoScreens.jsx", "PosSecondaryButton", /"Home"/, /^Cancel sale$/],
@@ -148,8 +148,9 @@ test("each action in the 17 Nov list uses its shared component", () => {
     .filter(([, file, component, tagRe, childRe]) => !elements(read(file), component).some(({ tag, children }) => tagRe.test(tag) && childRe.test(children)))
     .map(([name, file, component]) => `${name}: no <${component}> in ${file}`);
   assert.deepEqual(missing, []);
-  // Debt saved with a phone: "WhatsApp {Name}" is a link drawn with the shared other class.
-  assert.match(read("ManualDebtScreens.jsx"), /<a href=\{whatsappLink\}[^\n]*data-look="other"[^\n]*OTHER_BUTTON_CLASS[^\n]*t\("debtSaved\.whatsapp"/);
+  // Debt saved: "WhatsApp {Name}" is one other button (PosSecondaryButton) with or without a phone; it
+  // calls the shared WhatsApp opener, so there is no separate link drawn with the other class.
+  assert.doesNotMatch(read("ManualDebtScreens.jsx"), /<a href=\{whatsappLink\}/);
 });
 
 test("the labels keep the curly apostrophe and the + where the rule says", async () => {

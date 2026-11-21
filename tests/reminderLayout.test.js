@@ -110,7 +110,7 @@ test("Send another reminder? at 340, 360 and 393px: text wraps inside the sheet,
   const pages = [];
   for (const late of [false, true]) {
     const view = await detail({ late, phone: "+233241234567", lastReminderAt: RECENT_OLDER_DAY() });
-    const button = [...walk(view.tree)].find((node) => node.type === "a" && (late ? textOf(node).includes("Send reminder on WhatsApp") : node.props["aria-label"] === `WhatsApp reminder for ${LONG_NAME}`));
+    const button = [...walk(view.tree)].find((node) => node.type === "button" && (late ? textOf(node).includes("Send reminder on WhatsApp") : node.props["aria-label"] === `WhatsApp reminder for ${LONG_NAME}`));
     button.props.onClick(freshTap());
     view.rerender();
     assert.ok([...walk(view.tree)].some((node) => node.props?.["data-reminder-again"] !== undefined), "the sheet opened");

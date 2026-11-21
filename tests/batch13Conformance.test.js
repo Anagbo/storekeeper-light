@@ -157,7 +157,7 @@ test("43: late state shows a full-width Send reminder on WhatsApp; the on-time s
   const { DebtorDetail } = await loadJsx("src/pos/DebtCollection.jsx");
   setLiveQuery(([debtId]) => (debtId === "d1" ? lateDebtorData() : undefined));
   let view = render({ type: DebtorDetail, props: { params: { debtId: "d1", customerName: "Ama" }, onBack() {}, onNavigate() {}, onCollect() {}, shopName: "My shop" } });
-  const send = [...walk(view.tree)].find((node) => node.type === "a" && textOf(node).includes("Send reminder on WhatsApp"));
+  const send = [...walk(view.tree)].find((node) => node.type === "button" && textOf(node).includes("Send reminder on WhatsApp"));
   assert.ok(send, "Send reminder on WhatsApp");
   assert.match(send.props.className, /w-full/);
   setLiveQuery(([debtId]) => (debtId === "d1" ? lateDebtorData({ dueDate: localDateString(daysAgo(-5)) }) : undefined));

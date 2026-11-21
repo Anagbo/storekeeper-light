@@ -1,5 +1,4 @@
 import { displayName } from "../lib/displayName.js";
-import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { formatDate, formatTime } from "../lib/formatDate.js";
 import { formatGhs } from "../lib/formatGhs.js";
 
@@ -63,10 +62,4 @@ export function buildCollectionReceiptMessage(result, shopName) {
 
   lines.push("Thank you!");
   return lines.join("\n");
-}
-
-export function buildCollectionReceiptLink(phone, message) {
-  const normalizedPhone = normalizeWhatsAppPhone(phone);
-  if (!normalizedPhone || typeof message !== "string" || !message.trim()) return null;
-  return `https://wa.me/${normalizedPhone.slice(1)}?text=${encodeURIComponent(message)}`;
 }

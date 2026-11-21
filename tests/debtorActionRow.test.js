@@ -78,13 +78,10 @@ for (const env of [OFF, ON]) {
         assert.match(cell.props.className, /min-h-16/, "64px, more than 48px");
         assert.match(cell.props.className, /whitespace-nowrap/);
       }
-      if (phone) {
-        assert.equal(whatsapp.type, "a");
-        assert.match(whatsapp.props.href, /^https:\/\/wa\.me\/233241234567\?text=Hello/);
-      } else {
-        assert.equal(whatsapp.type, "button", "share sheet button");
-        assert.notEqual(whatsapp.props.disabled, true, "WhatsApp stays enabled with no phone");
-      }
+      // rules_global.whatsapp_links: with or without a phone, a button that calls the shared opener.
+      assert.equal(whatsapp.type, "button", phone ? "opens her chat through the shared opener" : "share sheet button");
+      assert.equal(whatsapp.props.href, undefined, "no wa.me link");
+      assert.notEqual(whatsapp.props.disabled, true, "WhatsApp stays enabled");
       assert.doesNotMatch(textOf(actions), /Add contact|Edit contact/, "no Add contact in the row");
       assert.equal(reminderOnTop(view.tree), undefined, "29 has no wide late reminder");
       if (env === ON) assert.ok(!cells(actions).some((cell) => /Receipt/.test(textOf(cell))), "Receipt has its own row");
@@ -95,11 +92,8 @@ for (const env of [OFF, ON]) {
       const top = reminderOnTop(view.tree);
       assert.ok(top, "Send reminder on WhatsApp");
       assert.match(top.props.className, /w-full/);
-      if (phone) assert.equal(top.type, "a");
-      else {
-        assert.equal(top.type, "button", "share sheet button");
-        assert.notEqual(top.props.disabled, true, "WhatsApp stays enabled with no phone");
-      }
+      assert.equal(top.type, "button", phone ? "opens her chat through the shared opener" : "share sheet button");
+      assert.notEqual(top.props.disabled, true, "WhatsApp stays enabled");
       const actions = row(view.tree);
       assert.match(actions.props.className, /(^|\s)grid-cols-2(\s|$)/);
       assert.doesNotMatch(actions.props.className, /grid-cols-[134]|sm:grid-cols|flex-wrap/);
