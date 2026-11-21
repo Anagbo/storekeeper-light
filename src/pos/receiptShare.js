@@ -4,11 +4,12 @@
 import { openWhatsApp } from "../lib/openWhatsApp.js";
 
 // Send receipt goes through the one shared WhatsApp opener (src/lib/openWhatsApp.js): the saved
-// number's chat in the installed app, else the share sheet, else the app without a number.
-// Returns "app", "web", "share" or "cancelled" (a closed share sheet, which is not an error).
+// number's chat in the installed app, else the share sheet, else the app without a number. Offline the
+// share sheet comes first, then the offline chooser with "Copy receipt".
+// Returns "app", "web", "share", "copied" or "cancelled" (a closed share sheet or Not now, not an error).
 export async function sendReceipt({ text, phone = "", title = "" }) {
   if (typeof text !== "string" || !text) throw new TypeError("A receipt text is required.");
-  return openWhatsApp({ text, phone, title });
+  return openWhatsApp({ text, phone, title, kind: "receipt" });
 }
 
 // Copies the exact text. Returns true when it was copied.

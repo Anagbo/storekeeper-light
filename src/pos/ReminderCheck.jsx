@@ -20,8 +20,9 @@ import { needsReminderCheck, reminderAgainText } from "./reminderLabel.js";
 //   <button onClick={(event) => reminders.onReminder(event, { person, lastReminderAt, share })}>
 // `person` is { customerId, name }. `share` opens WhatsApp through the shared opener
 // (src/lib/openWhatsApp.js, rules_global.whatsapp_links): the person's chat in the installed app with
-// a valid number, the share sheet without one. It returns "cancelled" when the merchant closed the
-// share sheet; nothing is recorded then.
+// a valid number, the share sheet without one (offline: the share sheet first, then the offline sheet).
+// It returns "cancelled" when the merchant closed the share sheet or chose Not now on the offline
+// sheet; nothing is recorded then. "Copy reminder" ("copied") records, like a hand-over.
 // The window and the wording live in reminderLabel.js (needsReminderCheck, reminderAgainText).
 export function useReminderCheck({ record = recordReminderSent, now = () => Date.now() } = {}) {
   const [pending, setPending] = useState(null);
