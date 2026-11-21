@@ -193,6 +193,34 @@ test("36 from 39: no duplicates can be added; Add returns to 39", async () => {
   assert.equal(backs, 1, "back to 39");
 });
 
+// Item 5 (key-value rows prompt): " · " never joins two facts in this screen's text. Every string 36 shows
+// from 39 (each state: chips, More open, a tick, an Added row, search with no match) and the i18n keys
+// the browse mode uses.
+test("36 from 39: no text joins two facts with \" · \"", async () => {
+  const { posText } = await import("../src/pos/i18n.js");
+  const view = await browse({ setupCategories: ["provisions"], products: [{ id: 1, name: "Rice", default_price: 0 }] });
+  const strings = [];
+  const collect = () => {
+    for (const node of walk(view.tree)) {
+      for (const child of [node?.props?.children].flat()) if (typeof child === "string") strings.push(child);
+      for (const attribute of ["aria-label", "placeholder"]) if (typeof node?.props?.[attribute] === "string") strings.push(node.props[attribute]);
+    }
+  };
+  collect();
+  button(view.tree, "Sugar").props.onClick();
+  button(view.tree, "More categories").props.onClick();
+  view.rerender();
+  collect();
+  [...walk(view.tree)].find((node) => node.type === "input").props.onChange({ target: { value: "zzzz" } });
+  view.rerender();
+  collect();
+  for (const key of ["items.starterBrowseTitle", "items.starterBrowseHint", "items.starterCategories", "items.starterAll", "items.added", "items.addOne", "items.addCount", "items.starterSearch", "items.starterNoMatch", "items.priceLater", "items.starterFailed"]) {
+    strings.push(posText(key, { count: 2 }));
+  }
+  assert.ok(strings.length > 50, "the scan saw the screen");
+  assert.deepEqual(strings.filter((value) => value.includes(" · ")), []);
+});
+
 // ---- setup mode unchanged ----
 
 test("setup 36: wording unchanged and the chosen categories are passed on when setup finishes", async () => {
