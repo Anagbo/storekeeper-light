@@ -153,3 +153,21 @@ test("32: same row as Home; Collect keeps the several-debts rule; Add contact op
   assert.equal(navigated.at(-1)[1].customerName, "ama");
   assert.equal(navigated.at(-1)[1].editContact, undefined);
 });
+
+// Item 5 (chunk C): no " · " joins two facts in the text of 22 and 32. Named exception: Home's Owed card
+// count line ("5 people · 1 late", wiring 22 Owed card redesign), above the person row, which Home 22
+// keeps exactly as built.
+test("scan: no ' · ' joins two facts on 22 and 32", async () => {
+  const home = await renderHome({ debtId: "d1", customerName: "sera", amountPesewas: 2000, dueDate: realDay(-1), phone: "0244123456" });
+  const owed = await renderOwed([
+    { name: "ama", amountPesewas: 2000, dueDate: realDay(-2), phone: "0244123456" },
+    { name: "kofi", debts: [1000, 1500], dueDate: realDay(5), phone: "" },
+    { name: "yaw", amountPesewas: 1200, dueDate: realDay(0), phone: "12345" }
+  ]);
+  for (const [screen, tree] of [["22", home.tree], ["32", owed.tree]]) {
+    const texts = [...walk(tree)].filter((node) => typeof node === "string" || typeof node === "number").map(String);
+    const labels = all(tree, (n) => typeof n.props["aria-label"] === "string").map((n) => n.props["aria-label"]);
+    const shown = [...texts, ...labels, textOf(tree)].join("\n").replace(/\d+ (person|people) · \d+ late/, "");
+    assert.doesNotMatch(shown, / · /, `${screen}: no facts joined with " · "`);
+  }
+});
