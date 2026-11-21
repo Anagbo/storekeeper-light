@@ -172,6 +172,8 @@ test("Home on the rail (768 to 1279, D6): the date beside the title, Money left 
   const home = homeNode(app);
   assert.ok(byData(home, "data-home-date").length === 1, "the date beside the title");
   assert.match(byData(home, "data-home-row-1")[0].props.className, /\bflex-col\b/);
+  // Audit FAIL 1 (21 Nov 2026): at 768px a 2fr/1fr split wrapped "Spent money"; the two share the row.
+  assert.match(byData(home, "data-home-actions")[0].props.className, /(^|\s)grid-cols-2(\s|$)/);
   assert.match(byData(home, "data-home-row-2")[0].props.className, /\bflex-col\b/);
   assert.equal(personRows(home).length, 2);
 });
