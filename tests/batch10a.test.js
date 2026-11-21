@@ -56,7 +56,8 @@ test("K3: 16 passes the status rows to the shared split screen, which shows them
 });
 
 test("K6: the Split button on 19 is named Split payment; 27 opened from 19 says Done (12 Nov 2026)", () => {
-  assert.match(read("CreditScreens.jsx"), /aria-label=\{method === "split" \? t\("split\.title"\) : undefined\}/);
+  // split_payment_look (21 Nov 2026): 19's Split tile is its own AddButton named t("split.title").
+  assert.match(read("CreditScreens.jsx"), /<AddButton\s+plus=\{false\}\s+pressed=\{paymentMethod === "split"\}\s+aria-label=\{t\("split\.title"\)\}/);
   assert.match(read("InstallmentSplitPayment.jsx"), /doneLabel=\{t\("split\.done"\)\}/);
 });
 
