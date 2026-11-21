@@ -253,27 +253,38 @@ async function detail(debt, planPaidPesewas) {
 }
 const progressBar = (tree) => [...walk(tree)].find((node) => node.props?.role === "progressbar");
 
-// Wiring 29/43/54 "Key-value rows" (16 Nov 2026): the plan card shows the rows "Payment", the bar, "Paid so far"
-// ("1 of 3": payments made of all payments, from money only, never the stored counters) and "Next payment" or
-// "Was due". Replaces "GH₵21.00 paid · 42 payments left".
+// Wiring 29/43/54 "Plan card rows" (21 Nov 2026, replaces "Paid so far" "1 of 3", which itself replaced
+// "GH₵21.00 paid · 42 payments left"): Paid and Still needed for the current period, Payments left from the
+// balance; the bar stays money paid ÷ plan total. Never a count of installments paid (the 11 Nov rule this
+// file checked before chunk A, restored).
 const planRows = (tree) => Object.fromEntries([...walk(tree)]
-  .filter((node) => node.props?.["data-event-detail"] && ["payment", "paid-so-far", "next-payment", "was-due"].includes(node.props["data-event-detail"]))
+  .filter((node) => node.props?.["data-event-detail"] && ["payment", "paid", "still-needed", "payments-left", "next-payment", "was-due"].includes(node.props["data-event-detail"]))
   .map((node) => [node.props["data-event-detail"], textOf(node)]));
+const NO_COUNT = /(?<![.\d₵,])\d+ (of|paid)\b|Paid so far/;
 
-test("plan card: amos shows Paid so far 1 of 43 and a bar of about 2.5%", async () => {
-  const view = await detail(planDebt(), 2100);
-  assert.equal(planRows(view.tree)["paid-so-far"], "Paid so far1 of 43");
+test("plan card: amos (GH₵1.00 toward this GH₵20.00 payment) shows Paid, Still needed, Payments left 42 and a bar of about 2.5%", async () => {
+  const view = await detail(planDebt({ installmentPaymentCarryPesewas: 100 }), 2100);
+  const rows = planRows(view.tree);
+  assert.equal(rows.paid, "PaidGH₵1.00");
+  assert.equal(rows["still-needed"], "Still neededGH₵19.00");
+  assert.equal(rows["payments-left"], "Payments left42");
   assert.doesNotMatch(textOf(view.tree), / · /, "no facts joined with a dot");
+  assert.doesNotMatch(textOf(view.tree), NO_COUNT, "no count of payments paid");
   const bar = progressBar(view.tree);
   const width = Number.parseFloat([...walk(bar)].find((node) => node.props?.style?.width)?.props.style.width);
   assert.ok(width > 2.4 && width < 2.5, `bar width ${width}%`);
 });
 
-test("plan card: nothing paid, exact multiples and one payment left", async () => {
-  const none = await detail(planDebt({ amountPesewas: 3000, installmentAmount: 1000 }), 0);
-  assert.equal(planRows(none.tree)["paid-so-far"], "Paid so far0 of 3");
-  const exact = await detail(planDebt({ amountPesewas: 3000, installmentAmount: 1000 }), 2000);
-  assert.equal(planRows(exact.tree)["paid-so-far"], "Paid so far2 of 5");
-  const one = await detail(planDebt({ amountPesewas: 500, installmentAmount: 1000 }), 2500);
-  assert.equal(planRows(one.tree)["paid-so-far"], "Paid so far2 of 3");
+test("plan card: nothing paid, exact multiples and one payment left, from money only", async () => {
+  const none = planRows((await detail(planDebt({ amountPesewas: 3000, installmentAmount: 1000 }), 0)).tree);
+  assert.deepEqual([none.paid, none["still-needed"], none["payments-left"]], ["PaidGH₵0.00", "Still neededGH₵10.00", "Payments left3"]);
+  // Two whole payments made earlier: the carry is 0 again, so this period starts at GH₵0.00 paid.
+  const exact = planRows((await detail(planDebt({ amountPesewas: 3000, installmentAmount: 1000, installmentPaymentCarryPesewas: 0 }), 2000)).tree);
+  assert.deepEqual([exact.paid, exact["still-needed"], exact["payments-left"]], ["PaidGH₵0.00", "Still neededGH₵10.00", "Payments left3"]);
+  // GH₵5.00 left on GH₵10.00 payments: one payment left (rounded up), GH₵5.00 already paid toward it.
+  const one = planRows((await detail(planDebt({ amountPesewas: 500, installmentAmount: 1000, installmentPaymentCarryPesewas: 500 }), 2500)).tree);
+  assert.deepEqual([one.paid, one["still-needed"], one["payments-left"]], ["PaidGH₵5.00", "Still neededGH₵5.00", "Payments left1"]);
+  // A stored counter that drifted is never read.
+  const drifted = planRows((await detail(planDebt({ amountPesewas: 3000, installmentAmount: 1000, installmentsRemaining: 40, totalInstallments: 44 }), 0)).tree);
+  assert.equal(drifted["payments-left"], "Payments left3");
 });

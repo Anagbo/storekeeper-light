@@ -709,7 +709,6 @@ const ENGLISH = Object.freeze({
   // Key-value row labels (rules_global.kv_labels): about 14 characters at most, one line at 340px.
   "kv.lastReminder": "Last reminder",
   "kv.payment": "Payment",
-  "kv.paidSoFar": "Paid so far",
   "kv.nextPayment": "Next payment",
   "kv.wasDue": "Was due",
   "kv.debt": "Debt",
@@ -732,8 +731,6 @@ const ENGLISH = Object.freeze({
   "kv.person": "Person",
   "kv.firstPayment": "First payment",
   "kv.nowOwed": "Now owed",
-  // "1 of 3": payments made of all the plan's payments.
-  "kv.countOf": "{done} of {total}",
   // The payment frequency after the amount (decided 17 Nov 2026): "GH₵2.00 weekly".
   "kv.paymentEvery.weekly": "{amount} weekly",
   "kv.paymentEvery.bi-weekly": "{amount} bi-weekly",

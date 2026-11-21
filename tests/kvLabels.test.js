@@ -9,9 +9,9 @@ import { posText as t } from "../src/pos/i18n.js";
 const LABELS = [
   // What happened cards (29, 43, 73)
   "event.time", "event.reason", "event.signature", "event.paidWith", "event.was", "event.newBalance",
-  // 29, 43, 54
-  "kv.lastReminder", "kv.payment", "kv.paidSoFar", "kv.nextPayment", "kv.wasDue",
-  // 53
+  // 29, 43, 54 (the plan card also uses Paid, Still needed and Payments left since 21 Nov 2026)
+  "kv.lastReminder", "kv.payment", "kv.nextPayment", "kv.wasDue",
+  // 53 and the plan card on 29, 43, 54
   "kv.debt", "kv.due", "kv.paid", "kv.stillNeeded", "kv.paymentsLeft",
   // 56, 68
   "kv.fee", "kv.youReceive", "kv.youPay",
@@ -32,6 +32,12 @@ test("every key-value label built for these screens is 14 characters or fewer an
     assert.ok(label.length <= 14, `${key}: "${label}" is ${label.length} characters`);
     assert.doesNotMatch(label, /this week|2 weeks|this month|every/i, `${key}: no period words`);
   }
+});
+
+// Wiring 29/43/54 "Plan card rows" (21 Nov 2026): no count of installments paid, so the count strings are gone.
+test("no Paid so far label and no '{done} of {total}' count string in the translation file", () => {
+  assert.throws(() => t("kv.paidSoFar"), /Missing English POS string/, "kv.paidSoFar is not in the translation file");
+  assert.throws(() => t("kv.countOf", { done: 1, total: 3 }), /Missing English POS string/, "kv.countOf is not in the translation file");
 });
 
 test("the Payment value carries the frequency word after the amount: weekly, bi-weekly, monthly", () => {

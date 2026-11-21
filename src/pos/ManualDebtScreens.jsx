@@ -9,7 +9,7 @@ import { buildWhatsAppReminderText } from "../utils/whatsapp.js";
 import { latestReminderAt, loadReminderEvents } from "../db/reminders.js";
 import { openWhatsApp } from "../lib/openWhatsApp.js";
 import { useReminderCheck } from "./ReminderCheck.jsx";
-import { isValidInstallmentPlanForBalance, localDateString } from "../utils/installments.js";
+import { getPlanPeriodFigures, isValidInstallmentPlanForBalance, localDateString } from "../utils/installments.js";
 import { PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
 import { EventDetail, KeyValueRows } from "./EventRows.jsx";
 import { getDebtDueLabel } from "./money.js";
@@ -46,12 +46,10 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, o
   const hasDueDate = !hasPlan && Boolean(debt?.dueDate);
   // The card's wording follows the plan's frequency (contract 53 existing_terms_card).
   const frequencyKey = ["weekly", "bi-weekly", "monthly"].includes(debt?.frequency) ? debt.frequency : "weekly";
-  const existingInstallmentCarry = hasPlan
-    ? debt.installmentPaymentCarryPesewas ?? 0
-    : 0;
-  const existingInstallmentStillNeeded = hasPlan
-    ? Math.max(0, debt.installmentAmount - existingInstallmentCarry)
-    : 0;
+  // Paid and Still needed this period: the same shared figures as the plan card on 29, 43 and 54.
+  const planPeriod = hasPlan ? getPlanPeriodFigures(debt) : null;
+  const existingInstallmentCarry = planPeriod?.paidPesewas ?? 0;
+  const existingInstallmentStillNeeded = planPeriod?.stillNeededPesewas ?? 0;
   // This cycle's progress: paid toward this installment out of the installment amount.
   const cycleProgress = hasPlan
     ? Math.min(100, (existingInstallmentCarry / debt.installmentAmount) * 100)

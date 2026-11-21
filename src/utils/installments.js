@@ -376,6 +376,22 @@ export function getInstallmentsLeft(debt) {
   return getPlanProgress({ balancePesewas: balance, installmentAmountPesewas: debt.installmentAmount, paidPesewas: 0 }).left;
 }
 
+// Plan card figures for the current period (wiring 29/43/54 "Plan card rows", 21 Nov 2026, and the 53 card):
+// paid = money paid toward the installment now due (the stored carry, kept by reconcileInstallmentPayment),
+// still needed = the installment minus that, payments left = getInstallmentsLeft (balance ÷ installment,
+// rounded up). Money only; never a count of installments paid. null when the debt has no usable plan.
+export function getPlanPeriodFigures(debt) {
+  const installment = debt?.installmentAmount;
+  if (!debt?.isInstallmentPlan || !Number.isSafeInteger(installment) || installment <= 0) return null;
+  const carry = debt.installmentPaymentCarryPesewas ?? 0;
+  const paidPesewas = Number.isSafeInteger(carry) && carry > 0 ? Math.min(carry, installment) : 0;
+  return {
+    paidPesewas,
+    stillNeededPesewas: installment - paidPesewas,
+    paymentsLeft: getInstallmentsLeft(debt)
+  };
+}
+
 // Plan counts from money only (owner rule, wiring 25, 11 Nov 2026). The stored
 // totalInstallments is not read: part payments made counters drift ("Payment 3 of 44").
 // left = balance ÷ installment rounded up; paid = money paid ÷ installment rounded down;

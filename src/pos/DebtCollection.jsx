@@ -19,7 +19,7 @@ import { buildLatestPaymentReceipt, getCollectionReceiptText, isReceiptTemplates
 import AmountKeypad from "./AmountKeypad.jsx";
 import { pressAmountKey } from "./amountKeypad.js";
 import { getDebtDueLabel, getDebtDueLine } from "./money.js";
-import { getInstallmentsLeft, getPlanProgress } from "../utils/installments.js";
+import { getInstallmentsLeft, getPlanPeriodFigures, getPlanProgress } from "../utils/installments.js";
 import { getCustomerLedgerRecords, getPlanPaidPesewas } from "../utils/debtLedgerMath.js";
 import { posText as t } from "./i18n.js";
 import { getDebtEntryReason } from "../lib/creditReason.js";
@@ -704,6 +704,8 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
     paidPesewas: data?.planPaidPesewas ?? 0
   });
   const installmentProgress = planProgress.progress * 100;
+  // Paid / Still needed this period and Payments left (wiring 29/43/54 "Plan card rows", 21 Nov 2026).
+  const planPeriod = getPlanPeriodFigures(data?.debt);
   const nextDueDate = dueDate ? formatDate(dueDate) : t("collect.notSet");
   // The Payment row: "GH₵2.00 weekly | bi-weekly | monthly" (rules_global.kv_labels, from the translation file).
   const installmentPayment = ["weekly", "bi-weekly", "monthly"].includes(data?.debt?.frequency)
@@ -899,10 +901,13 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               >
                 <span className="block h-full bg-emerald-900" style={{ width: `${installmentProgress}%` }} />
               </div>
-              {/* Wiring 29/43/54 "Key-value rows" (16 Nov 2026): under the bar, "Paid so far" ("1 of 3") and
-                  "Next payment" (29), or "Was due" when late (43, 54). Replaces "1 paid · 2 left" and "Next: …". */}
+              {/* Wiring 29/43/54 "Plan card rows" (21 Nov 2026): under the bar, Paid and Still needed for the current
+                  period (like the 53 card), Payments left (the one shared function), then "Next payment" (29) or
+                  "Was due" when late (43, 54). Never a count of installments paid (it replaces "Paid so far 1 of 3"). */}
               <KeyValueRows name="plan">
-                <EventDetail label={t("kv.paidSoFar")} name="paid-so-far">{t("kv.countOf", { done: planProgress.paid, total: planProgress.total })}</EventDetail>
+                <EventDetail label={t("kv.paid")} name="paid">{formatGhs(planPeriod?.paidPesewas ?? 0)}</EventDetail>
+                <EventDetail label={t("kv.stillNeeded")} name="still-needed">{formatGhs(planPeriod?.stillNeededPesewas ?? 0)}</EventDetail>
+                <EventDetail label={t("kv.paymentsLeft")} name="payments-left">{planPeriod?.paymentsLeft ?? 0}</EventDetail>
                 <EventDetail label={t(isLate ? "kv.wasDue" : "kv.nextPayment")} name={isLate ? "was-due" : "next-payment"}>{nextDueDate}</EventDetail>
               </KeyValueRows>
             </section>
