@@ -271,15 +271,27 @@ export function describeTransactionRow(row) {
   return { title: "", amountPesewas: row.amountPesewas, tone: "neutral", chips: [] };
 }
 
-// Wide Home (D1) small table: the rows of 24 (createPosTransactionRows), each cut to What, Money in
-// and Owed. Money in is what was received (a sale's paid part, a collection); Owed is what was given on
-// credit (a sale's unpaid part, a debt added). Every other row (spent, corrections) has neither: dashes.
-// Nothing is computed that 24 does not already show.
+// Wide Home small table (wiring 22 Home row 3): the rows of 24 (createPosTransactionRows), each cut to
+// What, Money in, Owed and Spent, with 24's wording and colours (the tone of describeTransactionRow).
+//   Money in: what was received (a sale's paid part, a collection), green with +.
+//   Owed: what was given on credit (a sale's unpaid part, a debt added), dark red; a balance correction's
+//     amount lowered, plain dark with no sign (it moves no money).
+//   Spent: money spent, amber-brown with −; stock bought on credit, dark red with no sign.
+// Every row shows its amount somewhere. Nothing is computed that 24 does not already show.
 export function describeHomeTableRow(row) {
   const view = describeTransactionRow(row);
   const moneyInPesewas = row.kind === "sold" ? row.cashReceivedPesewas : row.kind === "payment" ? row.amountPesewas : 0;
-  const owedPesewas = row.kind === "sold" ? row.owedPesewas : row.kind === "debt_added" ? row.amountPesewas : 0;
-  return { title: view.title, moneyInPesewas, owedPesewas };
+  const isCorrection = row.kind === "adjustment";
+  const owedPesewas = row.kind === "sold" ? row.owedPesewas : row.kind === "debt_added" ? row.amountPesewas : isCorrection ? view.amountPesewas : 0;
+  const isSpent = row.kind === "spent" || row.kind === "credit";
+  return {
+    title: view.title,
+    moneyInPesewas,
+    owedPesewas,
+    owedTone: isCorrection ? "neutral" : "credit",
+    spentPesewas: isSpent ? view.amountPesewas : 0,
+    spentTone: isSpent ? view.tone : "spent"
+  };
 }
 
 function categoryLabel(category) {

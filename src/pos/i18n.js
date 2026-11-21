@@ -42,6 +42,7 @@ const ENGLISH = Object.freeze({
   "home.tableWhat": "What",
   "home.tableMoneyIn": "Money in",
   "home.tableOwed": "Owed",
+  "home.tableSpent": "Spent",
   "home.tableLoadFailed": "Today’s transactions could not be shown here. See all opens them.",
   "home.owedToYou": "Owed to you",
   "home.owedSeeAllAria": "Owed to you, see all",

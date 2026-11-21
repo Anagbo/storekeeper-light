@@ -155,7 +155,9 @@ test("Home D1: the small table has Time, What, Money in, Owed; a part-paid sale 
   await seedOwing();
   const app = await open(1280);
   const card = byData(homeNode(app), "data-home-transactions")[0];
-  assert.deepEqual(within(card, (node) => node.type === "th").map((th) => textOf(th)), ["Time", "What", "Money in", "Owed"]);
+  assert.deepEqual(within(card, (node) => node.type === "th").map((th) => textOf(th)), ["Time", "What", "Money in", "Owed", "Spent"]);
+  const spentRow = byData(card, "data-home-row").find((row) => textOf(byData(row, "data-cell").find((cell) => cell.props["data-cell"] === "what")) === "Spent");
+  assert.equal(textOf(byData(spentRow, "data-cell").find((cell) => cell.props["data-cell"] === "spent")), "−GH₵10.00", "the spent row shows its amount, as on 24");
   const rows = byData(card, "data-home-row");
   assert.ok(rows.length >= 3 && rows.length <= 5, `${rows.length} rows`);
   const partPaid = rows.find((row) => /Sale of GH₵13\.00/.test(textOf(row)));
@@ -227,7 +229,7 @@ test("wide Home stores nothing and changes no stored value", async () => {
   assert.equal(await snapshot(), before);
 });
 
-test("describeHomeTableRow reads the 24 rows: received under Money in, the unpaid part under Owed, dashes otherwise", () => {
+test("describeHomeTableRow reads the 24 rows: received under Money in, the unpaid part under Owed, spent under Spent", () => {
   const at = Date.now();
   const rows = createPosTransactionRows([
     { id: "a", type: "installment_sale", paymentType: "credit", amountPesewas: 1300, total_amount: 1300, payment_method: "cash", cashReceivedPesewas: 800, momoReceivedPesewas: 0, creditExtendedPesewas: 500, createdAt: at, customer_name: "Yaw" },
@@ -236,11 +238,32 @@ test("describeHomeTableRow reads the 24 rows: received under Money in, the unpai
     { id: "d", type: "sale", amountPesewas: 600, total_amount: 600, payment_method: "cash", cashReceivedPesewas: 600, momoReceivedPesewas: 0, createdAt: at - 3 }
   ]);
   const cells = Object.fromEntries(rows.map((row) => [row.id, describeHomeTableRow(row)]));
-  assert.deepEqual(cells.a, { title: "Sale of GH₵13.00", moneyInPesewas: 800, owedPesewas: 500 });
+  assert.deepEqual(cells.a, { title: "Sale of GH₵13.00", moneyInPesewas: 800, owedPesewas: 500, owedTone: "credit", spentPesewas: 0, spentTone: "spent" });
   assert.equal(cells.b.moneyInPesewas, 0);
   assert.equal(cells.b.owedPesewas, 1200);
-  assert.deepEqual([cells.c.moneyInPesewas, cells.c.owedPesewas], [0, 0], "spent: dashes");
-  assert.deepEqual([cells.d.moneyInPesewas, cells.d.owedPesewas], [600, 0]);
+  // Wiring 22 Home row 3 (21 Nov 2026): spent rows show their amount under Spent, as on 24 (− amber-brown).
+  assert.deepEqual([cells.c.moneyInPesewas, cells.c.owedPesewas, cells.c.spentPesewas, cells.c.spentTone], [0, 0, 1000, "spent"]);
+  assert.deepEqual([cells.d.moneyInPesewas, cells.d.owedPesewas, cells.d.spentPesewas], [600, 0, 0]);
+});
+
+test("describeHomeTableRow: a correction under Owed, plain dark; stock on credit under Spent, dark red; no row is only dashes", () => {
+  const at = Date.now();
+  const rows = createPosTransactionRows([
+    { id: "fix", type: "debt_adjustment", amountPesewas: 300, total_amount: 300, deltaPesewas: -300, previousBalancePesewas: 1300, newBalancePesewas: 1000, reasonCode: "mistake", payment_method: null, createdAt: at, customer_name: "Kofi" },
+    { id: "stock-credit", type: "expense", category: "stock", supplierId: "s1", amountPesewas: 5000, total_amount: 5000, paidAmountPesewas: 0, owedAmountPesewas: 5000, payment_method: "cash", createdAt: at - 1 },
+    { id: "stock-part", type: "expense", category: "stock", supplierId: "s1", amountPesewas: 5000, total_amount: 5000, paidAmountPesewas: 2000, owedAmountPesewas: 3000, payment_method: "cash", createdAt: at - 2 },
+    { id: "added", type: "manual_debt", amountPesewas: 700, total_amount: 700, creditExtendedPesewas: 700, payment_method: null, createdAt: at - 3, customer_name: "Ama" },
+    { id: "paid", type: "debt_payment", amountPesewas: 400, total_amount: 400, payment_method: "momo", createdAt: at - 4, customer_name: "Ama" },
+    { id: "supplier", type: "supplier_payment", supplierId: "s1", amountPesewas: 900, total_amount: 900, payment_method: "cash", createdAt: at - 5 }
+  ], new Map([["s1", "Kofi wholesale"]]));
+  const cells = Object.fromEntries(rows.map((row) => [row.id, describeHomeTableRow(row)]));
+  assert.deepEqual([cells.fix.title, cells.fix.owedPesewas, cells.fix.owedTone], ["Balance corrected", 300, "neutral"]);
+  assert.deepEqual([cells["stock-credit"].title, cells["stock-credit"].spentPesewas, cells["stock-credit"].spentTone], ["Stock on credit", 5000, "credit"]);
+  assert.deepEqual([cells["stock-part"].title, cells["stock-part"].spentPesewas, cells["stock-part"].spentTone], ["Stock", 2000, "spent"]);
+  assert.deepEqual([cells.added.owedPesewas, cells.added.owedTone], [700, "credit"]);
+  assert.equal(cells.paid.moneyInPesewas, 400);
+  assert.deepEqual([cells.supplier.spentPesewas, cells.supplier.spentTone], [900, "spent"]);
+  for (const [id, cell] of Object.entries(cells)) assert.ok(cell.moneyInPesewas + cell.owedPesewas + cell.spentPesewas > 0, `${id}: shows its amount`);
 });
 
 // ---- My money (33) ---------------------------------------------------------------------------------------
