@@ -188,15 +188,17 @@ test("52: items are grouped by category with Show all {n}, named Show all {categ
   assert.ok(findButton(view.tree, "Continue · 27 items"));
 });
 
-test("36: from My items the button reads Continue · N items, and Show more gives the count", async () => {
+// From My items 39 the button reads "Add N items" since 20 Nov 2026 (tests/starterFromItems36.test.js);
+// setup keeps Continue · N items and Show more ({count}).
+test("36: from My items the button reads Add N items; in setup Continue · N items, and Show more gives the count", async () => {
   const { default: ItemScreens } = await loadJsx("src/pos/ItemScreens.jsx");
   setLiveQuery(() => ({ products: [], error: "" }));
   const view = render({ type: ItemScreens, props: { route: "YourStarterList", params: {}, onBack() {}, onCompleteSetup: async () => {} } });
-  const first = [...walk(view.tree)].find((node) => node.props?.["aria-pressed"] === false);
+  const first = [...walk(view.tree)].find((node) => node.props?.["aria-pressed"] === false && node.props?.className?.includes("rounded-2xl"));
   first.props.onClick();
   view.rerender();
-  assert.ok(findButton(view.tree, "Continue · 1 items"), "Continue · N items");
-  assert.doesNotMatch(textOf(view.tree), /Add 1 item/);
+  assert.ok(findButton(view.tree, "Add 1 item"), "Add N items");
+  assert.doesNotMatch(textOf(view.tree), /Continue · /);
   const setup = render({ type: ItemScreens, props: { route: "YourStarterList", params: { setupFlow: true, starterCategories: ["provisions"] }, onBack() {}, onCompleteSetup: async () => {} } });
   assert.ok(findButton(setup.tree, "Show more (63)"), "Show more ({count})");
 });
