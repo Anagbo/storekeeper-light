@@ -161,8 +161,34 @@ test("22 and 32: pressed state, any saved number shows WhatsApp and Call, layout
               const name = open.querySelector("[data-party-name]");
               const a = amount.getBoundingClientRect();
               const c = card.getBoundingClientRect();
+              const n = name.getBoundingClientRect();
+              const style = getComputedStyle(name);
+              const lineHeight = parseFloat(style.lineHeight);
+              // Words that fit on a line of the name column must not be split across two lines (only the
+              // visible part counts; words after the cut are hidden).
+              const text = name.firstChild;
+              const probe = document.createElement("span");
+              probe.style.cssText = "position:absolute;visibility:hidden;white-space:nowrap;font:" + style.font;
+              document.body.append(probe);
+              const split = [];
+              for (const match of text.textContent.matchAll(/\\S+/g)) {
+                probe.textContent = match[0];
+                if (probe.getBoundingClientRect().width > name.clientWidth) continue;
+                const range = document.createRange();
+                range.setStart(text, match.index);
+                range.setEnd(text, match.index + match[0].length);
+                const visible = [...range.getClientRects()].filter((r) => r.width > 0 && r.top < n.bottom - 1);
+                if (new Set(visible.map((r) => Math.round(r.top))).size > 1) split.push(match[0]);
+              }
+              probe.remove();
               const nameRight = Math.max(...[...name.getClientRects()].map((r) => r.right));
-              return { name: name.textContent, amountLines: amount.getClientRects().length, amountWhole: amount.scrollWidth <= amount.clientWidth + 0.5, amountInside: a.right <= c.right + 0.5 && a.left >= c.left - 0.5, nameBeforeAmount: nameRight <= a.left + 0.5, nameLines: Math.round(name.getBoundingClientRect().height / parseFloat(getComputedStyle(name).lineHeight)), ellipsis: getComputedStyle(name).webkitLineClamp };
+              return {
+                name: name.textContent, amountLines: amount.getClientRects().length, amountWhole: amount.scrollWidth <= amount.clientWidth + 0.5,
+                amountInside: a.right <= c.right + 0.5 && a.left >= c.left - 0.5, nameBeforeAmount: nameRight <= a.left + 0.5,
+                amountOnFirstLine: Math.abs(a.top - n.top) < lineHeight / 2, amountAtRight: Math.abs(a.right - open.getBoundingClientRect().right) < 1,
+                nameLines: Math.round(n.height / lineHeight), cut: name.scrollHeight > name.clientHeight + 1,
+                clamp: style.webkitLineClamp, overflow: style.overflow, textOverflow: style.textOverflow, split
+              };
             });
             const area = document.querySelector("[data-page-area]");
             const before = area.scrollTop;
@@ -178,8 +204,15 @@ test("22 and 32: pressed state, any saved number shows WhatsApp and Call, layout
             assert.equal(row.amountLines, 1, `${what} ${row.name}: the amount on one line`);
             assert.ok(row.amountWhole && row.amountInside, `${what} ${row.name}: the amount is whole and inside the card`);
             assert.ok(row.nameBeforeAmount, `${what} ${row.name}: the name never runs under the amount`);
-            if (row.nameLines > 2) notes.push(`${what}: "${row.name}" takes ${row.nameLines} lines (no ellipsis)`);
+            // Long names (decided 21 Nov 2026): two lines at most, cut with an ellipsis, the amount whole on
+            // the first line at the right, no word split that fits on a line.
+            assert.ok(row.nameLines <= 2, `${what} ${row.name}: at most two lines (${row.nameLines})`);
+            assert.equal(row.clamp, "2", `${what} ${row.name}: the two-line clamp applies`);
+            assert.ok(row.amountOnFirstLine && row.amountAtRight, `${what} ${row.name}: the amount on the first line at the right`);
+            assert.deepEqual(row.split, [], `${what} ${row.name}: no word that fits is broken`);
+            if (row.cut) notes.push(`${what}: "${row.name}" cut at ${row.nameLines} lines with an ellipsis`);
           }
+          if (seed === "five") assert.ok(m.rows.some((row) => row.name === LONG && row.cut), `${what}: the long name is cut`);
           if (which === "32" && seed === "five") {
             assert.equal(m.rows.length, 5, `${what}: five rows`);
             assert.ok(m.scrolls && m.scrolled, `${what}: the list scrolls`);

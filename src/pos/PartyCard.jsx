@@ -87,7 +87,7 @@ export function PartyCard({
   const shown = displayName(name);
   const callHref = callAnyNumber ? telHrefFor(phone) : callHrefFor(phone);
   const ActionIcon = action.icon;
-  const nameText = <span data-party-name="" className="line-clamp-2 block min-w-0 break-words text-[19px] font-extrabold leading-tight">{shown}</span>;
+  const nameText = <span data-party-name="" className="line-clamp-2 min-w-0 break-words text-[19px] font-extrabold leading-tight">{shown}</span>;
   const nameColumn = (
     <div className="min-w-0 flex-1">
       {framed ? <h2 className="line-clamp-2 min-w-0 break-words text-[19px] font-extrabold leading-tight">{shown}</h2> : nameText}
