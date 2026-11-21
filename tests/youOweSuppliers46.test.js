@@ -124,8 +124,10 @@ test("46 long name and GH₵12,345.00 do not clip at 360px (class contract)", as
   assert.match(cls(nameNode), /text-\[19px\]/);
   const amount = all(card, (n) => textOf(n) === "GH₵12,345.00" && /text-\[24px\]/.test(cls(n)))[0];
   assert.ok(amount, "amount at 24px");
-  assert.match(cls(amount), /shrink-0/);
+  // 4k (21 Nov 2026): the top row is a grid; the amount has the auto (content-sized) column, so it never shrinks.
+  assert.match(cls(amount), /col-start-2/);
   assert.match(cls(amount), /whitespace-nowrap/);
+  assert.ok(all(card, (n) => /grid-cols-\[minmax\(0,1fr\)_auto\]/.test(cls(n)))[0], "the name/amount grid");
   assert.ok(!/amount-fit/.test(cls(amount)), "never shrunk");
 });
 

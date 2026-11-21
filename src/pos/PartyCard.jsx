@@ -87,22 +87,27 @@ export function PartyCard({
   const shown = displayName(name);
   const callHref = callAnyNumber ? telHrefFor(phone) : callHrefFor(phone);
   const ActionIcon = action.icon;
-  const nameText = <span data-party-name="" className="line-clamp-2 min-w-0 break-words text-[19px] font-extrabold leading-tight">{shown}</span>;
+  // rules_global.person_row "Due tag on one line" (4k, 21 Nov 2026): the top row is a two-column grid.
+  // The name (top left) gives way first; the amount (right) spans both rows; the due tag has its own
+  // row across the full width, on one line, and may run on under the amount (one line, ending above
+  // the tag). Rows without a tag, and tags that already fit, stay where they were: without a tag the
+  // amount spans one row only (an empty spanned row made the row taller).
+  const nameCell = "col-start-1 row-start-1 line-clamp-2 min-w-0 break-words text-[19px] font-extrabold leading-tight";
   const nameColumn = (
-    <div className="min-w-0 flex-1">
-      {framed ? <h2 className="line-clamp-2 min-w-0 break-words text-[19px] font-extrabold leading-tight">{shown}</h2> : nameText}
-      {dueDate && <div data-party-tag="" className="mt-1.5"><DueTag dueDate={dueDate} today={today} wording={wording} /></div>}
-    </div>
+    <>
+      {framed ? <h2 className={nameCell}>{shown}</h2> : <span data-party-name="" className={nameCell}>{shown}</span>}
+      {dueDate && <div data-party-tag="" className="col-span-full row-start-2 mt-1.5 whitespace-nowrap"><DueTag dueDate={dueDate} today={today} wording={wording} /></div>}
+    </>
   );
-  const amount = <span data-party-amount="" className={`shrink-0 whitespace-nowrap font-extrabold leading-tight ${AMOUNT_SIZES[amountSize] ?? AMOUNT_SIZES[24]}`}>{formatGhs(amountPesewas)}</span>;
+  const amount = <span data-party-amount="" className={`col-start-2 ${dueDate ? "row-span-2" : ""} row-start-1 whitespace-nowrap font-extrabold leading-tight ${AMOUNT_SIZES[amountSize] ?? AMOUNT_SIZES[24]}`}>{formatGhs(amountPesewas)}</span>;
   const top = onNameClick ? (
     // rules_global.person_row: the whole top row (name, tag, amount and the space between) opens the
     // detail; a light grey tint while pressed, nothing at rest.
-    <button type="button" data-person-open="" onClick={onNameClick} aria-label={nameLabel} className="flex w-full min-w-0 items-start justify-between gap-3 rounded-lg text-left active:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800">
+    <button type="button" data-person-open="" onClick={onNameClick} aria-label={nameLabel} className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 rounded-lg text-left active:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800">
       {nameColumn}{amount}
     </button>
   ) : (
-    <div className="flex min-w-0 items-start justify-between gap-3">{nameColumn}{amount}</div>
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3">{nameColumn}{amount}</div>
   );
   const Frame = framed ? "section" : "div";
   return (
