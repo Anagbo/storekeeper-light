@@ -125,8 +125,14 @@ export default function SaleRecorded({ transaction, creditResult, shopName, onDo
                     </span>
                     <strong data-owe-amount="" className="shrink-0 whitespace-nowrap text-rose-900">{formatGhs(owedPesewas)}</strong>
                   </div>
-                  {earlierBalance && (
-                    <p data-total-owed="" className="text-base text-slate-700">{t("saleRecorded.totalOwed", { amount: formatGhs(creditResult.totalDebtPesewas) })}</p>
+                  {/* Total owed on 30 (21 Nov 2026): a key-value row like the other rows of the card, under its own
+                      dashed divider, only when the customer had an earlier balance (otherwise it would equal the
+                      owed amount above it). */}
+                  {earlierBalance && creditResult.totalDebtPesewas !== owedPesewas && (
+                    <div data-total-owed="" className="mt-1 flex justify-between gap-2 border-t-2 border-dashed border-slate-400 pt-1">
+                      <span>{t("saleRecorded.totalOwed")}</span>
+                      <strong data-total-owed-amount="" className="shrink-0 whitespace-nowrap">{formatGhs(creditResult.totalDebtPesewas)}</strong>
+                    </div>
                   )}
                 </div>
               )}

@@ -182,10 +182,33 @@ test("30 without an earlier balance: \"Juju owes GH₵5.00 from this sale\", no 
   assert.doesNotMatch(text, /still owes/);
 });
 
-test("30 with an earlier balance: one quiet \"Total owed GH₵15.00\" line under it", async () => {
-  const text = await screen30({ transaction: sale(), creditResult: { previousDebtPesewas: 1000, totalDebtPesewas: 1500 } });
-  assert.match(text, /Juju owesfrom this saleGH₵5\.00Total owed GH₵15\.00/);
+// Wiring 30 (21 Nov 2026): Total owed is a key-value row (label left, bold amount right, the card's
+// dashed divider above it), no longer a quiet "Total owed GH₵y" sentence.
+test("30 with an earlier balance: a \"Total owed\" key-value row under the owe row", async () => {
+  const { default: SaleRecorded } = await loadJsx("src/pos/SaleRecorded.jsx");
+  const tree = render({ type: SaleRecorded, props: { shopName: "Shop", onDone() {}, onNewSale() {}, transaction: sale(), creditResult: { previousDebtPesewas: 1000, totalDebtPesewas: 1500 } } }).tree;
+  const text = textOf(tree).replace(/\s+/g, " ");
+  assert.match(text, /Juju owesfrom this saleGH₵5\.00Total owedGH₵15\.00/);
   assert.equal(text.match(/Total owed/g).length, 1);
+  const row = [...walk(tree)].find((node) => node.props?.["data-total-owed"] === "");
+  assert.ok(row, "the Total owed row");
+  assert.equal(row.type, "div", "a row, not a paragraph line");
+  const classes = row.props.className.split(/\s+/);
+  for (const name of ["flex", "justify-between", "border-t-2", "border-dashed", "border-slate-400"]) assert.ok(classes.includes(name), `row class ${name}`);
+  const [labelNode, amountNode] = row.props.children.filter((child) => child && typeof child === "object");
+  assert.equal(textOf(labelNode), "Total owed");
+  assert.equal(amountNode.type, "strong", "the amount is bold");
+  assert.equal(textOf(amountNode), "GH₵15.00");
+  assert.doesNotMatch(amountNode.props.className, /rose/, "the total is not the red owed colour");
+});
+
+test("30: no Total owed row when it would equal the owed amount, or without an earlier balance", async () => {
+  // No earlier balance (as built: previousDebtPesewas 0), and a creditResult missing the earlier figure.
+  for (const creditResult of [{ previousDebtPesewas: 0, totalDebtPesewas: 500 }, { totalDebtPesewas: 500 }, undefined]) {
+    assert.doesNotMatch(await screen30({ transaction: sale(), creditResult }), /Total owed/, JSON.stringify(creditResult));
+  }
+  // A total that equals the owed part (an inconsistent earlier figure) never repeats the same amount.
+  assert.doesNotMatch(await screen30({ transaction: sale(), creditResult: { previousDebtPesewas: 1, totalDebtPesewas: 500 } }), /Total owed/);
 });
 
 test("30 after a cash-only part lists no MoMo GH₵0.00 row; a MoMo-only part lists no Cash GH₵0.00 row", async () => {
