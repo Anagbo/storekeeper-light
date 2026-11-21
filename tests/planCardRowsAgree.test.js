@@ -49,3 +49,49 @@ test("29 plan card and the 25 Collect sheet agree on payments left (3 now, 2 aft
   assert.match(sheet, /2 left after this/, "25 Due now: one fewer than the card's 3");
   assert.doesNotMatch(sheet, /(?<![.\d₵,])\d+ of \d+/, "25: no count of installments");
 });
+
+// Owner's decision (21 Nov 2026): on the 25 Collect sheet, Due now equals Still needed when the payment now due is
+// partly paid. Missed payments are never added together (kept as before: one payment at nextDueDate).
+async function sheetOf(debtRecord, mode) {
+  const { CollectPayment } = await loadJsx("src/pos/DebtCollection.jsx");
+  setLiveQuery(() => debtRecord);
+  const view = render({ type: CollectPayment, props: { params: { debtId: "d1", ...(mode ? { collectMode: mode } : {}) }, onClose() {}, onNavigate() {}, onRecordCollection() {} } });
+  setLiveQuery(null);
+  const amount = [...walk(view.tree)].find((node) => node.type === "span" && String(node.props?.className ?? "").includes("amount-fit "));
+  return { amount: textOf(amount), text: textOf(view.tree) };
+}
+
+test("25 Due now equals Still needed: GH₵20.00 weekly, GH₵10.00 paid, GH₵50.00 owed is GH₵10.00, 2 left after this", async () => {
+  const { amount, text } = await sheetOf(debt);
+  assert.equal(amount, "GH₵10.00", "Due now");
+  assert.equal(amount.replace("GH₵", ""), (getPlanPeriodFigures(debt).stillNeededPesewas / 100).toFixed(2), "the plan card's Still needed");
+  assert.match(text, /2 left after this/);
+  // Pay all is unchanged: the whole balance.
+  assert.equal((await sheetOf(debt, "all")).amount, "GH₵50.00", "Pay all");
+});
+
+test("25 Due now with nothing paid toward the payment is still the full payment", async () => {
+  const { amount, text } = await sheetOf({ ...debt, installmentPaymentCarryPesewas: 0 });
+  assert.equal(amount, "GH₵20.00");
+  assert.match(text, /2 left after this/);
+});
+
+test("25 'left after this' comes from the balance after Due now, so a partly paid payment cannot make it wrong", async () => {
+  // GH₵50.00 owed, GH₵15.00 already paid toward this GH₵20.00 payment: Due now GH₵5.00 leaves GH₵45.00, which is
+  // still 3 payments (rounded up), not 3 - 1.
+  const { amount, text } = await sheetOf({ ...debt, installmentPaymentCarryPesewas: 1500 });
+  assert.equal(amount, "GH₵5.00");
+  assert.match(text, /3 left after this/);
+  // The last payment, partly paid: GH₵8.00 owed, GH₵12.00 paid toward GH₵20.00: Due now is the GH₵8.00 balance.
+  const last = await sheetOf({ ...debt, amountPesewas: 800, installmentPaymentCarryPesewas: 1200 });
+  assert.equal(last.amount, "GH₵8.00");
+  assert.match(last.text, /This is the last payment\./);
+});
+
+test("25 several payments overdue: Due now stays one payment (missed payments are not added together)", async () => {
+  // Three weeks late, nothing paid toward the payment due then: Due now GH₵20.00, as before.
+  const late = { ...debt, nextDueDate: inDays(-21), installmentPaymentCarryPesewas: 0 };
+  assert.equal((await sheetOf(late)).amount, "GH₵20.00");
+  // Three weeks late with GH₵10.00 paid toward that oldest payment: what is left of it, GH₵10.00.
+  assert.equal((await sheetOf({ ...late, installmentPaymentCarryPesewas: 1000 })).amount, "GH₵10.00");
+});

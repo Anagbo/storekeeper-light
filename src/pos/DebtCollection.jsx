@@ -149,20 +149,28 @@ function CollectionSheet({ debt, params = {}, onClose, onNavigate, onUpdateParam
   useBackBlock(busy);
   const [error, setError] = useState("");
   const saveAttempt = useSaveAttempt();
-  const dueAmount = debt.isInstallmentPlan && Number.isSafeInteger(debt.installmentAmount) && debt.installmentAmount > 0
-    ? Math.min(debt.amountPesewas, debt.installmentAmount)
+  // Due now (owner's decision, 21 Nov 2026): what is still needed on the payment now due, the same figure as
+  // "Still needed" on the plan card (getPlanPeriodFigures): GH₵20.00 weekly with GH₵10.00 paid is GH₵10.00.
+  // Missed payments are never added together: it is always the one payment at nextDueDate, as before.
+  const planPeriod = getPlanPeriodFigures(debt);
+  const dueAmount = planPeriod
+    ? Math.min(debt.amountPesewas, planPeriod.stillNeededPesewas)
     : debt.amountPesewas;
   const amountPesewas = mode === "all" ? debt.amountPesewas : dueAmount;
   // Wiring 25: same rule as on 26. Due now and Pay all are never above the balance today; the guard keeps
   // it that way if they ever are.
   const aboveBalance = amountPesewas > debt.amountPesewas;
-  // Wiring 25: only for Due now, from money (never "Payment x of y").
-  const paymentsLeft = getInstallmentsLeft(debt);
-  const dueNowLine = mode !== "due" || paymentsLeft <= 0
+  // Wiring 25: only for Due now, from money (never "Payment x of y"): the payments left once Due now is paid,
+  // from the balance after it (the shared getInstallmentsLeft). With a full payment due this is
+  // {left now - 1}; a partly paid payment cannot make it wrong.
+  const paymentsLeftAfter = planPeriod && mode === "due"
+    ? getInstallmentsLeft({ ...debt, amountPesewas: debt.amountPesewas - dueAmount })
+    : 0;
+  const dueNowLine = mode !== "due" || !planPeriod || planPeriod.paymentsLeft <= 0
     ? ""
-    : paymentsLeft === 1
+    : paymentsLeftAfter <= 0
       ? t("collect.lastPayment")
-      : t("collect.leftAfterThis", { left: paymentsLeft - 1 });
+      : t("collect.leftAfterThis", { left: paymentsLeftAfter });
 
   async function receivePayment() {
     if (busy || amountPesewas <= 0 || aboveBalance) return;
