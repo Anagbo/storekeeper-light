@@ -247,7 +247,7 @@ test("header Home clears everything: a new credit sale starts empty", async () =
   await to19(app);
   await split27(app);
   await app.tap("Back");
-  await app.tap(/^Home$/);
+  await app.goHome(); // header Home: Menu > Home on the phone (the hidden side menu is gone)
   assert.equal(app.route, "Home");
   assert.equal(app.state.history.length, 0);
   await app.tap(/^Sell$/);

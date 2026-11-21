@@ -9,6 +9,7 @@ import { getSaleCreditReason } from "./creditDraft.js";
 import { formatGhs } from "../lib/money.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import {
+  backGoesHome,
   backRoute,
   createRouteState,
   getReceivedMomoInDraft,
@@ -24,7 +25,8 @@ import {
   showsBottomBar,
   navigateState,
   phoneBackState,
-  signedState
+  signedState,
+  VIA_SIDEBAR
 } from "./routes.js";
 import { createBrowserBack, useBackHandler } from "./browserBack.js";
 import LeaveDraftDialog from "./LeaveDraftDialog.jsx";
@@ -41,6 +43,7 @@ import PosErrorBoundary from "./PosErrorBoundary.jsx";
 import CreditScreens from "./CreditScreens.jsx";
 import Sell from "./Sell.jsx";
 import { POS_THEME } from "./theme.js";
+import { useLayout, WIDE_CONTENT_MAX_PX } from "./layout.js";
 import { SpentMoney, StockOnCredit, YouOweSuppliers } from "./SupplierScreens.jsx";
 import ItemScreens from "./ItemScreens.jsx";
 import SellWithItems from "./SellWithItems.jsx";
@@ -88,6 +91,11 @@ function getSavedShopName() {
 function getStatusLabel(sync) {
   return sync.status === "syncing" ? t("app.syncing") : "";
 }
+
+// wide_layout.page_types.dashboard: Home (22, also behind the Collect sheet 25) and My money (33) sit on
+// the grey page background with white cards (D1, D7). Other screens keep theirs until their wide step.
+const DASHBOARD_ROUTES = new Set([POS_ROUTES.Home, POS_ROUTES.CollectPayment, POS_ROUTES.MyMoney]);
+const DASHBOARD_BACKGROUND = "#F1F5F9";
 
 // Where Money received on 62 returns for each confirm step (MOMO16).
 const CONFIRM_RETURNS = {
@@ -176,6 +184,10 @@ export default function PosApp() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef(null);
   const menuWasOpen = useRef(false);
+  // rules_global.wide_layout: the one layout decision (layout.js), read here once and passed down.
+  const layout = useLayout();
+  // The Menu exists only in the phone layout: growing the window past 768px closes an open drawer.
+  useEffect(() => { if (layout.wide) setMenuOpen(false); }, [layout.wide]);
   useBackHandler(menuOpen, () => setMenuOpen(false));
   useEffect(() => {
     if (menuWasOpen.current && !menuOpen) menuButtonRef.current?.focus?.();
@@ -310,6 +322,15 @@ export default function PosApp() {
     setMenuOpen(false);
     if (target === routeRef.current.current) return;
     navigate(target);
+  }
+
+  // wide_layout (decided 21 Nov 2026): a sidebar or rail tap is a Menu choice, not a bottom-bar tab. It
+  // pushes the destination, so the draft stays in history and Back returns to it (marked VIA_SIDEBAR so
+  // Owed's Back does too, routes.js); Home follows the header Home rule (leaves the draft, asking first
+  // when MoMo was received); the page already showing does nothing.
+  function chooseFromSidebar(target) {
+    if (target === routeRef.current.current) return;
+    navigate(target, { [VIA_SIDEBAR]: true });
   }
 
   // D11: attemptId comes from the screen (useSaveAttempt) and is passed to every writer.
@@ -492,6 +513,7 @@ export default function PosApp() {
       onNavigate={navigate}
       notice={notice}
       shopName={shopName}
+      layout={layout}
     />
   ) : route === POS_ROUTES.HowDoYouWantToSell ? (
     <HowDoYouWantToSell onNavigate={navigate} onCompleteSetup={completePosSetup} />
@@ -624,12 +646,12 @@ export default function PosApp() {
       onNewSale={() => switchTab(POS_ROUTES.Sell)}
     />
   ) : route === POS_ROUTES.MyMoney ? (
-    <MyMoney onNavigate={navigate} onBack={navigateBack} />
+    <MyMoney onNavigate={navigate} onBack={navigateBack} layout={layout} />
   ) : route === POS_ROUTES.TodaysTransactions ? (
     <TodaysTransactions onBack={navigateBack} />
   ) : isCollectSheet ? (
     <>
-      <Home onNavigate={navigate} notice={notice} shopName={shopName} />
+      <Home onNavigate={navigate} notice={notice} shopName={shopName} layout={layout} />
       <CollectPayment
         params={routeState.params}
         onClose={() => switchTab(POS_ROUTES.Home)}
@@ -665,7 +687,7 @@ export default function PosApp() {
     />
   ) : route === POS_ROUTES.PeopleWhoOweYou ? (
     <PeopleWhoOweYou
-      onBack={() => switchTab(POS_ROUTES.Home)}
+      onBack={backGoesHome(routeState) ? () => switchTab(POS_ROUTES.Home) : navigateBack}
       onNavigate={navigate}
       shopName={shopName}
       onCollect={(debt) => navigate(POS_ROUTES.CollectPayment, { debtId: debt.id, customerName: debt.customerName })}
@@ -734,34 +756,55 @@ export default function PosApp() {
     <PlannedScreen route={route} params={routeState.params} onBack={navigateBack} onOpenBackup={() => navigate(POS_ROUTES.BackupRestore)} />
   );
 
+  const page = (
+    <PosErrorBoundary key={`${route}:${pickRemount}`} onBack={navigateBack}>
+      <Suspense fallback={<PosPage><p role="status">{t("app.loadingScreen")}</p></PosPage>}>
+        {setupReady ? content : <PosPage><p role="status">{t("app.loadingScreen")}</p></PosPage>}
+      </Suspense>
+    </PosErrorBoundary>
+  );
+
   return (
     // rules_global.shell_height: a column exactly the visible screen high (100dvh, in theme.css). The
     // header takes what it needs; the page area takes the rest (min-height 0) and scrolls by itself, so
     // no screen depends on a header height and a screen that fits never scrolls the document.
-    <div className="pos-app flex max-w-full flex-col overflow-x-clip bg-white text-slate-950" style={POS_THEME.cssVariables}>
-      <PosHeader
-        shopName={shopName}
-        // Wiring 62: never "Saved" on Customer sends (nothing is recorded before Money received).
-        statusLabel={getStatusLabel(sync)}
-        hideSaved={route === POS_ROUTES.MoMoDirect}
-        onHome={() => switchTab(POS_ROUTES.Home)}
-        onMenu={openMenu}
-        menuOpen={menuOpen}
-        menuButtonRef={menuButtonRef}
-        hideMenu={isFocusedCollectionScreen || isSetupFlow || isCustomerScreen || route === POS_ROUTES.PeopleWhoOweYou}
-      />
+    // Wide screens (layout.wide): the rail or sidebar replaces the header, the bottom bar and the Menu;
+    // first-run setup shows none of them (a centred column only). The page is centred, 1160px at most.
+    <div className="pos-app flex max-w-full flex-col overflow-x-clip bg-white text-slate-950" style={POS_THEME.cssVariables} data-layout={layout.mode}>
+      {!layout.wide && (
+        <PosHeader
+          shopName={shopName}
+          // Wiring 62: never "Saved" on Customer sends (nothing is recorded before Money received).
+          statusLabel={getStatusLabel(sync)}
+          hideSaved={route === POS_ROUTES.MoMoDirect}
+          onHome={() => switchTab(POS_ROUTES.Home)}
+          onMenu={openMenu}
+          menuOpen={menuOpen}
+          menuButtonRef={menuButtonRef}
+          hideMenu={isFocusedCollectionScreen || isSetupFlow || isCustomerScreen || route === POS_ROUTES.PeopleWhoOweYou}
+        />
+      )}
       <div className="flex min-h-0 flex-1">
-        {!isSetupFlow && <PosSideNav current={route} onNavigate={switchTab} hideSaved={route === POS_ROUTES.MoMoDirect} />}
-        <div data-page-area="" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
-          <PosErrorBoundary key={`${route}:${pickRemount}`} onBack={navigateBack}>
-            <Suspense fallback={<PosPage><p role="status">{t("app.loadingScreen")}</p></PosPage>}>
-                  {setupReady ? content : <PosPage><p role="status">{t("app.loadingScreen")}</p></PosPage>}
-            </Suspense>
-          </PosErrorBoundary>
+        {layout.wide && !isSetupFlow && (
+          <PosSideNav
+            mode={layout.mode}
+            current={route}
+            onNavigate={chooseFromSidebar}
+            shopName={shopName}
+            statusLabel={getStatusLabel(sync)}
+            hideSaved={route === POS_ROUTES.MoMoDirect}
+          />
+        )}
+        <div data-page-area="" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto" style={layout.wide && DASHBOARD_ROUTES.has(route) ? { backgroundColor: DASHBOARD_BACKGROUND } : undefined}>
+          {layout.wide ? (
+            <div data-wide-content="" className="mx-auto flex w-full min-w-0 flex-[1_0_auto] flex-col" style={{ maxWidth: WIDE_CONTENT_MAX_PX }}>
+              {page}
+            </div>
+          ) : page}
         </div>
       </div>
-      {showsBottomBar(route) && <PosBottomNav current={route} onNavigate={switchTab} />}
-      {menuOpen && <MenuDrawer current={route} shopName={shopName} onClose={closeMenu} onChoose={chooseFromMenu} />}
+      {!layout.wide && showsBottomBar(route) && <PosBottomNav current={route} onNavigate={switchTab} />}
+      {!layout.wide && menuOpen && <MenuDrawer current={route} shopName={shopName} onClose={closeMenu} onChoose={chooseFromMenu} />}
       <WhatsAppOfflineSheet />
       {leaveAsk && (
         <LeaveDraftDialog

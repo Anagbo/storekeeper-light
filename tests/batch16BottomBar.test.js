@@ -52,12 +52,13 @@ test("the app draws the bar from that same rule, and keeps the header and the si
   assert.doesNotMatch(app, /!isFocusedCollectionScreen && !isSetupFlow && <PosBottomNav/);
   assert.match(app, /<PosBottomNav/);
   // Wiring 22/23 (14 Nov 2026): screens with the Menu button lose the green home tile; every screen
-  // without one (hideMenu) keeps the tile as the header Home (onHome). The side menu stays on wide screens.
+  // without one (hideMenu) keeps the tile as the header Home (onHome).
   assert.match(app, /<PosHeader[\s\S]*?onHome=\{\(\) => switchTab\(POS_ROUTES\.Home\)\}[\s\S]*?onMenu=\{openMenu\}/);
-  assert.match(app, /\{!isSetupFlow && <PosSideNav/);
-  const components = read("src/pos/PosComponents.jsx");
-  assert.match(components.slice(components.indexOf("export function PosBottomNav")), /lg:hidden/);
-  assert.match(components.slice(components.indexOf("export function PosSideNav")), /hidden w-60[^"]*lg:flex/);
+  // wide_layout (21 Nov 2026): the phone layout (below 768px, layout.js) draws the header and the bar;
+  // wide screens draw the rail or sidebar instead, except in first-run setup.
+  assert.match(app, /\{!layout\.wide && \(\s*<PosHeader/);
+  assert.match(app, /\{!layout\.wide && showsBottomBar\(route\) && <PosBottomNav/);
+  assert.match(app, /\{layout\.wide && !isSetupFlow && \(\s*<PosSideNav/);
 });
 
 // ---- every screen without the bar still has a way back, to Home, or to finish ----

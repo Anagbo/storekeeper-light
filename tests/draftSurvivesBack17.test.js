@@ -69,7 +69,7 @@ test("17: header Home clears the search; a new sale starts with an empty search"
   await to17(app);
   await app.type(SEARCH, "ju");
   await app.tap(/New person/);
-  await app.tap(/^Home$/);
+  await app.goHome(); // header Home: Menu > Home on the phone (the hidden side menu is gone)
   await to17(app);
   assert.equal(app.input(SEARCH).props.value, "");
 });

@@ -132,7 +132,7 @@ test("63: header Home drops the unsaved choices", async () => {
   await to63(app);
   await change(app, app.input("My MoMo number"), "0209998887");
   await app.tap("Phone request: set up");
-  await app.tap(/^Home$/);
+  await app.goHome(); // header Home: Menu > Home on the phone (the hidden side menu is gone)
   await to63(app);
   assert.equal(app.input("My MoMo number").props.value, "0241234567");
 });

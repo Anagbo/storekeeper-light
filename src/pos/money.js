@@ -57,7 +57,13 @@ export function summarizeOwedPeople(debts, today = new Date()) {
   return { people: people.size, late: [...people.values()].filter(Boolean).length };
 }
 
+// The phone's Collect first tile shows the first of these; wide Home (D1) the first two
+// (wide_layout.approved_additions 3): the same list, in the same order (most late first).
 export function getMostUrgentCustomerDebt(debts, today = new Date()) {
+  return getUrgentCustomerDebts(debts, today)[0] ?? null;
+}
+
+export function getUrgentCustomerDebts(debts, today = new Date()) {
   const todayDate = new Date(today);
   todayDate.setHours(0, 0, 0, 0);
   const grouped = new Map();
@@ -111,7 +117,7 @@ export function getMostUrgentCustomerDebt(debts, today = new Date()) {
     if (leftOverdue !== rightOverdue) return leftOverdue ? -1 : 1;
     if (leftDue !== rightDue) return leftDue - rightDue;
     return right.amountPesewas - left.amountPesewas;
-  })[0] ?? null;
+  });
 }
 
 export function getDebtDueLabel(dueDate, today = new Date()) {

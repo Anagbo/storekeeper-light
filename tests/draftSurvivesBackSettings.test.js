@@ -83,7 +83,7 @@ test("47: Save after the trip saves the kept name once; header Home drops an uns
   assert.equal(localStorage.getItem("storekeeper-shop-name"), "Ama Stores Kumasi");
   nameInput(app).props.onChange({ target: { value: "Something else" } });
   await app.settle();
-  await app.tap(/^Home$/);
+  await app.goHome(); // header Home: Menu > Home on the phone (the hidden side menu is gone)
   await app.tap(/^Menu$/);
   await app.tap(/^Settings/);
   assert.equal(nameInput(app).props.value, "Ama Stores Kumasi");

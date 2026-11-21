@@ -72,7 +72,7 @@ function check(app, where, expected = /Kofi Mensah/) {
 
 async function go(app, route, params = {}) {
   const home = nodes(app.view.tree).find((node) => node.type?.name === "Home");
-  if (!home) await app.tap("Home");
+  if (!home) await app.goHome();
   nodes(app.view.tree).find((node) => node.type?.name === "Home").props.onNavigate(route, params);
   return app.settle();
 }
@@ -164,7 +164,7 @@ test("customer KOFI MENSAH: 17, 18, 19, 16 Owe row, 31 and its contact sheet sho
   await app.tap("Cancel");
 
   // 16: the Owe row of a split sale.
-  await app.tap("Home");
+  await app.goHome();
   await app.tap(/^Sell$/);
   await app.keys(["8"]);
   await app.tap("Split payment");
