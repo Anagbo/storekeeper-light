@@ -5,6 +5,7 @@ import { db } from "../src/db/db.js";
 import { formatGhs, getFinancialTransactions, summarizeFinancialTransactionsSafely, summarizePosMoneySafely } from "../src/lib/money.js";
 import { loadMyMoneyReport, summarizeMyMoney } from "../src/pos/myMoneyReport.js";
 import { getMoneyPeriodRange } from "../src/pos/money.js";
+import { getLayout } from "../src/pos/layout.js";
 import { appCss, browser, measureInFrames, toHtml } from "./helpers/browserLayout.js";
 import { findButton, loadJsx, render, setLiveQuery, textOf, walk } from "./helpers/renderJsx.js";
 
@@ -188,11 +189,11 @@ function screenReport(summaryOverrides = {}) {
     comparison: null, uncounted: { sales: 0, other: 0 }, hideAmounts: false, showProfit: true, averageProfitPesewas: 1000, debtPesewas: 9300, supplierBalancePesewas: 28000
   };
 }
-async function mount(report) {
+async function mount(report, props = {}) {
   const { default: MyMoney } = await loadJsx("src/pos/MyMoney.jsx");
   const asked = [];
   setLiveQuery((deps) => { asked.push(deps[0]); return report; });
-  const view = render({ type: MyMoney, props: { onNavigate() {} } });
+  const view = render({ type: MyMoney, props: { onNavigate() {}, ...props } });
   return { view, asked };
 }
 const card = (view, name) => [...walk(view.tree)].find((node) => node.props?.["data-card"] === name);
@@ -393,10 +394,16 @@ const WIDE_MEASURE = `(frame, win, doc) => {
   };
 }`;
 
+// Since 21 Nov 2026 the layout is decided by layout.js and passed down (no lg: classes): each width is
+// rendered with the layout PosApp would pass at that width, then measured in a frame of that width.
 test("33 wide (D7) at 1024, 1280 and 1440px: selector top right, Money left beside profit, three cards in one row; 768px keeps the phone layout", { skip: browser ? false : "no Chrome or Edge found (set HEADER_TEST_BROWSER)" }, async () => {
-  const { view } = await mount(screenReport({ moneyIn: 1234500, spentCash: 1234500 }));
-  setLiveQuery(null);
-  const results = measureInFrames({ pages: [{ name: "33", html: toHtml(view.tree) }], css: await appCss(), widths: [768, 1024, 1280, 1440], height: 1200, measure: WIDE_MEASURE });
+  const css = await appCss();
+  const results = [];
+  for (const width of [768, 1024, 1280, 1440]) {
+    const { view } = await mount(screenReport({ moneyIn: 1234500, spentCash: 1234500 }), { layout: getLayout(width) });
+    setLiveQuery(null);
+    results.push(...measureInFrames({ pages: [{ name: "33", html: toHtml(view.tree) }], css, widths: [width], height: 1200, measure: WIDE_MEASURE }));
+  }
   for (const r of results) {
     const where = `${r.width}px`;
     assert.equal(r.pageOverflow, false, `${where}: no horizontal scroll`);
@@ -421,8 +428,8 @@ test("33 wide (D7) at 1024, 1280 and 1440px: selector top right, Money left besi
 });
 
 test("33 wide: with the profit card hidden, Money left takes the whole first row", async () => {
-  const { view } = await mount({ ...screenReport(), showProfit: false });
+  const { view } = await mount({ ...screenReport(), showProfit: false }, { layout: getLayout(1280) });
   const block = [...walk(view.tree)].find((node) => node.props?.["data-block"] === "money-left");
-  assert.match(block.props.className, /lg:col-span-2/);
+  assert.match(block.props.className, /(^|\s)col-span-2(\s|$)/);
   assert.equal([...walk(view.tree)].some((node) => node.props?.["data-card"] === "profit"), false);
 });

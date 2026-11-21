@@ -271,6 +271,17 @@ export function describeTransactionRow(row) {
   return { title: "", amountPesewas: row.amountPesewas, tone: "neutral", chips: [] };
 }
 
+// Wide Home (D1) small table: the rows of 24 (createPosTransactionRows), each cut to What, Money in
+// and Owed. Money in is what was received (a sale's paid part, a collection); Owed is what was given on
+// credit (a sale's unpaid part, a debt added). Every other row (spent, corrections) has neither: dashes.
+// Nothing is computed that 24 does not already show.
+export function describeHomeTableRow(row) {
+  const view = describeTransactionRow(row);
+  const moneyInPesewas = row.kind === "sold" ? row.cashReceivedPesewas : row.kind === "payment" ? row.amountPesewas : 0;
+  const owedPesewas = row.kind === "sold" ? row.owedPesewas : row.kind === "debt_added" ? row.amountPesewas : 0;
+  return { title: view.title, moneyInPesewas, owedPesewas };
+}
+
 function categoryLabel(category) {
   const text = String(category ?? "").trim();
   const key = `transactions.category.${text.toLowerCase()}`;

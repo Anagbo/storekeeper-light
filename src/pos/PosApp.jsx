@@ -92,6 +92,11 @@ function getStatusLabel(sync) {
   return sync.status === "syncing" ? t("app.syncing") : "";
 }
 
+// wide_layout.page_types.dashboard: Home (22, also behind the Collect sheet 25) and My money (33) sit on
+// the grey page background with white cards (D1, D7). Other screens keep theirs until their wide step.
+const DASHBOARD_ROUTES = new Set([POS_ROUTES.Home, POS_ROUTES.CollectPayment, POS_ROUTES.MyMoney]);
+const DASHBOARD_BACKGROUND = "#F1F5F9";
+
 // Where Money received on 62 returns for each confirm step (MOMO16).
 const CONFIRM_RETURNS = {
   sale16: { route: POS_ROUTES.SplitPayment, matches: isSaleSplitHub },
@@ -508,6 +513,7 @@ export default function PosApp() {
       onNavigate={navigate}
       notice={notice}
       shopName={shopName}
+      layout={layout}
     />
   ) : route === POS_ROUTES.HowDoYouWantToSell ? (
     <HowDoYouWantToSell onNavigate={navigate} onCompleteSetup={completePosSetup} />
@@ -640,12 +646,12 @@ export default function PosApp() {
       onNewSale={() => switchTab(POS_ROUTES.Sell)}
     />
   ) : route === POS_ROUTES.MyMoney ? (
-    <MyMoney onNavigate={navigate} onBack={navigateBack} />
+    <MyMoney onNavigate={navigate} onBack={navigateBack} layout={layout} />
   ) : route === POS_ROUTES.TodaysTransactions ? (
     <TodaysTransactions onBack={navigateBack} />
   ) : isCollectSheet ? (
     <>
-      <Home onNavigate={navigate} notice={notice} shopName={shopName} />
+      <Home onNavigate={navigate} notice={notice} shopName={shopName} layout={layout} />
       <CollectPayment
         params={routeState.params}
         onClose={() => switchTab(POS_ROUTES.Home)}
@@ -789,7 +795,7 @@ export default function PosApp() {
             hideSaved={route === POS_ROUTES.MoMoDirect}
           />
         )}
-        <div data-page-area="" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
+        <div data-page-area="" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto" style={layout.wide && DASHBOARD_ROUTES.has(route) ? { backgroundColor: DASHBOARD_BACKGROUND } : undefined}>
           {layout.wide ? (
             <div data-wide-content="" className="mx-auto flex w-full min-w-0 flex-[1_0_auto] flex-col" style={{ maxWidth: WIDE_CONTENT_MAX_PX }}>
               {page}

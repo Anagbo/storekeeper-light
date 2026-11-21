@@ -332,7 +332,8 @@ test("the Menu page is gone from the route table; PosApp draws MenuDrawer, not a
   assert.match(app, /useBackHandler\(menuOpen, /, "the phone's Back closes the drawer");
   assert.match(app, /<SettingsProfitTools[\s\S]*?onBack=\{navigateBack\}/);
   assert.match(app, /<TodaysTransactions onBack=\{navigateBack\} \/>/);
-  assert.match(app, /<MyMoney onNavigate=\{navigate\} onBack=\{navigateBack\} \/>/);
+  // wide_layout (21 Nov 2026): the layout (layout.js) is passed down; the destinations are unchanged.
+  assert.match(app, /<MyMoney onNavigate=\{navigate\} onBack=\{navigateBack\} layout=\{layout\} \/>/);
   assert.doesNotMatch(app, /LanguageSettings/, "the Language screen is removed (voice entry was dropped)");
 });
 

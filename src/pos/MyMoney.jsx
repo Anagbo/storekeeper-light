@@ -4,6 +4,7 @@ import { ArrowUpRight } from "lucide-react";
 import { saveHideAmounts } from "../db/preferences.js";
 import { Amount, amountText, HideAmountsButton } from "./HiddenAmount.jsx";
 import { posText as t } from "./i18n.js";
+import { PHONE_LAYOUT } from "./layout.js";
 import { loadMyMoneyReport } from "./myMoneyReport.js";
 import { PosBackButton, PosCard, PosPage } from "./PosComponents.jsx";
 
@@ -42,7 +43,12 @@ function CardTitle({ children, amountPesewas, hidden }) {
 
 // Back returns to the screen My money was opened from (Home, or the page under the Menu drawer, wiring
 // 23); with nothing behind it, Home (wiring 33: Back to 22).
-export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home") }) {
+// layout comes from PosApp (layout.js, the one decision). D7 from 1024px (layout.wideMyMoney); below that
+// the phone layout. On every wide screen (rail or sidebar) Back is not shown: the sidebar reaches every
+// page (wide_layout.same_as_phone (b)).
+export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"), layout = PHONE_LAYOUT }) {
+  const wide = layout.wideMyMoney;
+  const w = (wideClasses, phoneClasses = "") => (wide ? wideClasses : phoneClasses);
   const [period, setPeriod] = useState("day");
   // The day the report is for is fixed when the period is chosen, so the screen does not re-read at midnight.
   const now = useMemo(() => new Date(), [period]);
@@ -55,19 +61,19 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home") 
   const toggleHidden = () => saveHideAmounts(!hidden).catch(() => {});
 
   return (
-    // Wide layout (D7, lg and up): the title with the period selector at the top right; Money left and
+    // Wide layout (D7): the title with the period selector at the top right; Money left and
     // the profit card side by side; the three cards Money in, Money spent and What you should have left
     // in one row; then the two balance tiles. Same content and order of reading as the phone.
-    <PosPage style={{ paddingTop: 10 }} className="flex flex-col gap-2.5 lg:grid lg:min-h-0 lg:grid-cols-2 lg:content-start lg:items-stretch lg:gap-5">
-      <div data-wide-header="" className="flex flex-col gap-2.5 lg:col-span-2 lg:flex-row lg:items-center lg:justify-between lg:gap-5">
+    <PosPage wide={layout.wide} style={layout.wide ? undefined : { paddingTop: 10 }} className={`${w("grid min-h-0 grid-cols-2 content-start items-stretch gap-5", "flex flex-col gap-2.5")} ${layout.wide ? "tabular-nums" : ""}`}>
+      <div data-wide-header="" className={w("col-span-2 flex flex-row items-center justify-between gap-5", "flex flex-col gap-2.5")}>
       <div data-title-row="" className="flex items-center gap-3">
-        <PosBackButton onClick={onBack} aria-label={t("money.back")} />
-        <h1 className="min-w-0 text-xl font-extrabold sm:text-2xl">{t("money.title")}</h1>
-        <HideAmountsButton hidden={hidden} onToggle={toggleHidden} disabled={!report} className="ml-auto border-[#0F172A] bg-white text-[#0F172A] lg:ml-0" />
+        {!layout.wide && <PosBackButton onClick={onBack} aria-label={t("money.back")} />}
+        <h1 className={layout.wide ? "min-w-0 text-[30px] font-extrabold leading-tight" : "min-w-0 text-xl font-extrabold sm:text-2xl"}>{t("money.title")}</h1>
+        <HideAmountsButton hidden={hidden} onToggle={toggleHidden} disabled={!report} className={`border-[#0F172A] bg-white text-[#0F172A] ${w("ml-0", "ml-auto")}`} />
       </div>
 
       {/* (0) Today / This week / This month: three equal buttons, 16px, one line each at 340px. */}
-      <div data-periods="" className="grid grid-cols-3 gap-1 sm:gap-2 lg:w-[420px] lg:shrink-0" role="group" aria-label={t("money.choosePeriod")}>
+      <div data-periods="" className={`grid grid-cols-3 gap-1 sm:gap-2 ${w("w-[420px] shrink-0")}`} role="group" aria-label={t("money.choosePeriod")}>
         {MY_MONEY_PERIODS.map(([value, label]) => (
           <button key={value} type="button" aria-pressed={period === value} onClick={() => setPeriod(value)} className={`h-11 min-w-0 whitespace-nowrap rounded-[14px] border-2 px-0 text-base font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 sm:h-[52px] ${period === value ? "border-slate-900 bg-slate-900 text-white" : "border-slate-500 bg-white text-slate-950"}`}>{t(label)}</button>
         ))}
@@ -75,11 +81,11 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home") 
       </div>
 
       {!report ? (
-        <PosCard className="lg:col-span-2"><p className="text-base font-semibold">{t("money.loading")}</p></PosCard>
+        <PosCard className={w("col-span-2")}><p className="text-base font-semibold">{t("money.loading")}</p></PosCard>
       ) : (
         <>
           {/* (1) The one strong block (wide: beside the profit card, or the full row when it is hidden). */}
-          <section data-block="money-left" className={`amount-fit-container rounded-[20px] bg-emerald-900 px-4 py-3 text-white lg:order-1 lg:p-6 ${report.showProfit ? "" : "lg:col-span-2"}`}>
+          <section data-block="money-left" className={`amount-fit-container rounded-[20px] bg-emerald-900 px-4 py-3 text-white ${w(`order-1 p-6 ${report.showProfit ? "" : "col-span-2"}`)}`}>
             <p className="text-base font-bold sm:text-lg">{t("money.moneyLeft", { period: periodWords })}</p>
             <p className="amount-fit font-extrabold leading-tight"><Amount hidden={hidden} pesewas={summary.moneyLeft} /></p>
             {comparison && (
@@ -89,13 +95,13 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home") 
           </section>
 
           {(report.uncounted?.sales > 0 || report.uncounted?.other > 0) && (
-            <div className="flex flex-col gap-0.5 px-1 lg:order-3 lg:col-span-2">
+            <div className={`flex flex-col gap-0.5 px-1 ${w("order-3 col-span-2")}`}>
               {report.uncounted.sales > 0 && <p className="text-sm text-slate-700 sm:text-base">{report.uncounted.sales === 1 ? t("money.uncountedSale") : t("money.uncountedSales", { n: report.uncounted.sales })}</p>}
               {report.uncounted.other > 0 && <p className="text-sm text-slate-700 sm:text-base">{report.uncounted.other === 1 ? t("money.uncountedRecord") : t("money.uncountedRecords", { n: report.uncounted.other })}</p>}
             </div>
           )}
 
-          <div data-method-cards="" className="grid min-w-0 gap-2.5 lg:order-4 lg:col-span-2 lg:grid-cols-3 lg:gap-5">
+          <div data-method-cards="" className={`grid min-w-0 ${w("order-4 col-span-2 grid-cols-3 gap-5", "gap-2.5")}`}>
             {/* (2) Money in: Cash + MoMo = Money in. Under a thicker line, Debts paid (already inside Cash
                 and MoMo, never added again) and On credit (= Given on credit on 24, not money received);
                 each row only when above zero. */}
@@ -130,7 +136,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home") 
 
           {/* (5) The profit card follows the period. */}
           {report.showProfit && (
-            <section data-card="profit" className={`amount-fit-container flex flex-col gap-0.5 lg:order-2 ${cardClass}`}>
+            <section data-card="profit" className={`amount-fit-container flex flex-col gap-0.5 ${w("order-2")} ${cardClass}`}>
               <div className="flex items-center justify-between gap-2">
                 <p className="text-lg font-extrabold">{t("money.estimatedProfit")}</p>
                 <span className="rounded-[10px] border-2 border-slate-500 bg-slate-100 px-2 text-[15px] font-extrabold text-slate-950">{t("money.estimate")}</span>
@@ -144,7 +150,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home") 
           )}
 
           {/* (6) Balances right now: they do not change with the period. */}
-          <div data-tiles="" className="grid min-w-0 grid-cols-2 gap-2 lg:order-5 lg:col-span-2 lg:gap-5">
+          <div data-tiles="" className={`grid min-w-0 grid-cols-2 ${w("order-5 col-span-2 gap-5", "gap-2")}`}>
             <button type="button" onClick={() => onNavigate("PeopleWhoOweYou")} className="amount-fit-container min-w-0 rounded-[16px] border-2 border-l-[6px] border-slate-300 border-l-rose-900 bg-white px-2.5 py-2 text-left text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 sm:px-3">
               <span className="block text-[15px] font-extrabold leading-snug sm:text-[17px]">{t("money.owedToYou")}</span>
               <span className="amount-fit block font-extrabold leading-tight text-rose-900"><Amount hidden={hidden} pesewas={report.debtPesewas} /></span>

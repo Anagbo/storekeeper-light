@@ -17,9 +17,13 @@ function OfflineIcon({ size = 16 }) {
   return <WifiOff data-status-icon="wifi-off" size={size} aria-hidden="true" className="shrink-0" style={{ color: OFFLINE_BROWN }} />;
 }
 
-export function PosPage({ children, className = "", style }) {
+// wide: the page is on a wide layout (layout.js, passed down by PosApp): fixed wide padding instead of
+// the responsive classes, no room for a bottom bar. Without it (every screen not yet built wide), as before.
+const PAGE_BASE = "mx-auto box-border min-w-0 max-w-full flex-[1_0_auto] w-full overflow-x-hidden overflow-y-auto";
+export function PosPage({ children, className = "", style, wide = false }) {
   // flex 1 0 auto: fills the page area (rules_global.shell_height) and grows past it when longer.
-  return <main style={style} className={`mx-auto box-border min-w-0 max-w-full flex-[1_0_auto] w-full overflow-x-hidden overflow-y-auto px-4 pb-28 pt-5 sm:px-6 lg:max-w-6xl lg:px-8 lg:pb-10 lg:pt-8 ${className}`}>{children}</main>;
+  const spacing = wide ? "px-8 pb-10 pt-8" : "px-4 pb-28 pt-5 sm:px-6 lg:max-w-6xl lg:px-8 lg:pb-10 lg:pt-8";
+  return <main style={style} className={`${PAGE_BASE} ${spacing} ${className}`}>{children}</main>;
 }
 
 // Where "Saved ✓" was: the connection status. While a save or sync runs, statusLabel shows instead.
