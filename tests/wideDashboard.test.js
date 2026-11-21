@@ -85,7 +85,7 @@ const buttons = (node) => within(node, (child) => child.type === "button");
 const controls = (node) => within(node, (child) => child.type === "button" || child.type === "a");
 const personRows = (node) => within(node, (child) => child.type?.name === "PersonRow");
 
-test("Home D1 at 1280px: title, Money left with Sell and Spent money on row 1; Owed to you beside the small table on row 2", async () => {
+test("Home D1 at 1280px: title, Money left with Sell and Spent money on row 1; Owed to you on row 2, the table full width below", async () => {
   await seedOwing();
   const app = await open(1280);
   const home = homeNode(app);
@@ -95,9 +95,27 @@ test("Home D1 at 1280px: title, Money left with Sell and Spent money on row 1; O
   assert.equal(byData(row1, "data-block").length, 1, "Money left is on row 1");
   assert.ok(byData(row1, "data-home-sell").length === 1 && byData(row1, "data-home-spent").length === 1);
   const row2 = byData(home, "data-home-row-2")[0];
-  assert.match(row2.props.className, /\bgrid-cols-2\b/, "Owed to you beside Today's transactions");
+  // Wiring 22 Home row 3 (21 Nov 2026): five-digit amounts do not fit beside the Owed card, so the table
+  // is full width below it on every wide screen.
+  assert.match(row2.props.className, /\bflex-col\b/, "Owed to you, then Today's transactions below it");
+  assert.doesNotMatch(row2.props.className, /grid-cols-2/);
+  const cards = [row2.props.children].flat(Infinity).filter(Boolean);
+  assert.equal(cards.length, 2);
   assert.equal(byData(row2, "data-owed-card").length, 1);
   assert.equal(byData(row2, "data-home-transactions").length, 1);
+});
+
+test("Home table: What wraps (no ellipsis), an amount in it is one unbreakable piece, cells padded 8px", async () => {
+  await seedOwing();
+  const app = await open(1280);
+  const card = byData(homeNode(app), "data-home-transactions")[0];
+  const whats = byData(card, "data-cell").filter((cell) => cell.props["data-cell"] === "what");
+  assert.ok(whats.length > 0);
+  for (const cell of whats) assert.doesNotMatch(cell.props.className, /\b(truncate|text-ellipsis|max-w-0|whitespace-nowrap)\b/, "What wraps");
+  const amounts = byData(card, "data-what-amount");
+  assert.deepEqual(amounts.map((span) => textOf(span)), ["GH₵13.00"], "the amount in Sale of GH₵13.00");
+  for (const span of amounts) assert.match(span.props.className, /\bwhitespace-nowrap\b/);
+  for (const cell of within(card, (node) => node.type === "td" || node.type === "th")) assert.ok(cell.props.className.split(/\s+/).includes("p-2"), `8px padding: ${textOf(cell)}`);
 });
 
 test("Home D1: Collect first shows two people, most late first, from the same list as the phone tile", async () => {

@@ -155,6 +155,15 @@ function OwedCard({ data, hidden, urgent, onNavigate, onWhatsApp, wide }) {
   );
 }
 
+// The What text wraps between words (never cut with an ellipsis); an amount inside it ("Sale of
+// GH₵12,348.00") is one unbreakable piece, so money is never split or cut (audit FAIL 2, 21 Nov 2026).
+const AMOUNT_IN_TEXT = /(GH₵[\d,]+\.\d{2})/;
+export function WhatText({ text }) {
+  return String(text).split(AMOUNT_IN_TEXT).map((part, index) => (
+    index % 2 === 1 ? <span key={index} data-what-amount="" className="whitespace-nowrap">{part}</span> : part
+  ));
+}
+
 // An empty cell shows a dash (as on 24 wide, D4).
 const DASH = <span className="font-normal text-slate-500">—</span>;
 
@@ -175,19 +184,19 @@ function TransactionsCard({ rows, hidden, onNavigate }) {
         <table className="w-full border-collapse text-[17px] tabular-nums">
           <thead>
             <tr className="border-b-2 border-slate-300 text-[15px] font-bold text-slate-600">
-              <th scope="col" className="whitespace-nowrap py-2 pr-3 text-left">{t("home.tableTime")}</th>
-              <th scope="col" className="w-full py-2 pr-3 text-left">{t("home.tableWhat")}</th>
-              <th scope="col" className="whitespace-nowrap py-2 pr-3 text-right">{t("home.tableMoneyIn")}</th>
-              <th scope="col" className="whitespace-nowrap py-2 text-right">{t("home.tableOwed")}</th>
+              <th scope="col" className="whitespace-nowrap p-2 text-left">{t("home.tableTime")}</th>
+              <th scope="col" className="w-full p-2 text-left">{t("home.tableWhat")}</th>
+              <th scope="col" className="whitespace-nowrap p-2 text-right">{t("home.tableMoneyIn")}</th>
+              <th scope="col" className="whitespace-nowrap p-2 text-right">{t("home.tableOwed")}</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
               <tr key={row.id} data-home-row="" className="border-b border-slate-200">
-                <td className="whitespace-nowrap py-2.5 pr-3"><time dateTime={new Date(row.timestamp).toISOString()}>{formatTime(row.timestamp)}</time></td>
-                <td className="max-w-0 truncate py-2.5 pr-3">{row.title}</td>
-                <td data-cell="money-in" className="whitespace-nowrap py-2.5 pr-3 text-right font-extrabold text-[#03543F]">{row.moneyInPesewas > 0 ? <>+<Amount hidden={hidden} pesewas={row.moneyInPesewas} /></> : DASH}</td>
-                <td data-cell="owed" className="whitespace-nowrap py-2.5 text-right font-extrabold text-[#7F1D1D]">{row.owedPesewas > 0 ? <Amount hidden={hidden} pesewas={row.owedPesewas} /> : DASH}</td>
+                <td className="whitespace-nowrap p-2"><time dateTime={new Date(row.timestamp).toISOString()}>{formatTime(row.timestamp)}</time></td>
+                <td data-cell="what" className="p-2 leading-snug"><WhatText text={row.title} /></td>
+                <td data-cell="money-in" className="whitespace-nowrap p-2 text-right font-extrabold text-[#03543F]">{row.moneyInPesewas > 0 ? <>+<Amount hidden={hidden} pesewas={row.moneyInPesewas} /></> : DASH}</td>
+                <td data-cell="owed" className="whitespace-nowrap p-2 text-right font-extrabold text-[#7F1D1D]">{row.owedPesewas > 0 ? <Amount hidden={hidden} pesewas={row.owedPesewas} /> : DASH}</td>
               </tr>
             ))}
           </tbody>
@@ -306,8 +315,9 @@ export default function Home({ onNavigate, notice = "", shopName, layout = PHONE
             </div>
           </div>
           <Uncounted data={data} />
-          {/* Row 2: Owed to you beside Today's transactions; nobody owes: the table takes the whole row. */}
-          <div data-home-row-2="" className={urgent.length > 0 && sidebar ? "grid grid-cols-2 gap-5" : "flex flex-col gap-5"}>
+          {/* Row 2: Owed to you; row 3: Today's transactions full width (wiring 22 Home, 21 Nov 2026: five-digit
+              amounts do not fit beside the Owed card at 17px). Nobody owes: the table is the only card. */}
+          <div data-home-row-2="" className="flex flex-col gap-5">
             {urgent.length > 0 && <OwedCard data={data} hidden={hidden} urgent={urgent} onNavigate={onNavigate} onWhatsApp={onWhatsApp} wide />}
             <TransactionsCard rows={data.table ?? null} hidden={hidden} onNavigate={onNavigate} />
           </div>
