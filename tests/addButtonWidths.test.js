@@ -103,6 +103,12 @@ test("the add look fits at 340, 360 and 393px: dashed 2px green, 14px corners, n
           })()`);
           assert.deepEqual(labelLines, [1], `${label}: "${expected.label}" shows once, on one line (${JSON.stringify(labelLines)})`);
         }
+        // Chunk H item 5: no " · " joins two facts on the Split payment screens (15, 55, 19, 25). 25 is a
+        // sheet over Home, so only the sheet (the open dialog) is scanned there; Home is not one of these screens.
+        if (visit.add.some((a) => /Split/.test(a.text))) {
+          const text = await app.evaluate(`(document.querySelector('[role="dialog"][aria-modal="true"]') || document.querySelector("[data-page-area]") || document.body).innerText`);
+          assert.doesNotMatch(text, / · /, `${label}: no facts joined with " · " (${(text.match(/[^\n]* · [^\n]*/) ?? [""])[0]})`);
+        }
         for (const text of visit.fit ?? []) {
           const c = m.controls.find((control) => control.text === text);
           assert.ok(c && !c.overflow && c.lines === 1 && c.right <= m.innerWidth + 0.5, `${label}: "${text}" still fits on one line (${c?.width}px)`);
