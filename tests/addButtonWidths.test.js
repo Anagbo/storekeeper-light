@@ -33,7 +33,14 @@ const VISITS = [
   // 22 Home: "+ Add contact" beside Collect (the late person has no phone); Collect still fits on one line.
   { name: "22 Home", seed: "base", steps: [], add: [{ text: "+ Add contact", height: 52 }], fit: ["Collect"] },
   // 25: Split payment is a dashed tile in the row of payment tiles: the joined Cash + MoMo icons above the words (the measured text "+Split payment" is the plus between the icons, so 2 text lines: icons row and label; the label is truncate, never wrapped).
-  { name: "25 Collect", seed: "base", steps: ["^Owed$", "^Collect from Amoto"], add: [{ text: "+Split payment", height: 56, atLeast: true, lines: 2 }] }
+  { name: "25 Collect", seed: "base", steps: ["^Owed$", "^Collect from Amoto"], add: [{ text: "+Split payment", height: 56, atLeast: true, lines: 2, label: "Split payment" }] },
+  // split_payment_look (21 Nov 2026): 15, 55 and 19 are the add look too. 15: "Split" under the joined
+  // Cash + MoMo + Owe icons (two plus signs) in the four-tile row, the 56px tile height; 55: the icons
+  // beside "Split payment", full width under the three tiles; 19: Cash + MoMo icons above "Split payment".
+  // (The measured text also holds "Split payment" from the label that shows only from 640px; it has no box below that.)
+  { name: "15 Sell", seed: "base", steps: ["^Sell$"], add: [{ text: "++SplitSplit payment", height: 56, lines: 2, label: "Split" }] },
+  { name: "55 Review and pay", seed: "base", steps: ["^Sell$", "Add items", "^Rice", "^Add 1", "^Next"], add: [{ text: "++ Split payment", height: 68, atLeast: true, full: true, lines: 2, label: "Split payment" }] },
+  { name: "19 A little at a time", seed: "base", steps: ["^Sell$", "^5$", "^Owe$", "^[AK]?Amoto", "^Next", "^A little at a time", "^Today$"], add: [{ text: "+Split payment", height: 48, atLeast: true, lines: 2, label: "Split payment" }] }
 ];
 
 const WIDTHS = [340, 360, 393];
@@ -74,6 +81,27 @@ test("the add look fits at 340, 360 and 393px: dashed 2px green, 14px corners, n
             assert.ok(row && Math.abs(row.width - c.width) < 0.5 && Math.abs(row.left - c.left) < 0.5, `${what}: as wide as the "${expected.sameWidthAs}" row`);
           }
           if (expected.full) assert.ok(c.width >= content - 16.5, `${what}: full width (${c.width} of about ${content})`);
+        }
+        // labelLines: the label's own text node takes one line (the plus signs between the icons sit at
+        // another height, so the button's count is 2 even when the icons and the label share a row).
+        for (const expected of visit.add.filter((a) => a.label)) {
+          const labelLines = await app.evaluate(`(() => {
+            const out = [];
+            for (const button of document.querySelectorAll('[data-look="add"]')) {
+              const walker = document.createTreeWalker(button, NodeFilter.SHOW_TEXT);
+              for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+                if (node.textContent.trim() !== ${JSON.stringify(expected.label)}) continue;
+                const range = document.createRange();
+                range.selectNodeContents(node);
+                const rects = [...range.getClientRects()].filter((r) => r.width > 0);
+                const parent = node.parentElement;
+                // A label cut with an ellipsis (truncate) counts as not fitting.
+                if (rects.length) out.push(parent.scrollWidth > parent.clientWidth + 0.5 ? "cut" : new Set(rects.map((r) => Math.round(r.top))).size);
+              }
+            }
+            return out;
+          })()`);
+          assert.deepEqual(labelLines, [1], `${label}: "${expected.label}" shows once, on one line (${JSON.stringify(labelLines)})`);
         }
         for (const text of visit.fit ?? []) {
           const c = m.controls.find((control) => control.text === text);
