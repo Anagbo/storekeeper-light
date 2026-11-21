@@ -1,6 +1,7 @@
 import { displayName } from "../lib/displayName.js";
 import { formatDate, formatTime } from "../lib/formatDate.js";
 import { formatGhs } from "../lib/formatGhs.js";
+import { receiptDueLines } from "./receiptDueLine.js";
 
 // Receipt amounts are checked, then shown through the one formatter ("GH₵268.20").
 function formatReceiptAmount(amountPesewas) {
@@ -8,15 +9,6 @@ function formatReceiptAmount(amountPesewas) {
     throw new TypeError("Receipt amounts must be non-negative integer pesewas.");
   }
   return formatGhs(amountPesewas);
-}
-
-function formatReceiptDate(dateString) {
-  if (typeof dateString !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-    throw new TypeError("The installment due date is invalid.");
-  }
-  const text = formatDate(dateString);
-  if (!text) throw new TypeError("The installment due date is invalid.");
-  return text;
 }
 
 export function buildCollectionReceiptMessage(result, shopName) {
@@ -51,14 +43,8 @@ export function buildCollectionReceiptMessage(result, shopName) {
     `Still owed: ${formatReceiptAmount(result.remainingPesewas)}`
   ];
 
-  if (result.debtAfter?.isInstallmentPlan) {
-    const installmentAmountPesewas = result.debtAfter.installmentAmount;
-    if (!Number.isSafeInteger(installmentAmountPesewas) || installmentAmountPesewas <= 0) {
-      throw new TypeError("The installment amount is invalid.");
-    }
-    const nextPaymentPesewas = Math.min(result.remainingPesewas, installmentAmountPesewas);
-    lines.push(`Next payment: ${formatReceiptAmount(nextPaymentPesewas)} on ${formatReceiptDate(result.debtAfter.nextDueDate)}`);
-  }
+  // The same Next payment / Due on line as the receipt with the flag on (receiptDueLines).
+  lines.push(...receiptDueLines(result.debtAfter, result.remainingPesewas));
 
   lines.push("Thank you!");
   return lines.join("\n");

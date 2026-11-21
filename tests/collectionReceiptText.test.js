@@ -134,7 +134,9 @@ for (const late of [false, true]) {
     assert.equal(textOf(send).trim(), "Receipt for GH₵30.00 payment");
     await send.props.onClick();
     await findButton(view.tree, "Copy receipt").props.onClick();
-    const expected = "Receipt from Shop\n15/11/2026 09:05\nReceived from Ama: GH₵30.00 (Cash)\nBalance owed now: GH₵80.00\nThank you!";
+    // Changed 21 Nov 2026 (item 4j): the one-time debt's due date follows the balance as "Due on".
+    const due = dayOffset(late ? -3 : 7).split("-").reverse().join("/");
+    const expected = `Receipt from Shop\n15/11/2026 09:05\nReceived from Ama: GH₵30.00 (Cash)\nBalance owed now: GH₵80.00\nDue on ${due}\nThank you!`;
     assert.equal(calls.share[0].text, expected);
     assert.equal(calls.copy[0], expected, "Copy receipt copies the same latest-payment text");
     assert.doesNotMatch(calls.copy[0], /GH₵50\.00|GH₵160\.00/, "not the older payment, not the credit");
