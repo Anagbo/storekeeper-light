@@ -79,7 +79,8 @@ async function balanceScreens(app) {
   await app.settle();
   const home = flat(app).match(/Collect first ?Kofi.*?(GH₵[\d,]+\.\d{2})/);
   await app.tap(/^Owed$/);
-  const list = flat(app).match(/Kofi ?(GH₵[\d,]+\.\d{2})/);
+  // 32 draws Home's person row (chunk C): the due tag sits between the name and the amount in text order.
+  const list = flat(app).match(/Kofi.*?(GH₵[\d,]+\.\d{2})/);
   await go(app, "DebtorDetail", { debtId: debt.id, customerName: debt.customerName });
   const detail = amountAfter(app, /Kofi owes ?(GH₵[\d,]+\.\d{2})/, "43");
   await go(app, "TodaysTransactions");
