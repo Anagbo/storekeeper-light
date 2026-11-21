@@ -31,15 +31,24 @@ test("22/25 tile: the name takes up to two lines and the amount never shrinks or
   assert.ok(!has(name, "truncate"), "no single-line truncation");
   const amount = nodes.find((node) => node.type === "span" && textOf(node) === "GH₵12,345.00");
   assert.ok(amount, "amount shown");
-  assert.ok(has(amount, "shrink-0") && has(amount, "whitespace-nowrap"), "amount never wraps or shrinks");
+  // 4k (21 Nov 2026): the top row is a grid; the amount has the auto (content-sized) column, so it never shrinks.
+  const row = nodes.find((node) => has(node, "grid") && has(node, "grid-cols-[minmax(0,1fr)_auto]") && textOf(node).includes("GH₵12,345.00"));
+  assert.ok(row, "the top row is the name/amount grid");
+  assert.ok(has(amount, "col-start-2") && has(amount, "whitespace-nowrap"), "amount in the auto column, never wraps or shrinks");
   assert.ok(!has(amount, "amount-fit"), "amount is not scaled down by the fit container");
 });
 
-test("22/25 tile: the due tag sits under the name, inside the same column", async () => {
+// 4k (rules_global.person_row "Due tag on one line", 21 Nov 2026): the tag is no longer inside the name
+// column; it has its own row under the name across the full width, on one line (real-browser check in
+// tests/dueTagOneLine.test.js).
+test("22/25 tile: the due tag sits under the name, in its own full-width row, on one line", async () => {
   const nodes = await renderTile(debt());
-  const column = nodes.find((node) => node.type === "div" && has(node, "min-w-0") && has(node, "flex-1") && textOf(node).includes(LONG_NAME) && textOf(node).includes("Late"));
-  assert.ok(column, "a name column that also holds the due tag");
-  assert.ok(!textOf(column).includes("GH₵12,345.00"), "the amount is not in the name column");
+  const name = nodes.find((node) => node.type === "span" && textOf(node) === LONG_NAME);
+  assert.ok(has(name, "col-start-1") && has(name, "row-start-1"), "the name is the top-left cell");
+  const tag = nodes.find((node) => node.type === "div" && node.props["data-party-tag"] !== undefined);
+  assert.ok(tag && textOf(tag).includes("Late"), "the due tag");
+  assert.ok(has(tag, "col-span-full") && has(tag, "row-start-2") && has(tag, "whitespace-nowrap"), "the tag row is under the name, full width, one line");
+  assert.ok(!textOf(tag).includes("GH₵12,345.00") && !textOf(tag).includes(LONG_NAME), "the tag row holds only the tag");
 });
 
 // Redesign 11 Nov 2026 (wiring 22): Collect takes the remaining width; WhatsApp and Call are 52px squares.
