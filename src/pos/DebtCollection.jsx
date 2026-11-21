@@ -535,9 +535,14 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
   }
 
   return (
-    <PosPage className="!pb-6 mx-auto flex max-w-xl flex-col gap-3 px-4 sm:px-6">
+    // Wiring 28 "Done on small phones" (4k, 21 Nov 2026): the check circle is 80px like 30, and Done is
+    // pinned at the bottom like Save on 18 (the page fills the page area and does not clip, so the
+    // sticky row sticks to the page area's bottom); the rest scrolls above it. The pinned row has the
+    // page background and a 16px (or safe-area) gap under Done, and takes its own place in the flow,
+    // so nothing ends up hidden behind it. No bottom bar on 28.
+    <PosPage className="overflow-visible! pb-0! mx-auto flex max-w-xl flex-col gap-3 px-4 sm:px-6">
       <section className="amount-fit-container pt-2 text-center">
-        <div className="mx-auto mb-2 grid h-24 w-24 place-items-center rounded-full bg-emerald-900 text-white">
+        <div data-check-circle="" className="mx-auto mb-2 grid h-20 w-20 place-items-center rounded-full bg-emerald-900 text-white">
           <Check size={56} strokeWidth={2.2} aria-hidden="true" />
         </div>
         <h1 className="text-xl font-bold">{undone ? t("collect.paymentUndone") : t("collect.paymentReceived")}</h1>
@@ -584,8 +589,9 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
       <PosSecondaryButton type="button" onClick={() => onNavigate("DebtorDetail", { debtId: result.debtId, customerName: result.customerName })} className="w-full">
         {t("collect.seeDetails", { name: displayName(result.customerName) })}
       </PosSecondaryButton>
-      <div className="flex-1" />
-      <PosPrimaryButton type="button" onClick={onHome} className="h-[68px] min-h-0 rounded-[20px] text-2xl">{t("collect.done")}</PosPrimaryButton>
+      <div data-bottom-row="" className="sticky bottom-0 z-10 -mx-4 mt-auto flex flex-col items-stretch bg-white px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))] sm:-mx-6 sm:px-6">
+        <PosPrimaryButton type="button" onClick={onHome} className="h-[68px] min-h-0 rounded-[20px] text-2xl">{t("collect.done")}</PosPrimaryButton>
+      </div>
       {contactEditorOpen && (
         <CustomerContactEditor
           customer={contact}
