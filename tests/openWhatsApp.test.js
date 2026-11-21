@@ -7,7 +7,8 @@ import { isPhoneBrowser, openWhatsApp, whatsAppDigits } from "../src/lib/openWha
 import { loadJsx, render, setLiveQuery, walk } from "./helpers/renderJsx.js";
 
 // rules_global.whatsapp_links (4d, 21 Nov 2026): one shared opener for every WhatsApp action. On a
-// phone a valid number opens whatsapp://send?phone=233…&text=… (the installed app, works offline);
+// phone a valid number opens whatsapp://send?phone=233…&text=… (the installed app; offline the share
+// sheet instead, 4g);
 // wa.me only on a desktop browser; an invalid number or none goes to the share sheet, then the links
 // without a number. Nothing is sent automatically.
 
@@ -59,13 +60,19 @@ test("number forms 0241234567, +233241234567 and 233241234567 all open the same 
   }
 });
 
-test("valid number on a phone opens the app link, also on iPhone and iPad, and works offline (no web page)", async () => {
+// 4g (21 Nov 2026): offline the share sheet comes first, even with a valid number
+// (tests/whatsAppOffline.test.js); online the app link opens directly on iPhone and iPad too.
+test("valid number on a phone opens the app link, also on iPhone and iPad; offline the share sheet instead", async () => {
   for (const userAgent of [IPHONE, IPAD]) {
-    const calls = device({ userAgent });
-    navigator.onLine = false;
+    let calls = device({ userAgent, share: "works" });
     assert.equal(await openWhatsApp({ text: TEXT, phone: "+233241234567" }), "app");
     assert.deepEqual(calls.location, [`whatsapp://send?phone=233241234567&text=${ENCODED}`]);
     assert.deepEqual(calls.open, []);
+    calls = device({ userAgent, share: "works" });
+    navigator.onLine = false;
+    assert.equal(await openWhatsApp({ text: TEXT, phone: "+233241234567" }), "share");
+    assert.deepEqual(calls.location, []);
+    assert.deepEqual(calls.share, [{ text: TEXT }]);
   }
 });
 
@@ -217,6 +224,22 @@ test("32 Owed row: with a valid number, WhatsApp is a button that opens her chat
   await new Promise((resolve) => setTimeout(resolve, 20));
   assert.equal(calls.share.length, 0, "not the share sheet contact picker");
   assert.match(calls.location[0], /^whatsapp:\/\/send\?phone=233241234567&text=Hello%20\*Ama\*.*My%20shop/);
+});
+
+// 4g (21 Nov 2026): the phone tests' case, offline with a valid number on 22 and 32.
+test("22 Home and 32 Owed row offline with a valid number: the share sheet with the reminder, no direct link", async () => {
+  const { button: home } = await homeWhatsApp("Auntie Esi Provisions");
+  const owed = [...walk((await owedRow("+233241234567")).tree)].find((node) => node.props?.["aria-label"] === "WhatsApp Ama");
+  for (const [screen, button, shop] of [["22", home, "Auntie Esi Provisions"], ["32", owed, "My shop"]]) {
+    const calls = device({ share: "works" });
+    navigator.onLine = false;
+    await button.props.onClick({ preventDefault() {} });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.deepEqual(calls.location, [], `${screen}: no whatsapp://send?phone= offline`);
+    assert.deepEqual(calls.open, [], `${screen}: no wa.me offline`);
+    assert.equal(calls.share.length, 1, screen);
+    assert.match(calls.share[0].text, new RegExp(`^Hello \\*Ama\\*.*from \\*${shop}\\*`), screen);
+  }
 });
 
 test("32 Owed row: a saved number that fails the Ghana check shows Add phone, not a WhatsApp button", async () => {

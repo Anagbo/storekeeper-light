@@ -108,13 +108,25 @@ test("29/43 with no phone: a finished share records a reminder, a closed share s
   assert.equal((await stored()).length, 0);
 });
 
+// 4g (21 Nov 2026): offline the share sheet opens even with her valid number (the direct link stops at
+// WhatsApp's "No internet connection"); the reminder is recorded as before.
 test("recording works offline (it is written only on this phone)", async () => {
-  const opened = await withNavigator({ userAgent: ANDROID_UA, onLine: false }, async (links) => {
+  const shared = [];
+  const opened = await withNavigator({ userAgent: ANDROID_UA, onLine: false, share: async (data) => { shared.push(data); } }, async (links) => {
     await detailReminder(await detail(), false).props.onClick(freshTap());
     return links;
   });
   assert.equal((await stored()).length, 1);
-  assert.match(opened[0], /^whatsapp:\/\//, "offline the installed app opens, not a wa.me web page");
+  assert.deepEqual(opened, [], "offline no whatsapp://send?phone= and no wa.me");
+  assert.equal(shared.length, 1);
+  assert.match(shared[0].text, /^Hello \*Ama\*/);
+});
+
+test("offline, a closed share sheet records nothing", async () => {
+  await withNavigator({ userAgent: ANDROID_UA, onLine: false, share: async () => { throw Object.assign(new Error("closed"), { name: "AbortError" }); } }, async () => {
+    await detailReminder(await detail(), false).props.onClick(freshTap());
+  });
+  assert.equal((await stored()).length, 0);
 });
 
 test("22: the Collect first WhatsApp button records a reminder for that person", async () => {

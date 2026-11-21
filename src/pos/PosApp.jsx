@@ -30,6 +30,7 @@ import { createBrowserBack, useBackHandler } from "./browserBack.js";
 import LeaveDraftDialog from "./LeaveDraftDialog.jsx";
 import Home from "./Home.jsx";
 import MenuDrawer from "./MenuDrawer.jsx";
+import WhatsAppOfflineSheet from "./WhatsAppOfflineSheet.jsx";
 import MyMoney from "./MyMoney.jsx";
 import TodaysTransactions from "./TodaysTransactions.jsx";
 import { posText as t } from "./i18n.js";
@@ -761,6 +762,7 @@ export default function PosApp() {
       </div>
       {showsBottomBar(route) && <PosBottomNav current={route} onNavigate={switchTab} />}
       {menuOpen && <MenuDrawer current={route} shopName={shopName} onClose={closeMenu} onChoose={chooseFromMenu} />}
+      <WhatsAppOfflineSheet />
       {leaveAsk && (
         <LeaveDraftDialog
           amountPesewas={leaveAsk.amountPesewas}

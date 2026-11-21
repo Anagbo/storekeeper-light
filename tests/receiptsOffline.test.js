@@ -352,6 +352,40 @@ test("31 with a saved number goes to that number; without one, the share sheet",
   }
 });
 
+// 4g (21 Nov 2026): offline, Send receipt for a person WITH a valid number uses the share sheet (the
+// direct whatsapp://send?phone= link stops at WhatsApp's "No internet connection"), on 28, 30 and 31.
+test("28, 30 and 31 offline with a saved number: Send receipt opens the share sheet, not the direct link", async () => {
+  const { PaymentReceived } = await loadJsx("src/pos/DebtCollection.jsx", ON);
+  const { default: SaleRecorded } = await loadJsx("src/pos/SaleRecorded.jsx", ON);
+  const { default: CreditScreens } = await loadJsx("src/pos/CreditScreens.jsx", ON);
+  const creditResult = {
+    customerId: "c1", customerName: "Ama", phone: "0241234567", debtId: "d1", amountPesewas: 2500, addedDebtPesewas: 2500,
+    previousDebtPesewas: 0, totalDebtPesewas: 2500, initialPaymentPesewas: 0, initialPaymentParts: [],
+    debtAfter: { isInstallmentPlan: false }, saleTransaction: { timestamp: Date.now() }
+  };
+  const screens = {
+    28: { type: PaymentReceived, props: { params: { collectionId: "col-1", debtId: "d1", customerId: "c1", customerName: "Ama", phone: "0241234567", amountPesewas: 1250, remainingPesewas: 875, createdAt: Date.now(), undoExpiresAt: Date.now() - 1000, parts: [{ paymentMethod: "cash", amountPesewas: 1250 }], debtAfter: { isInstallmentPlan: false } }, onHome() {}, onNavigate() {}, onSaveCustomerContact() {}, shopName: "Shop" } },
+    30: { type: SaleRecorded, props: { transaction: { ...SALE, amountPesewas: 800, cashReceivedPesewas: 300, creditExtendedPesewas: 500, customer_name: "Ama" }, creditResult: { phone: "0241234567", previousDebtPesewas: 0, totalDebtPesewas: 500 }, shopName: "Shop", onDone() {}, onNewSale() {} } },
+    31: { type: CreditScreens, props: { route: "CreditSaved", params: { customer: { id: "c1", name: "Ama", phone: "0241234567" }, creditResult }, onHome() {}, onNavigate() {}, onSaveCustomerContact() {}, shopName: "Shop" } }
+  };
+  setLiveQuery(() => null);
+  try {
+    for (const [screen, element] of Object.entries(screens)) {
+      const { calls } = setNavigator({ share: true, onLine: false });
+      const view = render(element);
+      flushEffects(view);
+      assert.ok(textOf(view.tree).includes(OFFLINE_LINE), `${screen}: the offline line`);
+      await findButton(view.tree, "Send receipt").props.onClick();
+      assert.equal(calls.share.length, 1, `${screen}: the share sheet`);
+      assert.match(calls.share[0].text, /GH₵/, screen);
+      assert.equal(calls.location, "", `${screen}: no whatsapp://send?phone= offline`);
+      assert.deepEqual(calls.open, [], `${screen}: no wa.me`);
+    }
+  } finally {
+    setLiveQuery(null);
+  }
+});
+
 // 28: "+ Add phone" (the add look since 17 Nov 2026, open_text_sweep) with a quiet line under it; only
 // with the receipts flag on and no phone.
 async function show28(env, phone) {
