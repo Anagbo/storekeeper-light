@@ -188,9 +188,11 @@ function AmountCell({ name, pesewas, tone, hidden }) {
 // Wide Home (wiring 22 Home row 3): Today's transactions as a small table (Time, What, Money in, Owed,
 // Spent) with See all, full width below the Owed card. Every row shows its amount. The
 // header button is the phone's "Today's transactions" control: same accessible name, same destination.
-function TransactionsCard({ rows, hidden, onNavigate }) {
+// rail: 12px side padding instead of 20px (with the page's 20px), so five-digit amounts in every column
+// fit at 768px (decided 21 Nov 2026).
+function TransactionsCard({ rows, hidden, onNavigate, rail = false }) {
   return (
-    <section data-home-transactions="" aria-label={t("home.transactionsLink")} className="flex min-w-0 flex-col rounded-[18px] border-2 border-slate-300 bg-white px-5 py-4">
+    <section data-home-transactions="" aria-label={t("home.transactionsLink")} className={`flex min-w-0 flex-col rounded-[18px] border-2 border-slate-300 bg-white py-4 ${rail ? "px-3" : "px-5"}`}>
       <button type="button" onClick={() => onNavigate("TodaysTransactions")} aria-label={t("home.transactionsLink")} className={`flex min-h-12 w-full min-w-0 items-center justify-between gap-3 rounded-lg text-left ${FOCUS} focus-visible:outline-emerald-800`}>
         <span className="min-w-0 truncate text-[17px] font-bold text-slate-600">{t("home.transactionsLink")}</span>
         <span className="shrink-0 whitespace-nowrap text-[17px] font-extrabold text-emerald-900">{t("home.seeAll")}</span>
@@ -318,7 +320,7 @@ export default function Home({ onNavigate, notice = "", shopName, layout = PHONE
   const sidebar = layout.mode === "sidebar";
   return (
     // Money on wide screens uses equal-width digits (wide_layout.sizes), so the whole page is tabular-nums.
-    <PosPage wide className="flex flex-col gap-5 tabular-nums">
+    <PosPage wide rail={!sidebar} className="flex flex-col gap-5 tabular-nums">
       <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1">
         <h1 className="text-[30px] font-extrabold leading-tight text-[#0F172A]">{t("home.title")}</h1>
         {/* The rail has no room for the date under the shop name (D6): it sits beside the title. */}
@@ -340,7 +342,7 @@ export default function Home({ onNavigate, notice = "", shopName, layout = PHONE
               amounts do not fit beside the Owed card at 17px). Nobody owes: the table is the only card. */}
           <div data-home-row-2="" className="flex flex-col gap-5">
             {urgent.length > 0 && <OwedCard data={data} hidden={hidden} urgent={urgent} onNavigate={onNavigate} onWhatsApp={onWhatsApp} wide />}
-            <TransactionsCard rows={data.table ?? null} hidden={hidden} onNavigate={onNavigate} />
+            <TransactionsCard rows={data.table ?? null} hidden={hidden} onNavigate={onNavigate} rail={!sidebar} />
           </div>
         </>
       )}

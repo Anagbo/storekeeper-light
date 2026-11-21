@@ -105,6 +105,32 @@ test("Home D1 at 1280px: title, Money left with Sell and Spent money on row 1; O
   assert.equal(byData(row2, "data-home-transactions").length, 1);
 });
 
+test("rail only (768 to 1279): page side padding 20px and table card padding 12px; 1280 and up keep 32px and 20px; the phone is unchanged", async () => {
+  await seedOwing();
+  const classesAt = async (width) => {
+    resetBrowserBack();
+    const app = await open(width);
+    const home = homeNode(app);
+    const page = within(home, (node) => node.type === "main")[0].props.className.split(/\s+/);
+    const card = byData(home, "data-home-transactions")[0]?.props.className.split(/\s+/) ?? [];
+    app.restoreConsole();
+    return { page, card };
+  };
+  for (const width of [768, 1024, 1279]) {
+    const { page, card } = await classesAt(width);
+    assert.ok(page.includes("px-5") && !page.includes("px-8"), `${width}: page 20px`);
+    assert.ok(card.includes("px-3") && !card.includes("px-5"), `${width}: table card 12px`);
+  }
+  for (const width of [1280, 1440]) {
+    const { page, card } = await classesAt(width);
+    assert.ok(page.includes("px-8") && !page.includes("px-5"), `${width}: page 32px`);
+    assert.ok(card.includes("px-5") && !card.includes("px-3"), `${width}: table card 20px`);
+  }
+  const phone = await classesAt(undefined);
+  for (const cls of ["px-4", "sm:px-6", "pb-28", "pt-5"]) assert.ok(phone.page.includes(cls), `phone page keeps ${cls}`);
+  assert.ok(!phone.page.includes("px-5") && !phone.page.includes("px-8"));
+});
+
 test("Home table: What wraps (no ellipsis), an amount in it is one unbreakable piece, cells padded 8px", async () => {
   await seedOwing();
   const app = await open(1280);

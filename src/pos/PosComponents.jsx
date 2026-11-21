@@ -20,9 +20,11 @@ function OfflineIcon({ size = 16 }) {
 // wide: the page is on a wide layout (layout.js, passed down by PosApp): fixed wide padding instead of
 // the responsive classes, no room for a bottom bar. Without it (every screen not yet built wide), as before.
 const PAGE_BASE = "mx-auto box-border min-w-0 max-w-full flex-[1_0_auto] w-full overflow-x-hidden overflow-y-auto";
-export function PosPage({ children, className = "", style, wide = false }) {
+// rail (with wide): the rail layout (layout.js) takes 20px side padding instead of 32px, so Home's
+// five-column table fits at 768px (decided 21 Nov 2026); 1280px and up keep 32px.
+export function PosPage({ children, className = "", style, wide = false, rail = false }) {
   // flex 1 0 auto: fills the page area (rules_global.shell_height) and grows past it when longer.
-  const spacing = wide ? "px-8 pb-10 pt-8" : "px-4 pb-28 pt-5 sm:px-6 lg:max-w-6xl lg:px-8 lg:pb-10 lg:pt-8";
+  const spacing = wide ? `${rail ? "px-5" : "px-8"} pb-10 pt-8` : "px-4 pb-28 pt-5 sm:px-6 lg:max-w-6xl lg:px-8 lg:pb-10 lg:pt-8";
   return <main style={style} className={`${PAGE_BASE} ${spacing} ${className}`}>{children}</main>;
 }
 

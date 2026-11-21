@@ -64,7 +64,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
     // Wide layout (D7): the title with the period selector at the top right; Money left and
     // the profit card side by side; the three cards Money in, Money spent and What you should have left
     // in one row; then the two balance tiles. Same content and order of reading as the phone.
-    <PosPage wide={layout.wide} style={layout.wide ? undefined : { paddingTop: 10 }} className={`${w("grid min-h-0 grid-cols-2 content-start items-stretch gap-5", "flex flex-col gap-2.5")} ${layout.wide ? "tabular-nums" : ""}`}>
+    <PosPage wide={layout.wide} rail={layout.mode === "rail"} style={layout.wide ? undefined : { paddingTop: 10 }} className={`${w("grid min-h-0 grid-cols-2 content-start items-stretch gap-5", "flex flex-col gap-2.5")} ${layout.wide ? "tabular-nums" : ""}`}>
       <div data-wide-header="" className={w("col-span-2 flex flex-row items-center justify-between gap-5", "flex flex-col gap-2.5")}>
       <div data-title-row="" className="flex items-center gap-3">
         {!layout.wide && <PosBackButton onClick={onBack} aria-label={t("money.back")} />}
