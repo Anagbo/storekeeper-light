@@ -20,6 +20,7 @@ test("Owed customer actions reach detail and collection routes", () => {
   assert.match(owedSource, /onNavigate\("DebtorDetail", \{/);
   assert.match(owedSource, /editContact: true, returnToOwed: true/);
   assert.match(owedSource, /onCollect\(\{ id: customer\.representativeDebtId/);
+  assert.match(owedSource, /<PersonRow\b/);
   assert.match(appSource, /route === POS_ROUTES\.DebtorDetail/);
   assert.match(appSource, /route === POS_ROUTES\.CollectPayment/);
 });

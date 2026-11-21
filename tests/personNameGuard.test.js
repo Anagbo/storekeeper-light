@@ -108,7 +108,7 @@ test("the guard catches a raw name in each rendering position", () => {
 // The guard bites on the real files: taking displayName out of a real line is caught.
 test("the guard catches displayName removed from real screens and messages", () => {
   const cases = [
-    ["src/pos/OwedScreens.jsx", "{displayName(customer.customerName)}</strong>", "{customer.customerName}</strong>"],
+    ["src/pos/OwedScreens.jsx", "collectLabel={`Collect from ${displayName(customer.customerName)}`}", "collectLabel={`Collect from ${customer.customerName}`}"],
     ["src/pos/SupplierScreens.jsx", "t(\"supplier.payTitle\", { name: displayName(selectedSupplier.name) })", "t(\"supplier.payTitle\", { name: selectedSupplier.name })"],
     ["src/pos/CreditScreens.jsx", "const customerName = displayName(params.customer?.name);", "const customerName = params.customer?.name;"],
     ["src/pos/collectionReceipt.js", "const customerName = displayName(result.customerName);", "const customerName = result.customerName;"]

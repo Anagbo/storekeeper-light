@@ -157,16 +157,22 @@ test("22 Collect first: capitalised name opens 43, Collect opens 25, tag colour 
   assert.match(cls(amount), /whitespace-nowrap/);
 });
 
-test("22 Collect first: WhatsApp and Call only with a valid number", async () => {
+// rules_global.person_row (decided 21 Nov 2026): any saved number shows WhatsApp and Call, even one that
+// fails the WhatsApp check; "+ Add contact" only when no number is saved.
+test("22 Collect first: WhatsApp and Call with any saved number, + Add contact only without one", async () => {
   const labels = async (phone) => all((await renderHome({ urgentDebt: urgent({ phone }), owed: { people: 1, late: 1 } })).tree,
     (n) => (n.type === "a" || n.type === "button") && n.props["aria-label"]).map((n) => n.props["aria-label"]);
-  const withPhone = await labels("0244123456");
-  assert.ok(withPhone.includes("WhatsApp Sera"));
-  assert.ok(withPhone.includes("Call Sera"));
-  for (const phone of ["", "12"]) {
+  for (const phone of ["0244123456", "12"]) {
+    const withPhone = await labels(phone);
+    assert.ok(withPhone.includes("WhatsApp Sera"), phone);
+    assert.ok(withPhone.includes("Call Sera"), phone);
+    assert.ok(!withPhone.includes("Add phone or WhatsApp contact for Sera"), phone);
+  }
+  for (const phone of ["", "   "]) {
     const without = await labels(phone);
     assert.ok(!without.includes("Call Sera"), `no Call for ${JSON.stringify(phone)}`);
     assert.ok(!without.includes("WhatsApp Sera"));
+    assert.ok(without.includes("Add phone or WhatsApp contact for Sera"));
   }
 });
 
@@ -232,14 +238,16 @@ test("people count: grouped by name, late = due before today", () => {
 
 // ---- one pattern, no third copy -----------------------------------------------------------------------------------
 
-test("22 and 46 use PartyCard; 32 uses the shared DueTag; no copy of the card styles or the due rule", () => {
+// rules_global.person_row (chunk C, 21 Nov 2026): 22 and 32 draw the one PersonRow (built on PartyCard);
+// 46 uses PartyCard directly.
+test("22 and 32 use PersonRow, 46 uses PartyCard; no copy of the card styles or the due rule", () => {
   const home = read("src/pos/Home.jsx");
   const suppliers = read("src/pos/SupplierScreens.jsx");
   const owed = read("src/pos/OwedScreens.jsx");
-  assert.match(home, /<PartyCard/);
+  assert.match(home, /<PersonRow/);
+  assert.match(owed, /<PersonRow/);
   assert.match(suppliers, /<PartyCard/);
-  assert.match(owed, /<DueTag dueDate=\{dueDate\} \/>/);
-  for (const [name, source] of [["Home", home], ["SupplierScreens", suppliers]]) {
+  for (const [name, source] of [["Home", home], ["SupplierScreens", suppliers], ["OwedScreens", owed]]) {
     assert.doesNotMatch(source, /w-\[52px\]/, `${name}: square buttons only in PartyCard`);
     assert.doesNotMatch(source, /function dueTag|getDebtDueLabel|PosStatusTag/, `${name}: due rule only in PartyCard`);
   }

@@ -116,7 +116,8 @@ const ACTIONS = [
   // Decisions 17 Nov 2026 (second report): the ones left outside the four looks.
   ["72 Clear", "CustomerSignature.jsx", "PosSecondaryButton", /setStrokes\(\[\]\)/, /t\("signature\.clear"\)/],
   ["29/43 Show {Name} the record", "DebtCollection.jsx", "PosSecondaryButton", /data-show-record=""/, /the record/],
-  ["22 + Add contact", "Home.jsx", "AddButton", /editContact: true/, /t\("contact\.add"\)/],
+  // rules_global.person_row (chunk C, 21 Nov 2026): "+ Add contact" on 22 and 32 is drawn by PersonRow.
+  ["22/32 + Add contact", "PartyCard.jsx", "AddButton", /onClick=\{onAddContact\}/, /t\("contact\.add"\)/],
   ["Large amount: Change amount (main)", "LargeAmountConfirm.jsx", "PosPrimaryButton", /onClick=\{onChange\}/, /t\("largeAmount\.change"\)/],
   ["Large amount: Yes, save (other)", "LargeAmountConfirm.jsx", "PosSecondaryButton", /onClick=\{onConfirm\}/, /t\("largeAmount\.save"\)/],
   ["Leave draft: Stay (main)", "LeaveDraftDialog.jsx", "PosPrimaryButton", /onClick=\{onStay\}/, /t\("leaveDraft\.stay"\)/],

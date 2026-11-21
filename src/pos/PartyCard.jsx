@@ -1,13 +1,13 @@
-import { Phone } from "lucide-react";
+import { Banknote, Phone } from "lucide-react";
 import { displayName } from "../lib/displayName.js";
 import { formatGhs } from "../lib/money.js";
 import { localDateString } from "../utils/installments.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { posText as t } from "./i18n.js";
-import { PosStatusTag } from "./PosComponents.jsx";
+import { AddButton, PosStatusTag } from "./PosComponents.jsx";
 
-// The one card for a person or supplier with money to settle: 22 (Collect first), 46 (You owe
-// suppliers). 32 keeps its own row layout (owner decision 11 Nov 2026) and uses DueTag from here.
+// The one card for a person or supplier with money to settle: 22 (Collect first) and 32 (Owed list)
+// through PersonRow below (rules_global.person_row), 46 (You owe suppliers) directly.
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -33,10 +33,29 @@ export function DueTag({ dueDate, today, wording = "person" }) {
   return <PosStatusTag tone={tag.tone}>{tag.label}</PosStatusTag>;
 }
 
-// A Call link only for a valid phone number; never a greyed, disabled Call button.
+// A Call link only for a valid phone number; never a greyed, disabled Call button (46 suppliers).
 export function callHrefFor(phone) {
   if (!normalizeWhatsAppPhone(phone)) return "";
   return `tel:${String(phone).replace(/[^\d+]/g, "")}`;
+}
+
+// rules_global.person_row (decided 21 Nov 2026): on 22 and 32 any saved number counts, even one that
+// fails the WhatsApp check. "" when no number is saved (nothing with a digit in it).
+export function hasSavedPhone(phone) {
+  return typeof phone === "string" && /\d/.test(phone);
+}
+
+export function telHrefFor(phone) {
+  return hasSavedPhone(phone) ? `tel:${phone.replace(/[^\d+]/g, "")}` : "";
+}
+
+export function WhatsAppIcon({ size = 27 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
+      <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2z" fill="#25D366" />
+      <path d="M8.5 7.2c.3-.5.8-.5 1.1-.3l1 2c.1.3 0 .6-.2.8l-.6.7c.7 1.3 1.7 2.3 3 3l.8-.6c.2-.2.5-.2.8-.1l1.9 1c.3.2.4.6.2 1-.4 1-1.4 1.6-2.4 1.4-3.2-.7-6-3.4-6.8-6.5-.1-.6.1-1.1.3-1.6z" fill="#fff" />
+    </svg>
+  );
 }
 
 const AMOUNT_SIZES = { 22: "text-[22px]", 24: "text-[24px]" };
@@ -61,22 +80,25 @@ export function PartyCard({
   whatsapp,
   phone,
   callLabel,
+  callAnyNumber = false,
   extra = null,
   ...rest
 }) {
   const shown = displayName(name);
-  const callHref = callHrefFor(phone);
+  const callHref = callAnyNumber ? telHrefFor(phone) : callHrefFor(phone);
   const ActionIcon = action.icon;
-  const nameText = <span data-party-name="" className="line-clamp-2 block min-w-0 break-words text-[19px] font-extrabold leading-tight">{shown}</span>;
+  const nameText = <span data-party-name="" className="line-clamp-2 min-w-0 break-words text-[19px] font-extrabold leading-tight">{shown}</span>;
   const nameColumn = (
     <div className="min-w-0 flex-1">
       {framed ? <h2 className="line-clamp-2 min-w-0 break-words text-[19px] font-extrabold leading-tight">{shown}</h2> : nameText}
-      {dueDate && <div className="mt-1.5"><DueTag dueDate={dueDate} today={today} wording={wording} /></div>}
+      {dueDate && <div data-party-tag="" className="mt-1.5"><DueTag dueDate={dueDate} today={today} wording={wording} /></div>}
     </div>
   );
   const amount = <span data-party-amount="" className={`shrink-0 whitespace-nowrap font-extrabold leading-tight ${AMOUNT_SIZES[amountSize] ?? AMOUNT_SIZES[24]}`}>{formatGhs(amountPesewas)}</span>;
   const top = onNameClick ? (
-    <button type="button" onClick={onNameClick} aria-label={nameLabel} className="flex w-full min-w-0 items-start justify-between gap-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800">
+    // rules_global.person_row: the whole top row (name, tag, amount and the space between) opens the
+    // detail; a light grey tint while pressed, nothing at rest.
+    <button type="button" data-person-open="" onClick={onNameClick} aria-label={nameLabel} className="flex w-full min-w-0 items-start justify-between gap-3 rounded-lg text-left active:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800">
       {nameColumn}{amount}
     </button>
   ) : (
@@ -104,5 +126,39 @@ export function PartyCard({
         {extra}
       </div>
     </Frame>
+  );
+}
+
+// rules_global.person_row: the person row of Home 22 (Collect first, the reference) and the Owed list 32.
+// Name left and amount right on one line, the due tag, then Collect (main) with the icon-only WhatsApp
+// and Call buttons when any number is saved, or "+ Add contact" when none is. The top row opens the
+// detail (43 when late, 29 otherwise: one DebtorDetail route); the buttons never do.
+// `onWhatsApp` gets the click event (the shared reminder check, rules_global.reminders).
+export function PersonRow({ name, amountPesewas, dueDate, today, phone, onOpen, onCollect, collectLabel, onWhatsApp, onAddContact, ...rest }) {
+  const shown = displayName(name);
+  const saved = hasSavedPhone(phone);
+  return (
+    <PartyCard
+      framed={false}
+      {...rest}
+      name={name}
+      onNameClick={onOpen}
+      nameLabel={t("person.openDetails", { name: shown })}
+      amountPesewas={amountPesewas}
+      amountSize={22}
+      dueDate={dueDate}
+      today={today}
+      action={{ label: t("home.collect"), ariaLabel: collectLabel ?? t("home.collectPayment", { name: shown }), icon: Banknote, onClick: onCollect }}
+      whatsapp={saved ? { onClick: onWhatsApp, label: t("home.whatsappCustomer", { name: shown }), icon: <WhatsAppIcon size={24} /> } : null}
+      phone={phone}
+      callAnyNumber
+      callLabel={t("home.callCustomer", { name: shown })}
+      extra={saved ? null : (
+        // open_text_sweep (17 Nov 2026): "+ Add contact" is the add look, beside Collect.
+        <AddButton onClick={onAddContact} aria-label={t("contact.addFor", { name: shown })} className="w-auto! shrink-0 px-3!">
+          {t("contact.add")}
+        </AddButton>
+      )}
+    />
   );
 }

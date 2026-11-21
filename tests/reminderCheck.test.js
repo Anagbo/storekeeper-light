@@ -254,9 +254,12 @@ test("every reminder button on 22, 32, 29 and 43 goes through the one shared che
     // Every WhatsApp reminder is a button whose share opens the shared opener; no <a href> link is left.
     assert.doesNotMatch(source, /<a href=\{(whatsappUrl|reminderLink|whatsappLink)\}/, `${file} has no WhatsApp link left`);
     assert.match(source, /share: (shareReminder|\(\) => openWhatsApp\()/, `${file}: the reminder opens WhatsApp through the shared opener`);
-    if (file === "src/pos/Home.jsx") assert.match(source, /whatsapp=\{reminderText \? \{ onClick: onWhatsApp,/, "22: the tile's WhatsApp (in PartyCard) gets the check");
+    // rules_global.person_row (chunk C): 22 and 32 draw PersonRow, which hands the tap to the check.
+    if (file === "src/pos/Home.jsx") assert.match(source, /onWhatsApp=\{onWhatsApp\}/, "22: the row's WhatsApp (in PersonRow) gets the check");
+    if (file === "src/pos/OwedScreens.jsx") assert.match(source, /onWhatsApp=\{\(event\) => onWhatsApp\(event, customer, reminderText\)\}/, "32: the row's WhatsApp (in PersonRow) gets the check");
   }
   assert.match(read("src/pos/PartyCard.jsx"), /<button type="button" onClick=\{whatsapp\.onClick\}/, "22's PartyCard WhatsApp is a button that passes the tap on");
+  assert.match(read("src/pos/PartyCard.jsx"), /whatsapp=\{saved \? \{ onClick: onWhatsApp,/, "PersonRow passes the tap to the row's WhatsApp");
   assert.match(read("src/pos/DebtCollection.jsx"), /reminders\.onReminder\(event, \{ person: reminderPerson, lastReminderAt, share: shareReminder \}\)/, "the share-sheet button too");
 });
 
