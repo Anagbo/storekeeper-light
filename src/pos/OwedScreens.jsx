@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Banknote, Phone, UserRound, UserRoundPen } from "lucide-react";
+import { UserRound } from "lucide-react";
 import { db } from "../db/db.js";
 import { formatGhs } from "../lib/money.js";
 import { hasSearchText, squashSearchText } from "../lib/searchMatch.js";
@@ -8,21 +8,12 @@ import { posText } from "./i18n.js";
 import { displayName } from "../lib/displayName.js";
 import { getDebtDueDate, groupUnpaidDebts, isDebtDueSoon, isDebtLate, loadAllUnpaidDebts, loadUnpaidDebtPage, matchesOwedSearch, OWED_PAGE_SIZE } from "./owed.js";
 import SearchField from "./SearchField.jsx";
-import { DueTag } from "./PartyCard.jsx";
-import { AddButton, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
-import { openWhatsApp, whatsAppDigits } from "../lib/openWhatsApp.js";
+import { hasSavedPhone, PersonRow } from "./PartyCard.jsx";
+import { AddButton, PosPage, PosSecondaryButton } from "./PosComponents.jsx";
+import { openWhatsApp } from "../lib/openWhatsApp.js";
 import { buildWhatsAppReminderText } from "../utils/whatsapp.js";
 import { latestReminderAt, loadReminderEvents } from "../db/reminders.js";
 import { useReminderCheck } from "./ReminderCheck.jsx";
-
-function WhatsAppIcon() {
-  return (
-    <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2z" fill="#25D366" />
-      <path d="M8.5 7.2c.3-.5.8-.5 1.1-.3l1 2c.1.3 0 .6-.2.8l-.6.7c.7 1.3 1.7 2.3 3 3l.8-.6c.2-.2.5-.2.8-.1l1.9 1c.3.2.4.6.2 1-.4 1-1.4 1.6-2.4 1.4-3.2-.7-6-3.4-6.8-6.5-.1-.6.1-1.1.3-1.6z" fill="#fff" />
-    </svg>
-  );
-}
 
 export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopName }) {
   const [filter, setFilter] = useState("all");
@@ -226,45 +217,26 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
           <div className="flex flex-col gap-3" role="list">
           {visibleCustomers.map((customer) => {
             const dueDate = getDebtDueDate(customer.debt);
-            // WhatsApp and Call show only with a number that passes the Ghana check, as before.
-            const reminderText = whatsAppDigits(customer.phone)
+            // rules_global.person_row: Home's row. WhatsApp and Call with any saved number; a number
+            // that fails the WhatsApp check opens the share sheet through the opener.
+            const reminderText = hasSavedPhone(customer.phone)
               ? buildWhatsAppReminderText(customer.customerName, customer.balancePesewas, shopName)
               : null;
             return (
-              <article key={customer.id} role="listitem" className="flex min-w-0 items-center gap-2 rounded-3xl bg-white p-3">
-                <button type="button" onClick={() => openDetails(customer)} className="min-w-0 flex-1 text-left">
-                  <span className="min-w-0 flex-1">
-                    <strong className="block truncate text-xl">{displayName(customer.customerName)}</strong>
-                    <span className="block text-base text-slate-900">{formatGhs(customer.balancePesewas)}</span>
-                    {dueDate && <DueTag dueDate={dueDate} />}
-                  </span>
-                </button>
-                <div className={`grid shrink-0 gap-2 ${reminderText ? "grid-cols-3" : "grid-cols-2"}`}>
-                  <PosPrimaryButton type="button" onClick={() => customer.debtIds.length === 1
+              <article key={customer.id} role="listitem" className="min-w-0 rounded-3xl bg-white p-4">
+                <PersonRow
+                  name={customer.customerName}
+                  amountPesewas={customer.balancePesewas}
+                  dueDate={dueDate}
+                  phone={customer.phone}
+                  onOpen={() => openDetails(customer)}
+                  collectLabel={`Collect from ${displayName(customer.customerName)}`}
+                  onCollect={() => customer.debtIds.length === 1
                     ? onCollect({ id: customer.representativeDebtId, customerId: customer.customerId, customerName: customer.customerName, amountPesewas: customer.balancePesewas, phone: customer.phone })
-                    : openDetails(customer)} aria-label={`Collect from ${displayName(customer.customerName)}`} className="!h-14 !min-h-0 !w-14 !p-0 max-[380px]:!h-12 max-[380px]:!w-12">
-                    <Banknote size={22} aria-hidden="true" />
-                  </PosPrimaryButton>
-                  {reminderText ? (
-                    <>
-                      <button type="button" onClick={(event) => onWhatsApp(event, customer, reminderText)} aria-label={`WhatsApp ${displayName(customer.customerName)}`} className="grid h-14 w-14 place-items-center rounded-2xl border-2 border-emerald-900 bg-white text-emerald-900 max-[380px]:h-12 max-[380px]:w-12">
-                        <WhatsAppIcon />
-                      </button>
-                      <a href={`tel:${customer.phone}`} aria-label={`Call ${displayName(customer.customerName)}`} className="grid h-14 w-14 place-items-center rounded-2xl border-2 border-slate-300 bg-slate-300 text-slate-900 max-[380px]:h-12 max-[380px]:w-12">
-                        <Phone size={25} aria-hidden="true" />
-                      </a>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => openDetails(customer, true)}
-                      aria-label={`Add phone for ${displayName(customer.customerName)}`}
-                      className="grid h-14 w-14 place-items-center rounded-2xl border-2 border-emerald-900 bg-white text-emerald-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 max-[380px]:h-12 max-[380px]:w-12"
-                    >
-                      <UserRoundPen size={24} aria-hidden="true" />
-                    </button>
-                  )}
-                </div>
+                    : openDetails(customer)}
+                  onWhatsApp={(event) => onWhatsApp(event, customer, reminderText)}
+                  onAddContact={() => openDetails(customer, true)}
+                />
               </article>
             );
           })}

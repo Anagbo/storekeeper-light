@@ -63,7 +63,7 @@ async function openOwed() {
 }
 const searchField = (view) => [...walk(view.tree)].find((node) => node.type === "input" && node.props.placeholder === posText("credit.search"));
 const type = (view, value) => { searchField(view).props.onChange({ target: { value } }); view.rerender(); };
-const names = (view) => [...walk(view.tree)].filter((node) => node.type === "article").map((node) => textOf([...walk(node)].find((child) => child.type === "strong")));
+const names = (view) => [...walk(view.tree)].filter((node) => node.type === "article").map((node) => textOf([...walk(node)].find((child) => child.props?.["data-party-name"] !== undefined)));
 const tab = (view, label) => [...walk(view.tree)].find((node) => node.props?.role === "tab" && textOf(node) === label);
 const pick = (view, label) => { tab(view, label).props.onClick(); view.rerender(); };
 const showMore = async (view) => { await findButton(view.tree, "Show more").props.onClick(); await settle(); view.rerender(); };

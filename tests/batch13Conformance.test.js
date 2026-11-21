@@ -210,8 +210,10 @@ test("23: the close button is named Close menu", async () => {
 });
 
 test("32: each WhatsApp button is named WhatsApp {name}", () => {
+  // rules_global.person_row (chunk C): 32 draws Home's row, whose WhatsApp is "WhatsApp {Name}".
   const source = read("src/pos/OwedScreens.jsx");
-  assert.match(source, /aria-label=\{`WhatsApp \$\{displayName\(customer\.customerName\)\}`\}/);
+  assert.match(source, /<PersonRow\b/);
+  assert.match(read("src/pos/PartyCard.jsx"), /label: t\("home\.whatsappCustomer", \{ name: shown \}\)/);
   assert.doesNotMatch(source, /WhatsApp reminder for/);
 });
 

@@ -41,6 +41,7 @@ const ENGLISH = Object.freeze({
   "home.owedSeeAllAria": "Owed to you, see all",
   "home.collectFirst": "Collect first",
   "home.collect": "Collect",
+  "person.openDetails": "Open {name}’s details",
   "home.peopleOne": "1 person",
   "home.peopleMany": "{n} people",
   "home.lateCount": "{n} late",

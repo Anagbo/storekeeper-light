@@ -242,8 +242,24 @@ test("22 Home and 32 Owed row offline with a valid number: the share sheet with 
   }
 });
 
-test("32 Owed row: a saved number that fails the Ghana check shows Add phone, not a WhatsApp button", async () => {
+// rules_global.person_row (decided 21 Nov 2026): any saved number shows WhatsApp and Call; WhatsApp then
+// opens the share sheet. "+ Add contact" only when no number is saved.
+test("32 Owed row: a saved number that fails the Ghana check shows WhatsApp (share sheet) and Call, no Add contact", async () => {
   const view = await owedRow("0301234567");
+  const button = [...walk(view.tree)].find((node) => node.props?.["aria-label"] === "WhatsApp Ama");
+  assert.equal(button?.type, "button");
+  assert.equal([...walk(view.tree)].find((node) => node.props?.["aria-label"] === "Call Ama")?.props.href, "tel:0301234567");
+  assert.equal([...walk(view.tree)].find((node) => /^Add phone/.test(node.props?.["aria-label"] ?? "")), undefined);
+  const calls = device({ share: "works" });
+  await button.props.onClick({ preventDefault() {} });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.deepEqual(calls.location, [], "no direct link for a number that fails the check");
+  assert.equal(calls.share.length, 1, "the share sheet");
+});
+
+test("32 Owed row: no saved number shows + Add contact, no WhatsApp and no Call", async () => {
+  const view = await owedRow("");
   assert.equal([...walk(view.tree)].find((node) => node.props?.["aria-label"] === "WhatsApp Ama"), undefined);
-  assert.ok([...walk(view.tree)].find((node) => node.props?.["aria-label"] === "Add phone for Ama"));
+  assert.equal([...walk(view.tree)].find((node) => node.props?.["aria-label"] === "Call Ama"), undefined);
+  assert.ok([...walk(view.tree)].find((node) => node.props?.["aria-label"] === "Add phone or WhatsApp contact for Ama"));
 });

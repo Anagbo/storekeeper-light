@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Banknote, CirclePlus, ShoppingCart } from "lucide-react";
+import { CirclePlus, ShoppingCart } from "lucide-react";
 import { db } from "../db/db.js";
 import { loadHideAmounts, saveHideAmounts } from "../db/preferences.js";
 import { latestReminderAt, loadReminderEvents } from "../db/reminders.js";
@@ -11,7 +11,6 @@ import {
   isSaleRecord,
   summarizePosMoneySafely
 } from "../lib/money.js";
-import { displayName } from "../lib/displayName.js";
 import { openWhatsApp } from "../lib/openWhatsApp.js";
 import { buildWhatsAppReminderText } from "../utils/whatsapp.js";
 import { posText as t } from "./i18n.js";
@@ -21,18 +20,9 @@ import {
   summarizeOwedPeople,
 } from "./money.js";
 import { Amount, HideAmountsButton } from "./HiddenAmount.jsx";
-import { callHrefFor, PartyCard } from "./PartyCard.jsx";
-import { AddButton, PosCard, PosPage, PosSecondaryButton } from "./PosComponents.jsx";
+import { hasSavedPhone, PersonRow } from "./PartyCard.jsx";
+import { PosCard, PosPage, PosSecondaryButton } from "./PosComponents.jsx";
 import { useReminderCheck } from "./ReminderCheck.jsx";
-
-function WhatsAppIcon({ size = 27 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
-      <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2z" fill="#25D366" />
-      <path d="M8.5 7.2c.3-.5.8-.5 1.1-.3l1 2c.1.3 0 .6-.2.8l-.6.7c.7 1.3 1.7 2.3 3 3l.8-.6c.2-.2.5-.2.8-.1l1.9 1c.3.2.4.6.2 1-.4 1-1.4 1.6-2.4 1.4-3.2-.7-6-3.4-6.8-6.5-.1-.6.1-1.1.3-1.6z" fill="#fff" />
-    </svg>
-  );
-}
 
 // The quiet "not counted" line counts only the skipped records that fall in the period Home shows
 // (today); a reversal from another day that the totals query also reads is not counted here.
@@ -76,10 +66,10 @@ export default function Home({ onNavigate, notice = "", shopName }) {
     };
   }, [range.start, range.end], null);
   const urgentDebt = data?.urgentDebt;
-  const urgentName = urgentDebt ? displayName(urgentDebt.customerName) : "";
-  // WhatsApp and Call only with a valid number (PartyCard); never a greyed, disabled button. The text
-  // names the real shop, as on 32, 29/43 and Debt saved.
-  const reminderText = urgentDebt && callHrefFor(urgentDebt.phone)
+  // rules_global.person_row: WhatsApp and Call with any saved number (PersonRow); a number that fails
+  // the WhatsApp check opens the share sheet through the opener. The text names the real shop, as on
+  // 32, 29/43 and Debt saved.
+  const reminderText = urgentDebt && hasSavedPhone(urgentDebt.phone)
     ? buildWhatsAppReminderText(urgentDebt.customerName, urgentDebt.amountPesewas, shopName)
     : null;
   // rules_global.reminders: the WhatsApp button goes through the shared check and records the reminder;
@@ -158,24 +148,16 @@ export default function Home({ onNavigate, notice = "", shopName }) {
             <>
                 <div className="h-px bg-slate-200" />
                 <p className="text-[13px] font-extrabold uppercase tracking-[0.06em] text-slate-600">{t("home.collectFirst")}</p>
-                <PartyCard
-                  framed={false}
+                <PersonRow
                   data-urgent-debtor=""
                   name={urgentDebt.customerName}
-                  onNameClick={() => onNavigate("DebtorDetail", urgentDebt)}
                   amountPesewas={urgentDebt.amountPesewas}
-                  amountSize={22}
                   dueDate={urgentDebt.dueDate}
-                  action={{ label: t("home.collect"), ariaLabel: t("home.collectPayment", { name: urgentName }), icon: Banknote, onClick: () => onNavigate("CollectPayment", urgentDebt) }}
-                  whatsapp={reminderText ? { onClick: onWhatsApp, label: t("home.whatsappCustomer", { name: urgentName }), icon: <WhatsAppIcon size={24} /> } : null}
                   phone={urgentDebt.phone}
-                  callLabel={t("home.callCustomer", { name: urgentName })}
-                  extra={callHrefFor(urgentDebt.phone) ? null : (
-                    // open_text_sweep (17 Nov 2026): "+ Add contact" is the add look, beside Collect.
-                    <AddButton onClick={() => onNavigate("DebtorDetail", { debtId: urgentDebt.debtId, customerName: urgentDebt.customerName, editContact: true })} aria-label={t("contact.addFor", { name: urgentName })} className="w-auto! shrink-0 px-3!">
-                      {t("contact.add")}
-                    </AddButton>
-                  )}
+                  onOpen={() => onNavigate("DebtorDetail", urgentDebt)}
+                  onCollect={() => onNavigate("CollectPayment", urgentDebt)}
+                  onWhatsApp={onWhatsApp}
+                  onAddContact={() => onNavigate("DebtorDetail", { debtId: urgentDebt.debtId, customerName: urgentDebt.customerName, editContact: true })}
                 />
               </>
           </section>}
