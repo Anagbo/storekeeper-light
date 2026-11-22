@@ -206,14 +206,13 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
           {showMoreControl}
         </section>
       ) : (
-        <section className="box-border min-w-0 w-full rounded-3xl bg-rose-200 px-4 pb-5 pt-4" aria-label="People who owe you">
-          <div className="mb-3 flex items-center gap-2 text-rose-900">
-            <UserRound size={27} aria-hidden="true" />
-            <h1 className="text-xl font-extrabold">People who owe you</h1>
+        <section className="box-border flex min-w-0 w-full flex-col gap-3" aria-label="People who owe you">
+          <div data-owed-summary className="box-border min-w-0 w-full rounded-[20px] border-2 border-[#CBD5E1] bg-white px-4 py-3">
+            <h1 className="text-sm font-bold text-slate-600">People who owe you</h1>
+            <p data-owed-total className="break-words text-[30px] font-bold leading-tight text-[#7F1D1D]">
+              {formatGhs(totalPesewas)}
+            </p>
           </div>
-          <p className="mb-4 text-4xl font-extrabold text-rose-900">
-            {formatGhs(totalPesewas)}
-          </p>
           <div className="flex flex-col gap-3" role="list">
           {visibleCustomers.map((customer) => {
             const dueDate = getDebtDueDate(customer.debt);
@@ -223,7 +222,7 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
               ? buildWhatsAppReminderText(customer.customerName, customer.balancePesewas, shopName)
               : null;
             return (
-              <article key={customer.id} role="listitem" className="min-w-0 rounded-3xl bg-white p-4">
+              <article key={customer.id} role="listitem" className="min-w-0 w-full rounded-3xl border-2 border-slate-200 bg-white p-4">
                 <PersonRow
                   name={customer.customerName}
                   amountPesewas={customer.balancePesewas}
