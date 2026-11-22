@@ -3,10 +3,13 @@
 param([switch]$SkipTests, [string]$TestCommand = "npm test")
 $ErrorActionPreference = "Continue"
 $results = @()
+$sw = [System.Diagnostics.Stopwatch]::StartNew()
+function Say($m) { Write-Host ("[" + $sw.Elapsed.ToString("mm\:ss") + "] " + $m) -ForegroundColor Cyan }
 function Add-Result($name, $ok, $detail) {
   $script:results += [pscustomobject]@{ Check = $name; Result = $(if ($ok) { "PASS" } else { "FAIL" }); Detail = $detail }
 }
 
+Say "Checking wiring and git"
 # 1. Wiring: committed copy must equal the handoff copy
 $a = "docs\handoff\journey-wiring.json"; $b = "src\pos\wiring.json"
 if ((Test-Path $a) -and (Test-Path $b)) {
@@ -25,6 +28,7 @@ Add-Result "Working tree clean" ([string]::IsNullOrWhiteSpace(($dirty -join ""))
 
 # 4. Builds (to a temp folder so dist is not touched)
 function Run-Build($label, $envMap) {
+  Say ("Running " + $label + " (a few minutes, no output until done)")
   $out = Join-Path $env:TEMP ("sk-build-" + [guid]::NewGuid().ToString("N").Substring(0,8))
   $saved = @{}
   foreach ($k in $envMap.Keys) { $saved[$k] = [Environment]::GetEnvironmentVariable($k); [Environment]::SetEnvironmentVariable($k, $envMap[$k]) }
@@ -42,6 +46,7 @@ Run-Build ("Build (all " + $flags.Count + " VITE_ENABLE_* false)") $off
 # 5. Full test suite: output goes to a log, only the summary is printed
 if (-not $SkipTests) {
   $log = Join-Path $env:TEMP "sk-tests.log"
+  Say "Running the full test suite. This is the long one. Watch it with: Get-Content $log -Wait -Tail 5"
   Invoke-Expression "$TestCommand *> `"$log`""
   $code = $LASTEXITCODE
   $tail = Get-Content $log -Tail 12
@@ -49,6 +54,7 @@ if (-not $SkipTests) {
   Add-Result "Full test suite" ($code -eq 0) ($sum + "  (log: $log)")
 }
 
+Say "Done"
 $results | Format-Table -AutoSize -Wrap
 $failed = @($results | Where-Object { $_.Result -eq "FAIL" })
 if ($failed.Count -eq 0) { Write-Host "ALL CHECKS PASSED" -ForegroundColor Green } else { Write-Host ("" + $failed.Count + " CHECK(S) FAILED") -ForegroundColor Red }
