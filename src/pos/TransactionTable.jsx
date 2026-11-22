@@ -24,9 +24,9 @@ const CHIP_STYLES = {
 };
 const chipStyle = (chip) => (chip.kind === "person" && !chip.owes ? CHIP_STYLES.personNeutral : CHIP_STYLES[chip.kind] ?? CHIP_STYLES.payment);
 
-export function Chip({ chip, nowrap = false }) {
+export function Chip({ chip, nowrap = false, wordWrap = false }) {
   return (
-    <span data-chip={chip.kind} data-owes={chip.kind === "person" ? String(Boolean(chip.owes)) : undefined} className={`inline-flex max-w-full items-center gap-1 rounded-[10px] px-2 text-base font-bold ${nowrap ? "whitespace-nowrap" : "[overflow-wrap:anywhere]"} ${chipStyle(chip)}`}>
+    <span data-chip={chip.kind} data-owes={chip.kind === "person" ? String(Boolean(chip.owes)) : undefined} className={`inline-flex max-w-full items-center gap-1 rounded-[10px] px-2 text-base font-bold ${nowrap ? "whitespace-nowrap" : wordWrap ? "min-w-0 whitespace-normal [overflow-wrap:break-word]" : "[overflow-wrap:anywhere]"} ${chipStyle(chip)}`}>
       {chip.kind === "person" && <UserRound size={16} aria-hidden="true" className="shrink-0" />}
       {chip.label}
     </span>
@@ -149,13 +149,13 @@ export function TransactionTable({ rows, totals = null, amount = formatGhs, comp
             return (
               <tr key={row.id} data-wide-row="" {...(compact ? { "data-home-row": "" } : {})} data-row-kind={row.kind} data-row-id={row.id} className="border-b border-slate-200 align-top">
                 <td className="whitespace-nowrap p-2 font-normal text-slate-600"><time dateTime={new Date(row.timestamp).toISOString()}>{formatTime(row.timestamp)}</time></td>
-                <td data-cell="what" className="min-w-0 p-2 leading-snug">
+                <td data-cell="what" className="min-w-0 p-2 leading-snug [overflow-wrap:break-word]">
                   <WhatText text={view.title} masked={maskedAmount} />
                   {!personColumn && view.person && <span data-cell="person" className="block font-normal text-slate-600 [overflow-wrap:anywhere]">{view.person}</span>}
                   {compact && compactLine(row, amount) && <span data-cell="what-line2" className="block font-normal text-slate-600">{compactLine(row, amount)}</span>}
                   {!compact && view.details.length > 0 && (
                     <span data-cell="chips" className="mt-1 flex flex-wrap gap-1.5">
-                      {view.details.map((chip) => <Chip key={`${chip.kind}:${chip.label}`} chip={chip} nowrap />)}
+                      {view.details.map((chip) => <Chip key={`${chip.kind}:${chip.label}`} chip={chip} nowrap={!rail} wordWrap={rail} />)}
                     </span>
                   )}
                 </td>
