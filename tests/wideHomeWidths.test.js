@@ -19,7 +19,7 @@ const MEASURE = `(() => {
     .map((el) => ({ label: el.getAttribute("aria-label") || el.textContent.replace(/\s+/g, " ").trim(), lines: lines(el), overflow: el.scrollWidth > el.clientWidth + 0.5, ...box(el) }));
   const people = [...document.querySelectorAll("[data-urgent-debtor]")].map(box);
   const small = [...document.querySelectorAll("main *")].filter((el) => el.children.length === 0 && el.textContent.trim() && el.getClientRects().length && !el.closest("table") && parseFloat(getComputedStyle(el).fontSize) < 15).map((el) => el.textContent.trim().slice(0, 20));
-  return { innerWidth, scrollWidth: document.documentElement.scrollWidth, amounts, controls, people, small, card: box(document.querySelector("[data-block=money-left]")), actions: box(document.querySelector("[data-home-actions]")) };
+  const ed = (s) => { const e = document.querySelector(s); return e ? e.getBoundingClientRect().right : null; }; return { rights: { sell: ed("[data-home-sell]"), spent: ed("[data-home-spent]"), actions: ed("[data-home-actions]"), owed: ed("[data-owed-card]"), tx: ed("[data-home-transactions]") }, stackB: box(document.querySelector("[data-home-actions]")).b, innerWidth, scrollWidth: document.documentElement.scrollWidth, amounts, controls, people, small, card: box(document.querySelector("[data-block=money-left]")), actions: box(document.querySelector("[data-home-actions]")) };
 })()`;
 
 test("wide Home: fits at 768 to 1440, amounts whole, labels on one line, buttons at most 240px, Collect-first one line", { skip: browser ? false : "no Chrome or Edge found (set HEADER_TEST_BROWSER)", timeout: 600_000 }, async () => {
@@ -31,7 +31,10 @@ test("wide Home: fits at 768 to 1440, amounts whole, labels on one line, buttons
       await sleep(300);
       const m = await app.evaluate(MEASURE);
       console.log(at, JSON.stringify({ card: m.card.h, actions: m.actions.h, person: m.people.map((p) => p.h), widths: m.controls.map((c) => `${c.label.slice(0, 14)}:${Math.round(c.w)}x${Math.round(c.h)}`).join(" "), small: m.small }));
+      console.log(at, JSON.stringify(m.rights), m.card.b, m.stackB);
       assert.ok(m.scrollWidth <= m.innerWidth, `${at}: no sideways scroll`);
+      assert.ok(Math.abs(m.actions.r - m.rights.owed) <= 1 && Math.abs(m.rights.spent - m.rights.owed) <= 1 && Math.abs(m.rights.tx - m.rights.owed) <= 1, `${at}: right edges aligned`);
+      assert.ok(m.actions.l < m.card.r || Math.abs(m.card.b - m.stackB) <= 1, `${at}: top-row bottoms aligned`);
       assert.ok(m.amounts.some((a) => a.text === "GH₵12,345.00"), `${at}: the long amount is shown`);
       for (const a of m.amounts) assert.ok(a.lines === 1 && !a.clipped && a.l >= 0 && a.r <= m.innerWidth && a.weight === "700", `${at}: amount ${a.text} whole, one line, bold (${a.lines}, ${a.clipped}, ${a.weight})`);
       for (const c of m.controls) {
