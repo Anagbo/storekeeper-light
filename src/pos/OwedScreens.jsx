@@ -247,7 +247,7 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
       ) : (
         <section className="box-border flex min-w-0 w-full flex-col gap-3" aria-label="People who owe you">
           <div data-owed-summary className="box-border min-w-0 w-full rounded-[20px] border-2 border-[#CBD5E1] bg-white px-4 py-3">
-            <h1 className="text-sm font-bold text-slate-600">People who owe you</h1>
+            <h2 className="text-sm font-bold text-slate-600">People who owe you</h2>
             <p data-owed-total className="break-words text-[30px] font-bold leading-tight text-[#7F1D1D]">
               {formatGhs(totalPesewas)}
             </p>
@@ -297,12 +297,16 @@ const WIDE_FOCUS = "focus-visible:outline focus-visible:outline-[3px] focus-visi
 function WideOwed({ layout, addDebtButton, filter, setFilter, query, setQuery, isLoading, hasFailed, onRetry, customers, searching, totalPesewas, showMoreControl, selected, onSelect, renderDetail }) {
   return (
     <PosPage wide rail={layout.mode !== "sidebar"} className="flex flex-col gap-5 tabular-nums">
-      <div data-owed-top="" className="flex justify-end">
-        <div className="w-auto">{addDebtButton}</div>
+      <div data-owed-top="" className="flex min-w-0 items-center justify-between gap-4">
+        <div className="flex min-w-0 items-baseline gap-3">
+          <h1 className="text-[30px] font-bold leading-tight text-slate-900">Owed</h1>
+          {!isLoading && !hasFailed && <p data-owed-count="" className="text-sm text-slate-600">{customers.length} {customers.length === 1 ? "person" : "people"} · {customers.filter((customer) => isDebtLate(customer.debt)).length} late</p>}
+        </div>
+        <div className="w-auto shrink-0">{addDebtButton}</div>
       </div>
       <div data-owed-columns="" className="grid min-w-0 items-start gap-5" style={{ gridTemplateColumns: "min(400px, 44%) minmax(0, 1fr)" }}>
         <section data-owed-list="" aria-label="People who owe you" className="flex min-w-0 flex-col gap-4">
-          <SearchField value={query} onChange={setQuery} />
+          <SearchField value={query} onChange={setQuery} wide />
           <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Debt filters">
             {FILTERS.map(([value, label]) => (
               <button
@@ -377,7 +381,7 @@ function WideOwed({ layout, addDebtButton, filter, setFilter, query, setQuery, i
             </>
           )}
         </section>
-        <section data-owed-detail="" aria-label={selected ? displayName(selected.customerName) : "Selected person"} className="min-w-0">
+        <section data-owed-detail="" aria-label={selected ? displayName(selected.customerName) : "Selected person"} className="min-w-0 rounded-[20px] border-2 border-[#CBD5E1] bg-white p-5">
           {selected && renderDetail({ customerId: selected.customerId, customerName: selected.customerName, debtId: selected.representativeDebtId })}
         </section>
       </div>

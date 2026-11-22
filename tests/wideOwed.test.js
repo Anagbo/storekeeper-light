@@ -114,7 +114,8 @@ for (const width of [768, 1024, 1280, 1440]) {
     assert.ok(names.includes("Collect") && names.includes("Send reminder on WhatsApp") && names.includes("Call"), names.join(", "));
     assert.ok(names.includes("Edit contact") && names.includes("Correct balance") && names.includes("+ Add to debt"), names.join(" | "));
     const top = byData(app.view.tree, "data-owed-top")[0];
-    assert.match(top.props.className, /justify-end/, "Add debt at the top right");
+    assert.match(top.props.className, /justify-between/, "title row, Add debt at the right");
+    assert.match(textOf(top), /^Owed/);
     assert.deepEqual(controlNames(top), ["+ Add debt"], "the add look; the + is hidden from screen readers");
     assert.ok(!all(app.view.tree).some((node) => node?.type?.name === "PosBackButton"), "no Back on the page");
   });

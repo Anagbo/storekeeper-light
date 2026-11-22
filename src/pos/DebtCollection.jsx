@@ -62,7 +62,7 @@ function EmbeddedPane({ children }) {
 // WhatsApp reminder above. Call only with a valid number.
 function embeddedActionColumns(isLate, hasCall) {
   if (isLate) return hasCall ? "grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" : "grid-cols-1";
-  return hasCall ? "grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)]" : "grid-cols-[minmax(0,2fr)_minmax(0,1fr)]";
+  return hasCall ? "grid-cols-[minmax(0,1.3fr)_minmax(0,1.15fr)_minmax(0,1fr)]" : "grid-cols-[minmax(0,2fr)_minmax(0,1fr)]";
 }
 
 const ACTION_BUTTON ="flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-2xl border-2 px-1 py-2 text-base font-extrabold leading-tight whitespace-nowrap sm:h-[72px] sm:text-[17px]";
@@ -838,7 +838,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
   const Page = embedded ? EmbeddedPane : PosPage;
   const correctBalanceShown = data && singleDebtMatchesTotal;
   const correctBalanceButton = correctBalanceShown && (
-    <PosSecondaryButton type="button" onClick={() => openCorrection()} disabled={!data.debt?.id || data.balancePesewas <= 0} className={embedded ? "w-auto shrink-0 whitespace-nowrap" : "mt-2 w-full"}>
+    <PosSecondaryButton type="button" onClick={() => openCorrection()} disabled={!data.debt?.id || data.balancePesewas <= 0} className={embedded ? "w-full min-w-0 whitespace-nowrap" : "mt-2 w-full"}>
       Correct balance
     </PosSecondaryButton>
   );
@@ -850,7 +850,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               place on 32 or 22 is kept) is its own plain row above the contact card, left aligned. The card is
               unchanged from before Back was added. D3: no Back (nothing was left). */}
           {!embedded && <PosBackButton onClick={onBack} className="self-start" />}
-          <section data-row="debtor-header" className="flex items-center gap-3 rounded-[20px] border-2 border-slate-500 bg-white px-3 py-3">
+          {!embedded && <section data-row="debtor-header" className="flex items-center gap-3 rounded-[20px] border-2 border-slate-500 bg-white px-3 py-3">
             <span className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full bg-emerald-900 text-2xl font-extrabold text-white">{displayName(data.name).slice(0, 1).toUpperCase()}</span>
             <span className="min-w-0 flex-1">
               <strong className="line-clamp-2 break-words text-[22px] leading-tight">{displayName(data.name)}</strong>
@@ -861,20 +861,20 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                 <UserRoundPen size={20} className="mx-auto" aria-hidden="true" />{t("collect.editContact")}
               </button>
             )}
-          </section>
-          <section className="amount-fit-container rounded-[20px] bg-rose-200 px-4 py-3">
-            <p className="text-lg font-bold text-rose-950">{t("collect.balanceOwed", { name: displayName(data.name) })}</p>
-            <p className="amount-fit font-extrabold text-rose-950">{formatGhs(data.balancePesewas)}</p>
+          </section>}
+          <section className={embedded ? "amount-fit-container" : "amount-fit-container rounded-[20px] bg-rose-200 px-4 py-3"}>
+            <p className={embedded ? "text-sm font-bold text-slate-600" : "text-lg font-bold text-rose-950"}>{t("collect.balanceOwed", { name: displayName(data.name) })}</p>
+            <p className={embedded ? "amount-fit font-bold tabular-nums text-slate-900" : "amount-fit font-extrabold text-rose-950"} style={embedded ? { fontSize: "clamp(1.75rem, 14cqi, 3.5rem)" } : undefined}>{formatGhs(data.balancePesewas)}</p>
             {dueLine
-              ? <p className="mt-1 font-bold text-rose-950">{dueLine}</p>
-              : dueLabel?.startsWith("Late ") && <p className="mt-1 font-bold text-rose-950">{dueLabel}</p>}
+              ? <p className={embedded ? "mt-1 font-bold text-slate-900" : "mt-1 font-bold text-rose-950"}>{dueLine}</p>
+              : dueLabel?.startsWith("Late ") && <p className={embedded ? "mt-1 font-bold text-slate-900" : "mt-1 font-bold text-rose-950"}>{dueLabel}</p>}
           </section>
           {/* 43: the wide WhatsApp reminder on top (with or without a saved number). */}
           {isLate && reminderText && (
             <div className="flex flex-col gap-1">
               {reminderControl({
                 label: t("collect.remindOnWhatsApp"),
-                className: "flex h-16 w-full items-center justify-center gap-2.5 rounded-[18px] border-[3px] border-emerald-900 bg-white px-3 text-lg font-extrabold text-emerald-900",
+                className: `flex h-16 w-full items-center justify-center rounded-[18px] border-[3px] border-emerald-900 bg-white font-extrabold text-emerald-900 ${embedded ? "gap-2 px-1.5 text-base whitespace-nowrap" : "gap-2.5 px-3 text-lg"}`,
                 children: <><WhatsAppIcon /> {t("collect.remindOnWhatsApp")}</>
               })}
             </div>
@@ -894,7 +894,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               children: <><WhatsAppIcon size={26} /><span>Reminder</span></>
             })}
             {phone
-              ? <a href={`tel:${phone}`} className={`${ACTION_BUTTON} border-slate-500 bg-slate-300 text-slate-950`}>
+              ? <a href={`tel:${phone}`} className={`${ACTION_BUTTON} ${embedded ? "border-[#0F172A] bg-white text-[#0F172A]" : "border-slate-500 bg-slate-300 text-slate-950"}`}>
                   <Phone size={26} aria-hidden="true" /><span>{t("collect.call")}</span>
                 </a>
               : !embedded && <button type="button" disabled aria-disabled="true" className={`${ACTION_BUTTON} cursor-not-allowed border-slate-300 bg-slate-100 text-slate-500`}>
@@ -912,8 +912,8 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
           {/* wide_layout.approved_additions (D3): Edit contact and Correct balance, small secondary buttons in
               one row under the Last reminder row. Same labels and handlers as the phone. */}
           {embedded && (
-            <div data-row="debtor-secondary" className="flex min-w-0 flex-wrap gap-2">
-              <PosSecondaryButton type="button" onClick={() => setContactEditorOpen(true)} className="w-auto shrink-0 whitespace-nowrap">
+            <div data-row="debtor-secondary" className="grid min-w-0 grid-cols-2 gap-2">
+              <PosSecondaryButton type="button" onClick={() => setContactEditorOpen(true)} className="w-full min-w-0 whitespace-nowrap">
                 <UserRoundPen size={20} aria-hidden="true" />{t("collect.editContact")}
               </PosSecondaryButton>
               {correctBalanceButton}
