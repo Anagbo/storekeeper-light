@@ -91,7 +91,7 @@ test("Home D1 at 1280px: title, Money left with Sell and Spent money on row 1; O
   const home = homeNode(app);
   assert.equal(textOf(within(home, (node) => node.type === "h1")[0]), "Home");
   const row1 = byData(home, "data-home-row-1")[0];
-  assert.match(row1.props.className, /grid-cols-\[minmax\(0,1\.9fr\)_minmax\(0,1fr\)\]/, "Money left, then Sell and Spent money in a column beside it");
+  assert.match(row1.props.className, /grid-cols-\[minmax\(0,1fr\)_240px\]/, "Money left, then Sell and Spent money in a column beside it");
   assert.equal(byData(row1, "data-block").length, 1, "Money left is on row 1");
   assert.ok(byData(row1, "data-home-sell").length === 1 && byData(row1, "data-home-spent").length === 1);
   const row2 = byData(home, "data-home-row-2")[0];
