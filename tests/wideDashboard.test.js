@@ -210,6 +210,18 @@ test("Home D1 with Hide amounts on: no customer amount digit in Collect first or
   assert.ok(/Collect/.test(textOf(rows[0])) && /Sera|Amoto/.test(textOf(rows[0])));
 });
 
+test("Spent money is the shared outlined dark other button on the phone and on wide, never amber; Sell stays the only solid green", async () => {
+  await seedOwing();
+  for (const width of [393, 1280]) {
+    const app = await open(width);
+    const spent = byData(homeNode(app), "data-home-spent").find((n) => n.type === "button");
+    assert.equal(spent.props["data-look"], "other", String(width));
+    assert.match(spent.props.className, /0F172A/);
+    assert.doesNotMatch(spent.props.className, /amber|bg-emerald/);
+    assert.equal(buttonName(spent), "Spent money");
+  }
+});
+
 test("Home D1 nobody owes: no Owed card; Today's transactions takes the full row", async () => {
   await seedToday();
   await db.debts.where("customerName").equals("Yaw").modify({ status: "paid" });

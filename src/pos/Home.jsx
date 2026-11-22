@@ -95,9 +95,9 @@ function SellButton({ onNavigate, className = "", wide = false }) {
 
 function SpentButton({ onNavigate, className = "", wide = false }) {
   return (
-    <button type="button" data-home-spent="" onClick={() => onNavigate("SpentMoney")} className={`flex w-full items-center justify-center gap-3 px-4 text-2xl ${wide ? "max-w-60 rounded-2xl border-2 border-[#0F172A] bg-white font-bold text-[#0F172A] focus-visible:outline-emerald-800" : "rounded-[20px] bg-amber-500 font-extrabold text-slate-950 focus-visible:outline-amber-800"} ${FOCUS} ${className}`}>
+    <PosSecondaryButton type="button" data-home-spent="" onClick={() => onNavigate("SpentMoney")} className={`flex w-full items-center justify-center gap-3 ${wide ? "max-w-60" : ""} ${className}`}>
       <CirclePlus size={wide ? 24 : 22} aria-hidden="true" /> {t("home.spentMoneyAction")}
-    </button>
+    </PosSecondaryButton>
   );
 }
 
