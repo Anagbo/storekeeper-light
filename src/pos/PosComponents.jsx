@@ -276,12 +276,12 @@ export function SplitIcons({ withOwe = false, size = 20, className = "" }) {
   );
 }
 
-export function PosStatusTag({ children, tone = "neutral", compact = false }) {
+export function PosStatusTag({ children, tone = "neutral", compact = false, large = false }) {
   const styles = {
     neutral: "border-slate-700 bg-slate-100 text-slate-950",
     green: "border-emerald-900 bg-emerald-100 text-emerald-950",
     amber: "border-amber-800 bg-amber-100 text-amber-950",
     red: "border-rose-900 bg-rose-100 text-rose-950"
   };
-  return <span className={`inline-flex min-h-8 max-w-full items-center rounded-lg border-2 py-0.5 text-sm font-extrabold ${compact ? "px-2" : "px-2.5"} ${styles[tone]}`}>{children}</span>;
+  return <span className={`inline-flex min-h-8 max-w-full items-center rounded-lg border-2 py-0.5 ${large ? "text-[15px]" : "text-sm"} font-extrabold ${compact ? "px-2" : "px-2.5"} ${styles[tone]}`}>{children}</span>;
 }

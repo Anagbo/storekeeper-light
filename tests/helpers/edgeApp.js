@@ -41,6 +41,7 @@ function entry(seeds) {
 import { createRoot } from "react-dom/client";
 import { db } from "./src/db/db.js";
 import { recordCreditSale } from "./src/db/debts.js";
+import { recordCashSale } from "./src/db/sales.js";
 import { setPreference } from "./src/db/preferences.js";
 import { createProduct } from "./src/db/products.js";
 import { recordExpense } from "./src/db/suppliers.js";

@@ -38,8 +38,8 @@ function Row({ label, amountPesewas, hidden, tone = "", ...rest }) {
 
 function CardTitle({ children, amountPesewas, hidden, wide = false }) {
   return (
-    <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-3">
-      <p className={`flex items-center gap-1 text-base font-extrabold sm:text-lg ${wide ? "text-[#0F172A]" : ""}`}>{children}</p>
+    <div className={wide ? "flex min-w-0 flex-col" : "flex min-w-0 flex-wrap items-baseline justify-between gap-x-3"}>
+      <p className={wide ? "flex items-center gap-1 whitespace-nowrap text-[17px] font-bold text-[#0F172A]" : "flex items-center gap-1 text-base font-extrabold sm:text-lg"}>{children}</p>
       {amountPesewas !== undefined && <p className={wide ? "whitespace-nowrap text-2xl font-bold text-[#0F172A]" : "whitespace-nowrap text-xl font-extrabold"}><Amount hidden={hidden} pesewas={amountPesewas} /></p>}
     </div>
   );
@@ -93,7 +93,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
           {/* (1) The one strong block (wide: beside the profit card, or the full row when it is hidden). */}
           <section data-block="money-left" className={`amount-fit-container rounded-[20px] bg-emerald-900 px-4 py-3 text-white ${w(`order-1 flex flex-col justify-center gap-2 p-6 ${report.showProfit ? "" : "col-span-2"}`)}`}>
             <p className="text-base font-bold sm:text-lg">{t("money.moneyLeft", { period: periodWords })}</p>
-            <p className={wide ? "whitespace-nowrap text-[56px] font-extrabold leading-tight" : "amount-fit font-extrabold leading-tight"}><Amount hidden={hidden} pesewas={summary.moneyLeft} /></p>
+            <p className={wide ? "whitespace-nowrap text-[56px] font-bold leading-tight" : "amount-fit font-extrabold leading-tight"}><Amount hidden={hidden} pesewas={summary.moneyLeft} /></p>
             {comparison && (
               <p className={wide ? "text-[18px] leading-snug" : "text-base leading-snug sm:text-lg"}>{amountText(hidden ? HIDDEN_COMPARISON_KEYS[period] : COMPARISON_KEYS[period][comparison.kind], { amount: comparison.amountPesewas }, hidden)}</p>
             )}
@@ -165,7 +165,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
                 <span className="min-w-0">
                   <span className="block text-[15px] font-extrabold leading-snug sm:text-[17px]">{t(label)}</span>
                   <span className={wide ? `block ${WIDE_AMOUNT}` : `amount-fit block font-extrabold leading-tight ${tone}`}><Amount hidden={hidden} pesewas={pesewas} /></span>
-                  <span className="block text-base font-extrabold text-emerald-900 sm:text-[17px]">{t(link)}</span>
+                  <span className={`block text-emerald-900 ${wide ? "text-[17px] font-bold no-underline" : "text-base font-extrabold sm:text-[17px]"}`}>{t(link)}</span>
                 </span>
                 {wide && <ChevronRight size={28} className="shrink-0 text-slate-600" aria-hidden="true" />}
               </button>
