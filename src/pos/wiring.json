@@ -1547,7 +1547,7 @@
     "Reminder check (rules_global.reminders): this button runs the shared 7-day check for the person. A reminder recorded in the last 7 days opens the Send another reminder? sheet first (Send again strong, Not now outlined; Back and Escape act as Not now; after Not now the merchant stays on this screen). Otherwise WhatsApp opens directly. Tapping records a reminder event. No Last reminder text is shown on this screen.",
     "Person row: see rules_global.person_row.",
     "Phone search: see rules_global.phone_search (a number typed with a leading 0, without it, or in the +233 form finds the same person).",
-    "Layout (decided 22 Nov 2026): no pink block. At the top a plain white summary card (2px #CBD5E1 border, 20px radius, no coloured edge): small grey label \"People who owe you\" above the total in dark red (#7F1D1D, 30px bold). Below it the person rows, each a white card with a light border directly on the grey page background, full width. Same on the phone and in the wide list. The Late and Due soon tags are the only coloured items in the list. See rules_global.left_edge_marker."
+    "Layout (decided 22 Nov 2026): no pink block. At the top a plain white summary card (2px #CBD5E1 border, 20px radius, no coloured edge): small grey label \"Total owed to you\" above the total in neutral dark (#0F172A, 30px bold; red is kept for Late and overdue only). Below it the person rows, each a white card with a light border directly on the grey page background, full width. Same on the phone and in the wide list. The Late and Due soon tags are the only coloured items in the list. The wide page title row shows only \"{n} people · {m} late\", no money: the total is in the card only. See rules_global.left_edge_marker."
    ]
   },
   "33": {
