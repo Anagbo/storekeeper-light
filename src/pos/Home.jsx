@@ -166,7 +166,7 @@ export function WhatText({ text }) {
 }
 
 // An empty cell shows a dash (as on 24 wide, D4).
-const DASH = <span className="font-normal text-slate-500">—</span>;
+export const DASH = <span className="font-normal text-slate-500">—</span>;
 
 // 24's amount colours and signs (TodaysTransactions AMOUNT_TONES): money in green with +, spent
 // amber-brown with −, credit dark red with no sign, a correction plain dark with no sign.
@@ -177,7 +177,7 @@ const CELL_TONES = {
   neutral: { className: "text-slate-800", sign: "" }
 };
 
-function AmountCell({ name, pesewas, tone, hidden }) {
+export function AmountCell({ name, pesewas, tone, hidden }) {
   const look = CELL_TONES[tone] ?? CELL_TONES.neutral;
   return (
     <td data-cell={name} data-tone={pesewas > 0 ? tone : undefined} className={`whitespace-nowrap p-2 text-right font-extrabold ${look.className}`}>

@@ -649,7 +649,7 @@ export default function PosApp() {
   ) : route === POS_ROUTES.MyMoney ? (
     <MyMoney onNavigate={navigate} onBack={navigateBack} layout={layout} />
   ) : route === POS_ROUTES.TodaysTransactions ? (
-    <TodaysTransactions onBack={navigateBack} />
+    <TodaysTransactions onBack={navigateBack} layout={layout} />
   ) : isCollectSheet ? (
     <>
       <Home onNavigate={navigate} notice={notice} shopName={shopName} layout={layout} />
