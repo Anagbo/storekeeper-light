@@ -248,7 +248,7 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
         <section className="box-border flex min-w-0 w-full flex-col gap-3" aria-label="People who owe you">
           <div data-owed-summary className="box-border min-w-0 w-full rounded-[20px] border-2 border-[#CBD5E1] bg-white px-4 py-3">
             <h2 className="text-sm font-bold text-slate-600">People who owe you</h2>
-            <p data-owed-total className="break-words text-[30px] font-bold leading-tight text-[#7F1D1D]">
+            <p data-owed-total className="break-words text-[30px] font-bold leading-tight text-[#0F172A]">
               {formatGhs(totalPesewas)}
             </p>
           </div>
@@ -348,7 +348,7 @@ function WideOwed({ layout, addDebtButton, filter, setFilter, query, setQuery, i
             <>
               <div data-owed-summary="" className="box-border min-w-0 w-full rounded-[20px] border-2 border-[#CBD5E1] bg-white px-4 py-3">
                 <h1 className="text-sm font-bold text-slate-600">People who owe you</h1>
-                <p data-owed-total="" className="whitespace-nowrap text-[30px] font-bold leading-tight text-[#7F1D1D]">{formatGhs(totalPesewas)}</p>
+                <p data-owed-total="" className="whitespace-nowrap text-[30px] font-bold leading-tight text-[#0F172A]">{formatGhs(totalPesewas)}</p>
               </div>
               <div className="flex flex-col gap-3" role="list">
                 {customers.map((customer) => {

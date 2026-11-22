@@ -48,7 +48,7 @@ test("32 plain card: long name, tag, amount and controls fit at 340/360/393", { 
       assert.deepEqual(m.pink, [], `${at}: no pink block outside the tags`);
       assert.match(m.summary.text, /People who owe you/);
       assert.match(m.summary.text, /GH₵12,357\.00/);
-      assert.equal(m.summary.color, "rgb(127, 29, 29)", `${at}: total is #7F1D1D`);
+      assert.equal(m.summary.color, "rgb(15, 23, 42)", `${at}: total is #0F172A`);
       for (const row of m.rows) {
         const what = `${at} "${row.name.slice(0, 12)}"`;
         assert.ok(row.card.l >= 0 && row.card.r <= m.innerWidth, `${what}: card inside the screen`);

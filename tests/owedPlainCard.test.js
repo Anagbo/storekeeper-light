@@ -41,7 +41,7 @@ test("32: no pink block; the summary card is plain white with the label and the 
   assert.match(textOf(card), /People who owe you/);
   const total = [...walk(card)].find((node) => node.props?.["data-owed-total"] !== undefined);
   assert.equal(textOf(total), "GH₵55.00");
-  assert.match(cls(total), /text-\[#7F1D1D\]/);
+  assert.match(cls(total), /text-\[#0F172A\]/);
   assert.match(cls(total), /text-\[30px\]/);
 });
 
