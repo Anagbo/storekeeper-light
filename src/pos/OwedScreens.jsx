@@ -245,9 +245,9 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
           {showMoreControl}
         </section>
       ) : (
-        <section className="box-border flex min-w-0 w-full flex-col gap-3" aria-label="People who owe you">
+        <section className="box-border flex min-w-0 w-full flex-col gap-3" aria-label="Total owed to you">
           <div data-owed-summary className="box-border min-w-0 w-full rounded-[20px] border-2 border-[#CBD5E1] bg-white px-4 py-3">
-            <h2 className="text-sm font-bold text-slate-600">People who owe you</h2>
+            <h2 className="text-sm font-bold text-slate-600">Total owed to you</h2>
             <p data-owed-total className="break-words text-[30px] font-bold leading-tight text-[#0F172A]">
               {formatGhs(totalPesewas)}
             </p>
@@ -304,7 +304,7 @@ function WideOwed({ layout, addDebtButton, filter, setFilter, query, setQuery, i
         <div className="w-auto shrink-0">{addDebtButton}</div>
       </div>
       <div data-owed-columns="" className="grid min-w-0 items-start gap-5" style={{ gridTemplateColumns: "min(400px, 44%) minmax(0, 1fr)" }}>
-        <section data-owed-list="" aria-label="People who owe you" className="flex min-w-0 flex-col gap-4">
+        <section data-owed-list="" aria-label="Total owed to you" className="flex min-w-0 flex-col gap-4">
           <SearchField value={query} onChange={setQuery} wide />
           <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Debt filters">
             {FILTERS.map(([value, label]) => (
@@ -347,7 +347,7 @@ function WideOwed({ layout, addDebtButton, filter, setFilter, query, setQuery, i
           ) : (
             <>
               <div data-owed-summary="" className="box-border min-w-0 w-full rounded-[20px] border-2 border-[#CBD5E1] bg-white px-4 py-3">
-                <h1 className="text-sm font-bold text-slate-600">People who owe you</h1>
+                <h1 className="text-sm font-bold text-slate-600">Total owed to you</h1>
                 <p data-owed-total="" className="whitespace-nowrap text-[30px] font-bold leading-tight text-[#0F172A]">{formatGhs(totalPesewas)}</p>
               </div>
               <div className="flex flex-col gap-3" role="list">

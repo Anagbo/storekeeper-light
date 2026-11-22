@@ -38,7 +38,7 @@ test("32: no pink block; the summary card is plain white with the label and the 
   const card = nodes.find((node) => node.props?.["data-owed-summary"] !== undefined);
   assert.ok(card);
   for (const want of ["bg-white", "border-2", "border-[#CBD5E1]", "rounded-[20px]"]) assert.ok(cls(card).split(/\s+/).includes(want), want);
-  assert.match(textOf(card), /People who owe you/);
+  assert.match(textOf(card), /Total owed to you/);
   const total = [...walk(card)].find((node) => node.props?.["data-owed-total"] !== undefined);
   assert.equal(textOf(total), "GH₵55.00");
   assert.match(cls(total), /text-\[#0F172A\]/);
@@ -53,7 +53,7 @@ test("32: person rows are white cards on the page, not inside a coloured panel",
   for (const row of rows) for (const want of ["bg-white", "border-2", "w-full"]) assert.ok(cls(row).split(/\s+/).includes(want), want);
   const list = nodes.find((node) => node.props?.role === "list");
   assert.ok(!/bg-/.test(cls(list)));
-  const section = nodes.find((node) => node.type === "section" && node.props["aria-label"] === "People who owe you");
+  const section = nodes.find((node) => node.type === "section" && node.props["aria-label"] === "Total owed to you");
   assert.ok(!/bg-/.test(cls(section)), "the wrapper has no background");
 });
 
