@@ -29,7 +29,7 @@ import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
 import SplitPayment from "./SplitPayment.jsx";
-import { getInitialPaymentParts } from "./paymentAmount.js";
+import { getInitialPaymentParts, isZeroAmount } from "./paymentAmount.js";
 import { confirmDirectMomoParts, splitPartRows, isUnconfirmedDirectMomo } from "./splitTender.js";
 import { getMomoDisplayLabel } from "./momoMapping.js";
 import { secondsUntil } from "../lib/countdown.js";
@@ -97,28 +97,35 @@ function useCollectionDebt(debtId, customerName) {
 
 // disabled (wiring 26 "Amount above the balance", 21 Nov 2026): while the amount is higher than the
 // balance, Cash, MoMo and Split payment are all disabled (faded, not tappable) and the taps are ignored.
-function PaymentMethodPicker({ value, onChange, onSplit, splitDisabled = false, disabled = false }) {
+// Wiring 25 "Zero amount" (22 Nov 2026): while the typed amount is 0.00, MoMo and Split payment are disabled
+// too (Cash may stay selected). One shared check for the sheet and the Pay part editor; 27 never reaches
+// the picker with 0, and the sale on 26 has its own rules. The check is isZeroAmount in paymentAmount.js.
+
+function PaymentMethodPicker({ value, onChange, onSplit, splitDisabled = false, disabled = false, zeroAmount = false }) {
   return (
     <fieldset>
       <legend className="mb-2 text-lg font-extrabold">{t("collect.howPaying")}</legend>
       <div className="grid grid-cols-3 gap-2">
-        {PAYMENT_METHODS.map(({ value: method, label, icon: Icon }) => (
+        {PAYMENT_METHODS.map(({ value: method, label, icon: Icon }) => {
+          const off = disabled || (zeroAmount && method === "momo");
+          return (
           <button
             key={method}
             type="button"
             aria-pressed={value === method}
-            disabled={disabled}
-            onClick={() => { if (!disabled) onChange(method); }}
+            disabled={off}
+            onClick={() => { if (!off) onChange(method); }}
             className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-2xl border-[3px] px-1 text-xs font-extrabold disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-16 sm:gap-1 sm:px-2 sm:text-base ${value === method ? "border-emerald-900 bg-green-200 text-slate-950" : "border-slate-500 bg-white text-slate-950"}`}
           >
             <Icon size={20} className="shrink-0 sm:h-[22px] sm:w-[22px]" aria-hidden="true" />
             <span className="w-full min-w-0 truncate text-center">{t(label)}</span>
           </button>
-        ))}
+          );
+        })}
         {/* open_text_sweep (17 Nov 2026): "+ Split payment" adds a second way to pay, so it is the add look. */}
         {/* split_icons (20 Nov 2026): the tile keeps the joined Cash + MoMo icons (the plus signs between them),
             with no separate "+" before the label; Owe cannot be part of a collection split. */}
-        <AddButton plus={false} disabled={disabled || splitDisabled} onClick={() => { if (!disabled && !splitDisabled) onSplit(); }} aria-label={t("collect.splitPayment")} data-split-tile="" className="min-h-14 flex-col gap-0.5! overflow-hidden px-1! text-xs! sm:min-h-16 sm:gap-1! sm:px-2! sm:text-base!">
+        <AddButton plus={false} disabled={disabled || zeroAmount || splitDisabled} onClick={() => { if (!disabled && !zeroAmount && !splitDisabled) onSplit(); }} aria-label={t("collect.splitPayment")} data-split-tile="" className="min-h-14 flex-col gap-0.5! overflow-hidden px-1! text-xs! sm:min-h-16 sm:gap-1! sm:px-2! sm:text-base!">
           <SplitIcons size={16} />
           <span className="w-full min-w-0 truncate text-center">{t("collect.splitPayment")}</span>
         </AddButton>
@@ -225,9 +232,11 @@ function CollectionSheet({ debt, params = {}, onClose, onNavigate, onUpdateParam
           <PaymentMethodPicker
             value={paymentMethod}
             disabled={aboveBalance}
+            zeroAmount={isZeroAmount(amountPesewas)}
             onChange={(method) => {
               if (aboveBalance) return;
               if (method === "momo") {
+                if (isZeroAmount(amountPesewas)) return;
                 onNavigate("MoMoChoice", { debtId: debt.id, amountPesewas });
               } else {
                 setPaymentMethod(method);
@@ -432,9 +441,11 @@ function CollectPayPartScreen({ params, onBack, onNavigate, onUpdateParams, onRe
           <PaymentMethodPicker
             value={paymentMethod}
             disabled={aboveBalance}
+            zeroAmount={isZeroAmount(amountPesewas)}
             onChange={(method) => {
               if (aboveBalance) return;
               if (method === "momo") {
+                if (isZeroAmount(amountPesewas)) return;
                 onNavigate("MoMoChoice", { ...params, amountPesewas });
               } else {
                 setPaymentMethod(method);

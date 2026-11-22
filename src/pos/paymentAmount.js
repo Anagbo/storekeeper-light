@@ -134,3 +134,6 @@ function getPaymentTotalPesewas(params) {
       ? params.amountPesewas
       : 0;
 }
+
+// Wiring 25 "Zero amount": the typed collect amount is 0.00 (or not a valid amount) in whole pesewas.
+export const isZeroAmount = (pesewas) => !Number.isSafeInteger(pesewas) || pesewas <= 0;
