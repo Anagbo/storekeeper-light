@@ -44,13 +44,13 @@ for (const width of [768, 1024, 1280, 1440]) {
   test(`wide ${width}: columns, each row kind in the right column, part-paid example, total equals the cards`, async () => {
     const view = await mount(getLayout(width));
     const heads = all(view, (n) => n.type === "th" && n.props.scope === "col").map((th) => textOf(th));
-    assert.deepEqual(heads, ["Time", "What", "Money in", "Spent", "On credit"]);
+    assert.deepEqual(heads, width >= 1280 ? ["Time", "What", "Person", "Money in", "Spent", "On credit"] : ["Time", "What", "Money in", "Spent", "On credit"]);
 
     const part = byKind(view, "part-paid");
     assert.equal(cell(part, "money-in"), "+GH₵8.00");
     assert.equal(cell(part, "owed"), "GH₵5.00");
     assert.equal(cell(part, "spent"), "—");
-    assert.match(cell(part, "what"), /^Sale of GH₵13.00Ama.*Cash GH₵8.00/);
+    if (width >= 1280) { assert.equal(cell(part, "person"), "Ama"); assert.match(cell(part, "what"), /^Sale of GH₵13.00Cash GH₵8.00$/); assert.equal(cell(byKind(view, "cash-sale"), "person"), "—"); assert.equal(cell(byKind(view, "stock-credit"), "person"), "—", "this fixture has no supplier name"); assert.equal(cell(byKind(view, "corrected"), "person"), "Kojo"); } else assert.match(cell(part, "what"), /^Sale of GH₵13.00Ama.*Cash GH₵8.00/);
 
     assert.equal(cell(byKind(view, "cash-sale"), "money-in"), "+GH₵8.00");
     assert.equal(cell(byKind(view, "credit-only"), "owed"), "GH₵6.00");
@@ -105,4 +105,21 @@ test("the phone does not get the table", async () => {
   const view = await mount(getLayout(390));
   assert.equal(all(view, (n) => n.type === "table").length, 0);
   assert.equal(all(view, (n) => n.type === "article").length, rows.length);
+});
+
+test("Home compact table: the same table component and columns, a grey line only for a correction and stock on credit, dashes in their money cells, no Total today row", async () => {
+  const { TransactionTable } = await loadJsx("src/pos/TransactionTable.jsx");
+  const view = render({ type: TransactionTable, props: { rows, compact: true, layout: getLayout(1280) } }).tree;
+  assert.deepEqual(all(view, (n) => n.type === "th" && n.props.scope === "col").map((th) => textOf(th)), ["Time", "What", "Person", "Money in", "Spent", "On credit"]);
+  assert.deepEqual(all(render({ type: TransactionTable, props: { rows, compact: true, layout: getLayout(768) } }).tree, (n) => n.type === "th" && n.props.scope === "col").map((th) => textOf(th)), ["Time", "What", "Money in", "Spent", "On credit"]);
+  assert.equal(all(view, (n) => n.props["data-wide-total"] !== undefined).length, 0);
+  const row = (id) => bodyRows(view).find((tr) => tr.props["data-row-id"] === id);
+  for (const id of ["corrected", "stock-credit"]) for (const name of ["money-in", "spent", "owed"]) assert.equal(cell(row(id), name), "—", id + " " + name);
+  assert.equal(textOf(all(row("corrected"), (n) => n.props["data-cell"] === "what-line2")[0]), "Lowered by GH₵6.00");
+  assert.equal(textOf(all(row("stock-credit"), (n) => n.props["data-cell"] === "what-line2")[0]), "You owe Supplier GH₵7.00");
+  assert.equal(cell(row("part-paid"), "what"), "Sale of GH₵13.00", "title only, no person or chips");
+  assert.equal(cell(row("part-paid"), "money-in"), "+GH₵8.00");
+  assert.equal(cell(row("part-paid"), "owed"), "GH₵5.00");
+  assert.equal(all(view, (n) => n.props["data-chip"] !== undefined).length, 0);
+  assert.equal(all(row("cash-sale"), (n) => n.props["data-cell"] === "what-line2").length, 0);
 });

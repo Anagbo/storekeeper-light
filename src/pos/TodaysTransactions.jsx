@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { UserRound } from "lucide-react";
 import { db } from "../db/db.js";
 import { formatDate, formatTime } from "../lib/formatDate.js";
 import {
@@ -11,9 +10,8 @@ import {
 import { posText as t } from "./i18n.js";
 import { getMoneyPeriodRange } from "./money.js";
 import { PosBackButton, PosPage } from "./PosComponents.jsx";
-import { createPosTransactionRows, describeHomeTableRow, describeTransactionRow, filterPosTransactionRows } from "./transactionFeed.js";
-import { displayName } from "../lib/displayName.js";
-import { AmountCell, DASH, WhatText } from "./Home.jsx";
+import { createPosTransactionRows, describeTransactionRow, filterPosTransactionRows } from "./transactionFeed.js";
+import { Chip, sumWideRows, TransactionTable } from "./TransactionTable.jsx";
 import { PHONE_LAYOUT } from "./layout.js";
 
 const FILTERS = ["all", "sold", "spent", "credit"];
@@ -28,28 +26,6 @@ const AMOUNT_TONES = {
   credit: { className: "text-[#7F1D1D]", sign: "" },
   neutral: { className: "text-slate-800", sign: "" }
 };
-
-// Calmer colours (20 Nov 2026): a person chip is pink only when it says someone owes money; a person who
-// only paid (or a chip with only the name) gets a neutral white chip with a 2px grey outline (py-0 keeps
-// it the same height as the filled chips). Payment chips are unchanged.
-const CHIP_STYLES = {
-  payment: "py-0.5 bg-[#CBD5E1] text-[#0F172A]",
-  person: "py-0.5 bg-[#FECDD3] text-[#0F172A]",
-  personNeutral: "border-2 border-slate-500 bg-white py-0 text-[#0F172A]",
-  category: "py-0.5 bg-[#FDE68A] text-[#0F172A]",
-  reason: "py-0.5 bg-[#CBD5E1] text-[#0F172A]",
-  credit: "py-0.5 bg-rose-100 text-rose-950"
-};
-const chipStyle = (chip) => (chip.kind === "person" && !chip.owes ? CHIP_STYLES.personNeutral : CHIP_STYLES[chip.kind] ?? CHIP_STYLES.payment);
-
-function Chip({ chip, nowrap = false }) {
-  return (
-    <span data-chip={chip.kind} data-owes={chip.kind === "person" ? String(Boolean(chip.owes)) : undefined} className={`inline-flex max-w-full items-center gap-1 rounded-[10px] px-2 text-base font-bold ${nowrap ? "whitespace-nowrap" : "[overflow-wrap:anywhere]"} ${chipStyle(chip)}`}>
-      {chip.kind === "person" && <UserRound size={16} aria-hidden="true" className="shrink-0" />}
-      {chip.label}
-    </span>
-  );
-}
 
 // One row: title and amount on line 1, chips and time on line 2. Rows are not buttons (no
 // chevron, no hover, not focusable) until their detail view is designed.
@@ -76,42 +52,6 @@ function TransactionRow({ row }) {
 
 // ---- Wide layout (wiring 24, D4): three cards, the filters, then one table. Wide only; the phone is unchanged. ----
 
-// What each wide row shows: Home's cut of the row (Money in, On credit, Spent, same tones) plus the
-// Details (payment chips, the spent category, the correction's reason, and for stock bought from a supplier
-// the pink "You owe {Supplier} GH₵x" chip) and the Person. Decided 22 Nov 2026: stock bought on credit shows
-// its amount only in that chip, so its Spent and On credit cells are dashes (nothing was paid out, nothing was
-// given on credit) and every Total today cell equals the sum of the amounts shown above it.
-function describeWideRow(row) {
-  const cut = describeHomeTableRow(row);
-  const view = describeTransactionRow(row);
-  const stockOnCredit = row.kind === "credit";
-  const supplierOwed = (row.kind === "credit" || row.kind === "spent") && row.owedPesewas > 0;
-  const correction = row.kind === "adjustment";
-  const details = view.chips.filter((chip) => chip.kind === "payment" || chip.kind === "category" || chip.kind === "reason" || (supplierOwed && chip.kind === "person" && chip.owes));
-  // A balance correction moves no money and gives no credit: the amount it lowered the debt by is a plain grey
-  // chip next to the reason chip, and its three amount cells are dashes (22 Nov 2026).
-  if (correction) details.push({ kind: "reason", label: t("transactions.row.loweredByChip", { amount: formatGhs(view.amountPesewas) }) });
-  return {
-    ...cut,
-    spentPesewas: stockOnCredit ? 0 : cut.spentPesewas,
-    owedPesewas: correction ? 0 : cut.owedPesewas,
-    details,
-    person: displayName(row.customerName) || displayName(row.supplierName)
-  };
-}
-
-// The table totals: each column adds the amounts shown in it.
-export function sumWideRows(rows) {
-  const totals = { moneyIn: 0, spent: 0, onCredit: 0 };
-  for (const row of rows) {
-    const cut = describeWideRow(row);
-    totals.moneyIn += cut.moneyInPesewas;
-    totals.spent += cut.spentPesewas;
-    totals.onCredit += cut.owedPesewas;
-  }
-  return totals;
-}
-
 const WIDE_CARD = "flex min-w-0 flex-col justify-center rounded-[18px] border-2 border-l-[6px] border-slate-300 bg-white px-4 py-4 text-[#0F172A]";
 // 40px bold at most; smaller only when the card is too narrow for GH₵12,345.00 (never clipped).
 const WIDE_AMOUNT = "block whitespace-nowrap text-[length:max(28px,min(40px,12.5cqi))] font-bold leading-tight";
@@ -132,65 +72,6 @@ function WideSummary({ totals, rail }) {
         <p data-credit-amount="" data-wide-amount="" className={WIDE_AMOUNT}>{formatGhs(totals.creditGiven)}</p>
       </div>
     </section>
-  );
-}
-
-// One structure at every wide width: five fixed columns (Time 72px, three money columns 140px, What takes
-// the rest). What holds the title, the person's name (grey) and the chips; chips wrap between chips, never
-// inside one. Cell padding is the normal 8px.
-function WideTable({ rows, totals }) {
-  const head = "p-2 font-bold";
-  return (
-    <div className="min-w-0 rounded-[18px] border-2 border-slate-300 bg-white px-0 py-3">
-      <table data-wide-table="" data-columns={5} className="w-full table-fixed border-collapse text-[17px] tabular-nums [&_td:not(:first-child)]:font-bold">
-        <colgroup>
-          <col style={{ width: 72 }} />
-          <col />
-          <col style={{ width: 140 }} />
-          <col style={{ width: 140 }} />
-          <col style={{ width: 140 }} />
-        </colgroup>
-        <thead>
-          <tr className="border-b-2 border-slate-300 text-[17px] text-slate-600">
-            <th scope="col" className={`${head} whitespace-nowrap text-left`}>{t("home.tableTime")}</th>
-            <th scope="col" className={`${head} text-left`}>{t("home.tableWhat")}</th>
-            <th scope="col" className={`${head} whitespace-nowrap text-right`}>{t("home.tableMoneyIn")}</th>
-            <th scope="col" className={`${head} whitespace-nowrap text-right`}>{t("home.tableSpent")}</th>
-            <th scope="col" className={`${head} whitespace-nowrap text-right`}>{t("transactions.tableOnCredit")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => {
-            const view = describeWideRow(row);
-            return (
-              <tr key={row.id} data-wide-row="" data-row-kind={row.kind} data-row-id={row.id} className="border-b border-slate-200 align-top">
-                <td className="whitespace-nowrap p-2 font-normal text-slate-600"><time dateTime={new Date(row.timestamp).toISOString()}>{formatTime(row.timestamp)}</time></td>
-                <td data-cell="what" className="min-w-0 p-2 leading-snug">
-                  <WhatText text={view.title} />
-                  {view.person && <span data-cell="person" className="block font-normal text-slate-600 [overflow-wrap:anywhere]">{view.person}</span>}
-                  {view.details.length > 0 && (
-                    <span data-cell="chips" className="mt-1 flex flex-wrap gap-1.5">
-                      {view.details.map((chip) => <Chip key={`${chip.kind}:${chip.label}`} chip={chip} nowrap />)}
-                    </span>
-                  )}
-                </td>
-                <AmountCell name="money-in" tone="in" pesewas={view.moneyInPesewas} hidden={false} />
-                <AmountCell name="spent" tone={view.spentTone} pesewas={view.spentPesewas} hidden={false} />
-                <AmountCell name="owed" tone={view.owedTone} pesewas={view.owedPesewas} hidden={false} />
-              </tr>
-            );
-          })}
-        </tbody>
-        <tfoot>
-          <tr data-wide-total="" className="border-t-2 border-slate-400 font-bold text-[#0F172A]">
-            <th scope="row" colSpan={2} className="p-2 text-left">{t("transactions.totalToday")}</th>
-            <td data-cell="total-money-in" className="whitespace-nowrap p-2 text-right">{formatGhs(totals.moneyIn)}</td>
-            <td data-cell="total-spent" className="whitespace-nowrap p-2 text-right">{formatGhs(totals.spent)}</td>
-            <td data-cell="total-owed" className="whitespace-nowrap p-2 text-right">{formatGhs(totals.onCredit)}</td>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
   );
 }
 
@@ -226,7 +107,7 @@ function WideTransactions({ data, filter, setFilter, visibleRows, date, layout, 
             ))}
           </div>
           {visibleRows.length ? (
-            <WideTable rows={visibleRows} totals={sumWideRows(data.transactions)} />
+            <TransactionTable rows={visibleRows} totals={sumWideRows(data.transactions)} layout={layout} />
           ) : (
             <p data-empty="" className="py-2 text-[17px] font-semibold text-slate-700">{t("transactions.empty")}</p>
           )}
