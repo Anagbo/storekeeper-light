@@ -44,13 +44,13 @@ for (const width of [768, 1024, 1280, 1440]) {
   test(`wide ${width}: columns, each row kind in the right column, part-paid example, total equals the cards`, async () => {
     const view = await mount(getLayout(width));
     const heads = all(view, (n) => n.type === "th" && n.props.scope === "col").map((th) => textOf(th));
-    assert.deepEqual(heads, width < 1024 ? ["Time", "What", "Money in", "Spent", "On credit"] : ["Time", "What", "Details", "Person", "Money in", "Spent", "On credit"]);
+    assert.deepEqual(heads, ["Time", "What", "Money in", "Spent", "On credit"]);
 
     const part = byKind(view, "part-paid");
     assert.equal(cell(part, "money-in"), "+GH₵8.00");
     assert.equal(cell(part, "owed"), "GH₵5.00");
     assert.equal(cell(part, "spent"), "—");
-    assert.match(cell(part, "what"), width < 1024 ? /^Sale of GH₵13.00Ama.*Cash GH₵8.00/ : /^Sale of GH₵13.00$/);
+    assert.match(cell(part, "what"), /^Sale of GH₵13.00Ama.*Cash GH₵8.00/);
 
     assert.equal(cell(byKind(view, "cash-sale"), "money-in"), "+GH₵8.00");
     assert.equal(cell(byKind(view, "credit-only"), "owed"), "GH₵6.00");
@@ -58,7 +58,7 @@ for (const width of [768, 1024, 1280, 1440]) {
     assert.equal(cell(byKind(view, "collected"), "money-in"), "+GH₵5.00");
     const spent = byKind(view, "spent");
     assert.equal(cell(spent, "spent"), "−GH₵3.00");
-    assert.match(width < 1024 ? cell(spent, "what") : cell(spent, "details"), /Transport/);
+    assert.match(cell(spent, "what"), /Transport/);
     const stock = byKind(view, "stock-credit");
     assert.equal(cell(stock, "spent"), "—");
     assert.equal(cell(stock, "owed"), "—");

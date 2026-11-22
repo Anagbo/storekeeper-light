@@ -9,7 +9,8 @@ import { ENV } from "./helpers/lookChecks.js";
 const LONG = "Abena Konadu Asantewaa Mensah-Bonsu Ofor";
 const SEEDS = {
   day: `await setPreference("posSetupCompleted", true);
-    await recordCashSale({ amountPesewas: 1234500 });
+    await recordCashSale({ amountPesewas: 1234500, cashReceivedPesewas: 700000, momoReceivedPesewas: 534500, parts: [{ paymentMethod: "cash", amountPesewas: 700000 }, { paymentMethod: "momo", amountPesewas: 534500 }], saleItems: [] });
+    await recordExpense({ amountPesewas: 2469000, paidAmountPesewas: 1234500, category: "stock", newSupplier: { name: ${JSON.stringify(LONG)} } });
     await recordCreditSale({ name: ${JSON.stringify(LONG)}, amountPesewas: 2469000, initialPaymentPesewas: 1234500 });
     await recordCreditSale({ name: "Yaw", amountPesewas: 1234500 });
     await recordExpense({ amountPesewas: 1234500, paidAmountPesewas: 1234500, category: "transport", paymentMethod: "cash" });`
@@ -24,7 +25,7 @@ const MEASURE = `(() => {
   const amounts = [...document.querySelectorAll("main [data-wide-amount], main [data-cell=money-in], main [data-cell=spent], main [data-cell=owed], main [data-cell^=total-]")].map((el) => ({ text: el.textContent, lines: lines(el), clipped: el.scrollWidth > el.clientWidth + 0.5, size: getComputedStyle(el).fontSize, ...box(el) }));
   const filters = [...document.querySelectorAll("main [aria-pressed]")].map((el) => ({ text: el.textContent, lines: lines(el), h: el.getBoundingClientRect().height }));
   const summary = [...document.querySelectorAll("main [data-summary]")].map((el) => ({ key: el.dataset.summary, ...box(el) }));
-  return { innerWidth, scrollWidth: document.documentElement.scrollWidth, table: table && box(table), tableScroll: table && table.scrollWidth, card: card && box(card), padding: [...document.querySelectorAll("main [data-wide-table] td, main [data-wide-table] th")].map((c) => getComputedStyle(c).paddingLeft + "/" + getComputedStyle(c).paddingTop), pagePad: getComputedStyle(document.querySelector("main")).paddingLeft, cols: table && Number(table.dataset.columns), amounts, filters, summary, rows: document.querySelectorAll("[data-wide-row]").length, focusableRows: document.querySelectorAll("[data-wide-row][tabindex], [data-wide-row] button, [data-wide-row] a").length };
+  return { innerWidth, scrollWidth: document.documentElement.scrollWidth, table: table && box(table), tableScroll: table && table.scrollWidth, card: card && box(card), padding: [...document.querySelectorAll("main [data-wide-table] td, main [data-wide-table] th")].map((c) => getComputedStyle(c).paddingLeft + "/" + getComputedStyle(c).paddingTop), pagePad: getComputedStyle(document.querySelector("main")).paddingLeft, cols: table && Number(table.dataset.columns), amounts, filters, summary, rowBoxes: [...document.querySelectorAll("[data-wide-row]")].map((r) => Math.round(r.getBoundingClientRect().height)), broken: [...document.querySelectorAll("[data-cell=person], [data-cell=chips] > span, [data-cell=what] [data-what-amount]")].filter((el) => lines(el) > 1 && !/\s/.test(el.textContent.trim()) ).map((el) => el.textContent), chipsOver: [...document.querySelectorAll("[data-cell=chips] > span")].filter((el) => el.getBoundingClientRect().right > el.closest("td").getBoundingClientRect().right + 0.5).map((el) => el.textContent), rows: document.querySelectorAll("[data-wide-row]").length, focusableRows: document.querySelectorAll("[data-wide-row][tabindex], [data-wide-row] button, [data-wide-row] a").length };
 })()`;
 
 const SIZES = [[768, 1024], [1024, 768], [1280, 800], [1440, 900]];
@@ -40,12 +41,15 @@ test("Today’s transactions wide: table inside its card, amounts whole, filters
       const m = await app.evaluate(MEASURE);
       assert.ok(m.scrollWidth <= m.innerWidth, `${at}: no sideways scroll (${m.scrollWidth} > ${m.innerWidth})`);
       assert.ok(m.tableScroll <= m.table.w + 0.5 && m.table.r <= m.card.r - 2 + 0.5 && m.table.l >= m.card.l + 2 - 0.5, `${at}: the table stays inside its card (table ${m.table.w}, scroll ${m.tableScroll}, card ${m.card.w})`);
-      assert.equal(m.cols, width < 1024 ? 5 : 7, `${at}: columns`);
+      assert.equal(m.cols, 5, `${at}: columns`);
       assert.ok(m.padding.every((p) => p === "8px/8px"), `${at}: cell padding 8px (${[...new Set(m.padding)]})`);
       if (width < 1024) assert.equal(m.pagePad, "20px", `${at}: rail page padding 20px`);
-      assert.equal(m.rows, 4, `${at}: four rows`);
+      assert.equal(m.rows, 5, `${at}: four rows`);
       assert.equal(m.focusableRows, 0, `${at}: rows are not focusable`);
       assert.ok(m.amounts.some((a) => a.text === "GH₵12,345.00"), `${at}: the long amount is shown`);
+      console.log(at, "row heights", m.rowBoxes.join(","), "chip overflow", JSON.stringify(m.chipsOver), "broken", JSON.stringify(m.broken));
+      assert.deepEqual(m.chipsOver, [], `${at}: no chip sticks out of the What cell`);
+      assert.ok(width === 768 || Math.max(...m.rowBoxes) <= 110, `${at}: rows about 100px or less (${m.rowBoxes})`);
       for (const a of m.amounts) assert.ok(a.lines === 1 && !a.clipped && a.l >= 0 && a.r <= m.innerWidth, `${at}: amount ${a.text} whole on one line (${a.lines} lines, clipped ${a.clipped})`);
       for (const f of m.filters) assert.ok(f.lines === 1 && f.h >= 52 - 0.5, `${at}: filter ${f.text} on one line, 52px`);
       console.log(at, "card amounts:", m.amounts.filter((a) => a.size && /^(5|4|3)\d/.test(a.size)).map((a) => `${a.size} ${a.text}`).join(" | "), "| summary", JSON.stringify(m.summary.map((s) => [s.key, Math.round(s.w), Math.round(s.h)])));

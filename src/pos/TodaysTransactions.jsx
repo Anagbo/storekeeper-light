@@ -42,9 +42,9 @@ const CHIP_STYLES = {
 };
 const chipStyle = (chip) => (chip.kind === "person" && !chip.owes ? CHIP_STYLES.personNeutral : CHIP_STYLES[chip.kind] ?? CHIP_STYLES.payment);
 
-function Chip({ chip }) {
+function Chip({ chip, nowrap = false }) {
   return (
-    <span data-chip={chip.kind} data-owes={chip.kind === "person" ? String(Boolean(chip.owes)) : undefined} className={`inline-flex max-w-full items-center gap-1 rounded-[10px] px-2 text-base font-bold [overflow-wrap:anywhere] ${chipStyle(chip)}`}>
+    <span data-chip={chip.kind} data-owes={chip.kind === "person" ? String(Boolean(chip.owes)) : undefined} className={`inline-flex max-w-full items-center gap-1 rounded-[10px] px-2 text-base font-bold ${nowrap ? "whitespace-nowrap" : "[overflow-wrap:anywhere]"} ${chipStyle(chip)}`}>
       {chip.kind === "person" && <UserRound size={16} aria-hidden="true" className="shrink-0" />}
       {chip.label}
     </span>
@@ -130,27 +130,25 @@ function WideSummary({ totals, rail }) {
   );
 }
 
-// Sidebar: seven columns. Rail (below 1024px): Details and Person move into the What cell as a second line,
-// five columns, normal 8px cell padding.
-function DetailChips({ details }) {
-  return (
-    <span className="flex flex-wrap gap-1.5">
-      {details.map((chip) => <Chip key={`${chip.kind}:${chip.label}`} chip={chip} />)}
-    </span>
-  );
-}
-
-function WideTable({ rows, totals, rail }) {
+// One structure at every wide width: five fixed columns (Time 72px, three money columns 140px, What takes
+// the rest). What holds the title, the person's name (grey) and the chips; chips wrap between chips, never
+// inside one. Cell padding is the normal 8px.
+function WideTable({ rows, totals }) {
   const head = "p-2 font-bold";
   return (
-    <div className="min-w-0 rounded-[18px] border-2 border-slate-300 bg-white px-4 py-3">
-      <table data-wide-table="" data-columns={rail ? 5 : 7} className="w-full border-collapse text-[17px] tabular-nums [&_td]:font-bold">
+    <div className="min-w-0 rounded-[18px] border-2 border-slate-300 bg-white px-0 py-3">
+      <table data-wide-table="" data-columns={5} className="w-full table-fixed border-collapse text-[17px] tabular-nums [&_td]:font-bold">
+        <colgroup>
+          <col style={{ width: 72 }} />
+          <col />
+          <col style={{ width: 140 }} />
+          <col style={{ width: 140 }} />
+          <col style={{ width: 140 }} />
+        </colgroup>
         <thead>
           <tr className="border-b-2 border-slate-300 text-[17px] text-slate-600">
             <th scope="col" className={`${head} whitespace-nowrap text-left`}>{t("home.tableTime")}</th>
-            <th scope="col" className={`${head} w-full text-left`}>{t("home.tableWhat")}</th>
-            {!rail && <th scope="col" className={`${head} text-left`}>{t("transactions.tableDetails")}</th>}
-            {!rail && <th scope="col" className={`${head} text-left`}>{t("transactions.tablePerson")}</th>}
+            <th scope="col" className={`${head} text-left`}>{t("home.tableWhat")}</th>
             <th scope="col" className={`${head} whitespace-nowrap text-right`}>{t("home.tableMoneyIn")}</th>
             <th scope="col" className={`${head} whitespace-nowrap text-right`}>{t("home.tableSpent")}</th>
             <th scope="col" className={`${head} whitespace-nowrap text-right`}>{t("transactions.tableOnCredit")}</th>
@@ -161,18 +159,16 @@ function WideTable({ rows, totals, rail }) {
             const view = describeWideRow(row);
             return (
               <tr key={row.id} data-wide-row="" data-row-kind={row.kind} data-row-id={row.id} className="border-b border-slate-200 align-top">
-                <td className="whitespace-nowrap p-2"><time dateTime={new Date(row.timestamp).toISOString()}>{formatTime(row.timestamp)}</time></td>
-                <td data-cell="what" className="p-2 leading-snug">
+                <td className="whitespace-nowrap p-2 font-normal text-slate-600"><time dateTime={new Date(row.timestamp).toISOString()}>{formatTime(row.timestamp)}</time></td>
+                <td data-cell="what" className="min-w-0 p-2 leading-snug">
                   <WhatText text={view.title} />
-                  {rail && (view.details.length > 0 || view.person) && (
-                    <span data-cell="what-line2" className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 font-semibold">
-                      {view.person && <span data-cell="person" className="min-w-0 [overflow-wrap:anywhere]">{view.person}</span>}
-                      {view.details.length > 0 && <DetailChips details={view.details} />}
+                  {view.person && <span data-cell="person" className="block font-normal text-slate-600 [overflow-wrap:anywhere]">{view.person}</span>}
+                  {view.details.length > 0 && (
+                    <span data-cell="chips" className="mt-1 flex flex-wrap gap-1.5">
+                      {view.details.map((chip) => <Chip key={`${chip.kind}:${chip.label}`} chip={chip} nowrap />)}
                     </span>
                   )}
                 </td>
-                {!rail && <td data-cell="details" className="p-2">{view.details.length ? <DetailChips details={view.details} /> : DASH}</td>}
-                {!rail && <td data-cell="person" className="p-2 leading-snug [overflow-wrap:anywhere]">{view.person || DASH}</td>}
                 <AmountCell name="money-in" tone="in" pesewas={view.moneyInPesewas} hidden={false} />
                 <AmountCell name="spent" tone={view.spentTone} pesewas={view.spentPesewas} hidden={false} />
                 <AmountCell name="owed" tone={view.owedTone} pesewas={view.owedPesewas} hidden={false} />
@@ -182,7 +178,7 @@ function WideTable({ rows, totals, rail }) {
         </tbody>
         <tfoot>
           <tr data-wide-total="" className="border-t-2 border-slate-400 font-bold text-[#0F172A]">
-            <th scope="row" colSpan={rail ? 2 : 4} className="p-2 text-left">{t("transactions.totalToday")}</th>
+            <th scope="row" colSpan={2} className="p-2 text-left">{t("transactions.totalToday")}</th>
             <td data-cell="total-money-in" className="whitespace-nowrap p-2 text-right">{formatGhs(totals.moneyIn)}</td>
             <td data-cell="total-spent" className="whitespace-nowrap p-2 text-right">{formatGhs(totals.spent)}</td>
             <td data-cell="total-owed" className="whitespace-nowrap p-2 text-right">{formatGhs(totals.onCredit)}</td>
@@ -225,7 +221,7 @@ function WideTransactions({ data, filter, setFilter, visibleRows, date, layout, 
             ))}
           </div>
           {visibleRows.length ? (
-            <WideTable rows={visibleRows} totals={sumWideRows(data.transactions)} rail={!layout.wideMyMoney} />
+            <WideTable rows={visibleRows} totals={sumWideRows(data.transactions)} />
           ) : (
             <p data-empty="" className="py-2 text-[17px] font-semibold text-slate-700">{t("transactions.empty")}</p>
           )}
