@@ -49,13 +49,9 @@ const PAYMENT_METHODS = [
 
 // One cell of the 29/43 action row: icon above the label, 64px tall, equal columns, never wrapped.
 // D3 detail pane: the same flex column as the phone page, without the page padding (the Owed page has it).
-// wide_layout.keyboard_and_mouse: every control in it gets the 3px #0F172A focus ring with a 2px offset.
-const PANE_FOCUS = [
-  "[&_button:focus-visible]:outline [&_button:focus-visible]:outline-[3px] [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-[#0F172A]",
-  "[&_a:focus-visible]:outline [&_a:focus-visible]:outline-[3px] [&_a:focus-visible]:outline-offset-2 [&_a:focus-visible]:outline-[#0F172A]"
-].join(" ");
+// Its focus ring is the shared wide rule in styles.css.
 function EmbeddedPane({ children }) {
-  return <div data-debtor-pane="" className={`flex min-w-0 flex-col gap-3 ${PANE_FOCUS}`}>{children}</div>;
+  return <div data-debtor-pane="" className={`flex min-w-0 flex-col gap-3`}>{children}</div>;
 }
 
 // D3: Collect is the widest action. 29: Collect | Reminder (| Call); 43: Collect (| Call), the wide

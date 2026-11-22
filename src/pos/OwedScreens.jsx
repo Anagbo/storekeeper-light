@@ -288,8 +288,7 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
 }
 
 const FILTERS = [["all", "All"], ["late", "Late"], ["soon", "Due soon"]];
-// wide_layout.keyboard_and_mouse: a 3px #0F172A focus ring with a 2px offset.
-const WIDE_FOCUS = "focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[#0F172A]";
+// The wide focus ring is one rule in styles.css (.pos-app:not([data-layout="phone"])).
 
 // D3 on wide layouts. Left (about 400px): search, All / Late / Due soon, the plain summary card, the
 // people rows (name, tag and amount only: Collect, WhatsApp and Call are in the detail, same_as_phone
@@ -315,7 +314,7 @@ function WideOwed({ layout, addDebtButton, filter, setFilter, query, setQuery, i
                 role="tab"
                 aria-selected={value === filter}
                 onClick={() => setFilter(value)}
-                className={`min-h-14 min-w-0 whitespace-nowrap rounded-2xl border-2 px-2 text-base font-extrabold ${WIDE_FOCUS} ${value === filter ? "border-slate-900 bg-slate-900 text-white" : "border-slate-500 bg-white text-slate-900 hover:bg-slate-50"}`}
+                className={`min-h-14 min-w-0 whitespace-nowrap rounded-2xl border-2 px-2 text-base font-extrabold ${value === filter ? "border-slate-900 bg-slate-900 text-white" : "border-slate-500 bg-white text-slate-900 hover:bg-slate-50"}`}
               >
                 {label}
               </button>
@@ -367,7 +366,7 @@ function WideOwed({ layout, addDebtButton, filter, setFilter, query, setQuery, i
                         aria-label={posText("person.openDetails", { name: shown })}
                         aria-current={current ? "true" : undefined}
                         onClick={() => onSelect(customer)}
-                        className={`grid min-h-[64px] w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 rounded-3xl border-2 p-4 text-left ${WIDE_FOCUS} ${current ? "border-emerald-900 bg-green-50 shadow-[inset_0_0_0_2px_#064E3B]" : "border-slate-200 bg-white hover:border-slate-400"}`}
+                        className={`grid min-h-[64px] w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 rounded-3xl border-2 p-4 text-left ${current ? "border-emerald-900 bg-green-50 shadow-[inset_0_0_0_2px_#064E3B]" : "border-slate-200 bg-white hover:border-slate-400"}`}
                       >
                         <span data-party-name="" className="col-start-1 row-start-1 line-clamp-2 min-w-0 break-words text-[19px] font-extrabold leading-tight">{shown}</span>
                         <span data-party-amount="" className={`col-start-2 row-start-1 ${dueDate ? "row-span-2" : ""} whitespace-nowrap text-[22px] font-extrabold leading-tight`}>{formatGhs(customer.balancePesewas)}</span>

@@ -34,6 +34,18 @@ button {
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }
 
+/* wide_layout.keyboard_and_mouse: the ONE focus ring of every wide layout (any mode but phone): 3px
+   #0F172A, 2px offset, keyboard focus only. It wins over each control's own older ring. A text field
+   has no offset: the ring sits on its border (the field's label, so one thick edge, no double line). */
+.pos-app:not([data-layout="phone"]) :is(a[href], button, [role="tab"], [role="radio"], select, summary):focus-visible,
+.pos-app:not([data-layout="phone"]) label:has(> input:focus-visible) {
+  outline: 3px solid #0F172A;
+  outline-offset: 2px;
+}
+.pos-app:not([data-layout="phone"]) label:has(> input:focus-visible) {
+  outline-offset: 0;
+}
+
 .amount-fit-container {
   container-type: inline-size;
   min-width: 0;
