@@ -57,7 +57,7 @@ const SCREEN = `(() => {
   const actions = document.querySelector("[data-row=debtor-actions]");
   if (actions) return actions.className.includes("grid-cols-2") ? "43" : "29";
   if (document.querySelector("[data-owed-card]")) return "22";
-  if (document.querySelector("[aria-label='Total owed to you'][role=list], section[aria-label='People who owe you']")) return "32";
+  if (document.querySelector("[aria-label='Total owed to you'][role=list], section[aria-label='Total owed to you']")) return "32";
   return "other";
 })()`;
 
