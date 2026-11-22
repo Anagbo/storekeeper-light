@@ -284,9 +284,9 @@ export default function Home({ onNavigate, notice = "", shopName, layout = PHONE
           <div data-home-row-1="" className={sidebar ? "grid grid-cols-[minmax(0,1fr)_240px] gap-4" : "flex flex-col gap-5"}>
             <MoneyLeftBlock data={data} hidden={hidden} onToggleHidden={toggleHidden} wide />
             {/* The rail: Sell and Spent money share the row equally, so "Spent money" never wraps (768px). */}
-            <div data-home-actions="" className={sidebar ? "flex flex-col gap-4" : "grid grid-cols-2 gap-5"}>
-              <SellButton wide onNavigate={onNavigate} className={sidebar ? "min-h-24 max-h-40 flex-1 self-end" : "h-24"} />
-              <SpentButton wide onNavigate={onNavigate} className={sidebar ? "min-h-16 self-end" : "h-24 justify-self-end"} />
+            <div data-home-actions="" className={sidebar ? "flex flex-col gap-4" : "grid grid-cols-2 gap-4"}>
+              <SellButton wide onNavigate={onNavigate} className={sidebar ? "min-h-24 max-h-40 flex-1 self-end" : "h-24 max-w-none!"} />
+              <SpentButton wide onNavigate={onNavigate} className={sidebar ? "min-h-16 self-end" : "h-24 max-w-none!"} />
             </div>
           </div>
           <Uncounted data={data} />

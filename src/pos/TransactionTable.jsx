@@ -149,7 +149,7 @@ export function TransactionTable({ rows, totals = null, amount = formatGhs, comp
                 <td data-cell="what" className="min-w-0 p-2 leading-snug">
                   <WhatText text={view.title} masked={maskedAmount} />
                   {compact && compactLine(row, amount) && <span data-cell="what-line2" className="block font-normal text-slate-600">{compactLine(row, amount)}</span>}
-                  {!personColumn && !compact && view.person && <span data-cell="person" className="block font-normal text-slate-600 [overflow-wrap:anywhere]">{view.person}</span>}
+                  {!personColumn && view.person && <span data-cell="person" className="block font-normal text-slate-600 [overflow-wrap:anywhere]">{view.person}</span>}
                   {!compact && view.details.length > 0 && (
                     <span data-cell="chips" className="mt-1 flex flex-wrap gap-1.5">
                       {view.details.map((chip) => <Chip key={`${chip.kind}:${chip.label}`} chip={chip} nowrap />)}
