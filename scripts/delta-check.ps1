@@ -13,8 +13,14 @@ Say "Checking wiring and git"
 # 1. Wiring: committed copy must equal the handoff copy
 $a = "docs\handoff\journey-wiring.json"; $b = "src\pos\wiring.json"
 if ((Test-Path $a) -and (Test-Path $b)) {
-  $ha = (Get-FileHash $a -Algorithm SHA256).Hash; $hb = (Get-FileHash $b -Algorithm SHA256).Hash
-  Add-Result "Wiring hash" ($ha -eq $hb) ("handoff " + $ha.Substring(0,8) + " / src " + $hb.Substring(0,8))
+  # Hash the text with line endings normalised: git on Windows may turn LF into CRLF in the working copy.
+  function Get-TextHash($path) {
+    $t = [System.IO.File]::ReadAllText((Resolve-Path $path)) -replace "`r`n", "`n"
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    return ([BitConverter]::ToString($sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($t))) -replace "-", "")
+  }
+  $ha = Get-TextHash $a; $hb = Get-TextHash $b
+  Add-Result "Wiring hash" ($ha -eq $hb) ("handoff " + $ha.Substring(0,8) + " / src " + $hb.Substring(0,8) + " (line endings ignored)")
   try { Get-Content $b -Raw -Encoding UTF8 | ConvertFrom-Json | Out-Null; Add-Result "Wiring is valid JSON" $true "" } catch { Add-Result "Wiring is valid JSON" $false $_.Exception.Message }
 } else { Add-Result "Wiring hash" $false "a wiring file is missing" }
 
