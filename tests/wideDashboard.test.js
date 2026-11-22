@@ -177,11 +177,11 @@ test("Home D1: each person has the phone tile's buttons; the name opens that per
   assert.equal(app.params.customerName, "Amoto");
 });
 
-test("Home D1: the small table has Time, What, Money in, Owed; a part-paid sale shows +GH₵8.00 and GH₵5.00; See all opens 24", async () => {
+test("Home D1: the small table has Time, What, Money in, Spent, On credit; a part-paid sale shows +GH₵8.00 and GH₵5.00; See all opens 24", async () => {
   await seedOwing();
   const app = await open(1280);
   const card = byData(homeNode(app), "data-home-transactions")[0];
-  assert.deepEqual(within(card, (node) => node.type === "th").map((th) => textOf(th)), ["Time", "What", "Money in", "Owed", "Spent"]);
+  assert.deepEqual(within(card, (node) => node.type === "th").map((th) => textOf(th)), ["Time", "What", "Money in", "Spent", "On credit"]);
   const spentRow = byData(card, "data-home-row").find((row) => textOf(byData(row, "data-cell").find((cell) => cell.props["data-cell"] === "what")) === "Spent");
   assert.equal(textOf(byData(spentRow, "data-cell").find((cell) => cell.props["data-cell"] === "spent")), "−GH₵10.00", "the spent row shows its amount, as on 24");
   const rows = byData(card, "data-home-row");

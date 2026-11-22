@@ -4,7 +4,7 @@ import { CirclePlus, ShoppingCart } from "lucide-react";
 import { db } from "../db/db.js";
 import { loadHideAmounts, saveHideAmounts } from "../db/preferences.js";
 import { latestReminderAt, loadReminderEvents } from "../db/reminders.js";
-import { formatTime, formatWeekdayDate } from "../lib/formatDate.js";
+import { formatWeekdayDate } from "../lib/formatDate.js";
 import {
   getFinancialTransactions,
   getOutstandingDebtPesewas,
@@ -24,7 +24,8 @@ import { Amount, HideAmountsButton } from "./HiddenAmount.jsx";
 import { hasSavedPhone, PersonRow } from "./PartyCard.jsx";
 import { PosCard, PosPage, PosSecondaryButton } from "./PosComponents.jsx";
 import { useReminderCheck } from "./ReminderCheck.jsx";
-import { createPosTransactionRows, describeHomeTableRow } from "./transactionFeed.js";
+import { createPosTransactionRows } from "./transactionFeed.js";
+import { TransactionTable } from "./TransactionTable.jsx";
 
 // The quiet "not counted" line counts only the skipped records that fall in the period Home shows
 // (today); a reversal from another day that the totals query also reads is not counted here.
@@ -51,7 +52,7 @@ async function loadHomeTable(transactions) {
   try {
     const suppliers = await db.suppliers.toArray();
     const rows = createPosTransactionRows(transactions, new Map(suppliers.map((supplier) => [supplier.id, supplier.name])));
-    return rows.slice(0, HOME_TABLE_ROWS).map((row) => ({ id: row.id, timestamp: row.timestamp, ...describeHomeTableRow(row) }));
+    return rows.slice(0, HOME_TABLE_ROWS);
   } catch (error) {
     console.error("Could not show today’s transactions on Home.", error);
     return null;
@@ -156,36 +157,6 @@ function OwedCard({ data, hidden, urgent, onNavigate, onWhatsApp, wide }) {
   );
 }
 
-// The What text wraps between words (never cut with an ellipsis); an amount inside it ("Sale of
-// GH₵12,348.00") is one unbreakable piece, so money is never split or cut (audit FAIL 2, 21 Nov 2026).
-const AMOUNT_IN_TEXT = /(GH₵[\d,]+\.\d{2})/;
-export function WhatText({ text }) {
-  return String(text).split(AMOUNT_IN_TEXT).map((part, index) => (
-    index % 2 === 1 ? <span key={index} data-what-amount="" className="whitespace-nowrap">{part}</span> : part
-  ));
-}
-
-// An empty cell shows a dash (as on 24 wide, D4).
-export const DASH = <span className="font-normal text-slate-500">—</span>;
-
-// 24's amount colours and signs (TodaysTransactions AMOUNT_TONES): money in green with +, spent
-// amber-brown with −, credit dark red with no sign, a correction plain dark with no sign.
-const CELL_TONES = {
-  in: { className: "text-[#03543F]", sign: "+" },
-  spent: { className: "text-[#92400E]", sign: "−" },
-  credit: { className: "text-[#7F1D1D]", sign: "" },
-  neutral: { className: "text-slate-800", sign: "" }
-};
-
-export function AmountCell({ name, pesewas, tone, hidden }) {
-  const look = CELL_TONES[tone] ?? CELL_TONES.neutral;
-  return (
-    <td data-cell={name} data-tone={pesewas > 0 ? tone : undefined} className={`whitespace-nowrap p-2 text-right font-extrabold ${look.className}`}>
-      {pesewas > 0 ? <>{look.sign}<Amount hidden={hidden} pesewas={pesewas} /></> : DASH}
-    </td>
-  );
-}
-
 // Wide Home (wiring 22 Home row 3): Today's transactions as a small table (Time, What, Money in, Owed,
 // Spent) with See all, full width below the Owed card. Every row shows its amount. The
 // header button is the phone's "Today's transactions" control: same accessible name, same destination.
@@ -203,28 +174,7 @@ function TransactionsCard({ rows, hidden, onNavigate, rail = false }) {
       ) : rows.length === 0 ? (
         <p data-home-table-empty="" className="py-2 text-[17px] text-slate-700">{t("home.noTransactions")}</p>
       ) : (
-        <table className="w-full border-collapse text-[17px] tabular-nums">
-          <thead>
-            <tr className="border-b-2 border-slate-300 text-[15px] font-bold text-slate-600">
-              <th scope="col" className="whitespace-nowrap p-2 text-left">{t("home.tableTime")}</th>
-              <th scope="col" className="w-full p-2 text-left">{t("home.tableWhat")}</th>
-              <th scope="col" className="whitespace-nowrap p-2 text-right">{t("home.tableMoneyIn")}</th>
-              <th scope="col" className="whitespace-nowrap p-2 text-right">{t("home.tableOwed")}</th>
-              <th scope="col" className="whitespace-nowrap p-2 text-right">{t("home.tableSpent")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id} data-home-row="" className="border-b border-slate-200">
-                <td className="whitespace-nowrap p-2"><time dateTime={new Date(row.timestamp).toISOString()}>{formatTime(row.timestamp)}</time></td>
-                <td data-cell="what" className="p-2 leading-snug"><WhatText text={row.title} /></td>
-                <AmountCell name="money-in" tone="in" pesewas={row.moneyInPesewas} hidden={hidden} />
-                <AmountCell name="owed" tone={row.owedTone} pesewas={row.owedPesewas} hidden={hidden} />
-                <AmountCell name="spent" tone={row.spentTone} pesewas={row.spentPesewas} hidden={hidden} />
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <TransactionTable rows={rows} amount={(pesewas) => <Amount pesewas={pesewas} hidden={hidden} />} compact />
       )}
     </section>
   );
