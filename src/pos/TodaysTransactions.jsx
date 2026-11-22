@@ -77,26 +77,31 @@ function TransactionRow({ row }) {
 // ---- Wide layout (wiring 24, D4): three cards, the filters, then one table. Wide only; the phone is unchanged. ----
 
 // What each wide row shows: Home's cut of the row (Money in, On credit, Spent, same tones) plus the
-// Details (payment chips, the spent category or the correction's reason) and the Person.
+// Details (payment chips, the spent category, the correction's reason, and for stock bought from a supplier
+// the pink "You owe {Supplier} GH₵x" chip) and the Person. Decided 22 Nov 2026: stock bought on credit shows
+// its amount only in that chip, so its Spent and On credit cells are dashes (nothing was paid out, nothing was
+// given on credit) and every Total today cell equals the sum of the amounts shown above it.
 function describeWideRow(row) {
   const cut = describeHomeTableRow(row);
   const view = describeTransactionRow(row);
+  const stockOnCredit = row.kind === "credit";
+  const supplierOwed = (row.kind === "credit" || row.kind === "spent") && row.owedPesewas > 0;
   return {
     ...cut,
-    details: view.chips.filter((chip) => chip.kind === "payment" || chip.kind === "category" || chip.kind === "reason"),
+    spentPesewas: stockOnCredit ? 0 : cut.spentPesewas,
+    details: view.chips.filter((chip) => chip.kind === "payment" || chip.kind === "category" || chip.kind === "reason" || (supplierOwed && chip.kind === "person" && chip.owes)),
     person: displayName(row.customerName) || displayName(row.supplierName)
   };
 }
 
-// The table totals. Money in and On credit add each row's column; Spent adds only money actually paid out
-// (amber-brown rows): stock bought on credit sits in the Spent column in dark red but no money moved, so,
-// like the card, it is not added. A balance correction (plain dark, in On credit) is added to nothing.
+// The table totals: each column adds the amounts shown in it. A balance correction (plain dark, in On credit)
+// is added to nothing.
 export function sumWideRows(rows) {
   const totals = { moneyIn: 0, spent: 0, onCredit: 0 };
   for (const row of rows) {
-    const cut = describeHomeTableRow(row);
+    const cut = describeWideRow(row);
     totals.moneyIn += cut.moneyInPesewas;
-    if (cut.spentTone === "spent") totals.spent += cut.spentPesewas;
+    totals.spent += cut.spentPesewas;
     if (cut.owedTone === "credit") totals.onCredit += cut.owedPesewas;
   }
   return totals;
@@ -104,14 +109,14 @@ export function sumWideRows(rows) {
 
 const WIDE_CARD = "flex min-w-0 flex-col justify-center rounded-[18px] border-2 border-l-[6px] border-slate-300 bg-white px-4 py-4 text-[#0F172A]";
 // 40px bold at most; smaller only when the card is too narrow for GH₵12,345.00 (never clipped).
-const WIDE_AMOUNT = "block whitespace-nowrap text-[length:min(40px,12.5cqi)] font-bold leading-tight";
+const WIDE_AMOUNT = "block whitespace-nowrap text-[length:max(28px,min(40px,12.5cqi))] font-bold leading-tight";
 
 function WideSummary({ totals, rail }) {
   return (
     <section aria-label={t("transactions.summary")} className={`grid min-w-0 gap-4 ${rail ? "grid-cols-2" : "grid-cols-[1.5fr_1fr_1fr]"}`}>
       <div data-summary="money-in" className={`amount-fit-container flex min-w-0 flex-col justify-center rounded-[18px] bg-[#03543F] px-4 py-4 text-white ${rail ? "col-span-2" : ""}`}>
         <p className="text-[17px] font-bold">{t("transactions.moneyIn")}</p>
-        <p data-wide-amount="" className="block whitespace-nowrap text-[length:min(56px,12.5cqi)] font-bold leading-none">{formatGhs(totals.cashInflow)}</p>
+        <p data-wide-amount="" className="block whitespace-nowrap text-[length:max(28px,min(56px,12.5cqi))] font-bold leading-none">{formatGhs(totals.cashInflow)}</p>
       </div>
       <div data-summary="spent" className={`amount-fit-container border-l-amber-700 ${WIDE_CARD}`}>
         <p className="text-[17px] font-bold">{t("transactions.spent")}</p>
@@ -125,17 +130,27 @@ function WideSummary({ totals, rail }) {
   );
 }
 
+// Sidebar: seven columns. Rail (below 1024px): Details and Person move into the What cell as a second line,
+// five columns, normal 8px cell padding.
+function DetailChips({ details }) {
+  return (
+    <span className="flex flex-wrap gap-1.5">
+      {details.map((chip) => <Chip key={`${chip.kind}:${chip.label}`} chip={chip} />)}
+    </span>
+  );
+}
+
 function WideTable({ rows, totals, rail }) {
   const head = "p-2 font-bold";
   return (
-    <div className={`min-w-0 rounded-[18px] border-2 border-slate-300 bg-white py-3 ${rail ? "px-0" : "px-4"}`}>
-      <table data-wide-table="" className={`w-full border-collapse text-[17px] tabular-nums [&_td]:font-bold ${rail ? "[&_td]:px-[3px] [&_th]:px-[3px] [&_td]:tracking-tight" : ""}`}>
+    <div className="min-w-0 rounded-[18px] border-2 border-slate-300 bg-white px-4 py-3">
+      <table data-wide-table="" data-columns={rail ? 5 : 7} className="w-full border-collapse text-[17px] tabular-nums [&_td]:font-bold">
         <thead>
           <tr className="border-b-2 border-slate-300 text-[17px] text-slate-600">
             <th scope="col" className={`${head} whitespace-nowrap text-left`}>{t("home.tableTime")}</th>
             <th scope="col" className={`${head} w-full text-left`}>{t("home.tableWhat")}</th>
-            <th scope="col" className={`${head} text-left`}>{t("transactions.tableDetails")}</th>
-            <th scope="col" className={`${head} text-left`}>{t("transactions.tablePerson")}</th>
+            {!rail && <th scope="col" className={`${head} text-left`}>{t("transactions.tableDetails")}</th>}
+            {!rail && <th scope="col" className={`${head} text-left`}>{t("transactions.tablePerson")}</th>}
             <th scope="col" className={`${head} whitespace-nowrap text-right`}>{t("home.tableMoneyIn")}</th>
             <th scope="col" className={`${head} whitespace-nowrap text-right`}>{t("home.tableSpent")}</th>
             <th scope="col" className={`${head} whitespace-nowrap text-right`}>{t("transactions.tableOnCredit")}</th>
@@ -147,15 +162,17 @@ function WideTable({ rows, totals, rail }) {
             return (
               <tr key={row.id} data-wide-row="" data-row-kind={row.kind} data-row-id={row.id} className="border-b border-slate-200 align-top">
                 <td className="whitespace-nowrap p-2"><time dateTime={new Date(row.timestamp).toISOString()}>{formatTime(row.timestamp)}</time></td>
-                <td data-cell="what" className="p-2 leading-snug"><WhatText text={view.title} /></td>
-                <td data-cell="details" className="p-2">
-                  {view.details.length ? (
-                    <span className="flex flex-wrap gap-1.5">
-                      {view.details.map((chip) => <Chip key={`${chip.kind}:${chip.label}`} chip={chip} />)}
+                <td data-cell="what" className="p-2 leading-snug">
+                  <WhatText text={view.title} />
+                  {rail && (view.details.length > 0 || view.person) && (
+                    <span data-cell="what-line2" className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 font-semibold">
+                      {view.person && <span data-cell="person" className="min-w-0 [overflow-wrap:anywhere]">{view.person}</span>}
+                      {view.details.length > 0 && <DetailChips details={view.details} />}
                     </span>
-                  ) : DASH}
+                  )}
                 </td>
-                <td data-cell="person" className="p-2 leading-snug [overflow-wrap:anywhere]">{view.person || DASH}</td>
+                {!rail && <td data-cell="details" className="p-2">{view.details.length ? <DetailChips details={view.details} /> : DASH}</td>}
+                {!rail && <td data-cell="person" className="p-2 leading-snug [overflow-wrap:anywhere]">{view.person || DASH}</td>}
                 <AmountCell name="money-in" tone="in" pesewas={view.moneyInPesewas} hidden={false} />
                 <AmountCell name="spent" tone={view.spentTone} pesewas={view.spentPesewas} hidden={false} />
                 <AmountCell name="owed" tone={view.owedTone} pesewas={view.owedPesewas} hidden={false} />
@@ -165,7 +182,7 @@ function WideTable({ rows, totals, rail }) {
         </tbody>
         <tfoot>
           <tr data-wide-total="" className="border-t-2 border-slate-400 font-bold text-[#0F172A]">
-            <th scope="row" colSpan={4} className="p-2 text-left">{t("transactions.totalToday")}</th>
+            <th scope="row" colSpan={rail ? 2 : 4} className="p-2 text-left">{t("transactions.totalToday")}</th>
             <td data-cell="total-money-in" className="whitespace-nowrap p-2 text-right">{formatGhs(totals.moneyIn)}</td>
             <td data-cell="total-spent" className="whitespace-nowrap p-2 text-right">{formatGhs(totals.spent)}</td>
             <td data-cell="total-owed" className="whitespace-nowrap p-2 text-right">{formatGhs(totals.onCredit)}</td>
@@ -179,7 +196,7 @@ function WideTable({ rows, totals, rail }) {
 function WideTransactions({ data, filter, setFilter, visibleRows, date, layout, onRetry }) {
   const rail = layout.mode === "rail";
   return (
-    <PosPage wide rail={rail} className={`flex flex-col gap-5 tabular-nums ${rail ? "!px-3" : ""}`}>
+    <PosPage wide rail={rail} className="flex flex-col gap-5 tabular-nums">
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
         <h1 className="text-[30px] font-bold leading-tight">{t("transactions.title")}</h1>
         <p data-today-date="" className="text-[17px] font-semibold text-slate-800">{t("transactions.todayDate", { date })}</p>
@@ -208,7 +225,7 @@ function WideTransactions({ data, filter, setFilter, visibleRows, date, layout, 
             ))}
           </div>
           {visibleRows.length ? (
-            <WideTable rows={visibleRows} totals={sumWideRows(data.transactions)} rail={rail} />
+            <WideTable rows={visibleRows} totals={sumWideRows(data.transactions)} rail={!layout.wideMyMoney} />
           ) : (
             <p data-empty="" className="py-2 text-[17px] font-semibold text-slate-700">{t("transactions.empty")}</p>
           )}
