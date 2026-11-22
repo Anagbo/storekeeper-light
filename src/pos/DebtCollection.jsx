@@ -872,12 +872,12 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               </button>
             )}
           </section>}
-          <section className={embedded ? "amount-fit-container mb-1" : "amount-fit-container rounded-[20px] bg-rose-200 px-4 py-3"}>
-            <p className={embedded ? "text-[17px] font-bold text-slate-600" : "text-lg font-bold text-rose-950"}>{t("collect.balanceOwed", { name: displayName(data.name) })}</p>
-            <p className={embedded ? "amount-fit font-bold tabular-nums text-slate-900" : "amount-fit font-extrabold text-rose-950"} style={embedded ? { fontSize: "40px" } : undefined}>{formatGhs(data.balancePesewas)}</p>
+          <section data-balance-card="" className="amount-fit-container min-w-0 rounded-[20px] border-2 border-[#CBD5E1] bg-white px-4 py-3">
+            <p className="text-[17px] font-bold text-slate-600 [overflow-wrap:anywhere]">{t("collect.balanceOwed", { name: displayName(data.name) })}</p>
+            <p className="amount-fit font-bold tabular-nums text-[#0F172A]" style={{ fontSize: "40px" }}>{formatGhs(data.balancePesewas)}</p>
             {dueLine
-              ? <p className={embedded ? "mt-1 font-bold text-slate-900" : "mt-1 font-bold text-rose-950"}>{dueLine}</p>
-              : dueLabel?.startsWith("Late ") && <p className={embedded ? "mt-1 font-bold text-slate-900" : "mt-1 font-bold text-rose-950"}>{dueLabel}</p>}
+              ? <p className="mt-1 font-bold text-slate-900">{dueLine}</p>
+              : dueLabel?.startsWith("Late ") && <p className="mt-1 font-bold text-slate-900">{dueLabel}</p>}
           </section>
           {/* 43: the wide WhatsApp reminder on top (with or without a saved number). */}
           {isLate && reminderText && (
