@@ -41,7 +41,8 @@ test("wide Home: fits at 768 to 1440, amounts whole, labels on one line, buttons
       for (const c of m.controls) {
         assert.ok(!c.overflow && c.r <= m.innerWidth + 0.5, `${at}: "${c.label}" not clipped`);
         assert.ok(c.lines <= 1, `${at}: "${c.label}" label on one line (${c.lines})`);
-        assert.ok(c.w <= 240.5, `${at}: "${c.label}" at most 240px wide (${c.w})`);
+        const railPair = m.innerWidth < 1280 && /^(Sell|Spent money)$/.test(c.label); // rail: Sell and Spent money share the row (22 Nov 2026)
+        assert.ok(railPair || c.w <= 240.5, `${at}: "${c.label}" at most 240px wide (${c.w})`);
       }
       for (const p of m.people) assert.ok(p.h <= 100, `${at}: a Collect-first person is one compact line (${p.h}px)`);
       assert.deepEqual(m.small, [], `${at}: no text under 15px`);

@@ -727,7 +727,8 @@
     "Nobody owes (decided 14 Nov 2026 from a phone test where a corrected balance of zero still showed 'Owed to you GHS 0.00' and a Collect button): a person counts as owing only with a balance above zero. When nobody owes, the Owed to you card is not shown at all; Home goes from Spent money straight to the Today's transactions link, and the Owed tab in the bottom bar stays. Collect first, the people count and the total use only people with a balance above zero, so a person whose balance was corrected to zero or paid in full disappears from all three.",
     "Reminder check (rules_global.reminders): this button runs the shared 7-day check for the person. A reminder recorded in the last 7 days opens the Send another reminder? sheet first (Send again strong, Not now outlined; Back and Escape act as Not now; after Not now the merchant stays on this screen). Otherwise WhatsApp opens directly. Tapping records a reminder event. No Last reminder text is shown on this screen.",
     "Hide amounts (decided 16 Nov 2026): the eye button hides every shop figure on this screen (sales, profit, money in, money spent, what you should have left, owed to you, you owe suppliers) and shows \"GH₵ ••••\" of fixed width instead, so the length of the number is not leaked. See rules_global.hide_amounts.",
-    "Person row: see rules_global.person_row."
+    "Person row: see rules_global.person_row.",
+    "Spent money button (decided 22 Nov 2026): the button is an outlined dark \"other\" button with the plus icon (2px #0F172A border, dark bold text, white fill), the same on the phone and on wide, because a loud colour right under Sell invites accidental taps during a sale. Sell stays the only solid green action on the screen. Label, destination (44) and accessible name unchanged."
    ]
   },
   "23": {
@@ -4114,7 +4115,7 @@
    "decided": "16 Nov 2026",
    "why": "The merchant often hands the phone to a customer. Profit and totals should not be readable by accident.",
    "where": "Eye button on Home (22) and My money (33). One shared setting: hiding on one hides on both.",
-   "hidden": "Home and My money figures only: sales, profit, money in/out, what you should have left, owed to you, you owe suppliers. Always replaced by \"GH₵ ••••\" (fixed width).",
+   "hidden": "Home and My money figures only: sales, profit, money in/out, what you should have left, owed to you, you owe suppliers. Always replaced by \"GH₵ ••••\" (fixed width). Extended 22 Nov 2026 (privacy at the counter): while Hide amounts is on, Home also hides every customer amount a bystander could read: the amount of each person in Collect first (phone and wide) and, on wide Home, the amounts in Today's transactions (Money in, Spent, On credit, and the amounts in the \"Lowered by\" and \"You owe\" lines). Names, tags and buttons stay. A masked amount's accessible name is \"Amount hidden\" and never contains the number.",
    "not_hidden": "Amounts the owner is working with: the Sell keypad, Review and pay, Collect, debtor pages, Transactions, receipts, and the customer record 73. Those are about one sale or one person, not the shop's overall figures. On Home the Collect first row (one person's amount, with Collect, WhatsApp and Call) stays visible: it is the owner's working row. The Owed to you total above it is hidden.",
    "default": "Amounts shown. The choice is remembered on this phone (local setting, in backup and restore as a setting) and survives restarting the app.",
    "accessibility": "Button 48px, accessible name \"Hide amounts\" or \"Show amounts\" with the current state, icon eye / eye-off, never colour alone.",

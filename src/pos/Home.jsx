@@ -20,7 +20,7 @@ import {
   getUrgentCustomerDebts,
   summarizeOwedPeople,
 } from "./money.js";
-import { Amount, HideAmountsButton } from "./HiddenAmount.jsx";
+import { Amount, HiddenAmount, HideAmountsButton } from "./HiddenAmount.jsx";
 import { hasSavedPhone, PersonRow } from "./PartyCard.jsx";
 import { PosCard, PosPage, PosSecondaryButton } from "./PosComponents.jsx";
 import { useReminderCheck } from "./ReminderCheck.jsx";
@@ -95,9 +95,9 @@ function SellButton({ onNavigate, className = "", wide = false }) {
 
 function SpentButton({ onNavigate, className = "", wide = false }) {
   return (
-    <button type="button" data-home-spent="" onClick={() => onNavigate("SpentMoney")} className={`flex w-full items-center justify-center gap-3 px-4 text-2xl ${wide ? "max-w-60 rounded-2xl border-2 border-[#0F172A] bg-white font-bold text-[#0F172A] focus-visible:outline-emerald-800" : "rounded-[20px] bg-amber-500 font-extrabold text-slate-950 focus-visible:outline-amber-800"} ${FOCUS} ${className}`}>
+    <PosSecondaryButton type="button" data-home-spent="" onClick={() => onNavigate("SpentMoney")} className={`flex w-full items-center justify-center gap-3 ${wide ? "max-w-60" : ""} ${className}`}>
       <CirclePlus size={wide ? 24 : 22} aria-hidden="true" /> {t("home.spentMoneyAction")}
-    </button>
+    </PosSecondaryButton>
   );
 }
 
@@ -142,6 +142,7 @@ function OwedCard({ data, hidden, urgent, onNavigate, onWhatsApp, wide }) {
           <PersonRow
             data-urgent-debtor=""
             wide={wide}
+            maskedAmount={hidden ? <HiddenAmount /> : null}
             name={entry.debt.customerName}
             amountPesewas={entry.debt.amountPesewas}
             dueDate={entry.debt.dueDate}
@@ -174,7 +175,7 @@ function TransactionsCard({ rows, hidden, onNavigate, layout, rail = false }) {
       ) : rows.length === 0 ? (
         <p data-home-table-empty="" className="py-2 text-[17px] text-slate-700">{t("home.noTransactions")}</p>
       ) : (
-        <TransactionTable rows={rows} amount={(pesewas) => <Amount pesewas={pesewas} hidden={hidden} />} compact layout={layout} />
+        <TransactionTable rows={rows} amount={(pesewas) => <Amount pesewas={pesewas} hidden={hidden} />} compact layout={layout} maskedAmount={hidden ? <HiddenAmount /> : null} />
       )}
     </section>
   );
@@ -283,9 +284,9 @@ export default function Home({ onNavigate, notice = "", shopName, layout = PHONE
           <div data-home-row-1="" className={sidebar ? "grid grid-cols-[minmax(0,1fr)_240px] gap-4" : "flex flex-col gap-5"}>
             <MoneyLeftBlock data={data} hidden={hidden} onToggleHidden={toggleHidden} wide />
             {/* The rail: Sell and Spent money share the row equally, so "Spent money" never wraps (768px). */}
-            <div data-home-actions="" className={sidebar ? "flex flex-col gap-4" : "grid grid-cols-2 gap-5"}>
-              <SellButton wide onNavigate={onNavigate} className={sidebar ? "min-h-24 max-h-40 flex-1 self-end" : "h-24"} />
-              <SpentButton wide onNavigate={onNavigate} className={sidebar ? "min-h-16 self-end" : "h-24 justify-self-end"} />
+            <div data-home-actions="" className={sidebar ? "flex flex-col gap-4" : "grid grid-cols-2 gap-4"}>
+              <SellButton wide onNavigate={onNavigate} className={sidebar ? "min-h-24 max-h-40 flex-1 self-end" : "h-24 max-w-none!"} />
+              <SpentButton wide onNavigate={onNavigate} className={sidebar ? "min-h-16 self-end" : "h-24 max-w-none!"} />
             </div>
           </div>
           <Uncounted data={data} />

@@ -83,6 +83,7 @@ export function PartyCard({
   callAnyNumber = false,
   extra = null,
   wide = false,
+  maskedAmount = null,
   ...rest
 }) {
   const shown = displayName(name);
@@ -102,7 +103,7 @@ export function PartyCard({
       {dueDate && <div data-party-tag="" className={`${wide ? "col-start-1" : "col-span-full"} row-start-2 mt-1.5 whitespace-nowrap`}><DueTag dueDate={dueDate} today={today} wording={wording} large={wide} /></div>}
     </>
   );
-  const amount = <span data-party-amount="" className={`col-start-2 ${dueDate ? "row-span-2" : ""} row-start-1 whitespace-nowrap ${wide ? "font-bold" : "font-extrabold"} leading-tight ${AMOUNT_SIZES[amountSize] ?? AMOUNT_SIZES[24]}`}>{formatGhs(amountPesewas)}</span>;
+  const amount = <span data-party-amount="" className={`col-start-2 ${dueDate ? "row-span-2" : ""} row-start-1 whitespace-nowrap ${wide ? "font-bold" : "font-extrabold"} leading-tight ${AMOUNT_SIZES[amountSize] ?? AMOUNT_SIZES[24]}`}>{maskedAmount ?? formatGhs(amountPesewas)}</span>;
   const top = onNameClick ? (
     // rules_global.person_row: the whole top row (name, tag, amount and the space between) opens the
     // detail; a light grey tint while pressed, nothing at rest.
@@ -142,7 +143,7 @@ export function PartyCard({
 // and Call buttons when any number is saved, or "+ Add contact" when none is. The top row opens the
 // detail (43 when late, 29 otherwise: one DebtorDetail route); the buttons never do.
 // `onWhatsApp` gets the click event (the shared reminder check, rules_global.reminders).
-export function PersonRow({ name, amountPesewas, dueDate, today, phone, onOpen, onCollect, collectLabel, onWhatsApp, onAddContact, wide = false, ...rest }) {
+export function PersonRow({ name, amountPesewas, dueDate, today, phone, onOpen, onCollect, collectLabel, onWhatsApp, onAddContact, wide = false, maskedAmount = null, ...rest }) {
   const shown = displayName(name);
   const saved = hasSavedPhone(phone);
   return (
@@ -150,6 +151,7 @@ export function PersonRow({ name, amountPesewas, dueDate, today, phone, onOpen, 
       framed={false}
       {...rest}
       wide={wide}
+      maskedAmount={maskedAmount}
       name={name}
       onNameClick={onOpen}
       nameLabel={t("person.openDetails", { name: shown })}

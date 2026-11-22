@@ -51,7 +51,7 @@ const MEASURE = `(frame, win, doc) => {
   };
 }`;
 
-for (const [screen, html, title, count] of [["22", homeHtml, "Money left today", 4], ["33", myMoneyHtml, "My money", null]]) {
+for (const [screen, html, title, count] of [["22", homeHtml, "Money left today", 5], ["33", myMoneyHtml, "My money", null]]) {
   test(`${screen} at 340, 360 and 393px: the eye is 48px on the title row, in both states, with nothing wrapping or clipped`, { skip }, async () => {
     const results = measureInFrames({
       pages: [{ name: "shown", html: await html(false) }, { name: "hidden", html: await html(true) }],

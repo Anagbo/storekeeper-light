@@ -93,7 +93,7 @@ test("Home D1 at 1280px: title, Money left with Sell and Spent money on row 1; O
   const row1 = byData(home, "data-home-row-1")[0];
   assert.match(row1.props.className, /grid-cols-\[minmax\(0,1fr\)_240px\]/, "Money left, then Sell and Spent money in a column beside it");
   assert.equal(byData(row1, "data-block").length, 1, "Money left is on row 1");
-  assert.ok(byData(row1, "data-home-sell").length === 1 && byData(row1, "data-home-spent").length === 1);
+  assert.ok(byData(row1, "data-home-sell").length === 1 && byData(row1, "data-home-spent").filter((n) => n.type === "button").length === 1);
   const row2 = byData(home, "data-home-row-2")[0];
   // Wiring 22 Home row 3 (21 Nov 2026): five-digit amounts do not fit beside the Owed card, so the table
   // is full width below it on every wide screen.
@@ -196,6 +196,30 @@ test("Home D1: the small table has Time, What, Money in, Spent, On credit; a par
   await seeAll.props.onClick();
   await app.settle();
   assert.equal(app.route, "TodaysTransactions");
+});
+
+test("Home D1 with Hide amounts on: no customer amount digit in Collect first or the table (aria-labels included)", async () => {
+  await seedOwing();
+  await setPreference("hideAmounts", true);
+  const app = await open(1280);
+  const home = homeNode(app);
+  const rows = [...byData(home, "data-urgent-debtor"), ...byData(home, "data-home-row")];
+  assert.ok(rows.length >= 4);
+  const cellText = (n) => textOf(n) + " " + within(n, (c) => typeof c.props?.["aria-label"] === "string").map((c) => c.props["aria-label"]).join(" ");
+  for (const row of rows) assert.doesNotMatch(cellText(row).replace(/Late *[0-9]+ *days?|[0-9]{2}:[0-9]{2}/g, ""), /[0-9]/, "no digit in " + textOf(row));
+  assert.ok(/Collect/.test(textOf(rows[0])) && /Sera|Amoto/.test(textOf(rows[0])));
+});
+
+test("Spent money is the shared outlined dark other button on the phone and on wide, never amber; Sell stays the only solid green", async () => {
+  await seedOwing();
+  for (const width of [393, 1280]) {
+    const app = await open(width);
+    const spent = byData(homeNode(app), "data-home-spent").find((n) => n.type === "button");
+    assert.equal(spent.props["data-look"], "other", String(width));
+    assert.match(spent.props.className, /0F172A/);
+    assert.doesNotMatch(spent.props.className, /amber|bg-emerald/);
+    assert.equal(buttonName(spent), "Spent money");
+  }
 });
 
 test("Home D1 nobody owes: no Owed card; Today's transactions takes the full row", async () => {

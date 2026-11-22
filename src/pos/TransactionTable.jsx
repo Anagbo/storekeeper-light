@@ -37,9 +37,9 @@ export function Chip({ chip, nowrap = false }) {
 // The What text wraps between words (never cut with an ellipsis); an amount inside it ("Sale of
 // GH₵12,348.00") is one unbreakable piece, so money is never split or cut (audit FAIL 2, 21 Nov 2026).
 const AMOUNT_IN_TEXT = /(GH₵[\d,]+\.\d{2})/;
-export function WhatText({ text }) {
+export function WhatText({ text, masked = null }) {
   return String(text).split(AMOUNT_IN_TEXT).map((part, index) => (
-    index % 2 === 1 ? <span key={index} data-what-amount="" className="whitespace-nowrap">{part}</span> : part
+    index % 2 === 1 ? <span key={index} data-what-amount="" className="whitespace-nowrap">{masked ?? part}</span> : part
   ));
 }
 
@@ -56,10 +56,10 @@ const CELL_TONES = {
   neutral: { className: "text-slate-800", sign: "" }
 };
 
-export function AmountCell({ name, pesewas, tone, amount }) {
+export function AmountCell({ name, pesewas, tone, amount, rail = false }) {
   const look = CELL_TONES[tone] ?? CELL_TONES.neutral;
   return (
-    <td data-cell={name} data-tone={pesewas > 0 ? tone : undefined} className={`whitespace-nowrap p-2 text-right font-extrabold ${look.className}`}>
+    <td data-cell={name} data-tone={pesewas > 0 ? tone : undefined} className={`whitespace-nowrap p-2 text-right font-extrabold ${rail ? "w-px min-w-[72px]" : ""} ${look.className}`}>
       {pesewas > 0 ? <>{look.sign}{amount(pesewas)}</> : DASH}
     </td>
   );
@@ -115,29 +115,32 @@ function compactLine(row, amount) {
 // One structure at every wide width: five fixed columns (Time 72px, three money columns 140px, What takes
 // the rest). What holds the title, the person's name (grey) and the chips; chips wrap between chips, never
 // inside one. Cell padding is the normal 8px.
-export function TransactionTable({ rows, totals = null, amount = formatGhs, compact = false, layout = PHONE_LAYOUT }) {
+export function TransactionTable({ rows, totals = null, amount = formatGhs, compact = false, layout = PHONE_LAYOUT, maskedAmount = null }) {
   // Sidebar layout (1280px and up): a Person column. Rail: the person is a grey line under the title.
   const personColumn = layout.mode === "sidebar";
+  // Rail (768 to 1279): the money columns size to their content (w-px + nowrap), Time is about 56px and What takes the rest.
+  const rail = layout.mode === "rail";
   const head = "p-2 font-bold";
+  const moneyHead = `${head} whitespace-nowrap text-right ${rail ? "w-px min-w-[72px]" : ""}`;
   return (
     <div className={compact ? "min-w-0" : "min-w-0 rounded-[18px] border-2 border-slate-300 bg-white px-0 py-3"}>
-      <table data-wide-table="" data-columns={personColumn ? 6 : 5} className="w-full table-fixed border-collapse text-[17px] tabular-nums [&_td:not(:first-child)]:font-bold">
-        <colgroup>
+      <table data-wide-table="" data-columns={personColumn ? 6 : 5} className={`w-full ${rail ? "table-auto" : "table-fixed"} border-collapse text-[17px] tabular-nums [&_td:not(:first-child)]:font-bold`}>
+        {!rail && <colgroup>
           <col style={{ width: 72 }} />
           <col />
           {personColumn && <col style={{ width: 160 }} />}
           <col style={{ width: 140 }} />
           <col style={{ width: 140 }} />
           <col style={{ width: 140 }} />
-        </colgroup>
+        </colgroup>}
         <thead>
           <tr className="border-b-2 border-slate-300 text-[17px] text-slate-600">
-            <th scope="col" className={`${head} whitespace-nowrap text-left`}>{t("home.tableTime")}</th>
+            <th scope="col" className={`${head} whitespace-nowrap text-left ${rail ? "w-14" : ""}`}>{t("home.tableTime")}</th>
             <th scope="col" className={`${head} text-left`}>{t("home.tableWhat")}</th>
             {personColumn && <th scope="col" className={`${head} text-left`}>{t("transactions.tablePerson")}</th>}
-            <th scope="col" className={`${head} whitespace-nowrap text-right`}>{t("home.tableMoneyIn")}</th>
-            <th scope="col" className={`${head} whitespace-nowrap text-right`}>{t("home.tableSpent")}</th>
-            <th scope="col" className={`${head} whitespace-nowrap text-right`}>{t("transactions.tableOnCredit")}</th>
+            <th scope="col" className={moneyHead}>{t("home.tableMoneyIn")}</th>
+            <th scope="col" className={moneyHead}>{t("home.tableSpent")}</th>
+            <th scope="col" className={moneyHead}>{t("transactions.tableOnCredit")}</th>
           </tr>
         </thead>
         <tbody>
@@ -147,9 +150,9 @@ export function TransactionTable({ rows, totals = null, amount = formatGhs, comp
               <tr key={row.id} data-wide-row="" {...(compact ? { "data-home-row": "" } : {})} data-row-kind={row.kind} data-row-id={row.id} className="border-b border-slate-200 align-top">
                 <td className="whitespace-nowrap p-2 font-normal text-slate-600"><time dateTime={new Date(row.timestamp).toISOString()}>{formatTime(row.timestamp)}</time></td>
                 <td data-cell="what" className="min-w-0 p-2 leading-snug">
-                  <WhatText text={view.title} />
+                  <WhatText text={view.title} masked={maskedAmount} />
+                  {!personColumn && view.person && <span data-cell="person" className="block font-normal text-slate-600 [overflow-wrap:anywhere]">{view.person}</span>}
                   {compact && compactLine(row, amount) && <span data-cell="what-line2" className="block font-normal text-slate-600">{compactLine(row, amount)}</span>}
-                  {!personColumn && !compact && view.person && <span data-cell="person" className="block font-normal text-slate-600 [overflow-wrap:anywhere]">{view.person}</span>}
                   {!compact && view.details.length > 0 && (
                     <span data-cell="chips" className="mt-1 flex flex-wrap gap-1.5">
                       {view.details.map((chip) => <Chip key={`${chip.kind}:${chip.label}`} chip={chip} nowrap />)}
@@ -157,9 +160,9 @@ export function TransactionTable({ rows, totals = null, amount = formatGhs, comp
                   )}
                 </td>
                 {personColumn && <td data-cell="person" className="min-w-0 p-2 font-normal leading-snug text-slate-600">{view.person ? <span className="line-clamp-2 break-normal">{view.person}</span> : DASH}</td>}
-                <AmountCell name="money-in" tone="in" pesewas={view.moneyInPesewas} amount={amount} />
-                <AmountCell name="spent" tone={view.spentTone} pesewas={view.spentPesewas} amount={amount} />
-                <AmountCell name="owed" tone={view.owedTone} pesewas={view.owedPesewas} amount={amount} />
+                <AmountCell name="money-in" rail={rail} tone="in" pesewas={view.moneyInPesewas} amount={amount} />
+                <AmountCell name="spent" rail={rail} tone={view.spentTone} pesewas={view.spentPesewas} amount={amount} />
+                <AmountCell name="owed" rail={rail} tone={view.owedTone} pesewas={view.owedPesewas} amount={amount} />
               </tr>
             );
           })}

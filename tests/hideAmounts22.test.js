@@ -90,14 +90,14 @@ test("22: the eye sits on the title row of the green Money left today block, not
   assert.ok(!/Hide amounts/.test(textOf(row)), "icon only: the name is the accessible name");
 });
 
-test("22: hidden replaces every shop figure with GH₵ •••• (a scan finds no money text outside Collect first)", async () => {
+test("22: hidden replaces every shop figure with GH₵ •••• (a scan finds no money text anywhere, Collect first included)", async () => {
   await seed();
   const view = await openHome();
   await toggle(view);
   assert.equal(eyeButton(view.tree).props["aria-label"], "Show amounts");
-  assert.deepEqual(moneyPieces(view.tree, isUrgentRow), [], "no amount left on Home outside the Collect first row");
+  assert.deepEqual(moneyPieces(view.tree), [], "no amount left on Home, the Collect first row included");
   const hidden = hiddenNodes(view.tree);
-  assert.equal(hidden.length, 4, "Money left today, Money in, Money spent, Owed to you");
+  assert.equal(hidden.length, 5, "Money left today, Money in, Money spent, Owed to you, the Collect first person");
   for (const node of hidden) {
     assert.equal(textOf(node), "GH₵ ••••");
     assert.equal(node.props["aria-label"], "Amount hidden");
@@ -106,12 +106,15 @@ test("22: hidden replaces every shop figure with GH₵ •••• (a scan find
   assert.deepEqual(moneyPieces({ type: "p", props: { children: ["Total ", formatGhs(5)] } }), ["GH₵0.05"]);
 });
 
-test("22: Collect first (one person, the owner's working row) keeps its amount while hidden", async () => {
+test("22: while hidden the Collect first person's amount is masked (privacy at the counter); name and buttons stay; shown again it is back", async () => {
   await seed();
   const view = await openHome();
+  const urgent = () => [...walk(view.tree)].find(isUrgentRow);
+  assert.ok(textOf(urgent()).includes(formatGhs(7700)), "shown by default setting off");
   await toggle(view);
-  const urgent = [...walk(view.tree)].find(isUrgentRow);
-  assert.ok(textOf(urgent).includes(formatGhs(7700)));
+  assert.ok(!/77/.test(textOf(urgent())), "no amount digit in the row: " + textOf(urgent()));
+  assert.deepEqual(moneyPieces(urgent()), []);
+  assert.ok(textOf(urgent()).includes("Ama Owes") && textOf(urgent()).includes("Collect"));
 });
 
 test("22: the choice is the shared setting and survives a fresh Home; showing again restores the figures", async () => {
