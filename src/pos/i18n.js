@@ -563,6 +563,7 @@ const ENGLISH = Object.freeze({
   "transactions.row.addedToDebt": "Added to debt",
   "transactions.row.balanceCorrected": "Balance corrected",
   "transactions.row.owesNow": "{name} owes {amount} now",
+  "transactions.row.loweredByChip": "Lowered by {amount}",
   "transactions.row.loweredBy": "lowered by {amount}",
   "transactions.row.owes": "{name} owes {amount}",
   "manualDebt.takenOn": "Taken on: {date}",

@@ -86,23 +86,28 @@ function describeWideRow(row) {
   const view = describeTransactionRow(row);
   const stockOnCredit = row.kind === "credit";
   const supplierOwed = (row.kind === "credit" || row.kind === "spent") && row.owedPesewas > 0;
+  const correction = row.kind === "adjustment";
+  const details = view.chips.filter((chip) => chip.kind === "payment" || chip.kind === "category" || chip.kind === "reason" || (supplierOwed && chip.kind === "person" && chip.owes));
+  // A balance correction moves no money and gives no credit: the amount it lowered the debt by is a plain grey
+  // chip next to the reason chip, and its three amount cells are dashes (22 Nov 2026).
+  if (correction) details.push({ kind: "reason", label: t("transactions.row.loweredByChip", { amount: formatGhs(view.amountPesewas) }) });
   return {
     ...cut,
     spentPesewas: stockOnCredit ? 0 : cut.spentPesewas,
-    details: view.chips.filter((chip) => chip.kind === "payment" || chip.kind === "category" || chip.kind === "reason" || (supplierOwed && chip.kind === "person" && chip.owes)),
+    owedPesewas: correction ? 0 : cut.owedPesewas,
+    details,
     person: displayName(row.customerName) || displayName(row.supplierName)
   };
 }
 
-// The table totals: each column adds the amounts shown in it. A balance correction (plain dark, in On credit)
-// is added to nothing.
+// The table totals: each column adds the amounts shown in it.
 export function sumWideRows(rows) {
   const totals = { moneyIn: 0, spent: 0, onCredit: 0 };
   for (const row of rows) {
     const cut = describeWideRow(row);
     totals.moneyIn += cut.moneyInPesewas;
     totals.spent += cut.spentPesewas;
-    if (cut.owedTone === "credit") totals.onCredit += cut.owedPesewas;
+    totals.onCredit += cut.owedPesewas;
   }
   return totals;
 }
@@ -137,7 +142,7 @@ function WideTable({ rows, totals }) {
   const head = "p-2 font-bold";
   return (
     <div className="min-w-0 rounded-[18px] border-2 border-slate-300 bg-white px-0 py-3">
-      <table data-wide-table="" data-columns={5} className="w-full table-fixed border-collapse text-[17px] tabular-nums [&_td]:font-bold">
+      <table data-wide-table="" data-columns={5} className="w-full table-fixed border-collapse text-[17px] tabular-nums [&_td:not(:first-child)]:font-bold">
         <colgroup>
           <col style={{ width: 72 }} />
           <col />

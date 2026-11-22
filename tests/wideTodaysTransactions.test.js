@@ -67,14 +67,19 @@ for (const width of [768, 1024, 1280, 1440]) {
     assert.equal(textOf(stockChip), "You owe Supplier GH₵7.00");
     assert.equal(stockChip.props["data-owes"], "true");
     const fix = byKind(view, "corrected");
-    assert.equal(cell(fix, "owed"), "GH₵6.00");
+    assert.equal(cell(fix, "owed"), "—");
+    assert.equal(cell(fix, "spent"), "—");
     assert.equal(cell(fix, "money-in"), "—");
-    assert.equal(all(fix, (n) => n.props["data-cell"] === "owed")[0].props.className.includes("text-slate-800"), true);
+    assert.match(cell(fix, "what"), /Lowered by GH₵6.00/);
 
     const total = all(view, (n) => n.props["data-wide-total"] !== undefined)[0];
     assert.equal(cell(total, "total-money-in"), `GH₵${(totals.cashInflow / 100).toFixed(2)}`);
     assert.equal(cell(total, "total-spent"), `GH₵${(totals.expenses / 100).toFixed(2)}`);
     assert.equal(cell(total, "total-owed"), `GH₵${(totals.creditGiven / 100).toFixed(2)}`);
+    const shown = (name) => bodyRows(view).reduce((sum, tr) => sum + (/\d/.test(cell(tr, name)) ? Math.round(Number(cell(tr, name).replace(/[^\d.]/g, "")) * 100) : 0), 0);
+    assert.equal(shown("money-in"), totals.cashInflow, "Money in total = the amounts shown");
+    assert.equal(shown("spent"), totals.expenses, "Spent total = the amounts shown");
+    assert.equal(shown("owed"), totals.creditGiven, "On credit total = the amounts shown");
     const cards = Object.fromEntries(all(view, (n) => n.props["data-summary"] !== undefined).map((n) => [n.props["data-summary"], textOf(n)]));
     assert.match(cards["money-in"], /GH₵21\.00/);
     assert.match(cards.spent, /GH₵3\.00/);
