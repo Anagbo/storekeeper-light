@@ -26,7 +26,7 @@ const MEASURE = `(() => {
   return {
     innerWidth, scrollWidth: document.documentElement.scrollWidth,
     cardR: cr.right, cardL: cr.left, tableR: tr.right, tableL: tr.left, tableScroll: table.scrollWidth, tableW: tr.width,
-    heads: [...table.querySelectorAll("th[scope=col]")].map((h) => h.textContent),
+    brokenWords: (() => { const out = []; for (const el of document.querySelectorAll("[data-cell=person]")) { const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); for (let n = w.nextNode(); n; n = w.nextNode()) { const re = /\S+/g; let m; while ((m = re.exec(n.textContent))) { const r = document.createRange(); r.setStart(n, m.index); r.setEnd(n, m.index + m[0].length); const tops = new Set([...r.getClientRects()].filter((b) => b.width > 0).map((b) => Math.round(b.top / 4))); if (tops.size > 1) out.push(m[0]); } } } return out; })(), personLines: [...document.querySelectorAll("td[data-cell=person]")].map((c) => Math.round(c.querySelector("span") ? c.querySelector("span").getBoundingClientRect().height / parseFloat(getComputedStyle(c).lineHeight) : 0)), heads: [...table.querySelectorAll("th[scope=col]")].map((h) => h.textContent),
     pads: [...table.querySelectorAll("td, th")].map((c) => getComputedStyle(c).paddingLeft + "/" + getComputedStyle(c).paddingTop),
     totals: table.querySelectorAll("tfoot").length,
     rows: [...table.querySelectorAll("[data-home-row]")].map((r) => ({ kind: r.dataset.rowKind, h: Math.round(r.getBoundingClientRect().height), what: r.querySelector("[data-cell=what]").textContent, cells: ["money-in", "spent", "owed"].map((n) => r.querySelector("[data-cell=" + n + "]").textContent) })),
@@ -45,7 +45,9 @@ test("wide Home table: five columns inside its card, amounts whole, correction a
       const m = await app.evaluate(MEASURE);
       console.log(at, JSON.stringify(m.rows.map((r) => [r.kind, r.h, r.what.slice(0, 40), r.cells.join("|")])));
       assert.ok(m.scrollWidth <= m.innerWidth, `${at}: no sideways scroll`);
-      assert.deepEqual(m.heads, ["Time", "What", "Money in", "Spent", "On credit"], `${at}: columns`);
+      assert.deepEqual(m.heads, width >= 1280 ? ["Time", "What", "Person", "Money in", "Spent", "On credit"] : ["Time", "What", "Money in", "Spent", "On credit"], `${at}: columns`);
+      assert.deepEqual(m.brokenWords, [], `${at}: no word broken inside a name`);
+      if (width >= 1280) assert.ok(m.rows.every((r) => r.h <= 115), `${at}: rows about 100px or less (115 allowed) (${m.rows.map((r) => r.h)})`);
       assert.ok(m.tableScroll <= m.tableW + 0.5 && m.tableR <= m.cardR + 0.5 && m.tableL >= m.cardL - 0.5, `${at}: table inside its card (scroll ${m.tableScroll}, table ${m.tableW})`);
       assert.ok(m.pads.every((p) => p === "8px/8px"), `${at}: cell padding 8px (${[...new Set(m.pads)]})`);
       assert.equal(m.totals, 0, `${at}: no Total today row on Home`);
@@ -53,6 +55,7 @@ test("wide Home table: five columns inside its card, amounts whole, correction a
       for (const a of m.amounts) assert.ok(a.lines === 1 && !a.clipped && a.l >= 0 && a.r <= m.innerWidth, `${at}: amount ${a.text} whole on one line`);
       const fix = m.rows.find((r) => r.kind === "adjustment");
       const stock = m.rows.find((r) => r.kind === "credit");
+      if (width >= 1280) assert.ok(m.rows.find((r) => r.kind === "credit").what.length > 0);
       assert.ok(fix && /Lowered by GH₵12,345\.00/.test(fix.what) && fix.cells.every((c) => c === "—"), `${at}: correction line and dashes`);
       assert.ok(stock && /You owe .* GH₵12,345\.00/.test(stock.what) && stock.cells.every((c) => c === "—"), `${at}: stock on credit line and dashes`);
     }

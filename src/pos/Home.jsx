@@ -162,7 +162,7 @@ function OwedCard({ data, hidden, urgent, onNavigate, onWhatsApp, wide }) {
 // header button is the phone's "Today's transactions" control: same accessible name, same destination.
 // rail: 12px side padding instead of 20px (with the page's 20px), so five-digit amounts in every column
 // fit at 768px (decided 21 Nov 2026).
-function TransactionsCard({ rows, hidden, onNavigate, rail = false }) {
+function TransactionsCard({ rows, hidden, onNavigate, layout, rail = false }) {
   return (
     <section data-home-transactions="" aria-label={t("home.transactionsLink")} className={`flex min-w-0 flex-col rounded-[18px] border-2 border-slate-300 bg-white py-4 ${rail ? "px-3" : "px-5"}`}>
       <button type="button" onClick={() => onNavigate("TodaysTransactions")} aria-label={t("home.transactionsLink")} className={`flex min-h-12 w-full min-w-0 items-center justify-between gap-3 rounded-lg text-left ${FOCUS} focus-visible:outline-emerald-800`}>
@@ -174,7 +174,7 @@ function TransactionsCard({ rows, hidden, onNavigate, rail = false }) {
       ) : rows.length === 0 ? (
         <p data-home-table-empty="" className="py-2 text-[17px] text-slate-700">{t("home.noTransactions")}</p>
       ) : (
-        <TransactionTable rows={rows} amount={(pesewas) => <Amount pesewas={pesewas} hidden={hidden} />} compact />
+        <TransactionTable rows={rows} amount={(pesewas) => <Amount pesewas={pesewas} hidden={hidden} />} compact layout={layout} />
       )}
     </section>
   );
@@ -293,7 +293,7 @@ export default function Home({ onNavigate, notice = "", shopName, layout = PHONE
               amounts do not fit beside the Owed card at 17px). Nobody owes: the table is the only card. */}
           <div data-home-row-2="" className="flex flex-col gap-5">
             {urgent.length > 0 && <OwedCard data={data} hidden={hidden} urgent={urgent} onNavigate={onNavigate} onWhatsApp={onWhatsApp} wide />}
-            <TransactionsCard rows={data.table ?? null} hidden={hidden} onNavigate={onNavigate} rail={!sidebar} />
+            <TransactionsCard rows={data.table ?? null} hidden={hidden} onNavigate={onNavigate} layout={layout} rail={!sidebar} />
           </div>
         </>
       )}

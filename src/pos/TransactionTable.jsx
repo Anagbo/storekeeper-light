@@ -4,6 +4,7 @@ import { displayName } from "../lib/displayName.js";
 import { formatGhs } from "../lib/money.js";
 import { formatTime } from "../lib/formatDate.js";
 import { posText as t } from "./i18n.js";
+import { PHONE_LAYOUT } from "./layout.js";
 import { describeHomeTableRow, describeTransactionRow } from "./transactionFeed.js";
 
 // The one transactions table of wiring 24 wide (D4) and 22 wide Home (D1): Time, What, Money in, Spent,
@@ -114,14 +115,17 @@ function compactLine(row, amount) {
 // One structure at every wide width: five fixed columns (Time 72px, three money columns 140px, What takes
 // the rest). What holds the title, the person's name (grey) and the chips; chips wrap between chips, never
 // inside one. Cell padding is the normal 8px.
-export function TransactionTable({ rows, totals = null, amount = formatGhs, compact = false }) {
+export function TransactionTable({ rows, totals = null, amount = formatGhs, compact = false, layout = PHONE_LAYOUT }) {
+  // Sidebar layout (1280px and up): a Person column. Rail: the person is a grey line under the title.
+  const personColumn = layout.mode === "sidebar";
   const head = "p-2 font-bold";
   return (
     <div className={compact ? "min-w-0" : "min-w-0 rounded-[18px] border-2 border-slate-300 bg-white px-0 py-3"}>
-      <table data-wide-table="" data-columns={5} className="w-full table-fixed border-collapse text-[17px] tabular-nums [&_td:not(:first-child)]:font-bold">
+      <table data-wide-table="" data-columns={personColumn ? 6 : 5} className="w-full table-fixed border-collapse text-[17px] tabular-nums [&_td:not(:first-child)]:font-bold">
         <colgroup>
           <col style={{ width: 72 }} />
           <col />
+          {personColumn && <col style={{ width: 160 }} />}
           <col style={{ width: 140 }} />
           <col style={{ width: 140 }} />
           <col style={{ width: 140 }} />
@@ -130,6 +134,7 @@ export function TransactionTable({ rows, totals = null, amount = formatGhs, comp
           <tr className="border-b-2 border-slate-300 text-[17px] text-slate-600">
             <th scope="col" className={`${head} whitespace-nowrap text-left`}>{t("home.tableTime")}</th>
             <th scope="col" className={`${head} text-left`}>{t("home.tableWhat")}</th>
+            {personColumn && <th scope="col" className={`${head} text-left`}>{t("transactions.tablePerson")}</th>}
             <th scope="col" className={`${head} whitespace-nowrap text-right`}>{t("home.tableMoneyIn")}</th>
             <th scope="col" className={`${head} whitespace-nowrap text-right`}>{t("home.tableSpent")}</th>
             <th scope="col" className={`${head} whitespace-nowrap text-right`}>{t("transactions.tableOnCredit")}</th>
@@ -144,13 +149,14 @@ export function TransactionTable({ rows, totals = null, amount = formatGhs, comp
                 <td data-cell="what" className="min-w-0 p-2 leading-snug">
                   <WhatText text={view.title} />
                   {compact && compactLine(row, amount) && <span data-cell="what-line2" className="block font-normal text-slate-600">{compactLine(row, amount)}</span>}
-                  {!compact && view.person && <span data-cell="person" className="block font-normal text-slate-600 [overflow-wrap:anywhere]">{view.person}</span>}
+                  {!personColumn && !compact && view.person && <span data-cell="person" className="block font-normal text-slate-600 [overflow-wrap:anywhere]">{view.person}</span>}
                   {!compact && view.details.length > 0 && (
                     <span data-cell="chips" className="mt-1 flex flex-wrap gap-1.5">
                       {view.details.map((chip) => <Chip key={`${chip.kind}:${chip.label}`} chip={chip} nowrap />)}
                     </span>
                   )}
                 </td>
+                {personColumn && <td data-cell="person" className="min-w-0 p-2 font-normal leading-snug text-slate-600">{view.person ? <span className="line-clamp-2 break-normal">{view.person}</span> : DASH}</td>}
                 <AmountCell name="money-in" tone="in" pesewas={view.moneyInPesewas} amount={amount} />
                 <AmountCell name="spent" tone={view.spentTone} pesewas={view.spentPesewas} amount={amount} />
                 <AmountCell name="owed" tone={view.owedTone} pesewas={view.owedPesewas} amount={amount} />
@@ -161,7 +167,7 @@ export function TransactionTable({ rows, totals = null, amount = formatGhs, comp
         {totals && (
         <tfoot>
           <tr data-wide-total="" className="border-t-2 border-slate-400 font-bold text-[#0F172A]">
-            <th scope="row" colSpan={2} className="p-2 text-left">{t("transactions.totalToday")}</th>
+            <th scope="row" colSpan={personColumn ? 3 : 2} className="p-2 text-left">{t("transactions.totalToday")}</th>
             <td data-cell="total-money-in" className="whitespace-nowrap p-2 text-right">{formatGhs(totals.moneyIn)}</td>
             <td data-cell="total-spent" className="whitespace-nowrap p-2 text-right">{formatGhs(totals.spent)}</td>
             <td data-cell="total-owed" className="whitespace-nowrap p-2 text-right">{formatGhs(totals.onCredit)}</td>

@@ -181,7 +181,7 @@ test("Home D1: the small table has Time, What, Money in, Spent, On credit; a par
   await seedOwing();
   const app = await open(1280);
   const card = byData(homeNode(app), "data-home-transactions")[0];
-  assert.deepEqual(within(card, (node) => node.type === "th").map((th) => textOf(th)), ["Time", "What", "Money in", "Spent", "On credit"]);
+  assert.deepEqual(within(card, (node) => node.type === "th").map((th) => textOf(th)), ["Time", "What", "Person", "Money in", "Spent", "On credit"]);
   const spentRow = byData(card, "data-home-row").find((row) => textOf(byData(row, "data-cell").find((cell) => cell.props["data-cell"] === "what")) === "Spent");
   assert.equal(textOf(byData(spentRow, "data-cell").find((cell) => cell.props["data-cell"] === "spent")), "−GH₵10.00", "the spent row shows its amount, as on 24");
   const rows = byData(card, "data-home-row");

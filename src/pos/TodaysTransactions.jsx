@@ -107,7 +107,7 @@ function WideTransactions({ data, filter, setFilter, visibleRows, date, layout, 
             ))}
           </div>
           {visibleRows.length ? (
-            <TransactionTable rows={visibleRows} totals={sumWideRows(data.transactions)} />
+            <TransactionTable rows={visibleRows} totals={sumWideRows(data.transactions)} layout={layout} />
           ) : (
             <p data-empty="" className="py-2 text-[17px] font-semibold text-slate-700">{t("transactions.empty")}</p>
           )}
