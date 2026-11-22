@@ -61,6 +61,7 @@ function embeddedActionColumns(isLate, hasCall) {
   return hasCall ? "grid-cols-[minmax(0,1.3fr)_minmax(0,1.15fr)_minmax(0,1fr)]" : "grid-cols-[minmax(0,2fr)_minmax(0,1fr)]";
 }
 
+const ACTION_BUTTON_WIDE = "flex min-h-16 min-w-0 flex-row items-center justify-center gap-2 rounded-2xl border-2 px-1.5 py-2 text-base font-extrabold leading-tight whitespace-nowrap";
 const ACTION_BUTTON ="flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-2xl border-2 px-1 py-2 text-base font-extrabold leading-tight whitespace-nowrap sm:h-[72px] sm:text-[17px]";
 
 function WhatsAppIcon({ size = 28 }) {
@@ -729,8 +730,8 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
   const balanceActions = useReceiptActions(balanceReceiptText ?? "", phone ?? "");
   const receiptLabel = latestPayment ? t("collect.receiptForPayment", { amount: formatGhs(latestPayment.amountPesewas) }) : "";
   const balanceReceiptButton = balanceReceiptText && (
-    <button type="button" onClick={() => void balanceActions.send()} className="flex min-h-14 w-full min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-emerald-900 bg-white px-2 text-base font-extrabold text-emerald-900 sm:text-[17px]">
-      <ReceiptText size={26} aria-hidden="true" /> <span className="min-w-0 truncate">{receiptLabel}</span>
+    <button type="button" onClick={() => void balanceActions.send()} className={`flex min-h-14 w-full min-w-0 items-center justify-center rounded-2xl border-2 border-emerald-900 bg-white font-extrabold text-emerald-900 ${embedded ? "gap-1.5 px-1 text-[15px]" : "gap-2 px-2 text-base sm:text-[17px]"}`}>
+      <ReceiptText size={26} aria-hidden="true" /> <span className={embedded ? "whitespace-nowrap" : "min-w-0 truncate"}>{receiptLabel}</span>
     </button>
   );
   const dueDate = data?.debt?.isInstallmentPlan ? data.debt.nextDueDate : data?.debt?.dueDate;
@@ -831,10 +832,23 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
     }
   }
 
+  const showRecordButton = data && (
+  <PosSecondaryButton
+      type="button"
+      data-show-record=""
+      aria-label={t("record.show", { name: displayName(data.name) })}
+      onClick={() => onNavigate("CustomerRecordView", { customerId: data.customerId, customerName: data.name })}
+      className={embedded ? "min-w-0 flex-[1_1_12rem] gap-1! whitespace-nowrap px-3!" : "w-full min-w-0 gap-1! whitespace-nowrap px-3!"}
+    >
+      <span className="shrink-0">Show</span>{" "}
+      <span className="min-w-0 truncate">{displayName(data.name)}</span>{" "}
+      <span className="shrink-0">the record</span>
+    </PosSecondaryButton>
+  );
   const Page = embedded ? EmbeddedPane : PosPage;
   const correctBalanceShown = data && singleDebtMatchesTotal;
   const correctBalanceButton = correctBalanceShown && (
-    <PosSecondaryButton type="button" onClick={() => openCorrection()} disabled={!data.debt?.id || data.balancePesewas <= 0} className={embedded ? "w-full min-w-0 whitespace-nowrap" : "mt-2 w-full"}>
+    <PosSecondaryButton type="button" onClick={() => openCorrection()} disabled={!data.debt?.id || data.balancePesewas <= 0} className={embedded ? "min-w-0 flex-[1_1_12rem] whitespace-nowrap" : "mt-2 w-full"}>
       Correct balance
     </PosSecondaryButton>
   );
@@ -859,7 +873,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
             )}
           </section>}
           <section className={embedded ? "amount-fit-container mb-1" : "amount-fit-container rounded-[20px] bg-rose-200 px-4 py-3"}>
-            <p className={embedded ? "text-sm font-bold text-slate-600" : "text-lg font-bold text-rose-950"}>{t("collect.balanceOwed", { name: displayName(data.name) })}</p>
+            <p className={embedded ? "text-[17px] font-bold text-slate-600" : "text-lg font-bold text-rose-950"}>{t("collect.balanceOwed", { name: displayName(data.name) })}</p>
             <p className={embedded ? "amount-fit font-bold tabular-nums text-slate-900" : "amount-fit font-extrabold text-rose-950"} style={embedded ? { fontSize: "40px" } : undefined}>{formatGhs(data.balancePesewas)}</p>
             {dueLine
               ? <p className={embedded ? "mt-1 font-bold text-slate-900" : "mt-1 font-bold text-rose-950"}>{dueLine}</p>
@@ -880,20 +894,20 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               and disabled without a valid phone. Add contact is not here (Edit contact in the header). */}
           {/* D3: Collect is the widest; Call only with a valid number (no greyed Call in the pane). */}
           <div data-row="debtor-actions" className={`grid gap-2 sm:gap-3 ${embedded ? embeddedActionColumns(isLate, Boolean(phone)) : isLate ? "grid-cols-2" : "grid-cols-3"}`}>
-            <button type="button" disabled={data.balancePesewas <= 0 || !data.debt?.id} onClick={() => onCollect(data.debt)} className={`${ACTION_BUTTON} border-emerald-900 bg-emerald-900 text-white disabled:opacity-50`}>
+            <button type="button" disabled={data.balancePesewas <= 0 || !data.debt?.id} onClick={() => onCollect(data.debt)} className={`${embedded ? ACTION_BUTTON_WIDE : ACTION_BUTTON} border-emerald-900 bg-emerald-900 text-white disabled:opacity-50`}>
               <Banknote size={26} aria-hidden="true" /><span>{t("collect.collect")}</span>
             </button>
             {!isLate && reminderControl({
               label: "Reminder",
               ariaLabel: `WhatsApp reminder for ${displayName(data.name)}`,
-              className: `${ACTION_BUTTON} border-emerald-900 bg-white text-emerald-900 disabled:opacity-50`,
+              className: `${embedded ? ACTION_BUTTON_WIDE : ACTION_BUTTON} border-emerald-900 bg-white text-emerald-900 disabled:opacity-50`,
               children: <><WhatsAppIcon size={26} /><span>Reminder</span></>
             })}
             {phone
-              ? <a href={`tel:${phone}`} className={`${ACTION_BUTTON} ${embedded ? "border-[#0F172A] bg-white text-[#0F172A]" : "border-slate-500 bg-slate-300 text-slate-950"}`}>
+              ? <a href={`tel:${phone}`} className={`${embedded ? ACTION_BUTTON_WIDE : ACTION_BUTTON} ${embedded ? "border-[#0F172A] bg-white text-[#0F172A]" : "border-slate-500 bg-slate-300 text-slate-950"}`}>
                   <Phone size={26} aria-hidden="true" /><span>{t("collect.call")}</span>
                 </a>
-              : !embedded && <button type="button" disabled aria-disabled="true" className={`${ACTION_BUTTON} cursor-not-allowed border-slate-300 bg-slate-100 text-slate-500`}>
+              : !embedded && <button type="button" disabled aria-disabled="true" className={`${embedded ? ACTION_BUTTON_WIDE : ACTION_BUTTON} cursor-not-allowed border-slate-300 bg-slate-100 text-slate-500`}>
                   <Phone size={26} aria-hidden="true" /><span>{t("collect.call")}</span>
                 </button>}
           </div>
@@ -908,27 +922,32 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
           {/* wide_layout.approved_additions (D3): Edit contact and Correct balance, small secondary buttons in
               one row under the Last reminder row. Same labels and handlers as the phone. */}
           {embedded && (
-            <div data-row="debtor-secondary" className="grid min-w-0 grid-cols-2 gap-2">
-              <PosSecondaryButton type="button" onClick={() => setContactEditorOpen(true)} className="w-full min-w-0 whitespace-nowrap">
+            <div data-row="debtor-secondary" className="flex min-w-0 flex-wrap gap-2">
+              <PosSecondaryButton type="button" onClick={() => setContactEditorOpen(true)} className="min-w-0 flex-[1_1_12rem] whitespace-nowrap">
                 <UserRoundPen size={20} aria-hidden="true" />{t("collect.editContact")}
               </PosSecondaryButton>
               {correctBalanceButton}
+              {showRecordButton}
             </div>
           )}
           {/* Wiring 29/43 (16 Nov 2026): "Show {Name} the record" under the Last reminder line opens 73,
               look-only, for the customer to read. One line: a long name is cut, never the words around it. */}
-          <PosSecondaryButton
-            type="button"
-            data-show-record=""
-            aria-label={t("record.show", { name: displayName(data.name) })}
-            onClick={() => onNavigate("CustomerRecordView", { customerId: data.customerId, customerName: data.name })}
-            className="w-full min-w-0 gap-1! whitespace-nowrap px-3!"
-          >
-            <span className="shrink-0">Show</span>{" "}
-            <span className="min-w-0 truncate">{displayName(data.name)}</span>{" "}
-            <span className="shrink-0">the record</span>
-          </PosSecondaryButton>
-          {balanceReceiptText && (
+          {!embedded && showRecordButton}
+          {balanceReceiptText && (embedded ? (
+            <>
+              {/* Pane: the receipt button and Copy receipt side by side; they stack only when both do not fit. */}
+              <div data-row="debtor-receipt" className="flex min-w-0 flex-wrap items-start gap-2">
+                <div className="flex max-w-full shrink-0 grow flex-col gap-2">
+                  {balanceReceiptButton}
+                  <ReceiptOfflineLine online={balanceActions.online} />
+                </div>
+                <div className="min-w-[8.5rem] grow basis-[8.5rem]">
+                  <CopyReceiptButton onClick={() => void balanceActions.copy()} copied={balanceActions.copied} className="min-h-14" />
+                </div>
+              </div>
+              <ReceiptFailedLine failed={balanceActions.failed} />
+            </>
+          ) : (
             <>
               <div className="flex flex-col gap-2">
                 {balanceReceiptButton}
@@ -937,7 +956,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               <CopyReceiptButton onClick={() => void balanceActions.copy()} copied={balanceActions.copied} />
               <ReceiptFailedLine failed={balanceActions.failed} />
             </>
-          )}
+          ))}
           {!embedded && correctBalanceButton}
           {data.debt?.isInstallmentPlan && (
             <section className="flex flex-col gap-1.5 rounded-[18px] border-2 border-emerald-900 bg-green-100 px-3.5 py-2.5">

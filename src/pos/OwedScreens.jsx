@@ -299,7 +299,7 @@ function WideOwed({ layout, addDebtButton, filter, setFilter, query, setQuery, i
       <div data-owed-top="" className="flex min-w-0 items-center justify-between gap-4">
         <div className="flex min-w-0 items-baseline gap-3">
           <h1 className="text-[30px] font-bold leading-tight text-slate-900">Owed</h1>
-          {!isLoading && !hasFailed && <p data-owed-count="" className="text-sm text-slate-600">{customers.length} {customers.length === 1 ? "person" : "people"} · {customers.filter((customer) => isDebtLate(customer.debt)).length} late</p>}
+          {!isLoading && !hasFailed && <p data-owed-count="" className="text-[17px] text-slate-600">{customers.length} {customers.length === 1 ? "person" : "people"} · {customers.filter((customer) => isDebtLate(customer.debt)).length} late</p>}
         </div>
         <div className="w-auto shrink-0">{addDebtButton}</div>
       </div>
@@ -347,7 +347,7 @@ function WideOwed({ layout, addDebtButton, filter, setFilter, query, setQuery, i
           ) : (
             <>
               <div data-owed-summary="" className="box-border min-w-0 w-full rounded-[20px] border-2 border-[#CBD5E1] bg-white px-4 py-3">
-                <h1 className="text-sm font-bold text-slate-600">Total owed to you</h1>
+                <h1 className="text-[17px] font-bold text-slate-600">Total owed to you</h1>
                 <p data-owed-total="" className="whitespace-nowrap text-[30px] font-bold leading-tight text-[#0F172A]">{formatGhs(totalPesewas)}</p>
               </div>
               <div className="flex flex-col gap-3" role="list">
