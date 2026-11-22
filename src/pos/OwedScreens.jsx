@@ -176,12 +176,12 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
           <div className="grid grid-cols-3 gap-2">
             {[1, 2, 3].map((filterButton) => <div key={filterButton} className="h-14 animate-pulse rounded-2xl bg-slate-200" />)}
           </div>
-          <div className="rounded-3xl bg-rose-100 p-4">
-            <div className="mb-3 h-7 w-48 animate-pulse rounded bg-rose-200" />
-            <div className="mb-4 h-10 w-40 animate-pulse rounded bg-rose-200" />
-            <div className="flex flex-col gap-3">
-              {[1, 2].map((customer) => <div key={customer} className="h-24 animate-pulse rounded-3xl bg-white/80" />)}
+          <div className="flex flex-col gap-3">
+            <div className="rounded-[20px] border-2 border-[#CBD5E1] bg-white px-4 py-3">
+              <div className="mb-2 h-4 w-40 animate-pulse rounded bg-slate-200" />
+              <div className="h-8 w-40 animate-pulse rounded bg-slate-200" />
             </div>
+            {[1, 2].map((customer) => <div key={customer} className="h-24 animate-pulse rounded-3xl border-2 border-slate-200 bg-white" />)}
           </div>
         </section>
       ) : hasFailed ? (
