@@ -20,7 +20,8 @@ const MEASURE = `(() => {
   const controls = [...document.querySelectorAll("main button, main a[href]")].filter((el) => el.getClientRects().length && !el.closest("[data-owed-row]") && !el.hasAttribute("data-owed-row") && !el.hasAttribute("data-person-open") && !el.hasAttribute("data-show-record"))
     .map((el) => ({ label: el.getAttribute("aria-label") || el.textContent.replace(/\\s+/g, " ").trim(), lines: lines(el), overflow: el.scrollWidth > el.clientWidth + 0.5, ...box(el) }));
   const rows = [...document.querySelectorAll("main [data-owed-row]")].map((el) => ({ ...box(el), current: el.getAttribute("aria-current") }));
-  return { innerWidth, scrollWidth: document.documentElement.scrollWidth, wide: !!area, list: area && box(document.querySelector("[data-owed-list]")), detail: area && box(document.querySelector("[data-owed-detail]")), amounts, controls, rows, detailText: document.querySelector("[data-owed-detail]")?.textContent ?? "" };
+  const pane = document.querySelector("[data-owed-detail] .amount-fit"); const paneActions = document.querySelector("[data-owed-detail] [data-row=debtor-actions]"); const paneInfo = pane && { size: getComputedStyle(pane).fontSize, weight: getComputedStyle(pane).fontWeight, tabular: getComputedStyle(pane).fontVariantNumeric, gapToActions: paneActions ? Math.round(paneActions.getBoundingClientRect().top - pane.closest("section").getBoundingClientRect().bottom) : null };
+  return { paneInfo, innerWidth, scrollWidth: document.documentElement.scrollWidth, wide: !!area, list: area && box(document.querySelector("[data-owed-list]")), detail: area && box(document.querySelector("[data-owed-detail]")), amounts, controls, rows, detailText: document.querySelector("[data-owed-detail]")?.textContent ?? "" };
 })()`;
 
 // Keyboard focus: one Tab so the page is in keyboard mode, then focus each control and read its ring.
@@ -44,6 +45,7 @@ test("Owed at phone and wide sizes: fits, amounts whole, labels on one line, foc
       assert.ok(m.scrollWidth <= m.innerWidth, `${at}: no sideways scroll (${m.scrollWidth} > ${m.innerWidth})`);
       assert.equal(m.wide, width >= 768, `${at}: wide layout only from 768`);
       assert.ok(m.amounts.some((a) => a.text === "GH₵12,345.00"), `${at}: the long amount is shown`);
+      if (m.wide && m.paneInfo) { const p = m.paneInfo; assert.equal(p.size, "40px", `${at}: pane balance 40px`); assert.ok(Number(p.weight) >= 700 && /tabular-nums/.test(p.tabular), `${at}: bold tabular`); if (!/Send reminder/.test(m.detailText)) assert.equal(p.gapToActions, 16, `${at}: 16px to the action row`); }
       for (const a of m.amounts) assert.ok(a.lines === 1 && !a.clipped && a.l >= 0 && a.r <= m.innerWidth, `${at}: amount ${a.text} whole on one line (${a.lines} lines, clipped ${a.clipped})`);
       for (const c of m.controls) {
         assert.ok(!c.overflow && c.r <= m.innerWidth + 0.5, `${at}: "${c.label}" not clipped`);

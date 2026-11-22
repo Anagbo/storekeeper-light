@@ -858,9 +858,9 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               </button>
             )}
           </section>}
-          <section className={embedded ? "amount-fit-container" : "amount-fit-container rounded-[20px] bg-rose-200 px-4 py-3"}>
+          <section className={embedded ? "amount-fit-container mb-1" : "amount-fit-container rounded-[20px] bg-rose-200 px-4 py-3"}>
             <p className={embedded ? "text-sm font-bold text-slate-600" : "text-lg font-bold text-rose-950"}>{t("collect.balanceOwed", { name: displayName(data.name) })}</p>
-            <p className={embedded ? "amount-fit font-bold tabular-nums text-slate-900" : "amount-fit font-extrabold text-rose-950"} style={embedded ? { fontSize: "clamp(1.75rem, 14cqi, 3.5rem)" } : undefined}>{formatGhs(data.balancePesewas)}</p>
+            <p className={embedded ? "amount-fit font-bold tabular-nums text-slate-900" : "amount-fit font-extrabold text-rose-950"} style={embedded ? { fontSize: "40px" } : undefined}>{formatGhs(data.balancePesewas)}</p>
             {dueLine
               ? <p className={embedded ? "mt-1 font-bold text-slate-900" : "mt-1 font-bold text-rose-950"}>{dueLine}</p>
               : dueLabel?.startsWith("Late ") && <p className={embedded ? "mt-1 font-bold text-slate-900" : "mt-1 font-bold text-rose-950"}>{dueLabel}</p>}
