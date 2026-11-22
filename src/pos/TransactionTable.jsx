@@ -37,9 +37,9 @@ export function Chip({ chip, nowrap = false }) {
 // The What text wraps between words (never cut with an ellipsis); an amount inside it ("Sale of
 // GH₵12,348.00") is one unbreakable piece, so money is never split or cut (audit FAIL 2, 21 Nov 2026).
 const AMOUNT_IN_TEXT = /(GH₵[\d,]+\.\d{2})/;
-export function WhatText({ text }) {
+export function WhatText({ text, masked = null }) {
   return String(text).split(AMOUNT_IN_TEXT).map((part, index) => (
-    index % 2 === 1 ? <span key={index} data-what-amount="" className="whitespace-nowrap">{part}</span> : part
+    index % 2 === 1 ? <span key={index} data-what-amount="" className="whitespace-nowrap">{masked ?? part}</span> : part
   ));
 }
 
@@ -115,7 +115,7 @@ function compactLine(row, amount) {
 // One structure at every wide width: five fixed columns (Time 72px, three money columns 140px, What takes
 // the rest). What holds the title, the person's name (grey) and the chips; chips wrap between chips, never
 // inside one. Cell padding is the normal 8px.
-export function TransactionTable({ rows, totals = null, amount = formatGhs, compact = false, layout = PHONE_LAYOUT }) {
+export function TransactionTable({ rows, totals = null, amount = formatGhs, compact = false, layout = PHONE_LAYOUT, maskedAmount = null }) {
   // Sidebar layout (1280px and up): a Person column. Rail: the person is a grey line under the title.
   const personColumn = layout.mode === "sidebar";
   const head = "p-2 font-bold";
@@ -147,7 +147,7 @@ export function TransactionTable({ rows, totals = null, amount = formatGhs, comp
               <tr key={row.id} data-wide-row="" {...(compact ? { "data-home-row": "" } : {})} data-row-kind={row.kind} data-row-id={row.id} className="border-b border-slate-200 align-top">
                 <td className="whitespace-nowrap p-2 font-normal text-slate-600"><time dateTime={new Date(row.timestamp).toISOString()}>{formatTime(row.timestamp)}</time></td>
                 <td data-cell="what" className="min-w-0 p-2 leading-snug">
-                  <WhatText text={view.title} />
+                  <WhatText text={view.title} masked={maskedAmount} />
                   {compact && compactLine(row, amount) && <span data-cell="what-line2" className="block font-normal text-slate-600">{compactLine(row, amount)}</span>}
                   {!personColumn && !compact && view.person && <span data-cell="person" className="block font-normal text-slate-600 [overflow-wrap:anywhere]">{view.person}</span>}
                   {!compact && view.details.length > 0 && (

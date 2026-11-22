@@ -20,7 +20,7 @@ import {
   getUrgentCustomerDebts,
   summarizeOwedPeople,
 } from "./money.js";
-import { Amount, HideAmountsButton } from "./HiddenAmount.jsx";
+import { Amount, HiddenAmount, HideAmountsButton } from "./HiddenAmount.jsx";
 import { hasSavedPhone, PersonRow } from "./PartyCard.jsx";
 import { PosCard, PosPage, PosSecondaryButton } from "./PosComponents.jsx";
 import { useReminderCheck } from "./ReminderCheck.jsx";
@@ -142,6 +142,7 @@ function OwedCard({ data, hidden, urgent, onNavigate, onWhatsApp, wide }) {
           <PersonRow
             data-urgent-debtor=""
             wide={wide}
+            maskedAmount={hidden ? <HiddenAmount /> : null}
             name={entry.debt.customerName}
             amountPesewas={entry.debt.amountPesewas}
             dueDate={entry.debt.dueDate}
@@ -174,7 +175,7 @@ function TransactionsCard({ rows, hidden, onNavigate, layout, rail = false }) {
       ) : rows.length === 0 ? (
         <p data-home-table-empty="" className="py-2 text-[17px] text-slate-700">{t("home.noTransactions")}</p>
       ) : (
-        <TransactionTable rows={rows} amount={(pesewas) => <Amount pesewas={pesewas} hidden={hidden} />} compact layout={layout} />
+        <TransactionTable rows={rows} amount={(pesewas) => <Amount pesewas={pesewas} hidden={hidden} />} compact layout={layout} maskedAmount={hidden ? <HiddenAmount /> : null} />
       )}
     </section>
   );
