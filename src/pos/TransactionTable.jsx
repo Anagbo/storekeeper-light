@@ -118,8 +118,7 @@ function compactLine(row, amount) {
 export function TransactionTable({ rows, totals = null, amount = formatGhs, compact = false, layout = PHONE_LAYOUT, maskedAmount = null }) {
   // Sidebar layout (1280px and up): a Person column. Rail: the person is a grey line under the title.
   const personColumn = layout.mode === "sidebar";
-  // Rail (768 to 1279): the money columns size to their content (w-px + nowrap), Time is about 56px and What takes the rest.
-  const rail = layout.mode === "rail";
+  // Rail layout: the money columns size to their content (w-px + nowrap), Time is about 56px and What takes the rest.  const rail = layout.mode === "rail";
   const head = "p-2 font-bold";
   const moneyHead = `${head} whitespace-nowrap text-right ${rail ? "w-px min-w-[72px]" : ""}`;
   return (
