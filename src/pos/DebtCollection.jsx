@@ -48,7 +48,24 @@ const PAYMENT_METHODS = [
 ];
 
 // One cell of the 29/43 action row: icon above the label, 64px tall, equal columns, never wrapped.
-const ACTION_BUTTON = "flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-2xl border-2 px-1 py-2 text-base font-extrabold leading-tight whitespace-nowrap sm:h-[72px] sm:text-[17px]";
+// D3 detail pane: the same flex column as the phone page, without the page padding (the Owed page has it).
+// wide_layout.keyboard_and_mouse: every control in it gets the 3px #0F172A focus ring with a 2px offset.
+const PANE_FOCUS = [
+  "[&_button:focus-visible]:outline [&_button:focus-visible]:outline-[3px] [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-[#0F172A]",
+  "[&_a:focus-visible]:outline [&_a:focus-visible]:outline-[3px] [&_a:focus-visible]:outline-offset-2 [&_a:focus-visible]:outline-[#0F172A]"
+].join(" ");
+function EmbeddedPane({ children }) {
+  return <div data-debtor-pane="" className={`flex min-w-0 flex-col gap-3 ${PANE_FOCUS}`}>{children}</div>;
+}
+
+// D3: Collect is the widest action. 29: Collect | Reminder (| Call); 43: Collect (| Call), the wide
+// WhatsApp reminder above. Call only with a valid number.
+function embeddedActionColumns(isLate, hasCall) {
+  if (isLate) return hasCall ? "grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" : "grid-cols-1";
+  return hasCall ? "grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)]" : "grid-cols-[minmax(0,2fr)_minmax(0,1fr)]";
+}
+
+const ACTION_BUTTON ="flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-2xl border-2 px-1 py-2 text-base font-extrabold leading-tight whitespace-nowrap sm:h-[72px] sm:text-[17px]";
 
 function WhatsAppIcon({ size = 28 }) {
   return (
@@ -614,7 +631,11 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
   );
 }
 
-export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCustomerContact, shopName }) {
+// `embedded` (wide_layout.screens "32, 29, 43 Owed", D3): the detail pane beside the Owed list. No Back
+// and no Done (nothing was left); Edit contact and Correct balance are small secondary buttons in one
+// row under the Last reminder row; Collect is the widest action; Call only with a valid number. Every
+// other control, rule and destination is the phone's.
+export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCustomerContact, shopName, embedded = false }) {
   const [contactEditorOpen, setContactEditorOpen] = useState(false);
   const editContactOpened = useRef(false);
   const [correctionOpen, setCorrectionOpen] = useState(false);
@@ -814,23 +835,32 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
     }
   }
 
+  const Page = embedded ? EmbeddedPane : PosPage;
+  const correctBalanceShown = data && singleDebtMatchesTotal;
+  const correctBalanceButton = correctBalanceShown && (
+    <PosSecondaryButton type="button" onClick={() => openCorrection()} disabled={!data.debt?.id || data.balancePesewas <= 0} className={embedded ? "w-auto shrink-0 whitespace-nowrap" : "mt-2 w-full"}>
+      Correct balance
+    </PosSecondaryButton>
+  );
   return (
-    <PosPage className="!pb-6 mx-auto flex max-w-2xl flex-col gap-3 px-4 sm:px-6">
+    <Page className="!pb-6 mx-auto flex max-w-2xl flex-col gap-3 px-4 sm:px-6">
       {data === undefined ? <p role="status">{t("collect.loading")}</p> : !data ? <CollectionError>{t("collect.notFound")}</CollectionError> : (
         <>
           {/* Wiring "Header of 29/43" (final, 16 Nov 2026): Back (to BACK: the previous screen in history, so the
               place on 32 or 22 is kept) is its own plain row above the contact card, left aligned. The card is
-              unchanged from before Back was added. */}
-          <PosBackButton onClick={onBack} className="self-start" />
+              unchanged from before Back was added. D3: no Back (nothing was left). */}
+          {!embedded && <PosBackButton onClick={onBack} className="self-start" />}
           <section data-row="debtor-header" className="flex items-center gap-3 rounded-[20px] border-2 border-slate-500 bg-white px-3 py-3">
             <span className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full bg-emerald-900 text-2xl font-extrabold text-white">{displayName(data.name).slice(0, 1).toUpperCase()}</span>
             <span className="min-w-0 flex-1">
               <strong className="line-clamp-2 break-words text-[22px] leading-tight">{displayName(data.name)}</strong>
               {data.ghanaCardNumber && <span className="text-base text-slate-800">{t("collect.customerId", { number: formatGhanaCard(data.ghanaCardNumber) })}</span>}
             </span>
-            <button type="button" onClick={() => setContactEditorOpen(true)} className="shrink-0 rounded-xl border-2 border-emerald-900 px-2 py-2 text-sm font-extrabold text-emerald-900">
-              <UserRoundPen size={20} className="mx-auto" aria-hidden="true" />{t("collect.editContact")}
-            </button>
+            {!embedded && (
+              <button type="button" onClick={() => setContactEditorOpen(true)} className="shrink-0 rounded-xl border-2 border-emerald-900 px-2 py-2 text-sm font-extrabold text-emerald-900">
+                <UserRoundPen size={20} className="mx-auto" aria-hidden="true" />{t("collect.editContact")}
+              </button>
+            )}
           </section>
           <section className="amount-fit-container rounded-[20px] bg-rose-200 px-4 py-3">
             <p className="text-lg font-bold text-rose-950">{t("collect.balanceOwed", { name: displayName(data.name) })}</p>
@@ -852,7 +882,8 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
           {/* Action buttons (wiring 29 and 43): one row that never wraps at 340px and wider, icon above
               the label, 48px or taller. 29: Collect | WhatsApp | Call. 43: Collect | Call. Call is greyed
               and disabled without a valid phone. Add contact is not here (Edit contact in the header). */}
-          <div data-row="debtor-actions" className={`grid gap-2 sm:gap-3 ${isLate ? "grid-cols-2" : "grid-cols-3"}`}>
+          {/* D3: Collect is the widest; Call only with a valid number (no greyed Call in the pane). */}
+          <div data-row="debtor-actions" className={`grid gap-2 sm:gap-3 ${embedded ? embeddedActionColumns(isLate, Boolean(phone)) : isLate ? "grid-cols-2" : "grid-cols-3"}`}>
             <button type="button" disabled={data.balancePesewas <= 0 || !data.debt?.id} onClick={() => onCollect(data.debt)} className={`${ACTION_BUTTON} border-emerald-900 bg-emerald-900 text-white disabled:opacity-50`}>
               <Banknote size={26} aria-hidden="true" /><span>{t("collect.collect")}</span>
             </button>
@@ -866,7 +897,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               ? <a href={`tel:${phone}`} className={`${ACTION_BUTTON} border-slate-500 bg-slate-300 text-slate-950`}>
                   <Phone size={26} aria-hidden="true" /><span>{t("collect.call")}</span>
                 </a>
-              : <button type="button" disabled aria-disabled="true" className={`${ACTION_BUTTON} cursor-not-allowed border-slate-300 bg-slate-100 text-slate-500`}>
+              : !embedded && <button type="button" disabled aria-disabled="true" className={`${ACTION_BUTTON} cursor-not-allowed border-slate-300 bg-slate-100 text-slate-500`}>
                   <Phone size={26} aria-hidden="true" /><span>{t("collect.call")}</span>
                 </button>}
           </div>
@@ -877,6 +908,16 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
             <KeyValueRows name="last-reminder">
               <EventDetail label={t("kv.lastReminder")} name="last-reminder" valueProps={{ "data-last-reminder": "" }}>{lastReminder}</EventDetail>
             </KeyValueRows>
+          )}
+          {/* wide_layout.approved_additions (D3): Edit contact and Correct balance, small secondary buttons in
+              one row under the Last reminder row. Same labels and handlers as the phone. */}
+          {embedded && (
+            <div data-row="debtor-secondary" className="flex min-w-0 flex-wrap gap-2">
+              <PosSecondaryButton type="button" onClick={() => setContactEditorOpen(true)} className="w-auto shrink-0 whitespace-nowrap">
+                <UserRoundPen size={20} aria-hidden="true" />{t("collect.editContact")}
+              </PosSecondaryButton>
+              {correctBalanceButton}
+            </div>
           )}
           {/* Wiring 29/43 (16 Nov 2026): "Show {Name} the record" under the Last reminder line opens 73,
               look-only, for the customer to read. One line: a long name is cut, never the words around it. */}
@@ -901,11 +942,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               <ReceiptFailedLine failed={balanceActions.failed} />
             </>
           )}
-          {singleDebtMatchesTotal && (
-            <PosSecondaryButton type="button" onClick={() => openCorrection()} disabled={!data.debt?.id || data.balancePesewas <= 0} className="mt-2 w-full">
-              Correct balance
-            </PosSecondaryButton>
-          )}
+          {!embedded && correctBalanceButton}
           {data.debt?.isInstallmentPlan && (
             <section className="flex flex-col gap-1.5 rounded-[18px] border-2 border-emerald-900 bg-green-100 px-3.5 py-2.5">
               <div className="flex items-center justify-between gap-2">
@@ -1006,10 +1043,14 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               </ul>
             ) : <p className="mt-2 text-slate-700">{t("collect.noPaymentHistory")}</p>}
           </section>
-          <div className="flex-1" />
-          <PosPrimaryButton type="button" onClick={onBack} className="h-[68px] min-h-0 rounded-[20px] text-2xl">
-            {t("collect.done")}
-          </PosPrimaryButton>
+          {!embedded && (
+            <>
+              <div className="flex-1" />
+              <PosPrimaryButton type="button" onClick={onBack} className="h-[68px] min-h-0 rounded-[20px] text-2xl">
+                {t("collect.done")}
+              </PosPrimaryButton>
+            </>
+          )}
         </>
       )}
       {contactEditorOpen && data && (
@@ -1093,6 +1134,6 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
         </div>
       )}
       {reminders.sheet}
-    </PosPage>
+    </Page>
   );
 }

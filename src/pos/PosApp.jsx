@@ -94,7 +94,8 @@ function getStatusLabel(sync) {
 
 // wide_layout.page_types.dashboard: Home (22, also behind the Collect sheet 25) and My money (33) sit on
 // the grey page background with white cards (D1, D7). Other screens keep theirs until their wide step.
-const DASHBOARD_ROUTES = new Set([POS_ROUTES.Home, POS_ROUTES.CollectPayment, POS_ROUTES.MyMoney]);
+// Owed (D3) also sits on the grey page: its white cards are directly on it (wiring 32, Layout).
+const DASHBOARD_ROUTES = new Set([POS_ROUTES.Home, POS_ROUTES.CollectPayment, POS_ROUTES.MyMoney, POS_ROUTES.PeopleWhoOweYou]);
 const DASHBOARD_BACKGROUND = "#F1F5F9";
 
 // Where Money received on 62 returns for each confirm step (MOMO16).
@@ -691,6 +692,23 @@ export default function PosApp() {
       onNavigate={navigate}
       shopName={shopName}
       onCollect={(debt) => navigate(POS_ROUTES.CollectPayment, { debtId: debt.id, customerName: debt.customerName })}
+      layout={layout}
+      params={routeState.params}
+      onUpdateParams={updateCurrentParams}
+      // D3: the selected person, the 29/43 screen itself in a pane (no Back, no Done); every action
+      // goes where the phone screen sends it.
+      renderDetail={(person) => (
+        <DebtorDetail
+          key={person.customerId || person.customerName}
+          embedded
+          params={person}
+          onBack={() => {}}
+          onNavigate={navigate}
+          shopName={shopName}
+          onSaveCustomerContact={saveCustomerContact}
+          onCollect={(debt) => navigate(POS_ROUTES.CollectPayment, { debtId: debt.id, customerName: debt.customerName ?? debt.customer_name })}
+        />
+      )}
     />
   ) : route === POS_ROUTES.ManualDebtAmount ? (
     <ManualDebtAmount

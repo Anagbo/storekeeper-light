@@ -8,14 +8,21 @@ import { posText } from "./i18n.js";
 import { displayName } from "../lib/displayName.js";
 import { getDebtDueDate, groupUnpaidDebts, isDebtDueSoon, isDebtLate, loadAllUnpaidDebts, loadUnpaidDebtPage, matchesOwedSearch, OWED_PAGE_SIZE } from "./owed.js";
 import SearchField from "./SearchField.jsx";
-import { hasSavedPhone, PersonRow } from "./PartyCard.jsx";
+import { DueTag, hasSavedPhone, PersonRow } from "./PartyCard.jsx";
 import { AddButton, PosPage, PosSecondaryButton } from "./PosComponents.jsx";
 import { openWhatsApp } from "../lib/openWhatsApp.js";
 import { buildWhatsAppReminderText } from "../utils/whatsapp.js";
 import { latestReminderAt, loadReminderEvents } from "../db/reminders.js";
 import { useReminderCheck } from "./ReminderCheck.jsx";
+import { PHONE_LAYOUT } from "./layout.js";
 
-export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopName }) {
+// wide_layout.screens "32, 29, 43 Owed" (D3, list_with_detail): on wide layouts (layout.js, the one
+// decision) the list sits on the left and the selected person on the right. The selection lives in
+// this screen's own route params (owedSelected), changed by replacing the current entry, so it
+// survives a trip to 25, 73 or Add to debt and never touches another screen's draft.
+// `renderDetail({ customerId, customerName, debtId })` is the 29/43 detail without Back and Done.
+export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopName, layout = PHONE_LAYOUT, params = {}, onUpdateParams, renderDetail }) {
+  const wide = layout.wide && typeof renderDetail === "function";
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [additionalDebts, setAdditionalDebts] = useState([]);
@@ -149,6 +156,38 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
     <AddButton onClick={openAddDebt}>Add debt</AddButton>
   );
 
+  // D3: the person shown on the right. The chosen one while listed; otherwise the first listed person.
+  const listed = !isLoading && !hasFailed ? visibleCustomers : [];
+  const selected = wide ? (listed.find((customer) => customer.id === params.owedSelected) ?? listed[0] ?? null) : null;
+  const selectedId = selected?.id ?? null;
+  useEffect(() => {
+    if (!wide || !selectedId || selectedId === params.owedSelected) return;
+    onUpdateParams?.({ owedSelected: selectedId });
+  }, [wide, selectedId, params.owedSelected]);
+
+  if (wide) {
+    return (
+      <WideOwed
+        layout={layout}
+        addDebtButton={addDebtButton}
+        filter={filter}
+        setFilter={setFilter}
+        query={query}
+        setQuery={setQuery}
+        isLoading={isLoading}
+        hasFailed={hasFailed}
+        onRetry={() => { setLoadError(""); setReloadKey((key) => key + 1); }}
+        customers={visibleCustomers}
+        searching={searching}
+        totalPesewas={totalPesewas}
+        showMoreControl={showMoreControl}
+        selected={selected}
+        onSelect={(customer) => onUpdateParams?.({ owedSelected: customer.id })}
+        renderDetail={renderDetail}
+      />
+    );
+  }
+
   return (
     <PosPage className="mx-auto flex max-w-2xl flex-col gap-4">
       {addDebtButton}
@@ -244,6 +283,104 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
         </section>
       )}
       {reminders.sheet}
+    </PosPage>
+  );
+}
+
+const FILTERS = [["all", "All"], ["late", "Late"], ["soon", "Due soon"]];
+// wide_layout.keyboard_and_mouse: a 3px #0F172A focus ring with a 2px offset.
+const WIDE_FOCUS = "focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[#0F172A]";
+
+// D3 on wide layouts. Left (about 400px): search, All / Late / Due soon, the plain summary card, the
+// people rows (name, tag and amount only: Collect, WhatsApp and Call are in the detail, same_as_phone
+// (c)) and Show more. Right: the selected person (29/43). Add debt at the top right of the page.
+function WideOwed({ layout, addDebtButton, filter, setFilter, query, setQuery, isLoading, hasFailed, onRetry, customers, searching, totalPesewas, showMoreControl, selected, onSelect, renderDetail }) {
+  return (
+    <PosPage wide rail={layout.mode !== "sidebar"} className="flex flex-col gap-5 tabular-nums">
+      <div data-owed-top="" className="flex justify-end">
+        <div className="w-auto">{addDebtButton}</div>
+      </div>
+      <div data-owed-columns="" className="grid min-w-0 items-start gap-5" style={{ gridTemplateColumns: "min(400px, 44%) minmax(0, 1fr)" }}>
+        <section data-owed-list="" aria-label="People who owe you" className="flex min-w-0 flex-col gap-4">
+          <SearchField value={query} onChange={setQuery} />
+          <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Debt filters">
+            {FILTERS.map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                aria-selected={value === filter}
+                onClick={() => setFilter(value)}
+                className={`min-h-14 min-w-0 whitespace-nowrap rounded-2xl border-2 px-2 text-base font-extrabold ${WIDE_FOCUS} ${value === filter ? "border-slate-900 bg-slate-900 text-white" : "border-slate-500 bg-white text-slate-900 hover:bg-slate-50"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {isLoading ? (
+            <section role="status" aria-label="Loading outstanding balances" className="flex flex-col gap-3">
+              <div className="rounded-[20px] border-2 border-[#CBD5E1] bg-white px-4 py-3">
+                <div className="mb-2 h-4 w-40 animate-pulse rounded bg-slate-200" />
+                <div className="h-8 w-40 animate-pulse rounded bg-slate-200" />
+              </div>
+              {[1, 2].map((row) => <div key={row} className="h-20 animate-pulse rounded-3xl border-2 border-slate-200 bg-white" />)}
+            </section>
+          ) : hasFailed ? (
+            <section role="alert" className="flex flex-col items-center gap-3 rounded-2xl border-2 border-rose-300 bg-rose-50 p-5 text-center">
+              <p className="font-bold text-rose-950">Outstanding balances could not be loaded. Try again.</p>
+              <PosSecondaryButton type="button" onClick={onRetry}>Retry</PosSecondaryButton>
+            </section>
+          ) : customers.length === 0 ? (
+            <section data-owed-empty="" className="rounded-2xl border-2 border-slate-300 bg-white p-6 text-center">
+              <UserRound className="mx-auto text-slate-400" size={34} aria-hidden="true" />
+              {searching ? <p className="mt-3 font-bold">{posText("owed.noSearchMatches")}</p> : (
+                <>
+                  <p className="mt-3 font-bold">No one owes you right now.</p>
+                  <p className="mt-1 text-sm text-slate-700">{filter === "all" ? "Record a credit sale to see an outstanding balance here." : `No ${filter === "late" ? "late" : "due soon"} debts right now.`}</p>
+                </>
+              )}
+              {showMoreControl}
+            </section>
+          ) : (
+            <>
+              <div data-owed-summary="" className="box-border min-w-0 w-full rounded-[20px] border-2 border-[#CBD5E1] bg-white px-4 py-3">
+                <h1 className="text-sm font-bold text-slate-600">People who owe you</h1>
+                <p data-owed-total="" className="whitespace-nowrap text-[30px] font-bold leading-tight text-[#7F1D1D]">{formatGhs(totalPesewas)}</p>
+              </div>
+              <div className="flex flex-col gap-3" role="list">
+                {customers.map((customer) => {
+                  const current = customer.id === selected?.id;
+                  const shown = displayName(customer.customerName);
+                  const dueDate = getDebtDueDate(customer.debt);
+                  return (
+                    <article key={customer.id} role="listitem" className="min-w-0">
+                      {/* rules_global.person_row: the same accessible name as the phone row's tap-through.
+                          Selecting stays on this page; the chosen row has a light green fill AND a green
+                          border (never colour alone) and aria-current. */}
+                      <button
+                        type="button"
+                        data-owed-row={customer.id}
+                        aria-label={posText("person.openDetails", { name: shown })}
+                        aria-current={current ? "true" : undefined}
+                        onClick={() => onSelect(customer)}
+                        className={`grid min-h-[64px] w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 rounded-3xl border-2 p-4 text-left ${WIDE_FOCUS} ${current ? "border-emerald-900 bg-green-50 shadow-[inset_0_0_0_2px_#064E3B]" : "border-slate-200 bg-white hover:border-slate-400"}`}
+                      >
+                        <span data-party-name="" className="col-start-1 row-start-1 line-clamp-2 min-w-0 break-words text-[19px] font-extrabold leading-tight">{shown}</span>
+                        <span data-party-amount="" className={`col-start-2 row-start-1 ${dueDate ? "row-span-2" : ""} whitespace-nowrap text-[22px] font-extrabold leading-tight`}>{formatGhs(customer.balancePesewas)}</span>
+                        {dueDate && <span data-party-tag="" className="col-span-full row-start-2 mt-1.5 whitespace-nowrap"><DueTag dueDate={dueDate} /></span>}
+                      </button>
+                    </article>
+                  );
+                })}
+              </div>
+              {showMoreControl}
+            </>
+          )}
+        </section>
+        <section data-owed-detail="" aria-label={selected ? displayName(selected.customerName) : "Selected person"} className="min-w-0">
+          {selected && renderDetail({ customerId: selected.customerId, customerName: selected.customerName, debtId: selected.representativeDebtId })}
+        </section>
+      </div>
     </PosPage>
   );
 }
