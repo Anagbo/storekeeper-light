@@ -128,8 +128,8 @@ function WideSummary({ totals, rail }) {
 function WideTable({ rows, totals, rail }) {
   const head = "p-2 font-bold";
   return (
-    <div className={`min-w-0 rounded-[18px] border-2 border-slate-300 bg-white py-3 ${rail ? "px-2" : "px-4"}`}>
-      <table data-wide-table="" className="w-full border-collapse text-[17px] tabular-nums">
+    <div className={`min-w-0 rounded-[18px] border-2 border-slate-300 bg-white py-3 ${rail ? "px-0" : "px-4"}`}>
+      <table data-wide-table="" className={`w-full border-collapse text-[17px] tabular-nums [&_td]:font-bold ${rail ? "[&_td]:px-[3px] [&_th]:px-[3px] [&_td]:tracking-tight" : ""}`}>
         <thead>
           <tr className="border-b-2 border-slate-300 text-[17px] text-slate-600">
             <th scope="col" className={`${head} whitespace-nowrap text-left`}>{t("home.tableTime")}</th>
@@ -179,7 +179,7 @@ function WideTable({ rows, totals, rail }) {
 function WideTransactions({ data, filter, setFilter, visibleRows, date, layout, onRetry }) {
   const rail = layout.mode === "rail";
   return (
-    <PosPage wide rail={rail} className="flex flex-col gap-5 tabular-nums">
+    <PosPage wide rail={rail} className={`flex flex-col gap-5 tabular-nums ${rail ? "!px-3" : ""}`}>
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
         <h1 className="text-[30px] font-bold leading-tight">{t("transactions.title")}</h1>
         <p data-today-date="" className="text-[17px] font-semibold text-slate-800">{t("transactions.todayDate", { date })}</p>
