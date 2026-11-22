@@ -6,7 +6,7 @@ import { posText as t } from "./i18n.js";
 export default function SearchField({ value, onChange, wide = false }) {
   return (
     <label className={wide
-      ? "flex min-h-14 items-center gap-2 rounded-2xl border-2 border-[#64748B] bg-white px-3"
+      ? "flex min-h-14 items-center gap-2 rounded-2xl border-2 border-slate-500 bg-white px-3"
       : "flex min-h-14 items-center gap-2 rounded-2xl border-[3px] border-slate-500 px-3"}>
       <Search size={24} aria-hidden="true" />
       <input
