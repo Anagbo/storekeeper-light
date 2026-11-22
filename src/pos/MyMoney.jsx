@@ -32,11 +32,12 @@ function Row({ label, amountPesewas, hidden, tone = "", ...rest }) {
   );
 }
 
-function CardTitle({ children, amountPesewas, hidden }) {
+// `wide` (D7): title on one line, the total on the line below it, left-aligned; title 17px and total 24px, both 700.
+function CardTitle({ children, amountPesewas, hidden, wide = false }) {
   return (
-    <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-3">
-      <p className="flex items-center gap-1 text-base font-extrabold sm:text-lg">{children}</p>
-      {amountPesewas !== undefined && <p className="whitespace-nowrap text-xl font-extrabold"><Amount hidden={hidden} pesewas={amountPesewas} /></p>}
+    <div className={wide ? "flex min-w-0 flex-col" : "flex min-w-0 flex-wrap items-baseline justify-between gap-x-3"}>
+      <p className={wide ? "flex items-center gap-1 whitespace-nowrap text-[17px] font-bold" : "flex items-center gap-1 text-base font-extrabold sm:text-lg"}>{children}</p>
+      {amountPesewas !== undefined && <p className={wide ? "whitespace-nowrap text-2xl font-bold" : "whitespace-nowrap text-xl font-extrabold"}><Amount hidden={hidden} pesewas={amountPesewas} /></p>}
     </div>
   );
 }
@@ -87,7 +88,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
           {/* (1) The one strong block (wide: beside the profit card, or the full row when it is hidden). */}
           <section data-block="money-left" className={`amount-fit-container rounded-[20px] bg-emerald-900 px-4 py-3 text-white ${w(`order-1 p-6 ${report.showProfit ? "" : "col-span-2"}`)}`}>
             <p className="text-base font-bold sm:text-lg">{t("money.moneyLeft", { period: periodWords })}</p>
-            <p className="amount-fit font-extrabold leading-tight"><Amount hidden={hidden} pesewas={summary.moneyLeft} /></p>
+            <p className={`amount-fit leading-tight ${w("font-bold", "font-extrabold")}`}><Amount hidden={hidden} pesewas={summary.moneyLeft} /></p>
             {comparison && (
               <p className="text-base leading-snug sm:text-lg">{amountText(hidden ? HIDDEN_COMPARISON_KEYS[period] : COMPARISON_KEYS[period][comparison.kind], { amount: comparison.amountPesewas }, hidden)}</p>
             )}
@@ -106,7 +107,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
                 and MoMo, never added again) and On credit (= Given on credit on 24, not money received);
                 each row only when above zero. */}
             <section data-card="money-in" className={`flex flex-col gap-1 ${cardClass}`}>
-              <CardTitle hidden={hidden} amountPesewas={summary.moneyIn}>{t("money.moneyIn")}</CardTitle>
+              <CardTitle wide={wide} hidden={hidden} amountPesewas={summary.moneyIn}>{t("money.moneyIn")}</CardTitle>
               <Row data-row="cash-in" label={t("money.cash")} hidden={hidden} amountPesewas={summary.cashIn} />
               <Row data-row="momo-in" label={t("money.momo")} hidden={hidden} amountPesewas={summary.momoIn} />
               {(summary.collectedIn > 0 || summary.givenOnCredit > 0) && (
@@ -119,7 +120,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
 
             {/* (3) Money spent: Paid in cash + Paid by MoMo + Method not recorded = Money spent. */}
             <section data-card="money-spent" className={`flex flex-col gap-1 ${cardClass}`}>
-              <CardTitle hidden={hidden} amountPesewas={summary.moneySpent}><ArrowUpRight size={18} className="shrink-0" aria-hidden="true" /> {t("money.moneySpent")}</CardTitle>
+              <CardTitle wide={wide} hidden={hidden} amountPesewas={summary.moneySpent}><ArrowUpRight size={18} className="shrink-0" aria-hidden="true" /> {t("money.moneySpent")}</CardTitle>
               <Row data-row="cash-spent" label={t("money.paidInCash")} hidden={hidden} amountPesewas={summary.spentCash} />
               <Row data-row="momo-spent" label={t("money.paidByMomo")} hidden={hidden} amountPesewas={summary.spentMomo} />
               {summary.spentUnrecorded > 0 && <Row data-row="unrecorded-spent" label={t("money.methodNotRecorded")} hidden={hidden} amountPesewas={summary.spentUnrecorded} />}
@@ -127,7 +128,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
 
             {/* (4) What you should have left, this period only. */}
             <section data-card="should-have-left" className={`flex flex-col gap-1 ${cardClass}`}>
-              <CardTitle>{t("money.shouldHaveLeft")}</CardTitle>
+              <CardTitle wide={wide} hidden={hidden} amountPesewas={wide ? summary.cashShouldHave + summary.momoShouldHave : undefined}>{t("money.shouldHaveLeft")}</CardTitle>
               <Row data-row="cash-left" label={t("money.cash")} hidden={hidden} amountPesewas={summary.cashShouldHave} />
               <Row data-row="momo-left" label={t("money.momo")} hidden={hidden} amountPesewas={summary.momoShouldHave} />
               <p className="text-sm leading-snug text-slate-700 sm:text-base">{t("money.shouldHaveLeftCaption")}</p>
@@ -154,12 +155,12 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
             <button type="button" onClick={() => onNavigate("PeopleWhoOweYou")} className="amount-fit-container min-w-0 rounded-[16px] border-2 border-l-[6px] border-slate-300 border-l-rose-900 bg-white px-2.5 py-2 text-left text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 sm:px-3">
               <span className="block text-[15px] font-extrabold leading-snug sm:text-[17px]">{t("money.owedToYou")}</span>
               <span className="amount-fit block font-extrabold leading-tight text-rose-900"><Amount hidden={hidden} pesewas={report.debtPesewas} /></span>
-              <span className="block text-base font-extrabold text-emerald-900 sm:text-[17px]">{t("money.seeWho")}</span>
+              <span className={`block text-emerald-900 ${w("text-[17px] font-bold no-underline", "text-base font-extrabold sm:text-[17px]")}`}>{t("money.seeWho")}</span>
             </button>
             <button type="button" onClick={() => onNavigate("YouOweSuppliers")} className="amount-fit-container min-w-0 rounded-[16px] border-2 border-l-[6px] border-slate-300 border-l-amber-700 bg-white px-2.5 py-2 text-left text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 sm:px-3">
               <span className="block text-[15px] font-extrabold leading-snug sm:text-[17px]">{t("money.supplierBalances")}</span>
               <span className="amount-fit block font-extrabold leading-tight text-amber-900"><Amount hidden={hidden} pesewas={report.supplierBalancePesewas} /></span>
-              <span className="block text-base font-extrabold text-emerald-900 sm:text-[17px]">{t("money.seeList")}</span>
+              <span className={`block text-emerald-900 ${w("text-[17px] font-bold no-underline", "text-base font-extrabold sm:text-[17px]")}`}>{t("money.seeList")}</span>
             </button>
           </div>
         </>
