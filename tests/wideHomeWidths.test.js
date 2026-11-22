@@ -35,6 +35,7 @@ test("wide Home: fits at 768 to 1440, amounts whole, labels on one line, buttons
       assert.ok(m.scrollWidth <= m.innerWidth, `${at}: no sideways scroll`);
       assert.ok(Math.abs(m.actions.r - m.rights.owed) <= 1 && Math.abs(m.rights.spent - m.rights.owed) <= 1 && Math.abs(m.rights.tx - m.rights.owed) <= 1, `${at}: right edges aligned`);
       assert.ok(m.actions.l < m.card.r || Math.abs(m.card.b - m.stackB) <= 1, `${at}: top-row bottoms aligned`);
+      assert.ok(m.actions.l < m.card.r || (Math.abs(m.actions.l - m.card.r - 16) <= 1 && Math.abs(m.actions.r - m.actions.l - 240) <= 1), `${at}: 16px gap, 240px Sell column (${m.actions.l - m.card.r}, ${m.actions.r - m.actions.l})`);
       assert.ok(m.amounts.some((a) => a.text === "GH₵12,345.00"), `${at}: the long amount is shown`);
       for (const a of m.amounts) assert.ok(a.lines === 1 && !a.clipped && a.l >= 0 && a.r <= m.innerWidth && a.weight === "700", `${at}: amount ${a.text} whole, one line, bold (${a.lines}, ${a.clipped}, ${a.weight})`);
       for (const c of m.controls) {

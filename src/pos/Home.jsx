@@ -330,7 +330,7 @@ export default function Home({ onNavigate, notice = "", shopName, layout = PHONE
       {noticeLine}
       {!data ? loading : (
         <>
-          <div data-home-row-1="" className={sidebar ? "grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-5" : "flex flex-col gap-5"}>
+          <div data-home-row-1="" className={sidebar ? "grid grid-cols-[minmax(0,1fr)_240px] gap-4" : "flex flex-col gap-5"}>
             <MoneyLeftBlock data={data} hidden={hidden} onToggleHidden={toggleHidden} wide />
             {/* The rail: Sell and Spent money share the row equally, so "Spent money" never wraps (768px). */}
             <div data-home-actions="" className={sidebar ? "flex flex-col gap-4" : "grid grid-cols-2 gap-5"}>
