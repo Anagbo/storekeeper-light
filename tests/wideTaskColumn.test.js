@@ -5,7 +5,7 @@ import { db } from "../src/db/db.js";
 import { setPreference } from "../src/db/preferences.js";
 import { resetBrowserBack } from "../src/pos/browserBack.js";
 import { openPosApp } from "./helpers/posAppHarness.js";
-import { loadJsx, render, walk } from "./helpers/renderJsx.js";
+import { loadJsx, render, textOf, walk } from "./helpers/renderJsx.js";
 
 // wide_layout.page_types.task_column: on a wide layout every sale, collect, plan, MoMo, supplier,
 // spent-money, manual-debt, backup and plan-payment screen not given its own page type is one white
@@ -62,6 +62,45 @@ for (const width of [768, 1024, 1280, 1440]) {
     }
   });
 }
+
+// D5 (wide_layout.screens["16, 27 Split payment"]): task column, same rows as the phone. The wide 16 has
+// the phone's text and controls (names and order), all inside the panel.
+const panelOf = (app) => find(app, "data-task-column");
+function controlNames(node) {
+  return [...walk(node)]
+    .filter((child) => child.type === "button")
+    .map((button) => (button.props["aria-label"] ?? textOf(button)).replace(/\s+/g, " ").trim());
+}
+async function openSplit(width) {
+  const app = await openWhoOwesYou(width);
+  await app.keys("800");
+  await app.tap("Split payment");
+  await app.tap(/^Cash$/);
+  return app;
+}
+
+test("D5: 16 Split payment on wide has the phone's rows and controls, in the same order, inside the panel", async () => {
+  const phone = await openSplit(393);
+  const phoneMain = [...walk(phone.view.tree)].find((node) => node.type === "main");
+  const phoneText = textOf(phoneMain);
+  const phoneControls = controlNames(phoneMain);
+  phone.restoreConsole();
+  assert.equal(phone.route, "SplitPayment");
+  assert.match(phoneText, /Sale total/);
+  assert.ok(phoneControls.includes("Back") && phoneControls.at(-1) === "Done", `phone controls: ${phoneControls.join(", ")}`);
+  for (const width of [768, 1024, 1280, 1440]) {
+    const app = await openSplit(width);
+    try {
+      assert.equal(app.route, "SplitPayment");
+      const panel = panelOf(app);
+      assert.ok(panel, `${width}px: 16 in the task column`);
+      assert.equal(textOf(panel), phoneText, `${width}px: the same rows and wording`);
+      assert.deepEqual(controlNames(panel), phoneControls, `${width}px: the same controls in the same order`);
+    } finally {
+      app.restoreConsole();
+    }
+  }
+});
 
 test("phone (393px): 17 keeps the phone page, no panel, no grey page", async () => {
   const app = await openWhoOwesYou(393);
