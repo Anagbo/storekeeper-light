@@ -254,3 +254,82 @@ export function SaleLines({ cart, onUpdateCart, onQuantity, className = "space-y
     </section>
   );
 }
+
+// Wide D9 "This sale": two rows per line at every wide width. Row 1: the item name (wraps between words
+// only, at least 40% of the row) and the amount at the right (nowrap). Row 2: Less, quantity, More at the
+// left and the bin at the right. The same controls, labels and accessible names as phone 20.
+const LINE_NAME = "min-w-[40%] flex-1 [overflow-wrap:break-word] text-[19px] font-extrabold leading-tight text-slate-900";
+const LINE_AMOUNT = "shrink-0 whitespace-nowrap text-right text-[19px] font-extrabold tabular-nums text-slate-900";
+const LINE_CLASS = "flex flex-col gap-2 border-b border-slate-200 pb-2 last:border-b-0 last:pb-0";
+
+export function StackedSaleLines({ cart, onUpdateCart, onQuantity, className = "space-y-2" }) {
+  return (
+    <section className={className}>
+      {cart.map((line) => line.productId === null ? (
+        <div key="other-amount" data-sale-line="" className={LINE_CLASS}>
+          <div className="flex items-start justify-between gap-2">
+            <span data-line-name="" className="min-w-[40%] flex-1">
+              <strong className="block [overflow-wrap:break-word] text-[19px] font-extrabold text-slate-900">{line.name}</strong>
+              <span className="block text-[17px] text-slate-700">{line.subtitle}</span>
+            </span>
+            <b className={LINE_AMOUNT}>{formatGhs(line.total_amount)}</b>
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              aria-label={t("sellItems.remove", { name: line.name })}
+              onClick={() => onUpdateCart(cart.filter((item) => item.productId !== null))}
+              className={BIN_CLASS}
+            >
+              <Trash2 size={22} strokeWidth={2.2} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div key={line.productId} data-sale-line="" className={LINE_CLASS}>
+          <div className="flex items-start justify-between gap-2">
+            <strong data-line-name="" className={LINE_NAME}>{line.name}</strong>
+            <b className={LINE_AMOUNT}>{formatGhs(line.total_amount)}</b>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                aria-label={t("sellItems.less", { name: line.name })}
+                disabled={line.quantity === 1}
+                onClick={() => onUpdateCart(cart.map((item) => item.productId === line.productId ? { ...item, quantity: item.quantity - 1 } : item))}
+                className={STEP_CLASS + " disabled:cursor-not-allowed disabled:opacity-40"}
+              >
+                −
+              </button>
+              <button
+                type="button"
+                aria-label={t("sellItems.quantity", { name: line.name })}
+                onClick={() => onQuantity(line)}
+                className="flex h-11 min-w-11 shrink-0 items-center justify-center border-0 border-b-[3px] border-emerald-900 bg-transparent px-1 text-[22px] font-extrabold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800"
+              >
+                {line.quantity}
+              </button>
+              <button
+                type="button"
+                aria-label={t("sellItems.more", { name: line.name })}
+                onClick={() => onUpdateCart(cart.map((item) => item.productId === line.productId ? { ...item, quantity: item.quantity + 1 } : item))}
+                className={STEP_CLASS}
+              >
+                +
+              </button>
+            </div>
+            <button
+              type="button"
+              aria-label={t("sellItems.remove", { name: line.name })}
+              onClick={() => onUpdateCart(cart.filter((item) => item.productId !== line.productId))}
+              className={BIN_CLASS}
+            >
+              <Trash2 size={22} strokeWidth={2.2} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}

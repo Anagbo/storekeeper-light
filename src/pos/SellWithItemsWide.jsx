@@ -3,7 +3,7 @@ import { Banknote, Check, Smartphone, UserRound } from "lucide-react";
 import { formatGhs } from "../lib/money.js";
 import { AddButton, PosBackButton, PosPage, PosPrimaryButton, SplitIcons } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
-import { ItemSearch, ItemTiles, SaleLines, useSellCart } from "./SellItemsParts.jsx";
+import { ItemSearch, ItemTiles, StackedSaleLines, useSellCart } from "./SellItemsParts.jsx";
 import { useItemsSaleSave } from "./useItemsSaleSave.js";
 import { isDoneEnter } from "./sellKeyboard.js";
 
@@ -83,7 +83,7 @@ export default function SellWithItemsWide({ params = {}, layout, onBack, onOther
         <section aria-labelledby="this-sale" className="flex min-w-0 flex-col gap-3 rounded-[20px] border-2 border-slate-300 bg-white p-4">
           <h2 id="this-sale" className="text-[17px] font-bold text-slate-600">{t("sellItems.thisSale")}</h2>
           {cart.length > 0
-            ? <SaleLines cart={cart} onUpdateCart={sale.updateCart} onQuantity={sale.openQuantity} className="space-y-2 [&_.text-sm]:text-[17px]" />
+            ? <StackedSaleLines cart={cart} onUpdateCart={sale.updateCart} onQuantity={sale.openQuantity} />
             : <p className="text-[17px] text-slate-600">{t("sellItems.emptySale")}</p>}
           <div className="flex items-baseline justify-between gap-3 border-t-2 border-slate-200 pt-3">
             <strong className="text-[21px] font-bold text-[#0F172A]">{t("review.total")}</strong>
