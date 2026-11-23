@@ -4,8 +4,32 @@ import { useEffect, useRef } from "react";
 // the scrim call onClose (37 and 38 over D9: Back). Focus starts inside and Tab stays inside.
 const FOCUSABLE = "button:not([disabled]), input:not([disabled]), select, textarea, a[href], [tabindex]:not([tabindex='-1'])";
 
+// What opened the dialog, found again when it closes: the page behind is drawn again under the dialog
+// (so the tile that had focus is a new element), and a tile's label changes when its item is added.
+function openerSelector(el) {
+  if (!el || el === document.body) return null;
+  if (el.hasAttribute("data-item-tile")) return `[data-item-tile="${CSS.escape(el.getAttribute("data-item-tile"))}"]`;
+  for (const attr of ["data-other-amount", "data-split-55"]) if (el.hasAttribute(attr)) return `[${attr}]`;
+  const label = el.getAttribute("aria-label");
+  return label ? `[aria-label="${CSS.escape(label)}"]` : null;
+}
+
+function focusOpener(selector) {
+  const target = selector && [...document.querySelectorAll(selector)].find((el) => !el.closest("[inert]") && !el.disabled);
+  if (target) target.focus();
+}
+
 export default function WideDialog({ label, onClose, children }) {
   const panelRef = useRef(null);
+  // Read while rendering, before the page behind is replaced (the focused tile is gone after the commit).
+  const openerRef = useRef(undefined);
+  if (openerRef.current === undefined) openerRef.current = typeof document === "undefined" ? null : openerSelector(document.activeElement);
+
+  // When the dialog closes, focus goes back to the tile or button that opened it.
+  useEffect(() => () => {
+    const selector = openerRef.current;
+    if (typeof document !== "undefined") setTimeout(() => focusOpener(selector), 0);
+  }, []);
 
   useEffect(() => {
     const first = panelRef.current?.querySelector?.(FOCUSABLE);
