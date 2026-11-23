@@ -267,5 +267,6 @@ test("error screen: Go back calls the screen's Back; Try again is offered once, 
 
 test("PosApp gives the error screen the same Back as the screen (navigateBack keeps the draft)", () => {
   const source = readFileSync(new URL("../src/pos/PosApp.jsx", import.meta.url), "utf8");
-  assert.match(source, /<PosErrorBoundary key=\{`\$\{route\}:\$\{pickRemount\}`\} onBack=\{navigateBack\}>/);
+  // The key is the route (on wide, 42 Delete item shares 41's key so the boundary is not remounted).
+  assert.match(source, /<PosErrorBoundary key=\{`\$\{layout\.wide && route === POS_ROUTES\.DeleteItem \? POS_ROUTES\.EditItem : route\}:\$\{pickRemount\}`\} onBack=\{navigateBack\}>/);
 });
