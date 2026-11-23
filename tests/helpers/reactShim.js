@@ -39,6 +39,8 @@ export function useSyncExternalStore(_subscribe, getSnapshot) { return getSnapsh
 export function createContext(value) {
   const context = { _value: value };
   context.Provider = ({ children }) => children;
+  // Its value is seen by useContext while its children are expanded (expand below), as in React.
+  context.Provider._context = context;
   return context;
 }
 export function useContext(context) { return context?._value; }
@@ -163,7 +165,15 @@ function expand(node, path, root) {
     } finally {
       shared.current = previous;
     }
-    return { type: node.type, props: node.props, rendered: expand(output, key, root) };
+    const context = node.type._context;
+    if (!context) return { type: node.type, props: node.props, rendered: expand(output, key, root) };
+    const outer = context._value;
+    context._value = node.props.value;
+    try {
+      return { type: node.type, props: node.props, rendered: expand(output, key, root) };
+    } finally {
+      context._value = outer;
+    }
   }
   return { type: node.type, props: { ...node.props, children: expand(node.props.children, `${path}/${String(node.type?.toString?.() ?? node.type)}`, root) } };
 }

@@ -5,7 +5,7 @@ import { formatGhs } from "../lib/money.js";
 import { secondsUntil } from "../lib/countdown.js";
 import { MOMO_CONFIG, PHONE_REQUEST_ENABLED, RECEIVING_NETWORKS, getMerchantMomoSettings, maskPhoneNumber, normalizeReceivingNumber, recordMomoLastUsed, saveReceivingNumber } from "./momoConfig.js";
 import { getMomoAmountPesewas } from "./paymentAmount.js";
-import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, PosBackButton } from "./PosComponents.jsx";
+import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, PosBackButton, useTaskColumn } from "./PosComponents.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { useBackBlock } from "./browserBack.js";
@@ -70,6 +70,7 @@ export function MoMoChoice({ params = {}, onBack, onNavigate, onReplace, onPick 
 }
 
 export function MoMoDirect({ params = {}, onBack, onConfirm, onPick, onSetUpNumber }) {
+  const taskColumn = useTaskColumn();
   const [settings, setSettings] = useState({ number: "", network: "" });
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -170,7 +171,8 @@ export function MoMoDirect({ params = {}, onBack, onConfirm, onPick, onSetUpNumb
       </ol>
     </section>
     </>}
-    <div className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t-2 border-slate-300 bg-white px-4 pt-2.5 lg:left-60">
+    {/* Wide task column: the footer is the bottom of the panel, not pinned to the window. */}
+    <div className={taskColumn ? "mt-auto pt-2.5" : "safe-bottom fixed inset-x-0 bottom-0 z-30 border-t-2 border-slate-300 bg-white px-4 pt-2.5 lg:left-60"}>
       <div className="mx-auto flex max-w-3xl flex-col items-center gap-1.5">
         {saveError && <p role="alert" className="w-full text-base font-bold text-rose-900">{saveError}</p>}
         {/* Only "Still saving…" here: after a failure the text above says to tap Money received again. */}
@@ -194,6 +196,7 @@ function formatPhoneForReading(number = "") {
 }
 
 export function PaymentSettings({ params = {}, onBack, onNavigate, onUpdateParams }) {
+  const taskColumn = useTaskColumn();
   const [settings, setSettings] = useState({ number: "", network: MOMO_CONFIG.defaultNetwork, defaultMethod: "ask" });
   // Opened from 62 with no MoMo number (wiring 62 "Set up MoMo number"): the Customer sends to my
   // number switch is already on and the number field is focused. Back without Save changes nothing.
@@ -302,7 +305,7 @@ export function PaymentSettings({ params = {}, onBack, onNavigate, onUpdateParam
       </div>
     </PosCard>
     {saved && <p role="status">Saved.</p>}
-    <div className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t-[3px] border-slate-900 bg-white px-4 pt-3 lg:left-60">
+    <div className={taskColumn ? "mt-auto pt-3" : "safe-bottom fixed inset-x-0 bottom-0 z-30 border-t-[3px] border-slate-900 bg-white px-4 pt-3 lg:left-60"}>
       <div className="mx-auto max-w-3xl"><PosPrimaryButton type="button" onClick={() => void save()} className="h-[60px] min-h-0 rounded-[18px]"><Check size={28} aria-hidden="true" />Save</PosPrimaryButton></div>
     </div>
   </PosPage>;

@@ -40,7 +40,7 @@ import MyMoney from "./MyMoney.jsx";
 import TodaysTransactions from "./TodaysTransactions.jsx";
 import { posText as t } from "./i18n.js";
 import { spentSavedNotice, stockSavedNotice } from "./expenseNotice.js";
-import { PosBottomNav, PosHeader, PosPage, PosSideNav } from "./PosComponents.jsx";
+import { PosBottomNav, PosHeader, PosPage, PosSideNav, TaskColumnContext } from "./PosComponents.jsx";
 import PlannedScreen from "./PlannedScreen.jsx";
 import PosErrorBoundary from "./PosErrorBoundary.jsx";
 import CreditScreens from "./CreditScreens.jsx";
@@ -102,6 +102,21 @@ function getStatusLabel(sync) {
 // Owed (D3) also sits on the grey page: its white cards are directly on it (wiring 32, Layout).
 const DASHBOARD_ROUTES = new Set([POS_ROUTES.Home, POS_ROUTES.CollectPayment, POS_ROUTES.MyMoney, POS_ROUTES.PeopleWhoOweYou]);
 const DASHBOARD_BACKGROUND = "#F1F5F9";
+// wide_layout.page_types.task_column: every sale, collect, plan, MoMo, supplier, spent-money,
+// manual-debt, backup and plan-payment screen not given its own wide page type (15 is D2, 20/55 D9,
+// 46 D14, the Items and Settings screens D8 and D13, Owed and 29/43 D3). One 640px white panel on the
+// grey page (PosPage draws it).
+const TASK_COLUMN_ROUTES = new Set([
+  POS_ROUTES.SplitPayment, POS_ROUTES.WhoOwesYou, POS_ROUTES.NewPerson, POS_ROUTES.WhenWillTheyPay,
+  POS_ROUTES.ALittleAtATime, POS_ROUTES.CreditSaved, POS_ROUTES.SaleRecorded,
+  POS_ROUTES.CollectPayPart, POS_ROUTES.PaymentReceived,
+  POS_ROUTES.ManualDebtAmount, POS_ROUTES.ManualDebtSaved, POS_ROUTES.SpentMoney, POS_ROUTES.StockOnCredit,
+  POS_ROUTES.MoMoChoice, POS_ROUTES.MoMoDirect, POS_ROUTES.PaymentSettings, POS_ROUTES.MoMoSetup,
+  POS_ROUTES.MoMoPayment, POS_ROUTES.MoMoWaiting, POS_ROUTES.MoMoCode, POS_ROUTES.MoMoNotCompleted,
+  POS_ROUTES.BackupRestore,
+  POS_ROUTES.MyPlan, POS_ROUTES.PlanPayMethod, POS_ROUTES.PlanPayCash, POS_ROUTES.PlanPayMoMo,
+  POS_ROUTES.PlanPayPhone, POS_ROUTES.PlanPaymentResult
+]);
 
 // Where Money received on 62 returns for each confirm step (MOMO16).
 const CONFIRM_RETURNS = {
@@ -508,6 +523,7 @@ export default function PosApp() {
     (route === POS_ROUTES.YourStarterList && routeState.params.setupFlow === true) ||
     (route === POS_ROUTES.NewItem && routeState.params.setupFlow === true);
   const isCollectSheet = route === POS_ROUTES.CollectPayment;
+  const taskColumn = layout.wide && TASK_COLUMN_ROUTES.has(route);
   // 72 and 73: the phone is in the customer's hand. No Menu button; the header keeps its Home tile,
   // as on 29 and in the prototype. The side menu stays on wide screens.
   const isCustomerScreen = route === POS_ROUTES.CustomerSignature || route === POS_ROUTES.CustomerRecordView;
@@ -861,10 +877,10 @@ export default function PosApp() {
             hideSaved={route === POS_ROUTES.MoMoDirect}
           />
         )}
-        <div data-page-area="" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto" style={layout.wide && DASHBOARD_ROUTES.has(route) ? { backgroundColor: DASHBOARD_BACKGROUND } : undefined}>
+        <div data-page-area="" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto" style={layout.wide && (DASHBOARD_ROUTES.has(route) || taskColumn) ? { backgroundColor: DASHBOARD_BACKGROUND } : undefined}>
           {layout.wide ? (
             <div data-wide-content="" className="mx-auto flex w-full min-w-0 flex-[1_0_auto] flex-col" style={{ maxWidth: WIDE_CONTENT_MAX_PX }}>
-              {page}
+              <TaskColumnContext.Provider value={taskColumn ? layout.mode : null}>{page}</TaskColumnContext.Provider>
             </div>
           ) : page}
         </div>

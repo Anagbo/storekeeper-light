@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { Banknote, BarChart3, Check, Home as HomeIcon, List, Menu as MenuIcon, Package, Settings, ShoppingCart, Smartphone, UserRound, UsersRound, WifiOff } from "lucide-react";
 import { formatWeekdayDate } from "../lib/formatDate.js";
 import { posText as t } from "./i18n.js";
@@ -20,9 +20,38 @@ function OfflineIcon({ size = 16 }) {
 // wide: the page is on a wide layout (layout.js, passed down by PosApp): fixed wide padding instead of
 // the responsive classes, no room for a bottom bar. Without it (every screen not yet built wide), as before.
 const PAGE_BASE = "mx-auto box-border min-w-0 max-w-full flex-[1_0_auto] w-full overflow-x-hidden overflow-y-auto";
+
+// wide_layout.page_types.task_column: on a wide layout every sale, collect, plan, MoMo, supplier,
+// spent-money, manual-debt, backup and plan-payment screen is one white panel, 640px wide, centred on
+// the grey page, with the phone screen's own components, wording and order inside it (Back at the top
+// left, the main button at the bottom). PosApp says which routes are task columns (the layout mode, or
+// null); the screens keep calling PosPage and do not read the width.
+export const TaskColumnContext = createContext(null);
+export const TASK_COLUMN_WIDTH_PX = 640;
+export function useTaskColumn() {
+  return useContext(TaskColumnContext);
+}
+// The phone page's own width, margin, padding and overflow classes are the panel's business on wide.
+const PHONE_PAGE_BOX = /^(?:[a-z]+:)*!?(?:p[xytrbl]?|m[xy]?|max-w|overflow(?:-[xy])?)-\S+$/;
+function TaskColumnPage({ mode, className, style, children }) {
+  const kept = className.split(/\s+/).filter((token) => token && !PHONE_PAGE_BOX.test(token)).join(" ");
+  return (
+    <main data-task-column-page="" className={`${PAGE_BASE} ${mode === "rail" ? "px-5" : "px-8"} pb-10 pt-8`}>
+      <div
+        data-task-column=""
+        style={{ ...style, maxWidth: TASK_COLUMN_WIDTH_PX, padding: "26px 28px" }}
+        className={`mx-auto box-border flex w-full min-w-0 flex-col rounded-[24px] border-2 border-slate-300 bg-white ${kept}`}
+      >
+        {children}
+      </div>
+    </main>
+  );
+}
 // rail (with wide): the rail layout (layout.js) takes 20px side padding instead of 32px, so Home's
 // five-column table fits at 768px (decided 21 Nov 2026); 1280px and up keep 32px.
 export function PosPage({ children, className = "", style, wide = false, rail = false }) {
+  const taskColumn = useTaskColumn();
+  if (taskColumn && !wide) return <TaskColumnPage mode={taskColumn} className={className} style={style}>{children}</TaskColumnPage>;
   // flex 1 0 auto: fills the page area (rules_global.shell_height) and grows past it when longer.
   const spacing = wide ? `${rail ? "px-5" : "px-8"} pb-10 pt-8` : "px-4 pb-28 pt-5 sm:px-6 lg:max-w-6xl lg:px-8 lg:pb-10 lg:pt-8";
   return <main style={style} className={`${PAGE_BASE} ${spacing} ${className}`}>{children}</main>;

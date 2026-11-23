@@ -13,7 +13,7 @@ import { PLAN_ERROR } from "../lib/planErrors.js";
 import { addDueCycles, dayAfter, getCreditBalanceAfterSale, getNextCycleDate, isValidDateString, localDateString, PAYMENT_FREQUENCIES, prepareInstallmentPlan } from "../utils/installments.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { getCreditAmountOwedPesewas } from "./creditAmount.js";
-import { AddButton, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton, SplitIcons } from "./PosComponents.jsx";
+import { AddButton, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton, SplitIcons, useTaskColumn } from "./PosComponents.jsx";
 import { shortSaveName } from "./saveLabel.js";
 import { CopyReceiptButton, ReceiptFailedLine, ReceiptOfflineLine, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
 import { buildCreditSaleReceipt, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
@@ -282,6 +282,7 @@ function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
 function WhenWillTheyPay({ params, onBack, onNavigate, onUpdateParams, onReturnToSplit, onSaveCredit }) {
   const [dueChoice, setDueChoice] = useState(params.creditDueChoice ?? "week");
   const [saving, setSaving] = useState(false);
+  const taskColumn = useTaskColumn();
   useBackBlock(saving);
   const [error, setError] = useState("");
   // E8: a ref, not the state, so a second tap in the same frame sees the first one.
@@ -399,7 +400,8 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onUpdateParams, onReturnT
       {/* Wiring "Save button and Back on 18" (final): Save is the only pinned element, full width, at
           least 56px: line 1 "Save" (800, 18px), line 2 "{Name} owes GH₵x" (600, 16px, one line); the
           name for screen readers stays "Save · {Name} owes GH₵x". */}
-      <div data-bottom-row="" className="sticky bottom-0 z-10 -mx-4 mt-auto flex flex-col items-stretch bg-white px-4 pt-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+      {/* Wide task column: Save at the bottom of the panel, not pinned (no phone margins to cancel). */}
+      <div data-bottom-row="" className={taskColumn ? "mt-auto flex flex-col items-stretch pt-2" : "sticky bottom-0 z-10 -mx-4 mt-auto flex flex-col items-stretch bg-white px-4 pt-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"}>
         <PosPrimaryButton type="button" disabled={saving} onClick={() => void save()} aria-label={saving ? undefined : t("credit.saveAmount", { name: shortSaveName(customerName), amount: formatGhs(totalAfterSalePesewas) })} data-save-18="" className="h-auto min-h-14 flex-col gap-0 px-3 py-1.5 leading-tight">
           {saving ? t("credit.saving") : (
             <>
