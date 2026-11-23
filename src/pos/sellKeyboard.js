@@ -1,3 +1,14 @@
+// Wiring 20 "Wide keyboard" (decided 23 Nov 2026): on the combined D9 screen Enter means Done, but never
+// while the cursor is in Find item or any text field, and never on a focused button or link (Enter
+// presses that one). No digits: D9 has no keypad.
+export function isDoneEnter(event) {
+  if (!event || event.key !== "Enter" || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return false;
+  const target = event.target;
+  const element = target && typeof target.matches === "function" ? target : null;
+  if (element && (element.isContentEditable || element.matches("input, textarea, select, button, a[href], [role='button']"))) return false;
+  return true;
+}
+
 // Wiring 15 "Keyboard" (decided 23 Nov 2026, all widths): what one key press on Sell does.
 // A focused keypad key counts as no focus, so after a mouse click on the pad digits, "." and ","
 // still go to the pad and Enter means Done instead of pressing that key again. Delete does what

@@ -50,6 +50,7 @@ import { SpentMoney, StockOnCredit, YouOweSuppliers } from "./SupplierScreens.js
 import ItemScreens from "./ItemScreens.jsx";
 import SellWithItems from "./SellWithItems.jsx";
 import SellWithItemsWide from "./SellWithItemsWide.jsx";
+import WideDialog from "./WideDialog.jsx";
 import SaleRecorded from "./SaleRecorded.jsx";
 import SaleSplitPayment from "./SaleSplitPayment.jsx";
 import ReviewAndPay from "./ReviewAndPay.jsx";
@@ -514,13 +515,17 @@ export default function PosApp() {
   ].includes(route);
   // Wide D9 (wide_layout.screens["20 and 55 Sell with items"]): 20 and 55 drawn as one screen. On the 55
   // route its Back is 20's Back with the current cart, and cart changes reach the 20 below too.
-  function combinedSale(params) {
+  const combinedBelow = routeState.history.at(-1);
+  const itemDialogOverD9 = layout.wide && (route === POS_ROUTES.HowMuchIsItem || route === POS_ROUTES.HowManyItem) &&
+    (combinedBelow?.current === POS_ROUTES.SellWithItems || combinedBelow?.current === POS_ROUTES.ReviewAndPay);
+  function combinedSale(params, { background = false } = {}) {
     const on55 = route === POS_ROUTES.ReviewAndPay;
     const back = on55 ? () => backFromScreen(backFromCombinedSale) : navigateBack;
     return (
       <SellWithItemsWide
         params={params}
         layout={layout}
+        background={background}
         onBack={back}
         onOtherAmount={back}
         onNavigate={navigate}
@@ -542,6 +547,22 @@ export default function PosApp() {
     <WhatDoYouSell selected={setupCategories} onSelectedChange={setSetupCategories} onBack={navigateBack} onNavigate={navigate} onCompleteSetup={completePosSetup} />
   ) : route === POS_ROUTES.MoreCategories ? (
     <MoreCategories selected={setupCategories} onSelectedChange={setSetupCategories} onBack={navigateBack} onDone={navigateBack} />
+  ) : itemDialogOverD9 ? (
+    // Wiring 20 "Wide keyboard": 37 and 38 are dialogs over D9 (the routes stay); Escape or a click on
+    // the dark background is Back. D9 behind is the screen below, drawn inert.
+    <>
+      <div inert aria-hidden="true" className="contents">
+        {combinedSale(combinedBelow.params, { background: true })}
+      </div>
+      <WideDialog
+        label={t(route === POS_ROUTES.HowMuchIsItem ? "setup.priceTitle" : "setup.quantityTitle", { name: routeState.params.product?.name ?? "" })}
+        onClose={navigateBack}
+      >
+        {route === POS_ROUTES.HowMuchIsItem
+          ? <HowMuchIsItem dialog params={routeState.params} onBack={navigateBack} onReturnTo={returnTo} />
+          : <HowManyItem dialog params={routeState.params} onBack={navigateBack} onReturnTo={returnTo} />}
+      </WideDialog>
+    </>
   ) : route === POS_ROUTES.HowMuchIsItem ? (
     <HowMuchIsItem params={routeState.params} onBack={navigateBack} onReturnTo={returnTo} />
   ) : route === POS_ROUTES.HowManyItem ? (

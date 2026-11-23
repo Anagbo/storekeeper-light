@@ -209,7 +209,14 @@ export function MoreCategories({ selected, onSelectedChange, onBack, onDone }) {
   );
 }
 
-export function HowMuchIsItem({ params, onBack, onReturnTo }) {
+// Wide D9 (wiring 20 "Wide keyboard"): 37 and 38 are drawn inside a WideDialog over D9; the same
+// content without the page around it. The phone keeps PosPage.
+function DialogBody({ children }) {
+  return <div className="flex flex-col gap-3">{children}</div>;
+}
+
+export function HowMuchIsItem({ params, onBack, onReturnTo, dialog = false }) {
+  const Page = dialog ? DialogBody : PosPage;
   const product = params.product;
   // The shared amount keypad (wiring rules_global.amount_entry): 4 . 5 is GH₵4.50, read by integer math.
   const [priceText, setPriceText] = useState("");
@@ -245,7 +252,7 @@ export function HowMuchIsItem({ params, onBack, onReturnTo }) {
   }
 
   return (
-    <PosPage className="flex flex-col gap-3">
+    <Page className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
         <PosBackButton onClick={onBack} />
         <h1 className="text-2xl font-extrabold">{t("setup.priceTitle", { name: product?.name ?? "" })}</h1>
@@ -257,11 +264,12 @@ export function HowMuchIsItem({ params, onBack, onReturnTo }) {
       <AmountKeypad disabled={saving} onKey={(key) => { setPriceText((current) => pressAmountKey(current, key, MONEY_KEYPAD)); setError(""); }} />
       {(priceErrors.message || error) && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{priceErrors.message || error}</p>}
       <PosPrimaryButton type="button" disabled={saving || !product} onClick={() => void savePrice()} className="mt-auto">{saving ? t("items.saving") : t("sellItems.savePrice")}</PosPrimaryButton>
-    </PosPage>
+    </Page>
   );
 }
 
-export function HowManyItem({ params, onBack, onReturnTo }) {
+export function HowManyItem({ params, onBack, onReturnTo, dialog = false }) {
+  const Page = dialog ? DialogBody : PosPage;
   const product = params.product;
   const unitPricePesewas = params.unitPricePesewas ??
     (product ? toPesewas(product.default_price) : null);
@@ -308,7 +316,7 @@ export function HowManyItem({ params, onBack, onReturnTo }) {
   }
 
   return (
-    <PosPage className="flex flex-col gap-3">
+    <Page className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
         <PosBackButton onClick={onBack} />
         <h1 className="text-2xl font-extrabold">{t("setup.quantityTitle", { name: product?.name ?? "" })}</h1>
@@ -321,6 +329,6 @@ export function HowManyItem({ params, onBack, onReturnTo }) {
       <AmountKeypad decimalDisabled onKey={(key) => { pressCount(key); setError(""); }} />
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
       <PosPrimaryButton type="button" disabled={!product} onClick={addToSale} className="mt-auto">{t("setup.addQuantity", { quantity })}</PosPrimaryButton>
-    </PosPage>
+    </Page>
   );
 }

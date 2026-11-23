@@ -1,9 +1,11 @@
+import { useEffect } from "react";
 import { Banknote, Check, Smartphone, UserRound } from "lucide-react";
 import { formatGhs } from "../lib/money.js";
 import { AddButton, PosBackButton, PosPage, PosPrimaryButton, SplitIcons } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
 import { ItemSearch, ItemTiles, SaleLines, useSellCart } from "./SellItemsParts.jsx";
 import { useItemsSaleSave } from "./useItemsSaleSave.js";
+import { isDoneEnter } from "./sellKeyboard.js";
 
 // Wide D9 (wide_layout.screens["20 and 55 Sell with items"], same_as_phone (d)): 20 and 55 on one screen.
 // Left: Find item, the item tiles, + New item and the Other amount tile. Right: "This sale" with the
@@ -28,13 +30,25 @@ function saleParams(params, cart, total) {
 
 const TILE_CLASS = "relative flex min-h-[92px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-[18px] px-2 text-[19px] font-extrabold leading-tight disabled:cursor-not-allowed disabled:opacity-50";
 
-export default function SellWithItemsWide({ params = {}, layout, onBack, onOtherAmount, onNavigate, onUpdateParams, onSaveSale }) {
+// background: 37 or 38 is open as a dialog over this screen; it takes no keys then.
+export default function SellWithItemsWide({ params = {}, layout, onBack, onOtherAmount, onNavigate, onUpdateParams, onSaveSale, background = false }) {
   const sale = useSellCart({ params, onNavigate, onUpdateParams });
   const { result, cart, total } = sale;
   const pay = useItemsSaleSave({ params: saleParams(params, cart, total), saleItems: cart, totalPesewas: total, onNavigate, onUpdateParams, onSaveSale });
   const { paymentMethod, busy, largeAmount } = pay;
   const hasCart = cart.length > 0 && result !== undefined;
   const doneDisabled = !hasCart || busy;
+
+  useEffect(() => {
+    if (background) return undefined;
+    function handleKeyboard(event) {
+      if (largeAmount.open || !isDoneEnter(event) || doneDisabled) return;
+      event.preventDefault();
+      void pay.saveSale();
+    }
+    window.addEventListener("keydown", handleKeyboard);
+    return () => window.removeEventListener("keydown", handleKeyboard);
+  }, [background, doneDisabled, paymentMethod, total, largeAmount.open]);
 
   const error = sale.error || pay.error;
   return (
@@ -53,7 +67,7 @@ export default function SellWithItemsWide({ params = {}, layout, onBack, onOther
             normalizedQuery={sale.normalizedQuery}
             onChoose={sale.chooseProduct}
             onNewItem={() => onNavigate("NewItem")}
-            gridClassName="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3"
+            gridClassName="grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-3"
             newItemClassName="hover:bg-green-50"
             emptyClassName="col-span-full rounded-xl border-2 border-slate-300 bg-white p-3 text-[17px]"
             tileClassName="hover:brightness-95 [&_[data-tile-name]]:text-[17px] [&_[data-tile-price]]:text-[17px] [&_[data-count-badge]]:text-[15px]"
