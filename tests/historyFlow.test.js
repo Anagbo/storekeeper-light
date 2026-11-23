@@ -105,7 +105,8 @@ test("E3: 27 opened from 19 returns with returnTo, not onReplace", () => {
 test("K5/E2: on 19 the payment section is hidden whenever flow=split, and the parts from 16 pass through unchanged", () => {
   const aLittle = slice(creditSource, "function ALittleAtATime", "function buildCreditReceiptText");
   assert.match(aLittle, /const paymentAlreadyMadeToday = params\.paymentAlreadyMadeToday === true \|\|\s*params\.flow === "split";/);
-  assert.match(aLittle, /\{paymentAlreadyMadeToday && paidTodayPesewas > 0 && splitParts\.length > 0 && \(/);
+  // The panel for the parts from 16 (one of the three Paying today panels, picked in panelKind).
+  assert.match(aLittle, /: paymentAlreadyMadeToday && paidTodayPesewas > 0 && splitParts\.length > 0 \? "split16" : null;/);
 });
 
 test("K5: Save plan on 19 is disabled until the plan is valid", () => {

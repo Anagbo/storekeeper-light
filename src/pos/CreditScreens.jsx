@@ -13,7 +13,7 @@ import { PLAN_ERROR } from "../lib/planErrors.js";
 import { addDueCycles, dayAfter, getCreditBalanceAfterSale, getNextCycleDate, isValidDateString, localDateString, PAYMENT_FREQUENCIES, prepareInstallmentPlan } from "../utils/installments.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { getCreditAmountOwedPesewas } from "./creditAmount.js";
-import { AddButton, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton, SplitIcons, useTaskColumn } from "./PosComponents.jsx";
+import { AddButton, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton, SplitIcons, useTaskColumn, WIDE_TASK_COLUMN_WIDTH_PX } from "./PosComponents.jsx";
 import { SOFT_TILE } from "./softTile.js";
 import { shortSaveName } from "./saveLabel.js";
 import { CopyReceiptButton, ReceiptFailedLine, ReceiptOfflineLine, ReceiptPair, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
@@ -33,7 +33,17 @@ import { CREDIT_REASON_MAX } from "../lib/creditReason.js";
 import { loadRecentCreditReasons } from "../db/recentReasons.js";
 import { getCreditReasonCase } from "./creditDraft.js";
 
-function CreditAmount({ amountPesewas }) {
+function CreditAmount({ amountPesewas, wide = false }) {
+  // Wide D10 (19): the soft tile (rules_global.soft_tiles), label above a 40px bold neutral amount that
+  // shrinks to fit a long figure instead of clipping. The phone keeps the pink row.
+  if (wide) {
+    return (
+      <section data-owed-tile="" className={`amount-fit-container min-w-0 ${SOFT_TILE} px-4 py-3`}>
+        <p className="text-[17px] font-bold text-slate-600">{t("credit.owed")}</p>
+        <p className="amount-fit font-bold tabular-nums text-[#0F172A]" style={{ fontSize: "min(40px, 11cqi)" }}>{formatGhs(amountPesewas)}</p>
+      </section>
+    );
+  }
   return (
     <div className="amount-fit-container amount-fit-row flex items-center justify-between gap-3 rounded-2xl bg-rose-100 px-4 py-3 text-rose-950">
       <span className="text-lg font-bold">{t("credit.owed")}</span>
@@ -485,6 +495,28 @@ function RecordedPartRow({ part }) {
 
 const paidOnly = (parts) => parts.filter((part) => part.paymentMethod !== "owe");
 
+// The Paying today panel on 19 (one of three: the recorded parts, one method, or the parts paid on 16).
+// The phone keeps its mint panel. Wide D10: the soft tile (#F1F5F9, no border, white rows, a #E2E8F0
+// divider) with the neutral Still owed row, drawn in the summary column.
+function PayingTodayPanel({ wide, single = false, totalPesewas, stillOwedPesewas, customerName, children }) {
+  const box = wide
+    ? `${SOFT_TILE} p-4`
+    : `${single ? "mt-3 " : ""}rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3`;
+  return (
+    <div {...(single ? { "data-single-method-panel": "" } : {})} data-paying-today="" className={box} aria-live="polite">
+      <p className={wide ? "mb-2 text-[19px] font-bold text-[#0F172A]" : "mb-2 font-extrabold text-emerald-950"}>{t("credit.payingToday")}</p>
+      <div className="flex flex-col gap-2">{children}</div>
+      <div data-total-today="" className={wide
+        ? "mt-2 flex items-center justify-between gap-3 border-t border-[#E2E8F0] px-3 pt-2 text-[19px] font-bold text-[#0F172A]"
+        : "mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 px-3 pt-2 font-extrabold text-emerald-950"}>
+        <span>{t("credit.totalToday")}</span>
+        <span data-paying-today-amount="" className="shrink-0 whitespace-nowrap tabular-nums">{formatGhs(totalPesewas)}</span>
+      </div>
+      <StillOwedRow amountPesewas={stillOwedPesewas} customerName={customerName} neutral={wide} />
+    </div>
+  );
+}
+
 function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnToSplit, onSaveCredit }) {
   const today = localDateString();
   const [installmentAmount, setInstallmentAmount] = useState(params.installmentAmount ?? "");
@@ -510,6 +542,8 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
   const savingRef = useRef(false);
   const saveAttempt = useSaveAttempt();
   const largeAmount = useLargeAmountConfirm();
+  // Wide D10 (wide_layout.screens["19 A little at a time"]): form left, summary right. Layout only.
+  const wide = Boolean(useTaskColumn());
   const installmentPesewas = toPesewas(installmentAmount);
   const amountPesewas = params.amountPesewas ?? 0;
   const currentDebtPesewas = params.customer?.totalDebtPesewas ?? 0;
@@ -738,12 +772,44 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
     });
   }
 
-  return (
-    <PosPage className="flex flex-col gap-3">
-      <h1 className="text-2xl font-extrabold">{t("credit.aLittleAtATime")}</h1>
-      <CreditAmount amountPesewas={maxCreditPesewas} />
+  // The one Paying today panel shown, picked as on the phone (each case keeps its own figures).
+  const panelKind = startToday && !paymentAlreadyMadeToday
+    ? (recordedParts.length > 0 ? "recorded" : singlePreviewParts.length > 0 ? "single" : null)
+    : paymentAlreadyMadeToday && paidTodayPesewas > 0 && splitParts.length > 0 ? "split16" : null;
+  const customerName = params.customer?.name;
+  const payingToday = panelKind === "recorded" ? (
+    <PayingTodayPanel wide={wide} totalPesewas={getPaidPaymentPesewas(recordedParts)} stillOwedPesewas={stillOwedAfterTodayPesewas} customerName={customerName}>
+      {paidOnly(recordedParts).map((part) => <RecordedPartRow key={`${part.paymentMethod}-${part.amountPesewas}`} part={part} />)}
+    </PayingTodayPanel>
+  ) : panelKind === "single" ? (
+    <PayingTodayPanel wide={wide} single totalPesewas={todayPaymentPesewas} stillOwedPesewas={Math.max(0, maxCreditPesewas - todayPaymentPesewas)} customerName={customerName}>
+      {singlePreviewParts.map((part) => <RecordedPartRow key={part.paymentMethod} part={part} />)}
+    </PayingTodayPanel>
+  ) : panelKind === "split16" ? (
+    <PayingTodayPanel wide={wide} totalPesewas={paidTodayPesewas} stillOwedPesewas={stillOwedAfterTodayPesewas} customerName={customerName}>
+      {paidOnly(splitParts).map((part) => (
+        <div key={`${part.paymentMethod}-${part.amountPesewas}`} className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 font-bold">
+          <span>{t(`credit.method.${part.paymentMethod}`)}</span>
+          <span data-paying-today-amount="" className="shrink-0 whitespace-nowrap tabular-nums">{formatGhs(part.amountPesewas)}</span>
+        </div>
+      ))}
+    </PayingTodayPanel>
+  ) : null;
+  // Wide D10: tile labels are 17px; helper lines stay text-sm, which the task column draws at 15px.
+  const saveButton = (
+    <PosPrimaryButton type="button" disabled={saving || !planReady} className={wide ? "h-14 max-w-[240px] self-end" : "h-14"} onClick={() => void savePlan()}>{saving ? t("credit.saving") : t("credit.savePlan")}</PosPrimaryButton>
+  );
+  const notices = (
+    <>
+      {boxError && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{boxError}</p>}
+      <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => void savePlan(true)} />
+    </>
+  );
+
+  const form = (
+    <>
       {/* Wiring 18 "Reason on 18": the reason carried from 18 (typed, the items or the 53 note), read-only; no row when empty. */}
-      {reasonOn19 && <ReasonForRow text={reasonOn19} />}
+      {reasonOn19 && (wide ? <div className="col-span-2"><ReasonForRow text={reasonOn19} /></div> : <ReasonForRow text={reasonOn19} />)}
       <label className="block">
         <span className="mb-1 block text-lg font-extrabold">{t("credit.howMuchEachTime")}</span>
         <span className="flex min-h-16 items-center gap-2 rounded-2xl border-[3px] border-slate-500 px-4">
@@ -774,19 +840,20 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
           <span role="status" data-installment-capped="" className="mt-1 block text-sm font-semibold text-rose-900">{t("credit.installmentCapped")}</span>
         )}
       </label>
-      <fieldset>
+      <fieldset className={wide ? "col-span-2" : undefined}>
         <legend className="mb-1 text-lg font-extrabold">{t("credit.howOften")}</legend>
         <div className="grid grid-cols-3 gap-2">
           {PAYMENT_FREQUENCIES.map((option) => (
-            <button key={option.value} type="button" aria-pressed={frequency === option.value} onClick={() => selectFrequency(option.value)} className={`min-h-14 rounded-2xl border-[3px] px-1 text-sm font-extrabold sm:text-base ${frequency === option.value ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>
+            <button key={option.value} type="button" aria-pressed={frequency === option.value} onClick={() => selectFrequency(option.value)} className={`min-h-14 rounded-2xl border-[3px] px-1 ${wide ? "text-[17px] font-extrabold" : "text-sm font-extrabold sm:text-base"} ${frequency === option.value ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>
               {t(`credit.frequency.${option.value}`)}
             </button>
           ))}
         </div>
       </fieldset>
-      <fieldset>
+      <fieldset className={wide ? "col-span-2" : undefined}>
         <legend className="mb-1 text-lg font-extrabold">{t("credit.firstPayment")}</legend>
-        <div className="grid grid-cols-2 gap-2">
+        {/* Wide: Next cycle ({frequency}) gets two thirds, so its 17px label stays on one line at 1024px. */}
+        <div className={wide ? "grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-2" : "grid grid-cols-2 gap-2"}>
           <button
             type="button"
             disabled={paymentAlreadyMadeToday || alreadyPaidPesewas > 0}
@@ -823,7 +890,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
               Object.assign(draftUpdates, { firstPaymentParts: undefined, splitParts: undefined, splitTotalPesewas: undefined, paymentMethod: "cash" });
             }
             onUpdateParams?.(draftUpdates);
-          }} className={`min-h-14 min-w-0 rounded-2xl border-[3px] px-1 text-[15px] leading-tight font-extrabold disabled:cursor-not-allowed disabled:opacity-60 ${!startToday ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{t("credit.nextCycle", { frequency: t(`credit.frequency.${frequency}`) })}</button>
+          }} className={`min-h-14 min-w-0 rounded-2xl border-[3px] px-1 ${wide ? "text-[17px]" : "text-[15px]"} leading-tight font-extrabold disabled:cursor-not-allowed disabled:opacity-60 ${!startToday ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{t("credit.nextCycle", { frequency: t(`credit.frequency.${frequency}`) })}</button>
         </div>
       </fieldset>
       {startToday && !paymentAlreadyMadeToday && (
@@ -863,22 +930,12 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
         <input type="date" min={dayAfter(today)} value={nextDueDate} aria-invalid={!dateValid} onChange={(event) => { setNextDueDate(event.target.value); onUpdateParams?.({ nextDueDate: event.target.value }); }} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg font-bold" />
         {!dateValid && <span role="alert" className="mt-1 block text-sm font-semibold text-rose-900">{t("credit.invalidDueDate")}</span>}
       </label>
-      {startToday && !paymentAlreadyMadeToday && (
-        <fieldset>
-          <legend className="mb-1 text-base font-extrabold">{t("credit.firstPaymentMethod")}</legend>
-          {recordedParts.length > 0 ? (
-            <div data-paying-today="" className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
-              <p className="mb-2 font-extrabold text-emerald-950">{t("credit.payingToday")}</p>
-              <div className="flex flex-col gap-2">
-                {paidOnly(recordedParts).map((part) => <RecordedPartRow key={`${part.paymentMethod}-${part.amountPesewas}`} part={part} />)}
-              </div>
-              <div data-total-today="" className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 px-3 pt-2 font-extrabold text-emerald-950">
-                <span>{t("credit.totalToday")}</span>
-                <span data-paying-today-amount="" className="shrink-0 whitespace-nowrap tabular-nums">{formatGhs(getPaidPaymentPesewas(recordedParts))}</span>
-              </div>
-              <StillOwedRow amountPesewas={stillOwedAfterTodayPesewas} customerName={params.customer?.name} />
-            </div>
-          ) : (
+      {/* Wide D10: with the parts recorded, the panel is the only content here and it sits in the
+          summary column, so the empty group is left out of the form. */}
+      {startToday && !paymentAlreadyMadeToday && !(wide && recordedParts.length > 0) && (
+        <fieldset className={wide ? "col-span-2" : undefined}>
+          <legend className={wide ? "mb-1 text-lg font-extrabold" : "mb-1 text-base font-extrabold"}>{t("credit.firstPaymentMethod")}</legend>
+          {recordedParts.length > 0 ? payingToday : (
             <>
             <div className="grid grid-cols-3 gap-2">
               {["cash", "momo"].map((method) => (
@@ -889,8 +946,12 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
                   onClick={() => {
                     choosePaymentMethod(method);
                   }}
-                  className={`min-h-12 rounded-xl border-2 px-1 text-sm font-bold ${paymentMethod === method ? "border-emerald-900 bg-green-100" : "border-slate-500 bg-white"}`}
+                  className={wide
+                    ? `flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 px-1 text-[17px] font-bold ${paymentMethod === method ? "border-emerald-900 bg-green-100" : "border-slate-500 bg-white"}`
+                    : `min-h-12 rounded-xl border-2 px-1 text-sm font-bold ${paymentMethod === method ? "border-emerald-900 bg-green-100" : "border-slate-500 bg-white"}`}
                 >
+                  {/* rules_global.icons: on wide each choice shows its icon with the label (the name stays the label). */}
+                  {wide && (method === "cash" ? <Banknote size={20} className="shrink-0" aria-hidden="true" /> : <Smartphone size={20} className="shrink-0" aria-hidden="true" />)}
                   {t(`credit.method.${method}`)}
                 </button>
               ))}
@@ -903,52 +964,58 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
                 aria-label={t("split.title")}
                 data-split-19=""
                 onClick={() => choosePaymentMethod("split")}
-                className="min-h-12! flex-col gap-0.5! overflow-hidden rounded-xl! px-1! py-1! text-xs! sm:text-sm!"
+                className={wide
+                  ? "min-h-12! flex-col gap-0.5! overflow-hidden rounded-xl! px-1! py-1! text-[17px]!"
+                  : "min-h-12! flex-col gap-0.5! overflow-hidden rounded-xl! px-1! py-1! text-xs! sm:text-sm!"}
               >
                 <SplitIcons size={16} />
                 <span className="w-full min-w-0 truncate text-center">{t("split.title")}</span>
               </AddButton>
             </div>
-            {singlePreviewParts.length > 0 && (
-              <div data-single-method-panel="" data-paying-today="" className="mt-3 rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
-                <p className="mb-2 font-extrabold text-emerald-950">{t("credit.payingToday")}</p>
-                <div className="flex flex-col gap-2">
-                  {singlePreviewParts.map((part) => <RecordedPartRow key={part.paymentMethod} part={part} />)}
-                </div>
-                <div data-total-today="" className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 px-3 pt-2 font-extrabold text-emerald-950">
-                  <span>{t("credit.totalToday")}</span>
-                  <span data-paying-today-amount="" className="shrink-0 whitespace-nowrap tabular-nums">{formatGhs(todayPaymentPesewas)}</span>
-                </div>
-                <StillOwedRow amountPesewas={Math.max(0, maxCreditPesewas - todayPaymentPesewas)} customerName={params.customer?.name} />
-              </div>
-            )}
+            {!wide && panelKind === "single" && payingToday}
             </>
           )}
         </fieldset>
       )}
-      {paymentAlreadyMadeToday && paidTodayPesewas > 0 && splitParts.length > 0 && (
-        <div data-paying-today="" className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
-        <p className="mb-2 font-extrabold text-emerald-950">{t("credit.payingToday")}</p>
-        <div className="flex flex-col gap-2">
-          {paidOnly(splitParts).map((part) => (
-            <div key={`${part.paymentMethod}-${part.amountPesewas}`} className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 font-bold">
-              <span>{t(`credit.method.${part.paymentMethod}`)}</span>
-              <span data-paying-today-amount="" className="shrink-0 whitespace-nowrap tabular-nums">{formatGhs(part.amountPesewas)}</span>
+      {!wide && panelKind === "split16" && payingToday}
+    </>
+  );
+
+  if (wide) {
+    // Wide D10: Back and the title on top; the form on the left (its fields paired, in the phone's
+    // order) and the summary on the right (Owed, the one Paying today panel, Save plan at the bottom).
+    // The panel is a container: below about 820px of room (768px rail) the summary stacks under the form.
+    return (
+      <PosPage taskWidth={WIDE_TASK_COLUMN_WIDTH_PX} className="flex flex-col gap-4">
+        <div className="flex items-center gap-4">
+          <PosBackButton onClick={onBack} className="h-14!" />
+          <h1 className="min-w-0 text-2xl font-extrabold">{t("credit.aLittleAtATime")}</h1>
+        </div>
+        <div className="@container flex min-w-0 flex-1 flex-col">
+          <div data-d10="" className="grid min-w-0 flex-1 grid-cols-1 gap-6 @min-[820px]:grid-cols-[minmax(0,1fr)_380px]">
+            <div data-d10-form="" className="grid min-w-0 grid-cols-2 content-start gap-x-4 gap-y-4">{form}</div>
+            <div data-d10-summary="" className="flex min-w-0 flex-col gap-3">
+              <CreditAmount amountPesewas={maxCreditPesewas} wide />
+              {payingToday}
+              {notices}
+              <div className="mt-auto flex flex-col pt-2">{saveButton}</div>
             </div>
-          ))}
+          </div>
         </div>
-        <div data-total-today="" className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 px-3 pt-2 font-extrabold text-emerald-950">
-          <span>{t("credit.totalToday")}</span>
-          <span data-paying-today-amount="" className="shrink-0 whitespace-nowrap tabular-nums">{formatGhs(paidTodayPesewas)}</span>
-        </div>
-        <StillOwedRow amountPesewas={stillOwedAfterTodayPesewas} customerName={params.customer?.name} />
-        </div>
-      )}
-      {boxError && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{boxError}</p>}
-      <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={() => void savePlan(true)} />
+        {largeAmount.dialog}
+      </PosPage>
+    );
+  }
+
+  return (
+    <PosPage className="flex flex-col gap-3">
+      <h1 className="text-2xl font-extrabold">{t("credit.aLittleAtATime")}</h1>
+      <CreditAmount amountPesewas={maxCreditPesewas} />
+      {form}
+      {notices}
       <div className="mt-auto grid grid-cols-[auto_minmax(0,1fr)] gap-2">
         <PosBackButton onClick={onBack} className="h-14!" />
-        <PosPrimaryButton type="button" disabled={saving || !planReady} className="h-14" onClick={() => void savePlan()}>{saving ? t("credit.saving") : t("credit.savePlan")}</PosPrimaryButton>
+        {saveButton}
       </div>
       {largeAmount.dialog}
     </PosPage>
