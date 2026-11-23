@@ -92,7 +92,8 @@ test("no tappable plain green text: a <button> or <a> with green text has a bord
 // [what, file, component, a pattern its opening tag matches, a pattern its children match].
 const ACTIONS = [
   ["15 + Add items", "Sell.jsx", "AddButton", /size="compact"/, /t\("sell\.addItems"\)/],
-  ["20 + New item", "SellWithItems.jsx", "AddButton", /size="tile"/, /t\("sellItems\.newItem"\)/],
+  // 20's tiles are shared with wide D9 since 23 Nov 2026 (SellItemsParts.jsx).
+  ["20 + New item", "SellItemsParts.jsx", "AddButton", /size="tile"/, /t\("sellItems\.newItem"\)/],
   ["32 + Add debt", "OwedScreens.jsx", "AddButton", /openAddDebt/, /^Add debt$/],
   ["17 + New person", "CreditScreens.jsx", "AddButton", /"NewPerson"/, /t\("credit\.newPerson"\)/],
   ["29/43 + Add to debt", "DebtCollection.jsx", "AddButton", /"ManualDebtAmount"/, /^Add to debt$/],

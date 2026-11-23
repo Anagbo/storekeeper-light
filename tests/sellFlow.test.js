@@ -26,7 +26,14 @@ after(async () => {
 });
 
 test("sell-flow screens 15, 20 and 55 expose the required contracts", async () => {
-  const [sell, cart, review] = await Promise.all(Object.values(sourcePaths).map((url) => readFile(url, "utf8")));
+  const [sell, cartScreen, reviewScreen, cartParts, reviewSave] = await Promise.all([
+    ...Object.values(sourcePaths),
+    // 20's cart and 55's save live in shared parts since the wide D9 screen (23 Nov 2026).
+    new URL("../src/pos/SellItemsParts.jsx", import.meta.url),
+    new URL("../src/pos/useItemsSaleSave.js", import.meta.url)
+  ].map((url) => readFile(url, "utf8")));
+  const cart = cartScreen + cartParts;
+  const review = reviewScreen + reviewSave;
 
   assert.match(sell, /onNavigate\("SaleRecorded"/);
   assert.match(sell, /onNavigate\("SellWithItems"/);

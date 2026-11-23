@@ -20,7 +20,7 @@ const read = (file) => readFileSync(new URL(`../src/pos/${file}`, import.meta.ur
 // Every sale screen (15 Sell, 55 ReviewAndPay, 16/27/19 credit and collection screens, and the
 // split screens) opens MoMo through 61, which is the one place that reads the saved choice.
 test("every sale screen opens MoMo through MoMoChoice (61), the one place that reads the saved choice", () => {
-  for (const [file, count] of [["Sell.jsx", 1], ["ReviewAndPay.jsx", 1], ["CreditScreens.jsx", 1], ["DebtCollection.jsx", 3], ["SaleSplitPayment.jsx", 1], ["InstallmentSplitPayment.jsx", 1]]) {
+  for (const [file, count] of [["Sell.jsx", 1], ["useItemsSaleSave.js", 1],["CreditScreens.jsx", 1], ["DebtCollection.jsx", 3], ["SaleSplitPayment.jsx", 1], ["InstallmentSplitPayment.jsx", 1]]) {
     const hits = read(file).match(/"MoMoChoice"/g) ?? [];
     assert.ok(hits.length >= count, `${file} opens MoMoChoice`);
     assert.doesNotMatch(read(file), /"MoMoSetup"|"MoMoPayment"/, `${file} never goes to 60/56 itself`);
