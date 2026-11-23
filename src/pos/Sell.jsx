@@ -13,6 +13,9 @@ import { useSaveAttempt } from "./useSaveAttempt.js";
 import { useBackBlock } from "./browserBack.js";
 import { useFormErrors } from "./formErrors.js";
 import { getSellKeyAction } from "./sellKeyboard.js";
+import { PHONE_LAYOUT } from "./layout.js";
+import LastSaleBox from "./LastSaleBox.jsx";
+import { loadLastSaleToday } from "./lastSale.js";
 
 // Keypad keys on 15: 62px, shorter on short screens (never under 48px; the gaps stay 8px) so that Done
 // fits above the bottom bar without scrolling where it can.
@@ -29,7 +32,7 @@ const paymentChoices = [
 
 // Wiring 15: the draft (what is typed, Cash or MoMo, the added items) lives in the route parameters, like the
 // split screen, so it is still there when the owner comes back with Back. amountText is the pad as typed.
-export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSale = recordCashSale }) {
+export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSale = recordCashSale, layout = PHONE_LAYOUT, loadLastSale = loadLastSaleToday }) {
   const [amount, setAmount] = useState(typeof params.amountText === "string"
     ? params.amountText
     : Number.isSafeInteger(params.amountPesewas) && params.amountPesewas > 0
@@ -125,6 +128,102 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
     return () => window.removeEventListener("keydown", handleKeyboard);
   }, [amount, canSave, busy, paymentMethod, largeAmount.open]);
 
+  // One tap handler per tile, the same on every width.
+  function choosePayment(value) {
+    if (value === "credit") {
+      if (amountErrors.check(["credit"]) && !busy) onNavigate("WhoOwesYou", { amountPesewas, saleItems, ...(typeof params.creditReason === "string" && { creditReason: params.creditReason }) });
+    } else if (value === "momo") {
+      // Brief 3.12: a large MoMo amount asks before 61 (before the customer is asked to pay).
+      if (amountErrors.check(["momo"]) && !busy) {
+        if (!largeAmount.guard(amountPesewas, () => onNavigate("MoMoChoice", { amountPesewas, saleItems }), { momo: true })) onNavigate("MoMoChoice", { amountPesewas, saleItems });
+      }
+    } else setPaymentMethod(value);
+  }
+
+  function openSplit() {
+    if (!canSave || busy) return;
+    // Wiring 16: the parts kept from the last Back on 16 come back if the total still
+    // matches; the kept draft is dropped from 15 either way (16 hands it back on Back).
+    const splitParams = getSplitPaymentParams(params, amountPesewas, saleItems);
+    if (params.splitDraft) onUpdateParams?.({ splitDraft: undefined });
+    onNavigate("SplitPayment", splitParams);
+  }
+
+  const notices = (
+    <>
+      {(amountErrors.message || error) && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 text-base font-semibold text-rose-950">{amountErrors.message || error}</p>}
+      <SaveAttemptNotice saveAttempt={saveAttempt} busy={busy} onTryAgain={() => void saveSale(true)} />
+    </>
+  );
+
+  if (layout.wide) {
+    // Wide 15 (D2, D15; wide_layout.screens["15 Sell"]): left, the amount and a keypad that fills the
+    // height; right, the Items row, How is it paid? as a 2x2 grid of tiles, the quiet Last sale box,
+    // then Done pinned at the bottom with one line saying why it is disabled. The same controls,
+    // labels, handlers and saved record as the phone; only the layout changes.
+    const tileClass = "relative flex h-[92px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-[18px] px-2 text-[19px] font-extrabold leading-tight disabled:cursor-not-allowed disabled:opacity-50";
+    const doneDisabled = !canSave || busy;
+    return (
+      <PosPage wide rail={layout.mode === "rail"} className="flex flex-col gap-5 tabular-nums">
+        <h1 className="text-[30px] font-extrabold leading-tight text-[#0F172A]">{t("sell.title")}</h1>
+        <div data-sell-wide="" className="grid min-h-0 flex-1 gap-6" style={{ gridTemplateColumns: "minmax(0, 1fr) clamp(300px, 45%, 410px)" }}>
+          <div className="flex min-h-0 min-w-0 flex-col gap-3">
+            <section className="amount-fit-container rounded-[20px] border-2 border-slate-300 bg-white px-6 py-4 text-right">
+              <p className="text-[17px] font-bold text-slate-600">{t("sell.customerPays")}</p>
+              <output aria-live="polite" className="block min-w-0 whitespace-nowrap text-[#0F172A]" style={{ fontSize: "clamp(28px, 11.5cqi, 56px)", fontWeight: 700, lineHeight: 1.15 }}>{formatGhs(amountPesewas ?? 0)}</output>
+            </section>
+            <AmountKeypad label={t("sell.enterAmount")} disabled={hasSaleItems} onKey={appendDigit} fill />
+            {!hasSaleItems && <p className="text-center text-[17px] text-slate-600">{t("sell.keyboardHint")}</p>}
+          </div>
+          <div className="flex min-w-0 flex-col gap-4">
+            <section className="flex items-center justify-between gap-3 rounded-[20px] border-2 border-slate-300 bg-white px-4 py-3.5">
+              <div className="min-w-0">
+                <p className="text-[17px] font-bold text-slate-600">{t("sell.items")}</p>
+                <p className="text-[17px] text-slate-600">{hasSaleItems ? t("sell.itemsAdded", { count: saleItems.length }) : t("sell.itemsNone")}</p>
+              </div>
+              <AddButton className="w-auto! shrink-0 whitespace-nowrap hover:bg-green-50" onClick={() => onNavigate("SellWithItems", { amountPesewas, saleItems })}>
+                {t("sell.addItems")}
+              </AddButton>
+            </section>
+            <p id="sell-how-paid" className="text-[17px] font-bold text-slate-600">{t("review.howPaid")}</p>
+            <div role="group" aria-labelledby="sell-how-paid" className="grid grid-cols-2 gap-3">
+              {paymentChoices.map(({ value, label, icon: Icon }) => {
+                const selected = paymentMethod === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => choosePayment(value)}
+                    disabled={value === "credit" && (!canSave || busy)}
+                    className={`${tileClass} ${selected ? "border-[3px] border-emerald-900 bg-green-200 text-emerald-900" : "border-2 border-slate-500 bg-white text-slate-900 hover:border-slate-700 hover:bg-slate-50"}`}
+                  >
+                    {selected && <span aria-hidden="true" className="absolute right-2.5 top-2 grid h-[26px] w-[26px] place-items-center rounded-full bg-emerald-900 text-white"><Check size={16} strokeWidth={3} /></span>}
+                    <Icon size={30} className="shrink-0" aria-hidden="true" />
+                    <span className="w-full min-w-0 truncate text-center">{t(label)}</span>
+                  </button>
+                );
+              })}
+              <AddButton plus={false} size="tile" aria-label={t("sell.split")} disabled={!canSave || busy} onClick={openSplit} className={`${tileClass} px-2! text-[19px]! hover:bg-green-50`}>
+                <SplitIcons withOwe size={24} />
+                <span className="w-full min-w-0 truncate text-center">{t("sell.split")}</span>
+              </AddButton>
+            </div>
+            <LastSaleBox load={loadLastSale} />
+            {notices}
+            <div className="mt-auto flex flex-col gap-2 pt-2">
+              <PosPrimaryButton type="button" onClick={() => void saveSale()} disabled={doneDisabled} aria-describedby={doneDisabled && !busy ? "sell-done-why" : undefined} className="h-[76px] min-h-0 rounded-[18px] border-0 text-[26px] enabled:hover:bg-emerald-950">
+                <Check size={30} aria-hidden="true" /> {busy ? t("sell.saving") : t("sell.done")}
+              </PosPrimaryButton>
+              <p id="sell-done-why" className="min-h-[26px] text-center text-[17px] text-slate-600">{doneDisabled && !busy ? t("sell.doneWhy") : ""}</p>
+            </div>
+          </div>
+        </div>
+        {largeAmount.dialog}
+      </PosPage>
+    );
+  }
+
   return (
     // Wiring 15 "Done on 15" (17 Nov 2026, second decision): Done is NOT pinned. It is the last thing in
     // the content, and the page keeps room below it so that, scrolled to the end, Done ends above the
@@ -151,16 +250,7 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
                 key={value}
                 type="button"
                 aria-pressed={paymentMethod === value}
-                onClick={() => {
-                  if (value === "credit") {
-                    if (amountErrors.check(["credit"]) && !busy) onNavigate("WhoOwesYou", { amountPesewas, saleItems, ...(typeof params.creditReason === "string" && { creditReason: params.creditReason }) });
-                  } else if (value === "momo") {
-                    // Brief 3.12: a large MoMo amount asks before 61 (before the customer is asked to pay).
-                    if (amountErrors.check(["momo"]) && !busy) {
-                      if (!largeAmount.guard(amountPesewas, () => onNavigate("MoMoChoice", { amountPesewas, saleItems }), { momo: true })) onNavigate("MoMoChoice", { amountPesewas, saleItems });
-                    }
-                  } else setPaymentMethod(value);
-                }}
+                onClick={() => choosePayment(value)}
                 disabled={value === "credit" && (!canSave || busy)}
                 className={`flex h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-[14px] border-2 px-1 text-xs font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 sm:h-20 sm:gap-1 sm:rounded-2xl sm:text-sm lg:h-24 lg:rounded-[18px] lg:border-[3px] lg:px-2 lg:text-[17px] ${
                   paymentMethod === value ? "border-emerald-900 bg-green-200 text-slate-950" : "border-slate-500 bg-white text-slate-900"
@@ -176,14 +266,7 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
               plus={false}
               aria-label={t("sell.split")}
               disabled={!canSave || busy}
-              onClick={() => {
-                if (!canSave || busy) return;
-                // Wiring 16: the parts kept from the last Back on 16 come back if the total still
-                // matches; the kept draft is dropped from 15 either way (16 hands it back on Back).
-                const splitParams = getSplitPaymentParams(params, amountPesewas, saleItems);
-                if (params.splitDraft) onUpdateParams?.({ splitDraft: undefined });
-                onNavigate("SplitPayment", splitParams);
-              }}
+              onClick={openSplit}
               className="h-14 min-h-0! min-w-0 flex-1 flex-col gap-0.5! overflow-hidden px-1! py-0! text-xs! sm:h-20 sm:gap-1! sm:rounded-2xl sm:text-sm! lg:h-24 lg:rounded-[18px] lg:px-2! lg:text-[17px]!"
             >
               <SplitIcons withOwe size={11} />

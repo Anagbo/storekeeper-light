@@ -622,6 +622,7 @@ export default function PosApp() {
       params={routeState.params}
       onNavigate={navigate}
       onUpdateParams={updateCurrentParams}
+      layout={layout}
     />
   ) : route === POS_ROUTES.SellWithItems ? (
     <SellWithItems
