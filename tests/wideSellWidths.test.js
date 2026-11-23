@@ -23,7 +23,8 @@ const MEASURE = `(() => {
     innerWidth, innerHeight, scrollWidth: document.documentElement.scrollWidth, wide: !!document.querySelector("[data-sell-wide]"),
     amount: { text: amount.textContent, lines: lines(amount), clipped: amount.scrollWidth > amount.clientWidth + 0.5, size: getComputedStyle(amount).fontSize, weight: getComputedStyle(amount).fontWeight, ...box(amount) },
     controls, tiles, done, right: right && box(right), small,
-    lastSale: document.querySelector("[data-last-sale]")?.textContent ?? ""
+    lastSale: document.querySelector("[data-last-sale]")?.textContent ?? "",
+    hintGap: (() => { const pad = document.querySelector("[data-amount-keypad]"); const hint = pad.nextElementSibling; return hint ? pad.parentElement.getBoundingClientRect().bottom - hint.getBoundingClientRect().bottom : null; })()
   };
 })()`;
 
@@ -54,7 +55,7 @@ test("wide Sell at 768, 1024, 1280 and 1440: fits, GH₵12,345.00 whole, labels 
         assert.ok(!c.overflow && c.r <= m.innerWidth + 0.5, `${at}: "${c.label}" not clipped`);
         assert.ok(c.lines <= (c.label === "Split payment" ? 2 : 1), `${at}: "${c.label}" on one line (two for Split payment) (${c.lines})`);
         assert.ok(c.h >= 48, `${at}: "${c.label}" 48px or taller (${c.h})`);
-        if (m.innerWidth < 1280 && /^[0-9.]+$|^00$/.test(c.label)) assert.ok(c.h <= 88.5, `${at}: key ${c.label} at most 88px (${c.h})`);
+        if (m.innerWidth < 1280 && /^[0-9.]+$|^00$/.test(c.label)) assert.ok(Math.abs(c.h - 80) < 0.5, `${at}: key ${c.label} 80px tall (${c.h})`);
       }
       const [cash, momo, owe, split] = m.tiles;
       assert.ok(Math.abs(cash.t - momo.t) < 1 && Math.abs(owe.t - split.t) < 1 && owe.t > cash.b - 1 && Math.abs(cash.l - owe.l) < 1, `${at}: the tiles are a 2x2 grid`);
@@ -62,6 +63,7 @@ test("wide Sell at 768, 1024, 1280 and 1440: fits, GH₵12,345.00 whole, labels 
       assert.ok(Math.abs(m.done.b - (m.right.b - 26 - 8)) < 2, `${at}: Done at the bottom of the right column, the reason line under it`);
       assert.ok(m.done.b <= m.innerHeight, `${at}: Done visible without scrolling (${m.done.b} of ${m.innerHeight})`);
       assert.deepEqual(m.small, [], `${at}: all text 17px or larger`);
+      assert.ok(m.hintGap !== null && Math.abs(m.hintGap) < 1, `${at}: the hint at the bottom of the keypad column (${m.hintGap})`);
       await key("Tab");
       const rings = await app.evaluate(FOCUS);
       for (const r of rings) assert.ok(r.visible && r.style === "solid" && r.width === 3, `${at}: focus ring on "${r.label}" (${r.style} ${r.width})`);
