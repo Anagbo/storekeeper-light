@@ -12,6 +12,7 @@ import { PartyCard } from "./PartyCard.jsx";
 import { AddButton, PosBackButton, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { useBackBlock, useBackHandler } from "./browserBack.js";
 import { useFormErrors } from "./formErrors.js";
+import WideDialog, { useWideDialogs } from "./WideDialog.jsx";
 
 const CATEGORY_LABELS = Object.freeze({
   stock: "expense.category.stock",
@@ -300,6 +301,7 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
 
 export function YouOweSuppliers({ onBack, onPay }) {
   const [selectedSupplier, setSelectedSupplier] = useState(null);
+  const wideDialog = useWideDialogs();
   const [amount, setAmount] = useState("");
   // Wiring 44 rule: Pay on 46 records Cash or MoMo (default Cash) for money owed from a No on 44.
   const [paidWith, setPaidWith] = useState("cash");
@@ -368,9 +370,9 @@ export function YouOweSuppliers({ onBack, onPay }) {
           })}
         </>
       )}
-      {selectedSupplier && (
-        <section role="dialog" aria-modal="true" aria-labelledby="supplier-payment-title" className="fixed inset-0 z-40 flex items-end justify-center bg-slate-950/60 p-3 sm:items-center">
-          <div className="w-full min-w-0 max-w-md space-y-3 rounded-2xl border-2 border-slate-900 bg-white p-4">
+      {selectedSupplier && (() => {
+        const payBody = (
+          <>
             <h2 id="supplier-payment-title" data-sheet-title="supplier-pay" className="min-w-0 text-xl font-extrabold [overflow-wrap:anywhere]">{t("supplier.payTitle", { name: displayName(selectedSupplier.name) })}</h2>
             <p className="font-semibold">{t("supplier.balance", { amount: formatGhs(selectedSupplier.balancePesewas) })}</p>
             <AmountInput label={t("supplier.paymentAmount")} value={amount} onChange={setAmount} />
@@ -381,9 +383,23 @@ export function YouOweSuppliers({ onBack, onPay }) {
               {saving ? t("expense.saving") : t("supplier.recordPayment")}
             </button>
             <button type="button" onClick={() => setSelectedSupplier(null)} className="flex h-[52px] w-full items-center justify-center rounded-2xl border-2 border-slate-600 bg-white px-4 text-lg font-extrabold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">{t("expense.cancel")}</button>
-          </div>
-        </section>
-      )}
+          </>
+        );
+        // wide_layout.page_types.dialog: on wide the shared WideDialog; Escape and a scrim click are
+        // Cancel, not while the payment is saving.
+        if (wideDialog) {
+          return (
+            <WideDialog labelledBy="supplier-payment-title" onClose={() => { if (!saving) setSelectedSupplier(null); }}>
+              <div className="min-w-0 space-y-3">{payBody}</div>
+            </WideDialog>
+          );
+        }
+        return (
+          <section role="dialog" aria-modal="true" aria-labelledby="supplier-payment-title" className="fixed inset-0 z-40 flex items-end justify-center bg-slate-950/60 p-3 sm:items-center">
+            <div className="w-full min-w-0 max-w-md space-y-3 rounded-2xl border-2 border-slate-900 bg-white p-4">{payBody}</div>
+          </section>
+        );
+      })()}
     </PosPage>
   );
 }

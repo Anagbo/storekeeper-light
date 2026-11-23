@@ -4,6 +4,7 @@ import { posText as t } from "./i18n.js";
 import { PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { isLargeAmount } from "./largeAmount.js";
 import { useBackHandler } from "./browserBack.js";
+import WideDialog, { useWideDialogs } from "./WideDialog.jsx";
 
 // Brief 3.12. One hook per screen that saves a sale:
 //   if (largeAmount.guard(totalPesewas, () => void save(true))) return;
@@ -51,10 +52,12 @@ export function useLargeAmountConfirm() {
 function LargeAmountDialog({ amountPesewas, momo = false, onChange, onConfirm }) {
   const changeRef = useRef(null);
   const confirmRef = useRef(null);
+  const wideDialog = useWideDialogs();
 
-  // Focus starts on Change amount (the safe choice) and goes back to where it was on close.
+  // Focus starts on Change amount (the safe choice) and goes back to where it was on close (on wide
+  // the WideDialog does both).
   useEffect(() => {
-    if (typeof document === "undefined") return undefined;
+    if (wideDialog || typeof document === "undefined") return undefined;
     const opener = document.activeElement;
     changeRef.current?.focus();
     return () => { if (opener instanceof HTMLElement) opener.focus(); };
@@ -75,6 +78,27 @@ function LargeAmountDialog({ amountPesewas, momo = false, onChange, onConfirm })
     }
   }
 
+  const body = (
+    <>
+        <h2 id="large-amount-title" className="text-2xl font-extrabold">{t("largeAmount.title")}</h2>
+        <p id="large-amount-body" className="text-lg font-semibold text-slate-900">{t(momo ? "largeAmount.momoBody" : "largeAmount.body", { amount: formatGhs(amountPesewas) })}</p>
+        {/* open_text_sweep (17 Nov 2026): the shared main and other buttons, kept 60px. */}
+        <PosPrimaryButton ref={changeRef} type="button" autoFocus onClick={onChange} className="min-h-[60px]!">
+          {t("largeAmount.change")}
+        </PosPrimaryButton>
+        <PosSecondaryButton ref={confirmRef} type="button" onClick={onConfirm} className="min-h-[60px]! w-full">
+          {t("largeAmount.save")}
+        </PosSecondaryButton>
+    </>
+  );
+  // wide_layout.page_types.dialog: on wide the shared WideDialog; Escape and a scrim click are Change amount.
+  if (wideDialog) {
+    return (
+      <WideDialog role="alertdialog" labelledBy="large-amount-title" describedBy="large-amount-body" onClose={onChange}>
+        <div className="flex flex-col gap-3">{body}</div>
+      </WideDialog>
+    );
+  }
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-3 sm:items-center">
       <section
@@ -85,15 +109,7 @@ function LargeAmountDialog({ amountPesewas, momo = false, onChange, onConfirm })
         onKeyDown={handleKeyDown}
         className="safe-bottom flex w-full max-w-md flex-col gap-3 rounded-[24px] border-[3px] border-slate-900 bg-white p-5 shadow-2xl"
       >
-        <h2 id="large-amount-title" className="text-2xl font-extrabold">{t("largeAmount.title")}</h2>
-        <p id="large-amount-body" className="text-lg font-semibold text-slate-900">{t(momo ? "largeAmount.momoBody" : "largeAmount.body", { amount: formatGhs(amountPesewas) })}</p>
-        {/* open_text_sweep (17 Nov 2026): the shared main and other buttons, kept 60px. */}
-        <PosPrimaryButton ref={changeRef} type="button" autoFocus onClick={onChange} className="min-h-[60px]!">
-          {t("largeAmount.change")}
-        </PosPrimaryButton>
-        <PosSecondaryButton ref={confirmRef} type="button" onClick={onConfirm} className="min-h-[60px]! w-full">
-          {t("largeAmount.save")}
-        </PosSecondaryButton>
+        {body}
       </section>
     </div>
   );
