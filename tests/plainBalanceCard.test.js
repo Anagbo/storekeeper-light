@@ -36,8 +36,8 @@ test("29: the plain balance card holds a 40-character name and GH₵98,845.43 at
       const m = await app.evaluate(MEASURE);
       const at = `${width}px`;
       assert.ok(m.scrollWidth <= m.innerWidth, `${at}: no sideways scroll`);
-      assert.equal(m.bg, "rgb(255, 255, 255)", at);
-      assert.equal(m.border, "2px rgb(203, 213, 225)", at);
+      assert.equal(m.bg, "rgb(241, 245, 249)", at);
+      assert.match(m.border, /^0px /, at);
       assert.equal(m.radius, "20px", at);
       assert.equal(m.amountColor, "rgb(15, 23, 42)", at);
       assert.equal(m.amountSize, "40px", at);

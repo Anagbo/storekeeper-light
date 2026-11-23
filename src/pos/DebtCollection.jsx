@@ -40,6 +40,7 @@ import { useFormErrors } from "./formErrors.js";
 import AmountTextInput from "./AmountTextInput.jsx";
 import { formatHistoryRowTimestamp, groupCollectionHistory } from "./historyRows.js";
 import { needsSignature } from "../config/features.js";
+import { SOFT_TILE } from "./softTile.js";
 import EventRows, { EventDetail, KeyValueRows } from "./EventRows.jsx";
 
 const PAYMENT_METHODS = [
@@ -872,7 +873,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               </button>
             )}
           </section>}
-          <section data-balance-card="" className="amount-fit-container min-w-0 rounded-[20px] border-2 border-[#CBD5E1] bg-white px-4 py-3">
+          <section data-balance-card="" className={`amount-fit-container min-w-0 ${SOFT_TILE} px-4 py-3`}>
             <p className="text-[17px] font-bold text-slate-600 [overflow-wrap:anywhere]">{t("collect.balanceOwed", { name: displayName(data.name) })}</p>
             <p className="amount-fit font-bold tabular-nums text-[#0F172A]" style={{ fontSize: "40px" }}>{formatGhs(data.balancePesewas)}</p>
             {dueLine

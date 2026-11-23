@@ -7,6 +7,7 @@ import { groupCollectionHistory } from "./historyRows.js";
 import EventRows from "./EventRows.jsx";
 import { posText as t } from "./i18n.js";
 import { PosBackButton, PosPage } from "./PosComponents.jsx";
+import { SOFT_TILE } from "./softTile.js";
 
 // Wiring 73 "Show {Name} the record" (rules_global.customer_proof, 16 Nov 2026). Look-only, for the
 // customer to read: the balance as "You owe", then what happened, newest first. Paid rows, credit rows
@@ -52,9 +53,9 @@ export default function CustomerRecordView({ params = {}, onBack }) {
         <p role="alert" className="text-lg">{t("record.notFound")}</p>
       ) : (
         <>
-          <section className="amount-fit-container rounded-[20px] bg-[#FFE4E9] px-4 py-3">
-            <p className="text-[22px] font-bold">{t("record.youOwe")}</p>
-            <p className="amount-fit font-extrabold leading-tight text-rose-950">{formatGhs(data.balancePesewas)}</p>
+          <section className={`amount-fit-container ${SOFT_TILE} px-4 py-3`}>
+            <p className="text-[17px] font-bold text-slate-600">{t("record.youOwe")}</p>
+            <p className="amount-fit font-bold leading-tight tabular-nums text-[#0F172A]" style={{ fontSize: "40px" }}>{formatGhs(data.balancePesewas)}</p>
           </section>
           {/* Wiring 73 notice (16 Nov 2026): one plain line right under You owe, so a long history never
               pushes it off screen. */}
