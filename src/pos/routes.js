@@ -262,7 +262,8 @@ export function backRoute(state, fallback = POS_ROUTES.Home) {
   // Wiring 16 (11 Nov 2026): Back from 16 to 15 (or to 55, MOMO16) keeps the split draft (parts, and the Owe customer
   // and terms) in 15's route params, so Split payment can reopen it. Received MoMo never gets here:
   // Back with a locked row asks first and Leave goes to an empty 15 (PosApp backFromScreen).
-  let params = (previous.current === POS_ROUTES.Sell || previous.current === POS_ROUTES.ReviewAndPay) && isSaleSplitHubScreen(state)
+  // Wide D9 (23 Nov 2026): 20 and 55 are one screen on the 20 route, so 16 opened from 20 keeps its parts too.
+  let params = SPLIT_DRAFT_OPENERS.has(previous.current) && isSaleSplitHubScreen(state)
     ? { ...previous.params, splitDraft: getSplitDraft(state.params) }
     : previous.params;
   // Wiring 27 (12 Nov 2026): Back from 27 opened from 19 keeps the Cash and MoMo parts in 19's
@@ -281,15 +282,21 @@ export function backRoute(state, fallback = POS_ROUTES.Home) {
   return { current: previous.current, params, history: state.history.slice(0, -1) };
 }
 
+// The screens that open 16 for a sale and get its parts back on Back: 15, 55 and (wide D9) 20.
+const SPLIT_DRAFT_OPENERS = new Set([POS_ROUTES.Sell, POS_ROUTES.ReviewAndPay, POS_ROUTES.SellWithItems]);
+
 // Wiring 18 (16 Nov 2026): the reason typed on 18 is part of the sale's draft, not of one customer's
-// terms: Back hands it to the screen below (17, 34, 16, 15 or Review and pay), so it comes back when the owner
-// returns to 18, also with another customer (only the due choice is dropped then).
-const CREDIT_REASON_SCREENS = new Set([POS_ROUTES.WhenWillTheyPay, POS_ROUTES.ALittleAtATime, POS_ROUTES.NewPerson, POS_ROUTES.WhoOwesYou, POS_ROUTES.SplitPayment, POS_ROUTES.Sell, POS_ROUTES.ReviewAndPay]);
+// terms: Back hands it to the screen below (17, 34, 16, 15, Review and pay, or 20 when wide D9 opened
+// Owe), so it comes back when the owner returns to 18, also with another customer (only the due choice
+// is dropped then).
+const CREDIT_REASON_SCREENS = new Set([POS_ROUTES.WhenWillTheyPay, POS_ROUTES.ALittleAtATime, POS_ROUTES.NewPerson, POS_ROUTES.WhoOwesYou, POS_ROUTES.SplitPayment, POS_ROUTES.Sell, POS_ROUTES.ReviewAndPay, POS_ROUTES.SellWithItems]);
 function carryCreditReasonBack(state, previousParams = {}) {
   const reason = state.params?.creditReason;
   if (typeof reason !== "string" || state.params?.manualDebt) return previousParams;
   if (!CREDIT_REASON_SCREENS.has(state.current) || !CREDIT_REASON_SCREENS.has(state.history.at(-1)?.current)) return previousParams;
   if (state.current === POS_ROUTES.SplitPayment && !isSaleSplitHub(state.params ?? {})) return previousParams;
+  // Phone 55 > Back > 20 stays as it was: 20 gets the reason only from a credit screen it opened (wide D9).
+  if (state.current === POS_ROUTES.ReviewAndPay && state.history.at(-1)?.current === POS_ROUTES.SellWithItems) return previousParams;
   return { ...previousParams, creditReason: reason };
 }
 
