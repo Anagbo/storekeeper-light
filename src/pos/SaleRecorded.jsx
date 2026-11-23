@@ -1,15 +1,16 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Check, Plus } from "lucide-react";
 import { formatDate, formatTime } from "../lib/formatDate.js";
 import { formatGhs } from "../lib/money.js";
-import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
+import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, useTaskColumn } from "./PosComponents.jsx";
+import { enterMeansNewSale } from "./resultKeys.js";
 import { posText as t } from "./i18n.js";
 import { displayName } from "../lib/displayName.js";
 import { getSaleReceiptDetails } from "./saleReceipt.js";
 import { getSaleReceiptText, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
 import { getMomoDisplayLabel } from "./momoMapping.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
-import { CopyReceiptButton, ReceiptFailedLine, ReceiptOfflineLine, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
+import { CopyReceiptButton, ReceiptFailedLine, ReceiptOfflineLine, ReceiptPair, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
 
 // The receipt details and text, or null when the record cannot give them. 30 opens only after the
 // sale is saved, so a bad record must not hide that: it is logged with the sale id instead.
@@ -49,6 +50,21 @@ export default function SaleRecorded({ transaction, creditResult, shopName, onDo
   const receipt = useMemo(() => readReceipt(transaction, shopName), [transaction, shopName]);
   // A customer with a valid saved number (a sale with a part owed) is messaged directly; else the share sheet.
   const actions = useReceiptActions(receipt?.receiptText ?? "", normalizeWhatsAppPhone(creditResult?.phone ?? transaction?.customer_phone) ?? "");
+  // Wide D11: the task column panel (PosApp). Enter is New sale (resultKeys.js says when it is not).
+  const wide = Boolean(useTaskColumn());
+  const newSaleRef = useRef(onNewSale);
+  newSaleRef.current = onNewSale;
+  useEffect(() => {
+    const win = globalThis.window;
+    if (!wide || !receipt || !win?.addEventListener) return undefined;
+    function onKey(event) {
+      if (!enterMeansNewSale(event)) return;
+      event.preventDefault();
+      newSaleRef.current?.();
+    }
+    win.addEventListener("keydown", onKey);
+    return () => win.removeEventListener("keydown", onKey);
+  }, [wide, Boolean(receipt)]);
   if (!receipt) return <SaleSaved onDone={onDone} />;
   const { details, receiptText } = receipt;
   // Records saved before MoMo verification was stored keep the translated plain label.
@@ -75,7 +91,8 @@ export default function SaleRecorded({ transaction, creditResult, shopName, onDo
           <Check size={56} aria-hidden="true" />
         </div>
         <h1 className="text-xl font-bold">{t("saleRecorded.title")}</h1>
-        <p className="amount-fit-container text-4xl font-extrabold">{formatGhs(details.amountPesewas)}</p>
+        {/* Wide: the one hero number (wide_layout.design_principles, 56px bold 700). */}
+        <p data-result-amount="" className={`amount-fit-container ${wide ? "text-[56px] font-bold leading-tight" : "text-4xl font-extrabold"}`}>{formatGhs(details.amountPesewas)}</p>
         <p className="text-lg text-slate-700">{dateLabel} · {time}</p>
       </section>
 
@@ -84,7 +101,7 @@ export default function SaleRecorded({ transaction, creditResult, shopName, onDo
           <div key={`${item.name}-${index}`} className="flex justify-between gap-3 text-lg">
             <span className="min-w-0 flex-1">
               <span className="block truncate">{item.name} × {item.quantity}</span>
-              {item.subtitle && <span className="block text-sm text-slate-700">{item.subtitle}</span>}
+              {item.subtitle && <span className={`block ${wide ? "text-[17px]" : "text-sm"} text-slate-700`}>{item.subtitle}</span>}
             </span>
             <strong className="shrink-0">{formatGhs(item.amountPesewas)}</strong>
           </div>
@@ -121,7 +138,7 @@ export default function SaleRecorded({ transaction, creditResult, shopName, onDo
                       <span data-owe-label="" className="block whitespace-nowrap">
                         {customerName ? t("saleRecorded.owesLabel", { name: shortName(displayName(customerName)) }) : t("saleRecorded.owedLabel")}
                       </span>
-                      <span data-owe-sub="" className="block text-sm text-slate-700">{t("saleRecorded.fromThisSale")}</span>
+                      <span data-owe-sub="" className={`block ${wide ? "text-[17px]" : "text-sm"} text-slate-700`}>{t("saleRecorded.fromThisSale")}</span>
                     </span>
                     <strong data-owe-amount="" className="shrink-0 whitespace-nowrap text-rose-900">{formatGhs(owedPesewas)}</strong>
                   </div>
@@ -150,6 +167,26 @@ export default function SaleRecorded({ transaction, creditResult, shopName, onDo
           icon), the offline line 8px under it, Copy receipt (other), Done (other), New sale (main). The receipt
           buttons only with the receipts flag on. */}
       {/* As on 31: the stack follows the card and the main button sits at the bottom. */}
+      {/* Wide D11: Send and Copy side by side with the offline line under the pair, then New sale (main)
+          and Done; the same buttons as the phone. */}
+      {wide ? (
+        <>
+          {receiptsOn && (
+            <ReceiptPair
+              send={<SendReceiptButton look="other" onClick={() => void actions.send()} />}
+              copy={<CopyReceiptButton look="other" onClick={() => void actions.copy()} copied={actions.copied} />}
+              online={actions.online}
+              failed={actions.failed}
+            />
+          )}
+          <PosPrimaryButton type="button" onClick={onNewSale} className="h-[68px] text-2xl">
+            <Plus size={28} aria-hidden="true" />{t("saleRecorded.newSale")}
+          </PosPrimaryButton>
+          <PosSecondaryButton type="button" className="w-full" onClick={onDone}>
+            {t("saleRecorded.done")}
+          </PosSecondaryButton>
+        </>
+      ) : <>
       {receiptsOn && (
         <div className="flex flex-col gap-2">
           <SendReceiptButton look="other" onClick={() => void actions.send()} />
@@ -164,6 +201,7 @@ export default function SaleRecorded({ transaction, creditResult, shopName, onDo
       <PosPrimaryButton type="button" onClick={onNewSale} className="mt-auto h-[68px] text-2xl">
         <Plus size={28} aria-hidden="true" />{t("saleRecorded.newSale")}
       </PosPrimaryButton>
+      </>}
     </PosPage>
   );
 }

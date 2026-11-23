@@ -14,7 +14,7 @@ import { loadCustomerHistory } from "../utils/loadCustomerDebtHistory.js";
 import { getOutstandingDebtPesewas } from "../lib/money.js";
 import { openWhatsApp } from "../lib/openWhatsApp.js";
 import { buildWhatsAppReminderText, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
-import { CopyReceiptButton, ReceiptFailedLine, ReceiptOfflineLine, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
+import { CopyReceiptButton, ReceiptFailedLine, ReceiptOfflineLine, ReceiptPair, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
 import { buildLatestPaymentReceipt, getCollectionReceiptText, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
 import AmountKeypad from "./AmountKeypad.jsx";
 import { pressAmountKey } from "./amountKeypad.js";
@@ -23,7 +23,7 @@ import { getInstallmentsLeft, getPlanPeriodFigures, getPlanProgress } from "../u
 import { getCustomerLedgerRecords, getPlanPaidPesewas } from "../utils/debtLedgerMath.js";
 import { posText as t } from "./i18n.js";
 import { getDebtEntryReason } from "../lib/creditReason.js";
-import { AddButton, PosBackButton, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, SplitIcons } from "./PosComponents.jsx";
+import { AddButton, PosBackButton, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, SplitIcons, useTaskColumn } from "./PosComponents.jsx";
 import CustomerContactEditor from "./CustomerContactEditor.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
@@ -493,6 +493,7 @@ function CollectPayPartScreen({ params, onBack, onNavigate, onUpdateParams, onRe
 
 export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerContact, shopName }) {
   const result = params;
+  const wide = Boolean(useTaskColumn());
   const [remainingSeconds, setRemainingSeconds] = useState(() => Math.max(0, Math.ceil((result.undoExpiresAt - Date.now()) / 1000)));
   const [busy, setBusy] = useState(false);
   useBackBlock(busy);
@@ -572,7 +573,8 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
           <Check size={56} strokeWidth={2.2} aria-hidden="true" />
         </div>
         <h1 className="text-xl font-bold">{undone ? t("collect.paymentUndone") : t("collect.paymentReceived")}</h1>
-        <p className="amount-fit mx-auto font-extrabold">{formatGhs(result.amountPesewas)}</p>
+        {/* Wide: the one hero number, 56px bold 700 (still shrinking to fit, never clipped). */}
+        <p data-result-amount="" className={`amount-fit mx-auto ${wide ? "font-bold" : "font-extrabold"}`} style={wide ? { fontSize: "min(56px, 12cqi)" } : undefined}>{formatGhs(result.amountPesewas)}</p>
         <p className="text-lg text-slate-800">{t("collect.fromLower", { name: displayName(result.customerName) })}</p>
       </section>
 
@@ -588,6 +590,24 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
       </section>
 
       <CollectionError>{error}</CollectionError>
+      {/* Wide D11: Undo on its own row, then Send and Copy side by side with the offline line under the
+          pair (the phone's buttons; Undo stays the only thing that holds the receipt back). */}
+      {wide && (
+        <>
+          <PosSecondaryButton type="button" disabled={busy || remainingSeconds <= 0 || undone} onClick={() => void undo()} tone="danger" className="w-full">
+            <Undo2 size={22} aria-hidden="true" /> {t("collect.undo")}
+          </PosSecondaryButton>
+          {receiptsOn && (
+            <ReceiptPair
+              send={<SendReceiptButton onClick={() => void actions.send()} disabled={!receiptReady} label={t("collect.receiptShare")} />}
+              copy={<CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} disabled={!receiptReady} className="h-14!" />}
+              online={actions.online || !receiptReady}
+              failed={receiptReady ? actions.failed : null}
+            />
+          )}
+        </>
+      )}
+      {!wide && <>
       <div className={`grid gap-2 ${receiptsOn ? "grid-cols-2" : "grid-cols-1"}`}>
         <PosSecondaryButton type="button" disabled={busy || remainingSeconds <= 0 || undone} onClick={() => void undo()} tone="danger">
           <Undo2 size={22} aria-hidden="true" /> {t("collect.undo")}
@@ -598,15 +618,16 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
       </div>
       {receiptsOn && <CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} disabled={!receiptReady} />}
       {receiptsOn && receiptReady && <ReceiptFailedLine failed={actions.failed} />}
+      </>}
       {receiptsOn && remainingSeconds > 0 && !undone && (
-        <p role="status" className="text-center text-sm font-semibold text-slate-700">{t("collect.receiptWait", { seconds: remainingSeconds })}</p>
+        <p role="status" className={`text-center ${wide ? "text-[17px]" : "text-sm"} font-semibold text-slate-700`}>{t("collect.receiptWait", { seconds: remainingSeconds })}</p>
       )}
       {receiptsOn && !receiptPhone && !undone && (
         <div className="text-center">
           <AddButton onClick={() => setContactEditorOpen(true)}>
             {t("collect.addPhoneForReceipt")}
           </AddButton>
-          <p className="text-sm font-semibold text-slate-700">{t("collect.addPhoneForReceiptHint")}</p>
+          <p className={`${wide ? "text-[17px]" : "text-sm"} font-semibold text-slate-700`}>{t("collect.addPhoneForReceiptHint")}</p>
         </div>
       )}
       <p className="text-center text-[17px] text-slate-800">
@@ -615,7 +636,8 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
       <PosSecondaryButton type="button" onClick={() => onNavigate("DebtorDetail", { debtId: result.debtId, customerName: result.customerName })} className="w-full">
         {t("collect.seeDetails", { name: displayName(result.customerName) })}
       </PosSecondaryButton>
-      <div data-bottom-row="" className="sticky bottom-0 z-10 -mx-4 mt-auto flex flex-col items-stretch bg-white px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))] sm:-mx-6 sm:px-6">
+      {/* Wide D11: Done is not sticky inside the panel; it sits at the bottom of the panel. */}
+      <div data-bottom-row="" className={wide ? "mt-auto flex flex-col items-stretch pt-2" : "sticky bottom-0 z-10 -mx-4 mt-auto flex flex-col items-stretch bg-white px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))] sm:-mx-6 sm:px-6"}>
         <PosPrimaryButton type="button" onClick={onHome} className="h-[68px] min-h-0 rounded-[20px] text-2xl">{t("collect.done")}</PosPrimaryButton>
       </div>
       {contactEditorOpen && (

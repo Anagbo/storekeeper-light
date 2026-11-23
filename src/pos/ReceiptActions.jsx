@@ -84,13 +84,29 @@ export function CopyReceiptButton({ onClick, copied, disabled = false, look = ""
 
 // The quiet offline line (wiring "Receipts offline", 14 Nov 2026): it explains Send receipt, so
 // each screen puts it directly under that button (8px, gap-2) and above Copy receipt. Offline only.
-export function ReceiptOfflineLine({ online, className = "" }) {
+// wide: 17px (wide_layout.design_principles: all text 17px or larger) instead of the phone's 14px.
+export function ReceiptOfflineLine({ online, className = "", wide = false }) {
   if (online) return null;
-  return <p role="status" data-receipt-offline="" className={`text-center text-sm font-semibold text-slate-700 ${className}`}>{t("receipt.offline")}</p>;
+  return <p role="status" data-receipt-offline="" className={`text-center ${wide ? "text-[17px]" : "text-sm"} font-semibold text-slate-700 ${className}`}>{t("receipt.offline")}</p>;
 }
 
 // Shown when Send or Copy could not open; it is about either button, so it sits under Copy receipt.
-export function ReceiptFailedLine({ failed }) {
+export function ReceiptFailedLine({ failed, wide = false }) {
   if (!failed) return null;
-  return <p role="alert" className="text-center text-sm font-semibold text-slate-700">{failed}</p>;
+  return <p role="alert" className={`text-center ${wide ? "text-[17px]" : "text-sm"} font-semibold text-slate-700`}>{failed}</p>;
+}
+
+// Wide D11 (wiring "30, 31, 28 results", 23 Nov 2026): Send receipt and Copy receipt side by side, the
+// offline line full width directly under the pair (it still explains Send receipt), then the failed line.
+export function ReceiptPair({ send, copy, online, failed }) {
+  return (
+    <>
+      <div data-receipt-pair="" className="grid grid-cols-2 gap-2">
+        {send}
+        {copy}
+        <ReceiptOfflineLine online={online} wide className="col-span-full" />
+      </div>
+      <ReceiptFailedLine failed={failed} wide />
+    </>
+  );
 }

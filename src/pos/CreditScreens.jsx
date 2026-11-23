@@ -15,7 +15,7 @@ import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { getCreditAmountOwedPesewas } from "./creditAmount.js";
 import { AddButton, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton, SplitIcons, useTaskColumn } from "./PosComponents.jsx";
 import { shortSaveName } from "./saveLabel.js";
-import { CopyReceiptButton, ReceiptFailedLine, ReceiptOfflineLine, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
+import { CopyReceiptButton, ReceiptFailedLine, ReceiptOfflineLine, ReceiptPair, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
 import { buildCreditSaleReceipt, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
 import { posText as t } from "./i18n.js";
 import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
@@ -980,6 +980,7 @@ function CreditSaved({ params, onHome, onNavigate, shopName }) {
   const receiptsOn = isReceiptTemplatesEnabled();
   const receiptText = buildCreditReceiptText(result, shopName);
   const actions = useReceiptActions(receiptText ?? "", normalizeWhatsAppPhone(phone) ?? "");
+  const wide = Boolean(useTaskColumn());
   return (
     <PosPage className="flex flex-col gap-3">
       <div className="pt-2 text-center">
@@ -1039,14 +1040,24 @@ function CreditSaved({ params, onHome, onNavigate, shopName }) {
           </div>
         </div>
       )}
-      {receiptsOn && receiptText && (
+      {/* Wide D11: Send and Copy side by side, the offline line full width under the pair. */}
+      {wide && receiptsOn && receiptText && (
+        <ReceiptPair
+          send={<SendReceiptButton onClick={() => void actions.send()} className="min-h-14 w-full" />}
+          copy={<CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} className="h-14!" />}
+          online={actions.online}
+          failed={actions.failed}
+        />
+      )}
+      {wide && receiptsOn && !receiptText && <ReceiptFailedLine failed={actions.failed} wide />}
+      {!wide && receiptsOn && receiptText && (
         <div className="flex flex-col gap-2">
           <SendReceiptButton onClick={() => void actions.send()} className="min-h-14 w-full" />
           <ReceiptOfflineLine online={actions.online} />
         </div>
       )}
-      {receiptsOn && receiptText && <CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} />}
-      {receiptsOn && <ReceiptFailedLine failed={actions.failed} />}
+      {!wide && receiptsOn && receiptText && <CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} />}
+      {!wide && receiptsOn && <ReceiptFailedLine failed={actions.failed} />}
       {result?.debtId && <PosSecondaryButton type="button" className="w-full" onClick={() => onNavigate("DebtorDetail", { debtId: result.debtId, customerName })}>{t("credit.seeDetails", { name: shownName })}</PosSecondaryButton>}
       <PosPrimaryButton type="button" onClick={onHome} className="mt-auto h-[68px] text-2xl">{t("credit.done")}</PosPrimaryButton>
     </PosPage>
