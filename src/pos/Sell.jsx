@@ -12,6 +12,7 @@ import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { useBackBlock } from "./browserBack.js";
 import { useFormErrors } from "./formErrors.js";
+import { getSellKeyAction } from "./sellKeyboard.js";
 
 // Keypad keys on 15: 62px, shorter on short screens (never under 48px; the gaps stay 8px) so that Done
 // fits above the bottom bar without scrolling where it can.
@@ -112,21 +113,12 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
     function handleKeyboard(event) {
       if (event.ctrlKey || event.metaKey || event.altKey) return;
       if (largeAmount.open) return;
-      const target = event.target;
-      if (target instanceof HTMLElement && (target.isContentEditable || target.matches("input, textarea, select, button"))) return;
-      if (/^\d$/.test(event.key)) {
-        event.preventDefault();
-        appendDigit(event.key);
-      } else if (event.key === "." || event.key === ",") {
-        event.preventDefault();
-        appendDigit(".");
-      } else if (event.key === "Backspace") {
-        event.preventDefault();
-        appendDigit("Delete");
-      } else if (event.key === "Enter" && canSave && !busy) {
-        event.preventDefault();
-        void saveSale();
-      }
+      const action = getSellKeyAction(event);
+      if (!action) return;
+      // Enter is never passed to a focused pad key: it is Done when Done is enabled, otherwise nothing.
+      event.preventDefault();
+      if (action.key) appendDigit(action.key);
+      else if (action.done && canSave && !busy) void saveSale();
     }
 
     window.addEventListener("keydown", handleKeyboard);
