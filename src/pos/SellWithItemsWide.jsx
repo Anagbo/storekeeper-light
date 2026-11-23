@@ -28,6 +28,13 @@ function saleParams(params, cart, total) {
   return picked;
 }
 
+// The pane is at least 440px wide (about 376px inside the padding). The amount is 40px up to 10 characters,
+// then shrinks with its length to 28px: tabular digits at weight 700 are about 0.62em wide.
+function totalFontSize(text) {
+  if (text.length <= 10) return 40;
+  return Math.max(28, Math.min(40, Math.floor(360 / (text.length * 0.62))));
+}
+
 const TILE_CLASS = "relative flex min-h-[92px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-[18px] px-2 text-[19px] font-extrabold leading-tight disabled:cursor-not-allowed disabled:opacity-50";
 
 // background: 37 or 38 is open as a dialog over this screen; it takes no keys then.
@@ -85,9 +92,11 @@ export default function SellWithItemsWide({ params = {}, layout, onBack, onOther
           {cart.length > 0
             ? <StackedSaleLines cart={cart} onUpdateCart={sale.updateCart} onQuantity={sale.openQuantity} />
             : <p className="text-[17px] text-slate-600">{t("sellItems.emptySale")}</p>}
-          <div className="flex items-baseline justify-between gap-3 border-t-2 border-slate-200 pt-3">
+          {/* Total: label and amount side by side while they fit; a long amount wraps the label above it, and
+              the amount shrinks (never below 28px) so it is never clipped. */}
+          <div data-sale-total="" className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t-2 border-slate-200 pt-3">
             <strong className="text-[21px] font-bold text-[#0F172A]">{t("review.total")}</strong>
-            <output aria-live="polite" className="whitespace-nowrap text-[#0F172A]" style={{ fontSize: 40, fontWeight: 700, lineHeight: 1.15 }}>{formatGhs(total)}</output>
+            <output aria-live="polite" className="ml-auto whitespace-nowrap text-right text-[#0F172A]" style={{ fontSize: totalFontSize(formatGhs(total)), fontWeight: 700, lineHeight: 1.15 }}>{formatGhs(total)}</output>
           </div>
           <p id="items-how-paid" className="text-[17px] font-bold text-slate-600">{t("review.howPaid")}</p>
           <div role="group" aria-labelledby="items-how-paid" className="grid grid-cols-2 gap-3">
