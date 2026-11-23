@@ -109,7 +109,7 @@ const DASHBOARD_BACKGROUND = "#F1F5F9";
 const TASK_COLUMN_ROUTES = new Set([
   POS_ROUTES.SplitPayment, POS_ROUTES.WhoOwesYou, POS_ROUTES.NewPerson, POS_ROUTES.WhenWillTheyPay,
   POS_ROUTES.ALittleAtATime, POS_ROUTES.CreditSaved, POS_ROUTES.SaleRecorded,
-  POS_ROUTES.CollectPayPart, POS_ROUTES.PaymentReceived,
+  POS_ROUTES.CollectPayPart, POS_ROUTES.PaymentReceived, POS_ROUTES.CustomerSignature,
   POS_ROUTES.ManualDebtAmount, POS_ROUTES.ManualDebtSaved, POS_ROUTES.SpentMoney, POS_ROUTES.StockOnCredit,
   POS_ROUTES.MoMoChoice, POS_ROUTES.MoMoDirect, POS_ROUTES.PaymentSettings, POS_ROUTES.MoMoSetup,
   POS_ROUTES.MoMoPayment, POS_ROUTES.MoMoWaiting, POS_ROUTES.MoMoCode, POS_ROUTES.MoMoNotCompleted,

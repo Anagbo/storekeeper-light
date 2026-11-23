@@ -11,6 +11,7 @@ import { useBackBlock } from "./browserBack.js";
 import { posText as t } from "./i18n.js";
 import { LeaveButton, PosBackButton, PosPage, PosSecondaryButton } from "./PosComponents.jsx";
 import SignatureBox from "./SignatureBox.jsx";
+import { SOFT_TILE } from "./softTile.js";
 
 // Wiring 72 "Customer signs" (rules_global.customer_proof, 16 Nov 2026). The credit is ALREADY saved
 // when this opens; nothing here can block or undo it. Done saves the signature on that credit event,
@@ -81,13 +82,15 @@ export default function CustomerSignature({ params = {}, onFinish, shopName }) {
       {data === undefined ? (
         <p role="status" className="text-lg">{t("app.loadingScreen")}</p>
       ) : event ? (
-        <section data-sign-card="" className="min-w-0 rounded-[18px] bg-[#FFE4E9] px-3.5 py-3">
-          <p className="break-words text-[19px] font-bold">{t("signature.owes", { name: displayName(event.customer_name ?? event.customerName ?? ""), shop: shopName })}</p>
-          <p data-sign-amount="" className="text-[40px] font-extrabold leading-tight text-rose-950">{formatGhs(getCreditEventAmountPesewas(event))}</p>
+        // rules_global.soft_tiles (23 Nov 2026): read-only, so the soft tile (no pink): grey label,
+        // neutral dark amount, #E2E8F0 line above the rows.
+        <section data-sign-card="" className={`min-w-0 ${SOFT_TILE} px-4 py-3`}>
+          <p className="break-words text-[19px] font-bold text-slate-600">{t("signature.owes", { name: displayName(event.customer_name ?? event.customerName ?? ""), shop: shopName })}</p>
+          <p data-sign-amount="" className="text-[40px] font-bold leading-tight tabular-nums text-[#0F172A]">{formatGhs(getCreditEventAmountPesewas(event))}</p>
           {/* Wiring 72 rules.1 (16 Nov 2026): three label-value rows under a thin line. The label is grey,
               regular weight, on the left; the value is bold and right-aligned, and wraps inside its own
               column (even one long word), so it never pushes the label. */}
-          <dl data-sign-details="" className="mt-2 flex flex-col gap-1.5 border-t border-rose-900/30 pt-2 text-lg">
+          <dl data-sign-details="" className="mt-2 flex flex-col gap-1.5 border-t border-[#E2E8F0] pt-2 text-lg">
             <SignDetail label={t("signature.for")} value={reason || t("creditRow.noReason")} />
             <SignDetail label={t("signature.taken")} value={takenDate(event)} />
             {payBy && <SignDetail label={t("signature.payBy")} value={payBy} />}
