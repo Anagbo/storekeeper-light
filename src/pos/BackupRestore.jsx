@@ -3,6 +3,7 @@ import { exportDatabaseToJson, importDatabaseFromJson, validateBackupData } from
 import { posText as t } from "./i18n.js";
 import { PosPage, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
 import { useBackBlock } from "./browserBack.js";
+import WideDialog, { useWideDialogs } from "./WideDialog.jsx";
 
 // Screen 71 (brief 3.13): Backup and restore as a normal screen with Back. Layout only: the backup
 // and restore logic is the existing one in utils/backup.js. Restore asks first; a file that cannot
@@ -25,6 +26,7 @@ function countRecords(data) {
 }
 
 export default function BackupRestore({ onBack }) {
+  const wideDialog = useWideDialogs();
   const fileInput = useRef(null);
   // A ref as well as the state, so a second tap in the same frame sees the first one.
   const busyRef = useRef(false);
@@ -135,8 +137,9 @@ export default function BackupRestore({ onBack }) {
         <input ref={fileInput} type="file" accept="application/json,.json" onChange={(event) => void chooseFile(event)} className="hidden" tabIndex={-1} />
       </section>
 
-      {pending && (
-        <section aria-labelledby="backup-confirm-title" className="flex flex-col gap-2 rounded-[18px] border-[3px] border-slate-900 bg-white p-4">
+      {pending && (() => {
+        const confirmBody = (
+          <>
           <h2 id="backup-confirm-title" className="text-xl font-extrabold">{t("backup.confirmTitle")}</h2>
           <p className="text-base font-bold">{pending.count === 1 ? t("backup.foundOne") : t("backup.foundMany", { count: pending.count })}</p>
           <p className="text-base text-slate-800">{t("backup.confirmBody")}</p>
@@ -144,8 +147,21 @@ export default function BackupRestore({ onBack }) {
             <PosSecondaryButton type="button" onClick={() => void restore()} disabled={busy}>{t("backup.restore")}</PosSecondaryButton>
             <PosSecondaryButton type="button" autoFocus onClick={() => setPending(null)} disabled={busy}>{t("backup.cancel")}</PosSecondaryButton>
           </div>
-        </section>
-      )}
+          </>
+        );
+        // wide_layout.page_types.dialog: on wide the restore confirm is the shared WideDialog over 71;
+        // Escape and a scrim click are Cancel, not while the restore runs.
+        if (wideDialog) {
+          return (
+            <WideDialog labelledBy="backup-confirm-title" onClose={() => { if (!busy) setPending(null); }}>
+              <div className="flex flex-col gap-2">{confirmBody}</div>
+            </WideDialog>
+          );
+        }
+        return (
+          <section aria-labelledby="backup-confirm-title" className="flex flex-col gap-2 rounded-[18px] border-[3px] border-slate-900 bg-white p-4">{confirmBody}</section>
+        );
+      })()}
 
       {message && <p role="status" className="rounded-xl border-2 border-emerald-900 bg-emerald-50 p-3 text-base font-bold text-emerald-950">{message}</p>}
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 text-base font-bold text-rose-950">{error}</p>}
