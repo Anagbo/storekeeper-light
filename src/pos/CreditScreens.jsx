@@ -797,7 +797,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
   ) : null;
   // Wide D10: tile labels are 17px; helper lines stay text-sm, which the task column draws at 15px.
   const saveButton = (
-    <PosPrimaryButton type="button" disabled={saving || !planReady} className={wide ? "h-14 max-w-[240px] self-end" : "h-14"} onClick={() => void savePlan()}>{saving ? t("credit.saving") : t("credit.savePlan")}</PosPrimaryButton>
+    <PosPrimaryButton type="button" disabled={saving || !planReady} className={wide ? "min-h-14 w-full" : "h-14"} onClick={() => void savePlan()}>{saving ? t("credit.saving") : t("credit.savePlan")}</PosPrimaryButton>
   );
   const notices = (
     <>
@@ -998,7 +998,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
               <CreditAmount amountPesewas={maxCreditPesewas} wide />
               {payingToday}
               {notices}
-              <div className="mt-auto flex flex-col pt-2">{saveButton}</div>
+              <div data-d10-save="" className="sticky bottom-0 mt-auto flex flex-col bg-white pt-2">{saveButton}</div>
             </div>
           </div>
         </div>

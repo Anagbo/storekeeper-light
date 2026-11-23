@@ -88,7 +88,8 @@ test("D10 in real Edge at 768, 1024, 1280 and 1440 with GH₵12,345.00 and GH₵
       assert.match(m.text, /Still owed · Kofi Mensah\s*GH₵987,700\.00/);
       assert.equal(m.owed.text, "GH₵1,000,045.00");
       assert.ok(!m.owed.clipped && m.owed.px >= 28 && m.owed.px <= 40, `${at}: Owed ${m.owed.px}px, not clipped`);
-      assert.ok(m.save && m.lastInSummary && m.save.lines === 1 && m.save.w <= 240.5, `${at}: Save plan at the bottom of the summary (${m.save?.w}px)`);
+      assert.ok(m.save && m.lastInSummary && m.save.lines === 1 && Math.abs(m.save.w - m.summary.w) < 1 && m.save.h >= 56, `${at}: Save plan at the bottom of the summary (${m.save?.w}px wide, ${m.save?.h}px tall)`);
+      if (width === 1280) assert.ok(m.save.t >= 0 && m.save.b <= height + 0.5, `${at}: Save plan visible without scrolling (${m.save.t}-${m.save.b})`);
       assert.ok(Math.abs(m.save.b - Math.max(m.form.b, m.summary.b)) < 1, `${at}: Save plan pinned at the bottom`);
       for (const c of m.controls) {
         assert.ok(!c.overflow && c.r <= m.panel.r + 0.5, `${at}: "${c.label}" not clipped`);
