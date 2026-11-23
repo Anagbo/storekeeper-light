@@ -612,3 +612,15 @@ export function signedState(state) {
   }
   return backRoute(state);
 }
+
+// Wide D9 is one screen on the 20 route: opening 55 on a wide window replaces that entry with 20, so
+// Back never lands on a screen identical to the one left. When 20 sits right below, 55's cart and
+// split parts fold into it and the duplicate entry goes. Anything but 55 is returned as it is.
+export function combinedSaleOn20(state) {
+  if (state.current !== POS_ROUTES.ReviewAndPay) return state;
+  const previous = state.history.at(-1);
+  if (previous?.current === POS_ROUTES.SellWithItems) {
+    return { ...state, current: POS_ROUTES.SellWithItems, params: { ...previous.params, ...state.params }, history: state.history.slice(0, -1) };
+  }
+  return replaceRoute(state, POS_ROUTES.SellWithItems, state.params);
+}

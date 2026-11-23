@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { POS_LINKS, POS_ROUTES, backRoute, createRouteState, pushRoute, replaceRoute } from "../src/pos/routes.js";
+import { POS_LINKS, POS_ROUTES, backRoute, createRouteState, pushRoute, replaceRoute, combinedSaleOn20 } from "../src/pos/routes.js";
 import { posText } from "../src/pos/i18n.js";
 import { builtRoutes } from "./helpers/builtRoutes.js";
 
@@ -222,4 +222,19 @@ test("Home and My money summary labels resolve", () => {
   assert.equal(posText("transactions.filter.credit"), "Credit");
   assert.equal(posText("collect.creditTaken"), "Added to debt");
   assert.equal(posText("collect.creditAdded"), "Added to debt");
+});
+
+test("wide D9: 55 opened on a wide window becomes 20, and Back never lands on an identical screen", () => {
+  const sale = { amountPesewas: 500, saleItems: [{ productId: 1, quantity: 1 }] };
+  const from20 = pushRoute(pushRoute(createRouteState(), POS_ROUTES.Sell), POS_ROUTES.SellWithItems, { kept: true });
+  const on55 = pushRoute(from20, POS_ROUTES.ReviewAndPay, sale);
+  const folded = combinedSaleOn20(on55);
+  assert.equal(folded.current, POS_ROUTES.SellWithItems);
+  assert.deepEqual(folded.params, { kept: true, ...sale });
+  assert.equal(folded.history.at(-1).current, POS_ROUTES.Sell);
+  // 55 reached from somewhere else is replaced in place; other routes are untouched.
+  const alone = combinedSaleOn20(pushRoute(createRouteState(), POS_ROUTES.ReviewAndPay, sale));
+  assert.equal(alone.current, POS_ROUTES.SellWithItems);
+  assert.equal(alone.history.length, 1);
+  assert.equal(combinedSaleOn20(from20), from20);
 });

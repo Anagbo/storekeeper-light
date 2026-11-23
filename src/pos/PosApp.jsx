@@ -28,6 +28,7 @@ import {
   signedState,
   VIA_SIDEBAR,
   backFromCombinedSale,
+  combinedSaleOn20,
   updateCombinedSaleParams
 } from "./routes.js";
 import { createBrowserBack, useBackHandler } from "./browserBack.js";
@@ -193,6 +194,8 @@ export default function PosApp() {
   const layout = useLayout();
   // The Menu exists only in the phone layout: growing the window past 768px closes an open drawer.
   useEffect(() => { if (layout.wide) setMenuOpen(false); }, [layout.wide]);
+  // Wide D9 is one screen on the 20 route: 55 opened on a wide window becomes 20 (no identical entry to go Back to).
+  useEffect(() => { if (layout.wide && routeState.current === POS_ROUTES.ReviewAndPay) commit(combinedSaleOn20); }, [layout.wide, routeState.current]);
   useBackHandler(menuOpen, () => setMenuOpen(false));
   useEffect(() => {
     if (menuWasOpen.current && !menuOpen) menuButtonRef.current?.focus?.();
