@@ -102,6 +102,33 @@ test("D5: 16 Split payment on wide has the phone's rows and controls, in the sam
   }
 });
 
+// Wide design principles: on 17 in the task column a person row's amount is 17px, bold 700, neutral
+// #0F172A (not the phone's dark red fit box). The phone row keeps its look.
+test("17 person row amount: 17px neutral on wide, phone unchanged", async () => {
+  const { recordCreditSale } = await import("../src/db/debts.js");
+  await recordCreditSale({ name: "Juju", amountPesewas: 1000, now: Date.now() - 86_400_000 });
+  for (const width of [393, 768, 1280]) {
+    const app = await openWhoOwesYou(width);
+    try {
+      await app.keys("500");
+      await app.tap("Owe");
+      assert.equal(app.route, "WhoOwesYou");
+      const amount = find(app, "data-person-amount");
+      if (width < 768) {
+        assert.equal(amount, null, "phone keeps its amount look");
+        continue;
+      }
+      assert.ok(amount, `${width}px: amount on the person row`);
+      assert.match(textOf(amount), /GH₵10\.00/);
+      const classes = amount.props.className;
+      for (const want of ["text-[17px]", "font-bold", "text-[#0F172A]", "whitespace-nowrap"]) assert.ok(classes.split(/\s+/).includes(want), want);
+      assert.doesNotMatch(classes, /rose|extrabold|amount-fit/);
+    } finally {
+      app.restoreConsole();
+    }
+  }
+});
+
 test("phone (393px): 17 keeps the phone page, no panel, no grey page", async () => {
   const app = await openWhoOwesYou(393);
   try {

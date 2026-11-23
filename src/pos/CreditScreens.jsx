@@ -61,6 +61,9 @@ function OwesFromSale({ amountPesewas }) {
 }
 
 function CustomerChoice({ customer, selected, onSelect }) {
+  // Wide task column (design principles): the amount is 17px, bold 700, neutral #0F172A, on one line;
+  // the 640px panel has room, so it is not squeezed into a 96px fit box. The phone keeps its look.
+  const wide = Boolean(useTaskColumn());
   return (
     <button
       type="button"
@@ -72,11 +75,13 @@ function CustomerChoice({ customer, selected, onSelect }) {
         {displayName(customer.name).charAt(0)}
       </span>
       <span className="min-w-0 flex-1 truncate text-lg font-extrabold">{displayName(customer.name)}</span>
-      {customer.totalDebtPesewas > 0 && (
+      {customer.totalDebtPesewas > 0 && (wide ? (
+        <span data-person-amount="" className="shrink-0 whitespace-nowrap text-right text-[17px] font-bold tabular-nums text-[#0F172A]">{formatGhs(customer.totalDebtPesewas)}</span>
+      ) : (
         <span className="amount-fit-container w-24 shrink-0 text-right font-extrabold text-rose-900">
           <span className="amount-fit">{formatGhs(customer.totalDebtPesewas)}</span>
         </span>
-      )}
+      ))}
       {selected && <Check size={22} aria-hidden="true" />}
     </button>
   );
