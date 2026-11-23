@@ -64,7 +64,7 @@ export default function SellWithItemsWide({ params = {}, layout, onBack, onOther
         <PosBackButton onClick={onBack} disabled={busy} />
         <h1 className="text-[30px] font-extrabold leading-tight text-[#0F172A]">{t("sellItems.title")}</h1>
       </div>
-      <div data-sell-items-wide="" className="grid min-h-0 flex-1 items-start gap-6" style={{ gridTemplateColumns: "minmax(0, 1fr) clamp(380px, 45%, 450px)" }}>
+      <div data-sell-items-wide="" className="grid min-h-0 flex-1 items-start gap-6" style={{ gridTemplateColumns: layout?.mode === "rail" ? "minmax(0, 1fr) clamp(380px, 45%, 450px)" : "minmax(0, 1fr) clamp(440px, 40%, 520px)" }}>
         <div className="flex min-w-0 flex-col gap-3">
           <ItemSearch query={sale.query} onChange={sale.setQuery} />
           <ItemTiles
