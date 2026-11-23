@@ -91,10 +91,10 @@ const MEASURE = `(frame, win, doc) => {
 }`;
 
 const EXPECTED_ROWS = {
-  "29": ["last-reminder", "payment", "paid", "still-needed", "payments-left", "next-payment"],
-  "43": ["last-reminder", "payment", "paid", "still-needed", "payments-left", "was-due"],
+  "29": ["payment", "paid", "still-needed", "payments-left", "next-payment"],
+  "43": ["payment", "paid", "still-needed", "payments-left", "was-due"],
   // 54: the sheet header's Now owed row (20 Nov 2026) comes after the page's rows (the sheet is last).
-  "54": ["last-reminder", "payment", "paid", "still-needed", "payments-left", "was-due", "now-owed"],
+  "54": ["payment", "paid", "still-needed", "payments-left", "was-due", "now-owed"],
   "53 from 29": ["debt", "payment", "due", "paid", "still-needed", "payments-left", "next-payment"],
   "53 from 17": ["debt", "payment", "due", "paid", "still-needed", "payments-left", "next-payment"],
   "56": ["fee", "you-receive"],
@@ -143,6 +143,8 @@ test("scan: no ' · ' joins two facts on 29, 43, 54, 53, 56 (green card), 68, 69
   for (const page of await pages()) {
     let text = page.html.replace(/<[^>]+>/g, "\n");
     // 56: "Saved as MoMo · you confirmed." under the buttons is one method label (decided earlier), not two facts.
+    // 29 and 43 (23 Nov 2026): "Last reminder · today 14:05" is one centred line, as the wiring words it.
+    text = text.replace(/Last reminder\s*·\s*/g, "");
     if (page.name === "56") text = text.replace("Saved as MoMo · you confirmed.", "");
     assert.doesNotMatch(text, / · /, `${page.name}: no facts joined with " · "`);
   }

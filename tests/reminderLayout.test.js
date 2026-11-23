@@ -34,14 +34,15 @@ const RECENT_OLDER_DAY = () => { const d = new Date(); d.setDate(d.getDate() - 5
 const LINE_MEASURE = `(frame, win, doc) => {
   const value = doc.querySelector("[data-last-reminder]");
   if (!value) return { none: true, text: doc.body.textContent, pageOverflow: doc.scrollingElement.scrollWidth > win.innerWidth };
-  const line = value.closest('[data-event-detail="last-reminder"]');
-  const label = line.querySelector("dt");
+  const line = value.closest('[data-row="last-reminder"]');
   const row = doc.querySelector('[data-row="debtor-actions"]');
   const correct = [...doc.querySelectorAll("button")].find((el) => el.textContent.trim() === "Correct balance");
   const r = line.getBoundingClientRect();
   const lineHeight = parseFloat(win.getComputedStyle(line).lineHeight);
   return {
-    labelLines: Math.round(label.getBoundingClientRect().height / parseFloat(win.getComputedStyle(label).lineHeight)),
+    fontSize: parseFloat(win.getComputedStyle(line).fontSize), align: win.getComputedStyle(line).textAlign,
+    valueWeight: win.getComputedStyle(value).fontWeight, pageWidth: win.innerWidth,
+    buttonBottom: (() => { const b = [...doc.querySelectorAll("button")].find((el) => /Send reminder on WhatsApp/.test(el.textContent)); return b ? b.getBoundingClientRect().bottom : null; })(),
     text: line.textContent, top: r.top, bottom: r.bottom, left: r.left, right: r.right, height: r.height, lineHeight,
     rowBottom: row.getBoundingClientRect().bottom,
     correctTop: correct ? correct.getBoundingClientRect().top : null,
@@ -98,10 +99,13 @@ test("29 and 43 at 340, 360 and 393px: the Last reminder row fits on one line be
       assert.doesNotMatch(result.text, /Last reminder|No reminder sent yet/, `${where}: no reminder text`);
       continue;
     }
-    assert.equal(result.labelLines, 1, `${where}: the label never wraps`);
+    assert.equal(result.fontSize, 15, `${where}: 15px`);
+    assert.equal(result.align, "center", `${where}: centred`);
+    assert.ok(Number(result.valueWeight) >= 700, `${where}: the value is bold`);
+    if (result.page.startsWith("43")) assert.ok(result.buttonBottom !== null && Math.abs(result.top - result.buttonBottom - 8) <= 1.5, `${where}: 8px under the WhatsApp reminder button`);
     assert.equal(result.overflowX, false, `${where}: the line is not clipped`);
     assert.ok(result.height <= result.lineHeight * 1.5, `${where}: one line (${result.height}px for a ${result.lineHeight}px line): "${result.text}"`);
-    assert.ok(result.top >= result.rowBottom - 0.5, `${where}: under the action buttons`);
+    if (result.page.startsWith("29")) assert.ok(result.top >= result.rowBottom - 0.5, `${where}: under the action buttons`);
     assert.ok(result.correctTop !== null && result.bottom <= result.correctTop + 0.5, `${where}: above Correct balance, not overlapping it`);
   }
 });

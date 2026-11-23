@@ -64,13 +64,17 @@ for (const late of [false, true]) {
       const actions = nodes.find((node) => node.props?.["data-row"] === "debtor-actions");
       const correct = nodes.find((node) => node.type === "button" && textOf(node).includes("Correct balance"));
       assert.ok(line && actions && correct);
-      // Wiring 29/43/54 "Key-value rows" (16 Nov 2026): a "Last reminder" row, the value like "today 14:05".
+      // Soft tiles (23 Nov 2026): one centred line "Last reminder · today 14:05", 15px grey, value bold.
       assert.equal(textOf(line), lastReminderValue(at));
-      const row = nodes.find((node) => node.props?.["data-event-detail"] === "last-reminder");
-      assert.equal(textOf(row), `Last reminder${lastReminderValue(at)}`, "label left, value right");
-      assert.ok(nodes.indexOf(actions) < nodes.indexOf(line), "under the action buttons");
+      const row = nodes.find((node) => node.props?.["data-row"] === "last-reminder");
+      assert.equal(textOf(row), `Last reminder · ${lastReminderValue(at)}`);
+      assert.match(row.props.className, /text-center/);
+      assert.match(row.props.className, /text-\[15px\]/);
+      // 43: directly under the wide WhatsApp reminder button (above the action row). 29: under the action row.
+      if (late) assert.ok(nodes.indexOf(line) < nodes.indexOf(actions), "under the WhatsApp reminder button, above Collect and Call");
+      else assert.ok(nodes.indexOf(actions) < nodes.indexOf(line), "under the action buttons");
       assert.ok(nodes.indexOf(line) < nodes.indexOf(correct), "above Correct balance");
-      assert.equal(nodes.filter((node) => /Last reminder|No reminder/.test(typeof node.props?.children === "string" ? node.props.children : "")).length, 1, "shown once");
+      assert.equal(nodes.filter((node) => node.props?.["data-row"] === "last-reminder").length, 1, "shown once");
     });
   }
   test(`${late ? 43 : 29}: no Last reminder row when none was recorded`, async () => {

@@ -738,6 +738,13 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
   const dueDate = data?.debt?.isInstallmentPlan ? data.debt.nextDueDate : data?.debt?.dueDate;
   const dueLabel = data?.debt && getDebtDueLabel(dueDate);
   const isLate = Boolean(dueLabel?.startsWith("Late "));
+  // Soft tiles (23 Nov 2026): "Last reminder · today 14:05", centred, 15px grey, value bold, 8px under the
+  // WhatsApp reminder button (43: the wide button; 29: under the action row). Hidden when none.
+  const lastReminderLine = lastReminder && (
+    <p data-row="last-reminder" className={`${isLate ? "mt-1" : "-mt-1"} text-center text-[15px] text-slate-600`}>
+      {t("kv.lastReminder")} · <strong data-last-reminder="" className="font-bold">{lastReminder}</strong>
+    </p>
+  );
   // 29 and 43: a fixed due date with no plan gets "Due dd/mm/yyyy · In N days" under the balance.
   // An installment plan keeps its own line (the plan card), and a late plan its late line.
   const dueLine = data?.debt && !data.debt.isInstallmentPlan && dueDate ? getDebtDueLine(dueDate) : "";
@@ -888,6 +895,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                 className: `flex h-16 w-full items-center justify-center rounded-[18px] border-[3px] border-emerald-900 bg-white font-extrabold text-emerald-900 ${embedded ? "gap-2 px-1.5 text-base whitespace-nowrap" : "gap-2.5 px-3 text-lg"}`,
                 children: <><WhatsAppIcon /> {t("collect.remindOnWhatsApp")}</>
               })}
+              {lastReminderLine}
             </div>
           )}
           {/* Action buttons (wiring 29 and 43): one row that never wraps at 340px and wider, icon above
@@ -915,11 +923,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
           {/* Wiring 29/43/54 "Key-value rows" (16 Nov 2026): a "Last reminder" row in the same place as the old
               line, under the action buttons. Per person; it says when the reminder was handed to WhatsApp,
               never that it was delivered. No reminder yet: no row (rule on 43). */}
-          {lastReminder && (
-            <KeyValueRows name="last-reminder">
-              <EventDetail label={t("kv.lastReminder")} name="last-reminder" valueProps={{ "data-last-reminder": "" }}>{lastReminder}</EventDetail>
-            </KeyValueRows>
-          )}
+          {!isLate && lastReminderLine}
           {/* wide_layout.approved_additions (D3): Edit contact and Correct balance, small secondary buttons in
               one row under the Last reminder row. Same labels and handlers as the phone. */}
           {embedded && (
