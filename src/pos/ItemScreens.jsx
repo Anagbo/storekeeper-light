@@ -13,6 +13,7 @@ import { AddButton, LeaveButton, PosBackButton, PosPage, PosPrimaryButton, PosSe
 import { useBackBlock } from "./browserBack.js";
 import { useFormErrors } from "./formErrors.js";
 import AmountTextInput from "./AmountTextInput.jsx";
+import WideDialog from "./WideDialog.jsx";
 
 // What normalizeProductInput (the save's own check) says is wrong, or "".
 function productInputProblem(input) {
@@ -160,7 +161,7 @@ function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCom
   );
 }
 
-function DeleteItem({ itemId, itemName, onBack, onReturnToItems, onDelete }) {
+function DeleteItem({ itemId, itemName, onBack, onReturnToItems, onDelete, dialog = false }) {
   const [busy, setBusy] = useState(false);
   useBackBlock(busy);
   const [error, setError] = useState("");
@@ -181,10 +182,8 @@ function DeleteItem({ itemId, itemName, onBack, onReturnToItems, onDelete }) {
     }
   }
 
-  return (
-    <PosPage className="flex flex-col gap-3">
-      <ScreenHeader title={itemName} onBack={onBack} />
-      <section role="alertdialog" aria-modal="true" aria-labelledby="delete-item-title" className="my-auto flex flex-col gap-3 rounded-3xl border-[3px] border-slate-900 bg-white p-5 text-center">
+  const body = (
+    <>
         <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-rose-200 text-rose-950"><Trash2 size={32} aria-hidden="true" /></div>
         <h2 id="delete-item-title" className="text-2xl font-extrabold">{t("items.deleteConfirm", { name: itemName })}</h2>
         <p className="text-base text-slate-800">{t("items.deleteExplanation")}</p>
@@ -193,6 +192,22 @@ function DeleteItem({ itemId, itemName, onBack, onReturnToItems, onDelete }) {
         <button type="button" disabled={busy} onClick={() => void confirmDelete()} className="min-h-14 rounded-2xl border-[3px] border-rose-900 bg-white px-4 text-lg font-extrabold text-rose-900 disabled:opacity-50">
           {busy ? t("items.deleting") : t("items.confirmDelete")}
         </button>
+    </>
+  );
+  // wide_layout.page_types.dialog: on wide 42 is the shared WideDialog over the item's page; Escape and
+  // a scrim click are Keep (Back), not while the item is being removed.
+  if (dialog) {
+    return (
+      <WideDialog role="alertdialog" labelledBy="delete-item-title" onClose={() => { if (!busy) onBack(); }}>
+        <div className="flex flex-col gap-3 text-center">{body}</div>
+      </WideDialog>
+    );
+  }
+  return (
+    <PosPage className="flex flex-col gap-3">
+      <ScreenHeader title={itemName} onBack={onBack} />
+      <section role="alertdialog" aria-modal="true" aria-labelledby="delete-item-title" className="my-auto flex flex-col gap-3 rounded-3xl border-[3px] border-slate-900 bg-white p-5 text-center">
+        {body}
       </section>
     </PosPage>
   );
@@ -484,9 +499,23 @@ function StarterBrowse({ onBack, onAdd }) {
   );
 }
 
-export default function ItemScreens({ route, params = {}, onBack, onNavigate, onReturnToItems, onCompleteSetup }) {
+export default function ItemScreens({ route, params = {}, onBack, onNavigate, onReturnToItems, onCompleteSetup, wide = false }) {
   if (route === "MyItems") return <MyItems onBack={onBack} onNavigate={onNavigate} />;
   if (route === "NewItem") return <ItemEditor onBack={onBack} onSave={createProduct} onNavigate={onNavigate} setupFlow={params.setupFlow === true} onCompleteSetup={onCompleteSetup} />;
+  if (wide && (route === "EditItem" || route === "DeleteItem")) {
+    // Wide: 42 is a dialog over the item's page (41). Both routes draw the same EditItem in the same
+    // place (PosApp keeps the same key), so opening and closing 42 never remounts it and an unsaved
+    // edit survives. The page behind is inert while 42 is open.
+    const deleting = route === "DeleteItem";
+    return (
+      <>
+        <div className="contents" inert={deleting || undefined} aria-hidden={deleting || undefined}>
+          <EditItem itemId={params.itemId} onBack={onBack} onNavigate={onNavigate} />
+        </div>
+        {deleting ? <DeleteItem dialog itemId={params.itemId} itemName={params.itemName ?? t("items.nameFallback")} onBack={onBack} onReturnToItems={onReturnToItems} onDelete={removeProduct} /> : null}
+      </>
+    );
+  }
   if (route === "EditItem") {
     return <EditItem itemId={params.itemId} onBack={onBack} onNavigate={onNavigate} />;
   }

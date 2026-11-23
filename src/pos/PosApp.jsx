@@ -814,6 +814,7 @@ export default function PosApp() {
       onNavigate={navigate}
       onReturnToItems={returnToItemList}
       onCompleteSetup={completePosSetup}
+      wide={layout.wide}
     />
   ) : [
     POS_ROUTES.WhoOwesYou,
@@ -839,7 +840,8 @@ export default function PosApp() {
   );
 
   const page = (
-    <PosErrorBoundary key={`${route}:${pickRemount}`} onBack={navigateBack}>
+    // Wide 42 (wide_layout.page_types.dialog) is a dialog over 41: the same key as 41, so 41 is not remounted.
+    <PosErrorBoundary key={`${layout.wide && route === POS_ROUTES.DeleteItem ? POS_ROUTES.EditItem : route}:${pickRemount}`} onBack={navigateBack}>
       <Suspense fallback={<PosPage><p role="status">{t("app.loadingScreen")}</p></PosPage>}>
         {setupReady ? content : <PosPage><p role="status">{t("app.loadingScreen")}</p></PosPage>}
       </Suspense>
