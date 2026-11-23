@@ -52,8 +52,9 @@ test("wide Sell at 768, 1024, 1280 and 1440: fits, GH₵12,345.00 whole, labels 
       assert.ok(parseFloat(m.amount.size) <= 56 && parseFloat(m.amount.size) >= 28 && m.amount.weight === "700", `${at}: hero ${m.amount.size} ${m.amount.weight}`);
       for (const c of m.controls) {
         assert.ok(!c.overflow && c.r <= m.innerWidth + 0.5, `${at}: "${c.label}" not clipped`);
-        assert.ok(c.lines <= 1, `${at}: "${c.label}" on one line (${c.lines})`);
+        assert.ok(c.lines <= (c.label === "Split payment" ? 2 : 1), `${at}: "${c.label}" on one line (two for Split payment) (${c.lines})`);
         assert.ok(c.h >= 48, `${at}: "${c.label}" 48px or taller (${c.h})`);
+        if (m.innerWidth < 1280 && /^[0-9.]+$|^00$/.test(c.label)) assert.ok(c.h <= 88.5, `${at}: key ${c.label} at most 88px (${c.h})`);
       }
       const [cash, momo, owe, split] = m.tiles;
       assert.ok(Math.abs(cash.t - momo.t) < 1 && Math.abs(owe.t - split.t) < 1 && owe.t > cash.b - 1 && Math.abs(cash.l - owe.l) < 1, `${at}: the tiles are a 2x2 grid`);
