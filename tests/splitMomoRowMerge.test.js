@@ -98,13 +98,13 @@ test("a MoMo row is not re-created from the pick values when the screen is mount
   const view = mount();
   tile(view.tree, "Cash").props.onClick();
   view.rerender();
-  assert.match(textOf(view.tree), /Left to payGH₵0\.00/);
+  assert.doesNotMatch(textOf(view.tree), /Left to pay/);
   for (let index = 0; index < 3; index += 1) {
     const again = mount();
     const text = textOf(again.tree);
     assert.match(text, /MoMoGH₵4.00Status ?Received ✓/, `mount ${index + 1}`);
     assert.match(text, /CashGH₵4\.00/);
-    assert.match(text, /Left to payGH₵0\.00/);
+    assert.doesNotMatch(text, /Left to pay/);
   }
 });
 
@@ -168,7 +168,7 @@ test("the draft is restored after Menu > Settings > Back (route params only)", a
   const text = textOf(mount().tree);
   assert.match(text, /MoMoGH₵4.00Status ?Received ✓/);
   assert.match(text, /CashGH₵4\.00/);
-  assert.match(text, /Left to payGH₵0\.00/);
+  assert.doesNotMatch(text, /Left to pay/);
 });
 
 test("a draft with only a Cash row is restored too, and removing a row is remembered", async () => {

@@ -174,7 +174,7 @@ test("split, all owed, plan with Next cycle: Save plan returns to 16, Done ends 
   await chooseCustomer(app, "Juju");
   await plan(app, { each: "60" });
   assert.equal(app.route, "SplitPayment", "SAVE19 in flow=split returns to 16");
-  assert.match(shown(app), /Left to payGH₵0\.00/);
+  assert.doesNotMatch(shown(app), /Left to pay/);
   assert.equal((await ledger("Juju")).sales.length, 1, "nothing is saved before Done on 16");
   await app.tap(/^Done$/);
   assert.equal(app.route, "CreditSaved", "nothing received today: Done on 16 goes to 31");

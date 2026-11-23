@@ -117,7 +117,7 @@ test("16: an Owe part (Juju) is kept too, and Done after coming back saves once 
   assert.deepEqual(rows(app), ["cash", "owe"]);
   const oweRow = [...walk(app.view.tree)].find((node) => node.props?.["data-split-row"] === "owe");
   assert.match(textOf(oweRow), /Juju/);
-  assert.match(shown(app), /Left to payGH₵0\.00/);
+  assert.doesNotMatch(shown(app), /Left to pay/);
   const before = (await db.transactions.toArray()).length;
   await app.tap(/^Done$/);
   assert.equal(app.route, "SaleRecorded");

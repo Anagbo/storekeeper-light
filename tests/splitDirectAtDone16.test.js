@@ -74,7 +74,7 @@ test("16: Direct on 61 returns straight to 16 with the MoMo part not confirmed y
   assert.equal(rowStatus(app.view.tree, "momo"), "StatusNot confirmed yet");
   assert.ok(labels(app.view.tree).includes("Edit MoMo amount"));
   assert.ok(labels(app.view.tree).includes("Remove MoMo"));
-  assert.match(shown(app), /Left to payGH₵0\.00/);
+  assert.doesNotMatch(shown(app), /Left to pay/);
   assert.equal((await db.transactions.toArray()).length, 0, "nothing saved");
   for (const key of ["pendingMomoAmountPesewas", "momoMethod", "verification", "pickOnly", "returnRoute"]) {
     assert.equal(app.params[key], undefined, `${key} is not left on 16`);
@@ -139,7 +139,7 @@ test("16: Back on 62 returns to 16 with the part still not confirmed and nothing
   assert.equal(app.route, "SplitPayment");
   assert.equal(momoPart(app).verification, undefined);
   assert.equal(rowStatus(app.view.tree, "momo"), "StatusNot confirmed yet");
-  assert.match(shown(app), /Left to payGH₵0\.00/);
+  assert.doesNotMatch(shown(app), /Left to pay/);
   assert.equal((await db.transactions.toArray()).length, 0);
   // The phone back on 62 does the same.
   await app.tap(/^Done$/);
@@ -169,7 +169,7 @@ test("16: an unconfirmed Direct row can be edited and removed before Done; the M
   await app.tap(/^Save$/);
   assert.equal(momoPart(app).amountPesewas, 400);
   assert.equal(momoPart(app).verification, undefined);
-  assert.match(shown(app), /Left to payGH₵0\.00/);
+  assert.doesNotMatch(shown(app), /Left to pay/);
   // Remove.
   await app.tap("Remove MoMo");
   assert.equal(app.params.splitParts.some((part) => part.paymentMethod === "momo"), false);

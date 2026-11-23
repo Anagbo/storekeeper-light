@@ -129,7 +129,7 @@ test("16: Cash editing still works with a locked MoMo, and the Left to pay chang
   await app.tap(/^Save$/);
   assert.match(shown(app), /Left to payGH₵5.00/);
   await app.tap(/^Cash$/);            // one tap: the whole Left to pay goes into Cash
-  assert.match(shown(app), /Left to payGH₵0.00/);
+  assert.doesNotMatch(shown(app), /Left to pay/);
   const parts = app.params.splitParts;
   assert.deepEqual(parts.map((part) => [part.paymentMethod, part.amountPesewas]), [["cash", 600], ["momo", 200]]);
   assert.equal(parts[1].confirmedPesewas, 200);

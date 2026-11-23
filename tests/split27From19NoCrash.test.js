@@ -102,7 +102,7 @@ test("the exact phone scenario: 2.00 today, MoMo, then split: 27 opens with MoMo
   noCrash(app, "on 27");
   assert.deepEqual(rowsOn27(app), ["MoMo GH₵2.00"]);
   assert.match(shown(app), /MoMoGH₵2\.00Status ?Not confirmed yet/);
-  assert.match(shown(app), /Left to payGH₵0\.00/);
+  assert.doesNotMatch(shown(app), /Left to pay/);
   assert.equal(app.button(/^Done$/).props.disabled, false);
 });
 
