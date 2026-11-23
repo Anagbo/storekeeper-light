@@ -37,7 +37,8 @@ test("32: no pink block; the summary card is plain white with the label and the 
   assert.ok(!nodes.some((node) => /bg-rose-200|bg-pink|border-l-/.test(cls(node))), "no pink block or coloured edge");
   const card = nodes.find((node) => node.props?.["data-owed-summary"] !== undefined);
   assert.ok(card);
-  for (const want of ["bg-white", "border-2", "border-[#CBD5E1]", "rounded-[20px]"]) assert.ok(cls(card).split(/\s+/).includes(want), want);
+  assert.ok(!/(^|\s)border/.test(cls(card)), "soft tile: no border");
+  for (const want of ["bg-[#F1F5F9]", "rounded-[20px]"]) assert.ok(cls(card).split(/\s+/).includes(want), want);
   assert.match(textOf(card), /Total owed to you/);
   const total = [...walk(card)].find((node) => node.props?.["data-owed-total"] !== undefined);
   assert.equal(textOf(total), "GH₵55.00");

@@ -101,7 +101,7 @@ for (const width of [768, 1024, 1280, 1440]) {
     assert.deepEqual(all(list).filter((node) => node?.props?.role === "tab").map((tab) => textOf(tab)), ["All", "Late", "Due soon"]);
     const summary = byData(list, "data-owed-summary")[0];
     assert.equal(textOf(summary).trim(), "Total owed to youGH₵41.00", "the plain summary card");
-    assert.match(summary.props.className, /border-\[#CBD5E1\]/);
+    assert.match(summary.props.className, /bg-\[#F1F5F9\]/);
     assert.doesNotMatch(summary.props.className, /rose|pink|border-l-/, "no pink block, no coloured edge");
     // A row is name, tag and amount only: one button, no Collect, WhatsApp, Call or Add contact.
     assert.deepEqual(controlNames(list).filter((name) => !name.startsWith("input:") && !["All", "Late", "Due soon"].includes(name)), ["Open Sera’s details", "Open Amoto’s details", "Open Kofi’s details"]);

@@ -246,7 +246,7 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
         </section>
       ) : (
         <section className="box-border flex min-w-0 w-full flex-col gap-3" aria-label="Total owed to you">
-          <div data-owed-summary className="box-border min-w-0 w-full rounded-[20px] border-2 border-[#CBD5E1] bg-white px-4 py-3">
+          <div data-owed-summary className="box-border min-w-0 w-full rounded-[20px] bg-[#F1F5F9] px-4 py-3">
             <h2 className="text-sm font-bold text-slate-600">Total owed to you</h2>
             <p data-owed-total className="break-words text-[30px] font-bold leading-tight text-[#0F172A]">
               {formatGhs(totalPesewas)}
@@ -346,7 +346,7 @@ function WideOwed({ layout, addDebtButton, filter, setFilter, query, setQuery, i
             </section>
           ) : (
             <>
-              <div data-owed-summary="" className="box-border min-w-0 w-full rounded-[20px] border-2 border-[#CBD5E1] bg-white px-4 py-3">
+              <div data-owed-summary="" className="box-border min-w-0 w-full rounded-[20px] bg-[#F1F5F9] px-4 py-3">
                 <h1 className="text-[17px] font-bold text-slate-600">Total owed to you</h1>
                 <p data-owed-total="" className="whitespace-nowrap text-[30px] font-bold leading-tight text-[#0F172A]">{formatGhs(totalPesewas)}</p>
               </div>
