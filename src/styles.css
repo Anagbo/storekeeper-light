@@ -125,3 +125,10 @@ button {
 [data-wide-dialog] .sm\:text-base {
   font-size: 17px;
 }
+/* The same for a tile that forces its size (sm:text-base!, the Split payment tile on 25). Important
+   rules in a layer beat unlayered ones, so this one sits in Tailwind's utilities layer. */
+@layer utilities {
+  [data-wide-dialog] .sm\:text-base\! {
+    font-size: 17px !important;
+  }
+}

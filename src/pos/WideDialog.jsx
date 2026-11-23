@@ -17,6 +17,22 @@ export function useWideDialogs() {
 // The open dialogs, newest last: only the top one answers Escape and Tab.
 const openDialogs = [];
 
+// A tap does not always focus the button it hits (Safari and iPad never do), so the control pressed
+// last is remembered as the opener when nothing has focus. Capture phase: before React's onClick opens
+// the dialog.
+const lastPress = { element: null, at: 0 };
+if (typeof document !== "undefined" && document.addEventListener) {
+  document.addEventListener("click", (event) => {
+    const control = event.target?.closest?.(FOCUSABLE);
+    if (control) Object.assign(lastPress, { element: control, at: Date.now() });
+  }, true);
+}
+function currentOpener() {
+  const active = document.activeElement;
+  if (active && active !== document.body) return active;
+  return Date.now() - lastPress.at < 1000 ? lastPress.element : active;
+}
+
 export default function WideDialog({ label, labelledBy, describedBy, role = "dialog", onClose, children }) {
   const panelRef = useRef(null);
   const selfRef = useRef(null);
@@ -24,8 +40,8 @@ export default function WideDialog({ label, labelledBy, describedBy, role = "dia
   // Read while rendering, before the page behind is replaced (the focused tile is gone after the commit).
   const openerRef = useRef(undefined);
   if (openerRef.current === undefined) {
-    const active = typeof document === "undefined" ? null : document.activeElement;
-    openerRef.current = { element: active, selector: openerSelector(active) };
+    const opener = typeof document === "undefined" ? null : currentOpener();
+    openerRef.current = { element: opener, selector: openerSelector(opener) };
   }
 
   const closeRef = useRef(onClose);
