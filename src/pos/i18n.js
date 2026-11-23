@@ -345,6 +345,12 @@ const ENGLISH = Object.freeze({
   "sellItems.each": "{amount} each",
   "sellItems.back": "Back",
   "sellItems.next": "Next · {amount}",
+  // Wide D9 (20 and 55 on one screen, 23 Nov 2026).
+  "sellItems.thisSale": "This sale",
+  "sellItems.otherAmount": "Other amount",
+  "sellItems.tapToAdd": "Tap an item to add it to the sale.",
+  "sellItems.emptySale": "Nothing in this sale yet.",
+  "sellItems.doneWhy": "Add an item first. Then press Done or Enter.",
   "review.title": "Review and pay",
   "review.back": "Back",
   "review.total": "Total",

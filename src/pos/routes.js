@@ -559,6 +559,27 @@ export function navigateState(state, route, params = {}) {
   return pushRoute(state, route, withKeptDraft(route, params, state.params));
 }
 
+// Wide D9 on the 55 route (wiring 20 "Wide keyboard": the window was widened while 55 was open). The
+// screen is 20 and 55 together, so its Back (and the Other amount tile) is 20's Back: to the screen below
+// 20 (15), with the cart as it is now, kept by the usual kept-draft rule. Anything else is a plain Back.
+export function backFromCombinedSale(state) {
+  const previous = state.history.at(-1);
+  if (state.current !== POS_ROUTES.ReviewAndPay || previous?.current !== POS_ROUTES.SellWithItems) return backRoute(state);
+  const { amountPesewas, saleItems } = state.params ?? {};
+  const on20 = { current: POS_ROUTES.SellWithItems, params: { ...previous.params, amountPesewas, saleItems }, history: state.history.slice(0, -1) };
+  return backRoute(on20);
+}
+
+// A cart change on D9 on the 55 route also goes to the 20 below it, so narrowing the window back to
+// the phone and pressing Back on 55 shows the same cart on 20.
+export function updateCombinedSaleParams(state, patch = {}) {
+  const next = replaceRoute(state, state.current, { ...state.params, ...patch });
+  const previous = state.history.at(-1);
+  if (state.current !== POS_ROUTES.ReviewAndPay || previous?.current !== POS_ROUTES.SellWithItems || !("saleItems" in patch)) return next;
+  const synced = { ...previous, params: { ...previous.params, amountPesewas: patch.amountPesewas, saleItems: patch.saleItems } };
+  return { ...next, history: [...state.history.slice(0, -1), synced] };
+}
+
 // Screens whose on-screen Back (or Close) goes to Home rather than one step back. Today's
 // transactions is not one: opened from the Menu drawer, Back returns to the page it was opened on.
 const BACK_TO_HOME = new Set([POS_ROUTES.CollectPayment, POS_ROUTES.PeopleWhoOweYou]);

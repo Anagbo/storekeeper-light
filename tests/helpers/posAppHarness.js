@@ -30,7 +30,16 @@ function installWindow(width) {
     addEventListener(type, listener) { (listeners[type] ??= []).push(listener); },
     removeEventListener(type, listener) { listeners[type] = (listeners[type] ?? []).filter((item) => item !== listener); },
     setInterval() { return 0; },
-    clearInterval() {}
+    clearInterval() {},
+    // layout.js listens to these to see a breakpoint crossed; app.resize(width) fires them.
+    matchMedia(query) {
+      const px = Number(/(\d+)px/.exec(query)?.[1]);
+      return {
+        get matches() { return (globalThis.window.innerWidth ?? 0) >= px; },
+        addEventListener(type, listener) { (listeners.mediaChange ??= []).push(listener); },
+        removeEventListener(type, listener) { listeners.mediaChange = (listeners.mediaChange ?? []).filter((item) => item !== listener); }
+      };
+    }
   };
   globalThis.document ??= { visibilityState: "visible", addEventListener() {}, removeEventListener() {} };
 }
@@ -156,6 +165,12 @@ export async function openPosApp({ env = { VITE_ENABLE_MOMO_PHONE_REQUEST: "true
       const home = header && [...walk(header)].find((node) => node.type === "button" && node.props?.["aria-label"] === "Home");
       if (!home) throw new Error(`No way Home on ${app.route}`);
       await home.props.onClick();
+      return app.settle();
+    },
+    // The window resized across a layout breakpoint (layout.js matchMedia listeners).
+    async resize(width) {
+      window.innerWidth = width;
+      for (const listener of window.__listeners.mediaChange ?? []) listener();
       return app.settle();
     },
     // The phone's back button.

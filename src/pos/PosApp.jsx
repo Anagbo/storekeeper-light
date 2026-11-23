@@ -26,7 +26,9 @@ import {
   navigateState,
   phoneBackState,
   signedState,
-  VIA_SIDEBAR
+  VIA_SIDEBAR,
+  backFromCombinedSale,
+  updateCombinedSaleParams
 } from "./routes.js";
 import { createBrowserBack, useBackHandler } from "./browserBack.js";
 import LeaveDraftDialog from "./LeaveDraftDialog.jsx";
@@ -47,6 +49,7 @@ import { useLayout, WIDE_CONTENT_MAX_PX } from "./layout.js";
 import { SpentMoney, StockOnCredit, YouOweSuppliers } from "./SupplierScreens.jsx";
 import ItemScreens from "./ItemScreens.jsx";
 import SellWithItems from "./SellWithItems.jsx";
+import SellWithItemsWide from "./SellWithItemsWide.jsx";
 import SaleRecorded from "./SaleRecorded.jsx";
 import SaleSplitPayment from "./SaleSplitPayment.jsx";
 import ReviewAndPay from "./ReviewAndPay.jsx";
@@ -509,6 +512,23 @@ export default function PosApp() {
     POS_ROUTES.PaymentReceived,
     POS_ROUTES.DebtorDetail
   ].includes(route);
+  // Wide D9 (wide_layout.screens["20 and 55 Sell with items"]): 20 and 55 drawn as one screen. On the 55
+  // route its Back is 20's Back with the current cart, and cart changes reach the 20 below too.
+  function combinedSale(params) {
+    const on55 = route === POS_ROUTES.ReviewAndPay;
+    const back = on55 ? () => backFromScreen(backFromCombinedSale) : navigateBack;
+    return (
+      <SellWithItemsWide
+        params={params}
+        layout={layout}
+        onBack={back}
+        onOtherAmount={back}
+        onNavigate={navigate}
+        onUpdateParams={on55 ? (patch) => commit((current) => updateCombinedSaleParams(current, patch)) : updateCurrentParams}
+        onSaveSale={saveSplitSale}
+      />
+    );
+  }
   const content = route === POS_ROUTES.Home ? (
     <Home
       onNavigate={navigate}
@@ -624,6 +644,9 @@ export default function PosApp() {
       onUpdateParams={updateCurrentParams}
       layout={layout}
     />
+  ) : layout.wide && (route === POS_ROUTES.SellWithItems || route === POS_ROUTES.ReviewAndPay) ? (
+    // Wide D9: 20 and 55 are one screen, on either route (55 when the window was widened on it).
+    combinedSale(routeState.params)
   ) : route === POS_ROUTES.SellWithItems ? (
     <SellWithItems
       params={routeState.params}
