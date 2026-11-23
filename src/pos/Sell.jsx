@@ -172,7 +172,7 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
               <p className="text-[17px] font-bold text-slate-600">{t("sell.customerPays")}</p>
               <output aria-live="polite" className="block min-w-0 whitespace-nowrap text-[#0F172A]" style={{ fontSize: "clamp(28px, 11.5cqi, 56px)", fontWeight: 700, lineHeight: 1.15 }}>{formatGhs(amountPesewas ?? 0)}</output>
             </section>
-            <AmountKeypad label={t("sell.enterAmount")} disabled={hasSaleItems} onKey={appendDigit} fill />
+            <AmountKeypad label={t("sell.enterAmount")} disabled={hasSaleItems} onKey={appendDigit} fill maxKeyHeight={layout.mode === "rail" ? 88 : undefined} />
             {!hasSaleItems && <p className="text-center text-[17px] text-slate-600">{t("sell.keyboardHint")}</p>}
           </div>
           <div className="flex min-w-0 flex-col gap-4">
