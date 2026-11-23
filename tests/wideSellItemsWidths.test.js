@@ -3,13 +3,13 @@ import { test } from "node:test";
 import { browser, sleep, waitFor, withEdgeApp } from "./helpers/edgeApp.js";
 
 // Wide D9 (20 and 55 on one screen) in real Edge at 768x1024, 1024x768, 1280x800 and 1440x900, with a
-// GH₵12,345.00 item and a long name in the sale: no sideways scroll, the total and every line amount
+// GH₵1,000,000.00 line and a long name in the sale (total GH₵1,000,045.00): no sideways scroll, the total and every line amount
 // whole, no wrapped label (Split payment may take two lines), the four tiles in a 2x2 grid, text 17px
 // or larger (tags 15px), 38 as a centred dialog over D9, focus rings visible.
 const SEEDS = {
   items: `await setPreference("posSetupCompleted", true);
-    await createProduct({ name: "Generator", pricePesewas: 1234500 });
-    await createProduct({ name: "Cooking oil premium", pricePesewas: 2500 });
+    await createProduct({ name: "Generator", pricePesewas: 100000000 });
+    await createProduct({ name: "Cooking oil premium", pricePesewas: 4500 });
     await createProduct({ name: "Bread", pricePesewas: 500 });`
 };
 
@@ -29,7 +29,16 @@ const MEASURE = `(() => {
   const amounts = [...document.querySelectorAll("[aria-labelledby=this-sale] b")].map((el) => ({ text: el.textContent, lines: lines(el), clipped: el.scrollWidth > el.clientWidth + 0.5 }));
   const small = [...document.querySelectorAll("main p, main output, main h1, main h2, main b, main strong, main span")].filter((el) => el.getClientRects().length && el.textContent.trim() && !el.closest("[aria-hidden=true], .sr-only") && !el.querySelector("p, span, strong, b"))
     .filter((el) => parseFloat(getComputedStyle(el).fontSize) < (el.matches("[data-count-badge]") ? 15 : 17)).map((el) => el.tagName + " " + getComputedStyle(el).fontSize + " " + el.textContent.trim().slice(0, 30));
+  const names = [...document.querySelectorAll("[data-line-name]")].filter((el) => el.getClientRects().length).map((el) => {
+    const row = el.parentElement.getBoundingClientRect();
+    const text = el.textContent.trim();
+    return { text, lines: lines(el), words: text.split(/s+/).length, share: el.getBoundingClientRect().width / row.width, wide: el.scrollWidth > el.clientWidth + 0.5 };
+  });
+  const sale = document.querySelector("[aria-labelledby=this-sale]"), totalRow = document.querySelector("[data-sale-total]");
+  const tr = totalRow.getBoundingClientRect(), pr = sale.getBoundingClientRect(), lab = totalRow.querySelector("strong").getBoundingClientRect(), out = total.getBoundingClientRect();
+  const rows = [...document.querySelectorAll("[data-sale-line]")].map((el) => { const bin = el.querySelector("button[aria-label^=Remove]").getBoundingClientRect(), amt = el.querySelector("b").getBoundingClientRect(); return { binBelowAmount: bin.top >= amt.bottom - 1, binRight: Math.abs(bin.right - el.getBoundingClientRect().right) < 1 }; });
   return {
+    names, rows, pane: pr.width, totalFits: tr.left <= lab.left + 0.5 && out.right <= tr.right + 0.5 && out.left >= tr.left - 0.5 && (lab.bottom <= out.top + 1 || lab.right <= out.left + 1), totalPx: parseFloat(getComputedStyle(total).fontSize),
     innerWidth, scrollWidth: document.documentElement.scrollWidth, d9: !!document.querySelector("[data-sell-items-wide]"),
     total: { text: total.textContent, lines: lines(total), clipped: total.scrollWidth > total.clientWidth + 0.5, size: getComputedStyle(total).fontSize },
     controls, tiles, amounts, small
@@ -54,6 +63,8 @@ test("wide Sell with items (D9) at 768, 1024, 1280 and 1440: fits, amounts whole
       const at = `${width}x${height}`;
       await app.open("items", width, height);
       await app.steps(["^Sell$", "Add items", "^Generator, ", "^Add 1"]);
+      // A real tap focuses the tile; the test click does not.
+      await app.evaluate(`document.querySelector("[data-item-tile=\\"Cooking oil premium\\"]").focus()`);
       await app.steps(["^Cooking oil premium, "]);
       const d = await waitFor(() => app.evaluate(DIALOG), `${at}: 38 as a dialog`);
       assert.ok(d.behind, `${at}: D9 behind the dialog, inert`);
@@ -61,15 +72,21 @@ test("wide Sell with items (D9) at 768, 1024, 1280 and 1440: fits, amounts whole
       await key("Escape", "Escape", 27);
       await sleep(200);
       assert.equal(await app.evaluate(DIALOG), null, `${at}: Escape closes 38`);
+      const active = await app.evaluate(`document.activeElement.tagName + "|" + (document.activeElement.getAttribute("aria-label") || "")`);
+      assert.match(active, /|Cooking oil premium, /, `${at}: focus returns to the tile that opened 38 (${active})`);
       await app.steps(["^Cooking oil premium, ", "^Add 1"]);
       await sleep(300);
       const m = await app.evaluate(MEASURE);
       assert.ok(m.d9, `${at}: D9`);
       assert.ok(m.scrollWidth <= m.innerWidth, `${at}: no sideways scroll (${m.scrollWidth})`);
-      assert.equal(m.total.text, "GH₵12,370.00", `${at}: the total`);
+      assert.equal(m.total.text, "GH₵1,000,045.00", `${at}: the total`);
       assert.ok(m.total.lines === 1 && !m.total.clipped, `${at}: total whole on one line (${m.total.size})`);
+      for (const n of m.names) assert.ok(n.lines <= n.words && !n.wide && n.share >= 0.4, `${at}: name "${n.text}" wraps between words only (${n.lines} lines, ${n.words} words, ${Math.round(n.share * 100)}% of the row)`);
+      for (const r of m.rows) assert.ok(r.binBelowAmount && r.binRight, `${at}: two rows per line, the bin at the right of row 2`);
+      assert.ok(m.totalFits && m.totalPx >= 28, `${at}: Total label and amount fit (${m.totalPx}px)`);
+      if (width >= 1280) assert.ok(m.pane >= 440 - 0.5, `${at}: right pane at least 440px (${m.pane})`);
       for (const a of m.amounts) assert.ok(a.lines === 1 && !a.clipped, `${at}: line amount ${a.text} whole`);
-      assert.ok(m.amounts.some((a) => a.text === "GH₵12,345.00"), `${at}: GH₵12,345.00 shown`);
+      assert.ok(m.amounts.some((a) => a.text === "GH₵1,000,000.00"), `${at}: GH₵1,000,000.00 shown`);
       for (const c of m.controls) {
         assert.ok(!c.overflow && c.r <= m.innerWidth + 0.5, `${at}: "${c.label}" not clipped`);
         if (!/^(Generator|Cooking|Bread)/.test(c.label)) assert.ok(c.lines <= (c.label === "Split payment" ? 2 : 1), `${at}: "${c.label}" on one line (${c.lines})`);

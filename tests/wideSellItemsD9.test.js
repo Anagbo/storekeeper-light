@@ -156,18 +156,18 @@ test("D9 Split payment > Cash 1.00 > Back: D9 keeps the parts; Owe opens 17 with
   assert.deepEqual(app.params.saleItems.map((line) => line.name), ["Cabbage"]);
 });
 
-test("Widened while 55 is open: the 55 route shows D9; a cart change reaches 20 too; Back goes to 15 with the cart kept", async () => {
+test("Widened while 55 is open: 55 becomes 20 (no identical entry behind Back), shows D9; Back goes to 15 with the cart kept", async () => {
   const app = await open(393);
   await cartOfOne(app);
   await app.tap(/^Next/);
   assert.equal(app.route, "ReviewAndPay");
   assert.equal(isD9(app), false, "phone 55");
   await app.resize(1280);
-  assert.equal(app.route, "ReviewAndPay", "route unchanged");
-  assert.ok(isD9(app), "D9 on the 55 route");
+  assert.equal(app.route, "SellWithItems", "55 replaced by 20");
+  assert.equal(app.state.history.at(-1).current, "Sell", "no identical entry below");
+  assert.ok(isD9(app), "D9 on the 20 route");
   await app.tap("More Cabbage");
   assert.deepEqual(app.params.saleItems.map((line) => [line.name, line.quantity]), [["Cabbage", 2]]);
-  assert.deepEqual(app.state.history.at(-1).params.saleItems.map((line) => [line.name, line.quantity]), [["Cabbage", 2]], "20 below follows");
   await app.tap("Back");
   assert.equal(app.route, "Sell");
   await app.tap(/Add items/);
