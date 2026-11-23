@@ -93,14 +93,14 @@ function WideTransactions({ data, filter, setFilter, visibleRows, date, layout, 
       ) : (
         <>
           <WideSummary totals={data.totals} rail={rail} />
-          <div role="group" aria-label={t("transactions.filters")} className="flex flex-wrap gap-3">
+          <div role="group" aria-label={t("transactions.filters")} className={rail ? "grid grid-cols-4 gap-3" : "flex flex-wrap gap-3"}>
             {FILTERS.map((value) => (
               <button
                 key={value}
                 type="button"
                 aria-pressed={filter === value}
                 onClick={() => setFilter(value)}
-                className={`h-[52px] w-40 whitespace-nowrap rounded-[14px] border-2 px-1 text-[17px] font-bold ${filter === value ? "border-[#03543F] bg-[#03543F] text-white" : "border-slate-500 bg-white text-slate-950"}`}
+                className={`h-[52px] ${rail ? "w-full min-w-0" : "w-40"} whitespace-nowrap rounded-[14px] border-2 px-1 text-[17px] font-bold ${filter === value ? "border-[#03543F] bg-[#03543F] text-white" : "border-slate-500 bg-white text-slate-950"}`}
               >
                 {t(`transactions.filter.${value}`)}
               </button>
