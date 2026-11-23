@@ -90,7 +90,7 @@ test("24: Sale of GH₵8.00 with Cash GH₵4.00 and GH₵4.00 owed by Juju", asy
   assert.match(cls(row.amountNode), /text-\[#03543F\]/);
   assert.deepEqual(row.chips, [{ kind: "payment", text: "Cash GH₵4.00" }, { kind: "person", text: "Juju owes GH₵4.00" }]);
   const personChip = all(row.node, (n) => n.props["data-chip"] === "person" && n.type === "span")[0];
-  assert.match(cls(personChip), /bg-\[#FECDD3\]/, "pink person chip");
+  assert.match(cls(personChip), /bg-\[#F1F5F9\]/, "soft tile person chip");
   assert.ok(all(personChip, (n) => typeof n.type === "function").length > 0, "with a person icon");
 });
 
@@ -220,7 +220,7 @@ test("24: stock GH₵80.00 with nothing paid is \"Stock on credit\", dark red wi
   assert.match(cls(row.amountNode), /text-\[#7F1D1D\]/);
   assert.deepEqual(row.chips, [{ kind: "person", text: "You owe Kofi Wholesale GH₵80.00" }]); // amount in the chip since 15 Nov 2026
   const chip = all(row.node, (n) => n.props["data-chip"] === "person" && n.type === "span")[0];
-  assert.match(cls(chip), /bg-\[#FECDD3\]/, "pink chip");
+  assert.match(cls(chip), /bg-\[#F1F5F9\]/, "soft tile chip");
   assert.equal(totals.expenses, 0, "no money went out");
 });
 

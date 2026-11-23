@@ -16,11 +16,11 @@ import { describeHomeTableRow, describeTransactionRow } from "./transactionFeed.
 // it the same height as the filled chips). Payment chips are unchanged.
 const CHIP_STYLES = {
   payment: "py-0.5 bg-[#CBD5E1] text-[#0F172A]",
-  person: "py-0.5 bg-[#FECDD3] text-[#0F172A]",
+  person: "py-0.5 bg-[#F1F5F9] text-[#0F172A]",
   personNeutral: "border-2 border-slate-500 bg-white py-0 text-[#0F172A]",
   category: "py-0.5 bg-[#FDE68A] text-[#0F172A]",
   reason: "py-0.5 bg-[#CBD5E1] text-[#0F172A]",
-  credit: "py-0.5 bg-rose-100 text-rose-950"
+  credit: "py-0.5 bg-[#F1F5F9] text-[#0F172A]"
 };
 const chipStyle = (chip) => (chip.kind === "person" && !chip.owes ? CHIP_STYLES.personNeutral : CHIP_STYLES[chip.kind] ?? CHIP_STYLES.payment);
 

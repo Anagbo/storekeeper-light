@@ -79,9 +79,9 @@ test("24: the person chip is pink only when it says someone owes; Payment collec
   const paid = chips.find((chip) => textOf(chip) === "Ama");
   assert.ok(owes && paid, chips.map(textOf).join(" | "));
   assert.equal(owes.props["data-owes"], "true");
-  assert.match(cls(owes), /bg-\[#FECDD3\]/, "owes: pink");
+  assert.match(cls(owes), /bg-\[#F1F5F9\]/, "owes: soft tile fill, not pink");
   assert.equal(paid.props["data-owes"], "false");
-  assert.doesNotMatch(cls(paid), /FECDD3|rose|pink/, "paid only: not pink");
+  assert.doesNotMatch(cls(paid), /F1F5F9|FECDD3|rose|pink/, "paid only: not the soft fill");
   for (const part of ["border-2", "border-slate-500", "bg-white"]) assert.ok(cls(paid).split(/\s+/).includes(part), `paid chip: ${part}`);
   assert.ok(all(paid, (node) => typeof node.type === "function" || node.type === "svg").length > 0, "the small person icon stays");
   // Payment chips are unchanged.
