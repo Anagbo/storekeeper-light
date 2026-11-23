@@ -93,3 +93,17 @@ button {
     font-size: clamp(1rem, 7vw, 2.125rem);
   }
 }
+
+/* Wide task column only (rules_global.wide_layout.design_principles 4): text without its own size
+   inherits 17px; text-base is 17px; text-sm, text-xs and text-[15px] are 15px. Phone never has this root. */
+[data-task-column] {
+  font-size: 17px;
+}
+[data-task-column] .text-base {
+  font-size: 17px;
+}
+[data-task-column] .text-sm,
+[data-task-column] .text-xs,
+[data-task-column] .text-\[15px\] {
+  font-size: 15px;
+}
