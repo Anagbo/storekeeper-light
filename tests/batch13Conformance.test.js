@@ -85,7 +85,8 @@ test("53: Taken on: Today is shown, can be changed to an older date, and goes wi
   view.rerender();
   const [year, month, day] = older.split("-");
   assert.ok(findButton(view.tree, `Taken on: ${day}/${month}/${year}`), "shows the chosen date");
-  for (const key of ["5", "0", "0"]) findButton(view.tree, key).props.onClick();
+  // Exact key labels: findButton matches by substring, and the chosen date (for example 15/11/2026) contains digits.
+  for (const key of ["5", "0", "0"]) [...walk(view.tree)].find((node) => node.type === "button" && textOf(node) === key).props.onClick();
   view.rerender();
   findButton(view.tree, "Next").props.onClick();
   assert.equal(calls.length, 1);
