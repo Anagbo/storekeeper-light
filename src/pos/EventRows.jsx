@@ -3,6 +3,7 @@ import { formatGhs } from "../lib/money.js";
 import { CREDIT_ROW_TYPES, correctionReason, paidParts, rowReason, rowTime } from "./historyRows.js";
 import { posText as t } from "./i18n.js";
 import SignedTag from "./SignedTag.jsx";
+import { SOFT_TILE, SOFT_TILE_DIVIDERS } from "./softTile.js";
 
 // Wiring "What happened cards" (final, 16 Nov 2026) on 29, 43 and 73: one card per event. A title row
 // (title left, amount right, never wrapped), then label-value rows like the card on 72: the label grey
@@ -17,7 +18,7 @@ function Card({ kind, dashed = false, rowProps, children }) {
     <li
       data-record-row={kind}
       {...rowProps}
-      className={`flex min-w-0 flex-col gap-1.5 rounded-[18px] border-2 bg-white px-3.5 py-2.5 ${dashed ? "border-dashed border-slate-400" : "border-slate-300"}`}
+      className={`flex min-w-0 flex-col gap-1.5 ${SOFT_TILE} px-3.5 py-2.5 ${dashed ? "border-2 border-dashed border-[#CBD5E1]" : ""}`}
     >
       {children}
     </li>
@@ -61,7 +62,7 @@ export function KeyValueRows({ name, size = "lg", className = "", children, ...r
 }
 
 function Details({ children }) {
-  return <KeyValueRows data-event-details="">{children}</KeyValueRows>;
+  return <KeyValueRows data-event-details="" className={SOFT_TILE_DIVIDERS}>{children}</KeyValueRows>;
 }
 
 // `signatureAction`: 29/43 "Get signature" (wiring "Signature row and Get signature", 17 Nov 2026): on its
@@ -72,7 +73,7 @@ export default function EventRows({ event, creditTitle, signatureAction = null }
   if (event.type === "payment") {
     return (
       <Card kind="paid">
-        <TitleRow title={t("collect.paid")} amount={formatGhs(event.amountPesewas)} amountClass="text-emerald-900" />
+        <TitleRow title={t("collect.paid")} amount={formatGhs(event.amountPesewas)} amountClass="text-[#0F172A]" />
         <Details>
           <EventDetail label={t("event.time")} name="time" valueProps={{ "data-when": "" }}>{rowTime(event)}</EventDetail>
           {/* rules_global.customer_proof.paid_order: Cash first, then MoMo (paidParts). */}
@@ -98,7 +99,7 @@ export default function EventRows({ event, creditTitle, signatureAction = null }
   if (CREDIT_ROW_TYPES.has(event.type)) {
     return (
       <Card kind="credit" rowProps={{ "data-credit-row": "" }}>
-        <TitleRow title={creditTitle} amount={formatGhs(event.amountPesewas)} amountClass="text-rose-950" />
+        <TitleRow title={creditTitle} amount={formatGhs(event.amountPesewas)} amountClass="text-[#0F172A]" />
         <Details>
           <EventDetail label={t("event.time")} name="time" valueProps={{ "data-when": "" }}>{rowTime(event)}</EventDetail>
           <EventDetail label={t("event.reason")} name="reason" valueProps={{ "data-reason": "" }}>{rowReason(event)}</EventDetail>

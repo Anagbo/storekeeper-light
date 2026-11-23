@@ -55,7 +55,9 @@ test("Signed ✓ and Not signed look the same on 29, 43 and 73 at 340, 360 and 3
   for (const part of ["border", "fill"]) {
     const green = oklch(reference.yes[part]);
     assert.ok(green.c > 0.03 && green.h >= 120 && green.h <= 180, `Signed ${part} is green (${reference.yes[part]})`);
-    assert.ok(oklch(reference.no[part]).c < 0.05, `Not signed ${part} is grey (${reference.no[part]})`);
   }
-  assert.ok(oklch(reference.yes.fill).l > 0.9 && oklch(reference.no.fill).l > 0.9, "both fills are light");
+  assert.ok(oklch(reference.no.border).c < 0.05, `Not signed border is grey (${reference.no.border})`);
+  // Soft tiles (23 Nov 2026): the Not signed tag is white inside the grey tile.
+  assert.equal(reference.no.fill, "rgb(255, 255, 255)", "Not signed fill is white");
+  assert.ok(oklch(reference.yes.fill).l > 0.9, "the Signed fill is light");
 });
