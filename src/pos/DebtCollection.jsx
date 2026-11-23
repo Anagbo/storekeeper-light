@@ -40,7 +40,7 @@ import { useFormErrors } from "./formErrors.js";
 import AmountTextInput from "./AmountTextInput.jsx";
 import { formatHistoryRowTimestamp, groupCollectionHistory } from "./historyRows.js";
 import { needsSignature } from "../config/features.js";
-import { SOFT_TILE } from "./softTile.js";
+import { SOFT_TILE, SOFT_TILE_DIVIDERS } from "./softTile.js";
 import EventRows, { EventDetail, KeyValueRows } from "./EventRows.jsx";
 
 const PAYMENT_METHODS = [
@@ -964,13 +964,13 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
           ))}
           {!embedded && correctBalanceButton}
           {data.debt?.isInstallmentPlan && (
-            <section className="flex flex-col gap-1.5 rounded-[18px] border-2 border-emerald-900 bg-green-100 px-3.5 py-2.5">
+            <section className={`flex flex-col gap-1.5 ${SOFT_TILE} px-3.5 py-2.5`}>
               <div className="flex items-center justify-between gap-2">
                 <strong className="text-lg">{t("collect.installmentTitle")}</strong>
                 {/* The shared due tag colours: grey more than 3 days, amber 3 days or less or today, red late. */}
                 <DueTag dueDate={dueDate} />
               </div>
-              <KeyValueRows name="plan-payment">
+              <KeyValueRows name="plan-payment" className={SOFT_TILE_DIVIDERS}>
                 <EventDetail label={t("kv.payment")} name="payment">{installmentPayment}</EventDetail>
               </KeyValueRows>
               <div
@@ -986,7 +986,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               {/* Wiring 29/43/54 "Plan card rows" (21 Nov 2026): under the bar, Paid and Still needed for the current
                   period (like the 53 card), Payments left (the one shared function), then "Next payment" (29) or
                   "Was due" when late (43, 54). Never a count of installments paid (it replaces "Paid so far 1 of 3"). */}
-              <KeyValueRows name="plan">
+              <KeyValueRows name="plan" className={SOFT_TILE_DIVIDERS}>
                 <EventDetail label={t("kv.paid")} name="paid">{formatGhs(planPeriod?.paidPesewas ?? 0)}</EventDetail>
                 <EventDetail label={t("kv.stillNeeded")} name="still-needed">{formatGhs(planPeriod?.stillNeededPesewas ?? 0)}</EventDetail>
                 <EventDetail label={t("kv.paymentsLeft")} name="payments-left">{planPeriod?.paymentsLeft ?? 0}</EventDetail>
