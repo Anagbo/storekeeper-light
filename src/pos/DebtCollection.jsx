@@ -25,6 +25,7 @@ import { posText as t } from "./i18n.js";
 import { getDebtEntryReason } from "../lib/creditReason.js";
 import { AddButton, PosBackButton, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, SplitIcons, useTaskColumn } from "./PosComponents.jsx";
 import CustomerContactEditor from "./CustomerContactEditor.jsx";
+import WideDialog, { useWideDialogs } from "./WideDialog.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
@@ -166,6 +167,7 @@ function CollectionSheet({ debt, params = {}, onClose, onNavigate, onUpdateParam
   // draft_survives_trip_away: Due now / Pay all is also kept in the route params, so 26, 61 or 43 and
   // Back show the same choice. Close (Home) drops it.
   const [mode, setMode] = useState(params.collectMode === "all" ? "all" : "due");
+  const wideDialog = useWideDialogs();
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [busy, setBusy] = useState(false);
   useBackBlock(busy);
@@ -209,10 +211,10 @@ function CollectionSheet({ debt, params = {}, onClose, onNavigate, onUpdateParam
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-0 sm:items-center sm:p-4" onMouseDown={(event) => event.target === event.currentTarget && !busy && onClose()}>
-      <section role="dialog" aria-modal="true" aria-labelledby="collect-title" className="safe-bottom max-h-[94dvh] w-full max-w-xl overflow-y-auto rounded-t-[28px] border-t-[3px] border-slate-950 bg-white p-4 shadow-2xl sm:rounded-[28px] sm:border-2">
-        <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-slate-500" aria-hidden="true" />
+  // wide_layout.page_types.dialog: on wide the same content in the shared WideDialog (no sheet handle);
+  // Escape and a scrim click are Close, not while the payment is saving.
+  const body = (
+    <>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 id="collect-title" className="text-2xl font-extrabold">{t("collect.from", { name: displayName(debt.customerName) })}</h1>
@@ -282,6 +284,14 @@ function CollectionSheet({ debt, params = {}, onClose, onNavigate, onUpdateParam
         <PosSecondaryButton type="button" onClick={() => onNavigate("DebtorDetail", { debtId: debt.id, customerName: debt.customerName })} className="mt-2 w-full">
           {t("collect.seeDetails", { name: displayName(debt.customerName) })}
         </PosSecondaryButton>
+    </>
+  );
+  if (wideDialog) return <WideDialog labelledBy="collect-title" onClose={() => { if (!busy) onClose(); }}>{body}</WideDialog>;
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-0 sm:items-center sm:p-4" onMouseDown={(event) => event.target === event.currentTarget && !busy && onClose()}>
+      <section role="dialog" aria-modal="true" aria-labelledby="collect-title" className="safe-bottom max-h-[94dvh] w-full max-w-xl overflow-y-auto rounded-t-[28px] border-t-[3px] border-slate-950 bg-white p-4 shadow-2xl sm:rounded-[28px] sm:border-2">
+        <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-slate-500" aria-hidden="true" />
+        {body}
       </section>
     </div>
   );
@@ -295,11 +305,18 @@ export function CollectPayment({ params, onClose, onNavigate, onUpdateParams, on
 }
 
 function CollectionSheetError({ loading, onClose }) {
+  const wideDialog = useWideDialogs();
+  const body = (
+    <>
+        <p role={loading ? "status" : "alert"} className="font-bold">{loading ? t("collect.loading") : t("collect.notFound")}</p>
+        <PosSecondaryButton type="button" onClick={onClose} className="mt-4">{t("collect.close")}</PosSecondaryButton>
+    </>
+  );
+  if (wideDialog) return <WideDialog onClose={onClose}>{body}</WideDialog>;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 sm:items-center sm:p-4">
       <section role="dialog" aria-modal="true" className="safe-bottom w-full max-w-xl rounded-t-[28px] bg-white p-6 sm:rounded-[28px]">
-        <p role={loading ? "status" : "alert"} className="font-bold">{loading ? t("collect.loading") : t("collect.notFound")}</p>
-        <PosSecondaryButton type="button" onClick={onClose} className="mt-4">{t("collect.close")}</PosSecondaryButton>
+        {body}
       </section>
     </div>
   );
@@ -659,6 +676,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
   const [contactEditorOpen, setContactEditorOpen] = useState(false);
   const editContactOpened = useRef(false);
   const [correctionOpen, setCorrectionOpen] = useState(false);
+  const wideDialog = useWideDialogs();
   const [correctionAmount, setCorrectionAmount] = useState("");
   const [correctionReason, setCorrectionReason] = useState("");
   const [correctionNote, setCorrectionNote] = useState("");
@@ -1106,10 +1124,11 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
           }}
         />
       )}
-      {correctionOpen && data?.debt && (
-        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/50 p-0 sm:items-center sm:p-4">
-          <section role="dialog" aria-modal="true" aria-labelledby="pos-correction-title" className="safe-bottom max-h-[92dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-[28px] border-t-[3px] border-slate-900 bg-white px-4 pb-4 pt-3 shadow-xl sm:rounded-t-[28px]">
-            <div className="mx-auto mb-2 h-1.5 w-12 rounded-full bg-slate-500" aria-hidden="true" />
+      {correctionOpen && data?.debt && (() => {
+        // wide_layout.page_types.dialog: on wide the same content in the shared WideDialog (no sheet
+        // handle); Escape and a scrim click are Cancel, not while the correction is saving.
+        const correctionBody = (
+          <>
             <div className="mb-2 flex items-center justify-between gap-3">
               {/* Sheet header (decided 20 Nov 2026): the title is the person's name; "Now owed" is a key-value
                   row under it, never the name and the amount joined on one line. */}
@@ -1160,7 +1179,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                 </div>
               </fieldset>
               {correctionReason === "other" && (
-                <label className="block text-sm font-bold" htmlFor="pos-correction-note">Correction note
+                <label className={`block ${wideDialog ? "text-[17px]" : "text-sm"} font-bold`} htmlFor="pos-correction-note">Correction note
                   <textarea id="pos-correction-note" rows="3" value={correctionNote} onChange={(event) => setCorrectionNote(event.target.value)} className="mt-1 w-full rounded-xl border-2 border-slate-300 px-3 py-2 outline-none focus:border-emerald-800" />
                 </label>
               )}
@@ -1172,9 +1191,18 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                 <PosSecondaryButton type="button" onClick={() => setCorrectionOpen(false)} disabled={correctionSaving}>Cancel</PosSecondaryButton>
               </div>
             </form>
-          </section>
-        </div>
-      )}
+          </>
+        );
+        if (wideDialog) return <WideDialog labelledBy="pos-correction-title" onClose={() => { if (!correctionSaving) setCorrectionOpen(false); }}>{correctionBody}</WideDialog>;
+        return (
+          <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/50 p-0 sm:items-center sm:p-4">
+            <section role="dialog" aria-modal="true" aria-labelledby="pos-correction-title" className="safe-bottom max-h-[92dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-[28px] border-t-[3px] border-slate-900 bg-white px-4 pb-4 pt-3 shadow-xl sm:rounded-t-[28px]">
+              <div className="mx-auto mb-2 h-1.5 w-12 rounded-full bg-slate-500" aria-hidden="true" />
+              {correctionBody}
+            </section>
+          </div>
+        );
+      })()}
       {reminders.sheet}
     </Page>
   );
