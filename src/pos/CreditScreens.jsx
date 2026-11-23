@@ -14,6 +14,7 @@ import { addDueCycles, dayAfter, getCreditBalanceAfterSale, getNextCycleDate, is
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { getCreditAmountOwedPesewas } from "./creditAmount.js";
 import { AddButton, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton, SplitIcons, useTaskColumn } from "./PosComponents.jsx";
+import { SOFT_TILE } from "./softTile.js";
 import { shortSaveName } from "./saveLabel.js";
 import { CopyReceiptButton, ReceiptFailedLine, ReceiptOfflineLine, ReceiptPair, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
 import { buildCreditSaleReceipt, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
@@ -1012,8 +1013,10 @@ function CreditSaved({ params, onHome, onNavigate, shopName }) {
         </div>
       </PosCard>
       {result?.initialPaymentPesewas > 0 && (
-        <div className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3" aria-live="polite">
-          <p className="mb-2 font-extrabold text-emerald-950">{t("credit.paymentRecorded")}</p>
+        // rules_global.soft_tiles (23 Nov 2026): read-only, so the soft tile (no mint fill, no green
+        // border); the rows inside stay white; Total received stays bold.
+        <div data-payment-today="" className={`${SOFT_TILE} p-3`} aria-live="polite">
+          <p className="mb-2 font-bold text-slate-600">{t("credit.paymentRecorded")}</p>
           <div className="flex flex-col gap-2">
             {result.initialPaymentParts && result.initialPaymentParts.some((part) => part.amountPesewas > 0) ? (
               result.initialPaymentParts.filter((part) => part.amountPesewas > 0).map((part) => (
@@ -1039,7 +1042,7 @@ function CreditSaved({ params, onHome, onNavigate, shopName }) {
               </div>
             )}
           </div>
-          <div data-total-today="" className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 px-3 pt-2 font-extrabold text-emerald-950">
+          <div data-total-today="" className="mt-2 flex items-center justify-between gap-3 border-t border-[#E2E8F0] px-3 pt-2 font-bold text-[#0F172A]">
             <span>{t("credit.paymentRecordedTotal")}</span>
             <span className="tabular-nums">{formatGhs(result.initialPaymentPesewas)}</span>
           </div>

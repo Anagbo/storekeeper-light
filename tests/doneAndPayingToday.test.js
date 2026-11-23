@@ -172,6 +172,17 @@ test("31 keeps Payment received today and Total received", async () => {
   assert.match(text, /Payment received today/);
   assert.match(text, /Total received/);
   assert.doesNotMatch(text, DRAFT_WORDS);
+  // rules_global.soft_tiles (23 Nov 2026): the block is the soft tile (no mint fill, no green border),
+  // the rows inside are white, Total received is bold.
+  const box = nodes(app.view.tree).find((node) => node.props["data-payment-today"] !== undefined);
+  assert.match(box.props.className, /bg-\[#F1F5F9\]/);
+  assert.doesNotMatch(box.props.className, /emerald|\bborder\b/);
+  const rows = nodes(box).filter((node) => /\bbg-white\b/.test(node.props.className ?? ""));
+  assert.ok(rows.length >= 1, "white rows inside");
+  const total = nodes(box).find((node) => node.props["data-total-today"] !== undefined);
+  assert.match(total.props.className, /\bfont-bold\b/);
+  assert.match(total.props.className, /border-\[#E2E8F0\]/);
+  assert.doesNotMatch(total.props.className, /emerald/);
 });
 
 test("28 keeps its result wording (Payment received) and never shows the draft words", async () => {
