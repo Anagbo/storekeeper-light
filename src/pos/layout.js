@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 // rules_global.wide_layout.layout_mode_function (decided 21 Nov 2026): the ONE place that decides the
 // layout. The mode depends on the width alone (touch and orientation are not inputs):
@@ -34,6 +34,13 @@ export const LAYOUT_QUERIES = Object.freeze(Object.values(LAYOUT_BREAKPOINTS).ma
 
 function sameLayout(a, b) {
   return a.mode === b.mode && a.wideMyMoney === b.wideMyMoney;
+}
+
+// The layout PosApp read (useLayout below), for parts drawn inside a screen that are not given it as a
+// prop: the phone sheets become WideDialogs when the mode is not phone. No provider is the phone.
+export const LayoutContext = createContext(PHONE_LAYOUT);
+export function useLayoutContext() {
+  return useContext(LayoutContext) ?? PHONE_LAYOUT;
 }
 
 // Used once, in PosApp: the layout now, updated when the window crosses a breakpoint.

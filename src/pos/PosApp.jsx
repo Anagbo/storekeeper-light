@@ -46,7 +46,7 @@ import PosErrorBoundary from "./PosErrorBoundary.jsx";
 import CreditScreens from "./CreditScreens.jsx";
 import Sell from "./Sell.jsx";
 import { POS_THEME } from "./theme.js";
-import { useLayout, WIDE_CONTENT_MAX_PX } from "./layout.js";
+import { LayoutContext, useLayout, WIDE_CONTENT_MAX_PX } from "./layout.js";
 import { SpentMoney, StockOnCredit, YouOweSuppliers } from "./SupplierScreens.jsx";
 import ItemScreens from "./ItemScreens.jsx";
 import SellWithItems from "./SellWithItems.jsx";
@@ -852,6 +852,8 @@ export default function PosApp() {
     // no screen depends on a header height and a screen that fits never scrolls the document.
     // Wide screens (layout.wide): the rail or sidebar replaces the header, the bottom bar and the Menu;
     // first-run setup shows none of them (a centred column only). The page is centred, 1160px at most.
+    // The layout also reaches the sheets drawn inside a screen (WideDialog.jsx useWideDialogs).
+    <LayoutContext.Provider value={layout}>
     <div className="pos-app flex max-w-full flex-col overflow-x-clip bg-white text-slate-950" style={POS_THEME.cssVariables} data-layout={layout.mode}>
       {!layout.wide && (
         <PosHeader
@@ -896,5 +898,6 @@ export default function PosApp() {
         />
       )}
     </div>
+    </LayoutContext.Provider>
   );
 }

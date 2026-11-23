@@ -107,3 +107,21 @@ button {
 [data-task-column] .text-\[15px\] {
   font-size: 15px;
 }
+
+/* Wide dialogs (WideDialog, wide_layout.page_types.dialog): the same type scale as the task column, and
+   the phone sheets' sm:text-base labels (16px) are 17px. Phone sheets never have this attribute. */
+[data-wide-dialog] {
+  font-size: 17px;
+}
+[data-wide-dialog] .text-base {
+  font-size: 17px;
+}
+[data-wide-dialog] .text-sm,
+[data-wide-dialog] .text-xs,
+[data-wide-dialog] .text-\[15px\] {
+  font-size: 15px;
+}
+/* After the 15px rule: a phone label that is text-sm sm:text-base stays 17px in the dialog. */
+[data-wide-dialog] .sm\:text-base {
+  font-size: 17px;
+}
