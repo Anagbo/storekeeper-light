@@ -161,7 +161,7 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
     // height; right, the Items row, How is it paid? as a 2x2 grid of tiles, the quiet Last sale box,
     // then Done pinned at the bottom with one line saying why it is disabled. The same controls,
     // labels, handlers and saved record as the phone; only the layout changes.
-    const tileClass = "relative flex h-[92px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-[18px] px-2 text-[19px] font-extrabold leading-tight disabled:cursor-not-allowed disabled:opacity-50";
+    const tileClass = "relative flex min-h-[92px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-[18px] px-2 text-[19px] font-extrabold leading-tight disabled:cursor-not-allowed disabled:opacity-50";
     const doneDisabled = !canSave || busy;
     return (
       <PosPage wide rail={layout.mode === "rail"} className="flex flex-col gap-5 tabular-nums">
@@ -206,7 +206,7 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
               })}
               <AddButton plus={false} size="tile" aria-label={t("sell.split")} disabled={!canSave || busy} onClick={openSplit} className={`${tileClass} px-2! text-[19px]! hover:bg-green-50`}>
                 <SplitIcons withOwe size={24} />
-                <span className="w-full min-w-0 truncate text-center">{t("sell.split")}</span>
+                <span className="w-full min-w-0 text-center">{t("sell.split")}</span>
               </AddButton>
             </div>
             <LastSaleBox load={loadLastSale} />
