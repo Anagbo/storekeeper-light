@@ -4,7 +4,8 @@ import { posText as t } from "./i18n.js";
 import { PosPage, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
 import { useBackBlock } from "./browserBack.js";
 import WideDialog, { useWideDialogs } from "./WideDialog.jsx";
-import { SettingsPane, useSettingsPane } from "./SettingsPane.jsx";
+import { PANE_BUTTON, SettingsPane, useSettingsPane } from "./SettingsPane.jsx";
+import { SOFT_TILE } from "./softTile.js";
 
 // Screen 71 (brief 3.13): Backup and restore as a normal screen with Back. Layout only: the backup
 // and restore logic is the existing one in utils/backup.js. Restore asks first; a file that cannot
@@ -28,8 +29,11 @@ function countRecords(data) {
 
 export default function BackupRestore({ onBack }) {
   const wideDialog = useWideDialogs();
-  // Wide Settings (D13d): drawn in the Settings pane, without Back.
+  // Wide Settings (D13d): drawn in the Settings pane, without Back. The two cards are soft tiles with the
+  // phone's download and upload arrows; the buttons keep their looks at most 240px wide.
   const pane = useSettingsPane();
+  const tileClass = pane ? `${SOFT_TILE} flex flex-col gap-[10px] p-5` : cardClass;
+  const paneButton = pane ? PANE_BUTTON : "";
   const fileInput = useRef(null);
   // A ref as well as the state, so a second tap in the same frame sees the first one.
   const busyRef = useRef(false);
@@ -108,18 +112,18 @@ export default function BackupRestore({ onBack }) {
     <>
       <p className={textClass}>{t("backup.intro")}</p>
 
-      <section aria-labelledby="backup-save-title" className={cardClass}>
+      <section aria-labelledby="backup-save-title" data-backup-tile="save" className={tileClass}>
         <div className="flex items-center gap-[10px]">
           <CardIcon name="download" path="M12 3v12m0 0l-4-4m4 4l4-4M4 20h16" />
           <h2 id="backup-save-title" className={headingClass}>{t("backup.saveTitle")}</h2>
         </div>
         <p className={textClass}>{t("backup.saveHelp")}</p>
-        <button type="button" onClick={() => void downloadBackup()} disabled={busy} className={`${buttonBase} border-[#03543F] bg-[#03543F] text-white`}>
+        <button type="button" onClick={() => void downloadBackup()} disabled={busy} className={`${buttonBase} ${paneButton} border-[#03543F] bg-[#03543F] text-white`}>
           {busy ? t("backup.working") : t("backup.download")}
         </button>
       </section>
 
-      <section aria-labelledby="backup-restore-title" className={cardClass}>
+      <section aria-labelledby="backup-restore-title" data-backup-tile="restore" className={tileClass}>
         <div className="flex items-center gap-[10px]">
           <CardIcon name="upload" path="M12 21V9m0 0l-4 4m4-4l4 4M4 4h16" />
           <h2 id="backup-restore-title" className={headingClass}>{t("backup.restoreTitle")}</h2>
@@ -129,7 +133,7 @@ export default function BackupRestore({ onBack }) {
           type="button"
           onClick={() => fileInput.current?.click()}
           disabled={busy}
-          className={`${buttonBase} border-[#0F172A] bg-white text-[#0F172A]`}
+          className={`${buttonBase} ${paneButton} border-[#0F172A] bg-white text-[#0F172A]`}
         >
           {t("backup.choose")}
         </button>

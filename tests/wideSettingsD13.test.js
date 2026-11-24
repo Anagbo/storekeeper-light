@@ -159,3 +159,40 @@ test("D13c My plan pane: soft plan card, Pay now the only green button, opens 65
     assert.equal(pane(app).props["data-settings-pane"], "plan", `${width}: Back returns to the My plan pane`);
   }
 });
+
+const backupFile = () => new File([JSON.stringify({
+  app: "StoreKeeper Light",
+  formatVersion: 1,
+  exportedAt: "2026-11-09T00:00:00.000Z",
+  data: { transactions: [], customers: [], debts: [], products: [], payments: [], suppliers: [] }
+})], "backup.json", { type: "application/json" });
+
+test("D13d Backup pane: two soft tiles with the phone's arrows, green Download backup, outlined Choose backup file, Restore asks in a WideDialog", async () => {
+  for (const width of [768, 1280]) {
+    const app = await open(width);
+    await app.side("SettingsProfitTools");
+    await row(app, "backup");
+    const tiles = nodes(pane(app)).filter((node) => node.props["data-backup-tile"]);
+    assert.deepEqual(tiles.map((node) => node.props["data-backup-tile"]), ["save", "restore"]);
+    for (const tile of tiles) assert.match(tile.props.className, /bg-\[#F1F5F9\]/, `${width}: soft tile`);
+    assert.deepEqual(tiles.map((tile) => nodes(tile).find((node) => node.type === "svg")?.props["data-icon"]), ["download", "upload"], `${width}: the phone's arrows`);
+    const [download, choose] = tiles.map((tile) => nodes(tile).find((node) => node.type === "button"));
+    assert.equal(textOf(download), "Download backup");
+    assert.match(download.props.className, /bg-\[#03543F\]/);
+    assert.equal(textOf(choose), "Choose backup file");
+    assert.match(choose.props.className, /border-\[#0F172A\] bg-white/);
+    for (const button of [download, choose]) assert.match(button.props.className, /max-w-\[240px\]/);
+
+    const input = nodes(app.view.tree).find((node) => node.type === "input" && node.props.type === "file");
+    await input.props.onChange({ target: { files: [backupFile()], value: "x" } });
+    for (let round = 0; round < 50 && !dialog(app); round += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      await app.settle(2);
+    }
+    assert.match(textOf(dialog(app)), /^Restore from this file\?/, `${width}: the Restore confirmation is a WideDialog`);
+    pressKey("Escape");
+    await app.settle();
+    assert.equal(dialog(app), null, `${width}: Escape is Cancel`);
+    assert.equal(pane(app).props["data-settings-pane"], "backup");
+  }
+});
