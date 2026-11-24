@@ -614,7 +614,10 @@ function ItemsWide({ mode, params, onNavigate, onUpdateParams }) {
             <ItemEditor key="new" pane onSave={createProduct} onSaved={() => select(undefined)} />
           ) : Number.isSafeInteger(selected) ? (
             <EditItem key={selected} pane itemId={selected} onSaved={() => select(undefined)} onDelete={(item) => setDeleting({ id: item.id, name: item.name })} />
-          ) : null}
+          ) : (
+            // Nothing selected (first opening): only this plain text, no box; no item is chosen for the owner.
+            <p data-items-choose="" className="px-2 py-6 text-[19px] font-semibold text-[#334155]">{t("items.choose")}</p>
+          )}
         </div>
       </div>
       {deleting && (
