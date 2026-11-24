@@ -97,7 +97,9 @@ function MyItems({ onBack, onNavigate }) {
   );
 }
 
-function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCompleteSetup }) {
+// pane (wide D8): the same form, fields, checks and save as 40 and 41, drawn inside the Items page's right
+// pane instead of as its own page. onSaved(product) replaces Back; onDelete opens 42 over the page.
+function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCompleteSetup, pane = false, onSaved, onDelete }) {
   const [name, setName] = useState(item?.name ?? "");
   const [price, setPrice] = useState(item?.default_price > 0 ? item.default_price.toFixed(2) : "");
   const [error, setError] = useState("");
@@ -118,9 +120,10 @@ function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCom
     setSaving(true);
     setError("");
     try {
-      await onSave({ name, price });
+      const saved = await onSave({ name, price });
       void requestBackgroundSync();
-      if (setupFlow) await onCompleteSetup();
+      if (pane) onSaved?.(saved);
+      else if (setupFlow) await onCompleteSetup();
       else onBack();
     } catch (saveError) {
       console.error("Could not save this item.", saveError);
@@ -130,22 +133,54 @@ function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCom
     }
   }
 
+  const fields = (
+    <>
+      <label className="block">
+        <span className="mb-1 block text-lg font-extrabold">{t("items.name")}</span>
+        <input autoComplete="off" maxLength="80" value={name} onChange={(event) => { setName(event.target.value); setError(""); }} placeholder={t("items.namePlaceholder")} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-lg font-extrabold">{t("items.price")}</span>
+        <span className="flex h-14 items-center gap-2 rounded-2xl border-[3px] border-slate-500 px-3">
+          <span className="shrink-0 font-bold text-slate-700">GH₵</span>
+          <AmountTextInput value={price} onValue={(value) => { setPrice(value); setError(""); }} placeholder="0.00" className="w-full min-w-0 bg-transparent text-lg font-bold outline-none" />
+        </span>
+      </label>
+      {(formErrors.message || error) && <p role="alert" className={`rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950${pane ? " text-[17px]" : ""}`}>{formErrors.message || error}</p>}
+    </>
+  );
+
+  // Wide D8 pane: title, then the phone's fields (Price full width: the wide form has exactly the phone's
+  // fields), the fields scroll by themselves and the buttons stay at the bottom of the pane: Delete item
+  // outlined red at the left (not on New item), Save at the right.
+  if (pane) {
+    return (
+      <form data-items-pane="" aria-labelledby="item-pane-title" onSubmit={(event) => void submit(event)} className="flex min-h-0 min-w-0 flex-col rounded-[20px] border-2 border-slate-300 bg-white">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">
+          <h2 id="item-pane-title" className="line-clamp-2 break-words text-[24px] font-bold leading-tight text-[#0F172A]">{item ? t("items.editTitle", { name: item.name }) : t("items.new")}</h2>
+          {fields}
+        </div>
+        <div data-items-pane-actions="" className="flex flex-col gap-2 border-t-2 border-slate-200 px-6 py-4">
+          <div className="flex items-center justify-between gap-3">
+            {item ? (
+              <PosSecondaryButton type="button" data-delete-item="" disabled={saving} onClick={onDelete} tone="danger" className="w-auto max-w-[240px] whitespace-nowrap">
+                <Trash2 size={20} aria-hidden="true" />{t("items.delete")}
+              </PosSecondaryButton>
+            ) : <span />}
+            <PosPrimaryButton type="submit" disabled={saving} className="w-auto min-w-[160px] max-w-[240px]">
+              <Check size={24} aria-hidden="true" />{saving ? t("items.saving") : t("items.save")}
+            </PosPrimaryButton>
+          </div>
+        </div>
+      </form>
+    );
+  }
+
   return (
     <PosPage className="flex flex-col gap-3">
       <ScreenHeader title={item ? item.name : t("items.new")} onBack={onBack} />
       <form onSubmit={(event) => void submit(event)} className="flex flex-1 flex-col gap-3">
-        <label className="block">
-          <span className="mb-1 block text-lg font-extrabold">{t("items.name")}</span>
-          <input autoComplete="off" maxLength="80" value={name} onChange={(event) => { setName(event.target.value); setError(""); }} placeholder={t("items.namePlaceholder")} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-lg font-extrabold">{t("items.price")}</span>
-          <span className="flex h-14 items-center gap-2 rounded-2xl border-[3px] border-slate-500 px-3">
-            <span className="shrink-0 font-bold text-slate-700">GH₵</span>
-            <AmountTextInput value={price} onValue={(value) => { setPrice(value); setError(""); }} placeholder="0.00" className="w-full min-w-0 bg-transparent text-lg font-bold outline-none" />
-          </span>
-        </label>
-        {(formErrors.message || error) && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{formErrors.message || error}</p>}
+        {fields}
         <div className="mt-auto flex flex-col gap-2">
           {item && (
             <PosSecondaryButton type="button" disabled={saving} onClick={() => onNavigate("DeleteItem", { itemId: item.id, itemName: item.name })} tone="danger">
@@ -499,23 +534,109 @@ function StarterBrowse({ onBack, onAdd }) {
   );
 }
 
-export default function ItemScreens({ route, params = {}, onBack, onNavigate, onReturnToItems, onCompleteSetup, wide = false }) {
+// Wide D8 (wide_layout.screens "39, 40, 41 Items", list_with_detail): one page on the 39 route when the
+// layout mode is not phone. Left: Find item and the rows (the list scrolls by itself). Right: Edit item
+// or New item, the phone's own form (ItemEditor pane). The selection is this route's own params
+// (itemsSelected: an item id or "new"), changed by replacing the current entry like Owed's, so it
+// survives a trip away and Back. Nothing is selected on first opening.
+function ItemsWide({ mode, params, onNavigate, onUpdateParams }) {
+  const [query, setQuery] = useState("");
+  const [deleting, setDeleting] = useState(null);
+  const result = useActiveProducts();
+  const filteredItems = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return (result?.products ?? []).filter((item) => item.name.toLowerCase().includes(normalizedQuery));
+  }, [query, result]);
+  const rail = mode !== "sidebar";
+  const selected = params.itemsSelected;
+  const ready = Boolean(result) && !result.error;
+  const count = ready ? result.products.length : null;
+  const select = (next) => onUpdateParams?.({ itemsSelected: next });
+
+  return (
+    <PosPage wide rail={rail} style={{ height: "100dvh" }} className="flex flex-col gap-5 tabular-nums">
+      <div data-items-top="" inert={deleting ? true : undefined} aria-hidden={deleting ? true : undefined} className="flex min-w-0 items-center justify-between gap-4">
+        <div className="flex min-w-0 items-baseline gap-3">
+          <h1 className="text-[30px] font-bold leading-tight text-[#0F172A]">{t("items.title")}</h1>
+          {count !== null && (
+            <p data-items-count="" className="whitespace-nowrap text-[17px] text-slate-600">
+              {rail ? <>{count}<span className="sr-only"> {t(count === 1 ? "items.countOne" : "items.countMany", { count }).replace(/^\d+ /, "")}</span></> : t(count === 1 ? "items.countOne" : "items.countMany", { count })}
+            </p>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
+          <PosSecondaryButton type="button" aria-label={t("items.starterList")} onClick={() => onNavigate("YourStarterList", { returnRoute: "MyItems" })} className="whitespace-nowrap">
+            {rail ? t("items.starterShort") : t("items.starterList")}
+          </PosSecondaryButton>
+          <AddButton pressed={selected === "new"} onClick={() => select("new")} className="w-auto! whitespace-nowrap">{t("items.new")}</AddButton>
+        </div>
+      </div>
+      <div data-items-columns="" inert={deleting ? true : undefined} aria-hidden={deleting ? true : undefined} className="grid min-h-0 min-w-0 flex-1 gap-6" style={{ gridTemplateColumns: rail ? "260px minmax(0, 1fr)" : "clamp(340px, 36%, 400px) minmax(0, 1fr)" }}>
+        <section data-items-list="" aria-label={t("items.title")} className="flex min-h-0 min-w-0 flex-col gap-3">
+          <label className="flex min-h-14 shrink-0 items-center gap-2 rounded-2xl border-2 border-slate-500 bg-white px-3">
+            <Search size={24} aria-hidden="true" />
+            <span className="sr-only">{t("items.find")}</span>
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("items.find")} className="min-w-0 flex-1 bg-transparent text-lg font-semibold outline-none" />
+          </label>
+          {result === undefined ? (
+            <p role="status" className="rounded-xl bg-slate-100 p-3 text-[17px] font-semibold">{t("items.loading")}</p>
+          ) : result.error ? (
+            <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 text-[17px] font-semibold text-rose-950">{result.error}</p>
+          ) : result.products.length === 0 ? (
+            <p data-empty-hint="" className="text-[17px] font-semibold">{t("items.empty")}</p>
+          ) : filteredItems.length ? (
+            <div data-items-rows="" className="-m-1 flex min-h-0 flex-col gap-2 overflow-y-auto p-1">
+              {filteredItems.map((item) => {
+                const current = selected === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    data-item-row={item.id}
+                    aria-current={current ? "true" : undefined}
+                    onClick={() => select(item.id)}
+                    className={`flex min-h-[60px] shrink-0 items-center gap-3 rounded-2xl px-3 text-left ${current ? "border-[3px] border-emerald-900 bg-green-50" : "border-2 border-slate-300 bg-white hover:bg-slate-50"}`}
+                  >
+                    <strong className="min-w-0 flex-1 truncate text-[18px] font-bold text-[#0F172A]">{item.name}</strong>
+                    <span className="shrink-0 text-[17px] font-bold text-[#0F172A]">
+                      {item.default_price > 0 ? formatGhs(toPesewas(item.default_price)) : t("items.setPrice")}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="rounded-xl border-2 border-slate-300 bg-white p-4 text-[17px] font-semibold">{t("items.noMatches")}</p>
+          )}
+        </section>
+        <div data-items-detail="" className="flex min-h-0 min-w-0 flex-col">
+          {selected === "new" ? (
+            <ItemEditor key="new" pane onSave={createProduct} onSaved={() => select(undefined)} />
+          ) : Number.isSafeInteger(selected) ? (
+            <EditItem key={selected} pane itemId={selected} onSaved={() => select(undefined)} onDelete={(item) => setDeleting({ id: item.id, name: item.name })} />
+          ) : null}
+        </div>
+      </div>
+      {deleting && (
+        <DeleteItem
+          dialog
+          itemId={deleting.id}
+          itemName={deleting.name}
+          onBack={() => setDeleting(null)}
+          onReturnToItems={() => { setDeleting(null); select(undefined); }}
+          onDelete={removeProduct}
+        />
+      )}
+    </PosPage>
+  );
+}
+
+export default function ItemScreens({ route, params = {}, onBack, onNavigate, onReturnToItems, onCompleteSetup, onUpdateParams, wide = false, layoutMode = "phone" }) {
+  if (wide && route === "MyItems") return <ItemsWide mode={layoutMode} params={params} onNavigate={onNavigate} onUpdateParams={onUpdateParams} />;
   if (route === "MyItems") return <MyItems onBack={onBack} onNavigate={onNavigate} />;
   if (route === "NewItem") return <ItemEditor onBack={onBack} onSave={createProduct} onNavigate={onNavigate} setupFlow={params.setupFlow === true} onCompleteSetup={onCompleteSetup} />;
-  if (wide && (route === "EditItem" || route === "DeleteItem")) {
-    // Wide: 42 is a dialog over the item's page (41). Both routes draw the same EditItem in the same
-    // place (PosApp keeps the same key), so opening and closing 42 never remounts it and an unsaved
-    // edit survives. The page behind is inert while 42 is open.
-    const deleting = route === "DeleteItem";
-    return (
-      <>
-        <div className="contents" inert={deleting || undefined} aria-hidden={deleting || undefined}>
-          <EditItem itemId={params.itemId} onBack={onBack} onNavigate={onNavigate} />
-        </div>
-        {deleting ? <DeleteItem dialog itemId={params.itemId} itemName={params.itemName ?? t("items.nameFallback")} onBack={onBack} onReturnToItems={onReturnToItems} onDelete={removeProduct} /> : null}
-      </>
-    );
-  }
+  // Wide: 40 and 42 become 39 with the item selected (PosApp); nothing is drawn for the moment between.
+  if (wide && (route === "EditItem" || route === "DeleteItem")) return null;
   if (route === "EditItem") {
     return <EditItem itemId={params.itemId} onBack={onBack} onNavigate={onNavigate} />;
   }
@@ -528,8 +649,13 @@ export default function ItemScreens({ route, params = {}, onBack, onNavigate, on
   return null;
 }
 
-function EditItem({ itemId, onBack, onNavigate }) {
+function EditItem({ itemId, onBack, onNavigate, pane = false, onSaved, onDelete }) {
   const item = useLiveQuery(() => Number.isSafeInteger(itemId) ? db.products.get(itemId) : null, [itemId], undefined);
+  if (pane) {
+    if (item === undefined) return <p role="status" className="text-[17px]">{t("items.loading")}</p>;
+    if (!item || item.active === false) return <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 text-[17px] font-semibold text-rose-950">{t("items.notFound")}</p>;
+    return <ItemEditor key={item.id} pane item={item} onSave={(input) => updateProduct(item.id, input)} onSaved={onSaved} onDelete={() => onDelete?.(item)} />;
+  }
   if (item === undefined) return <PosPage><p role="status">{t("items.loading")}</p></PosPage>;
   if (!item || item.active === false) {
     return <PosPage className="flex flex-col gap-3"><ScreenHeader title={t("items.title")} onBack={onBack} /><p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{t("items.notFound")}</p></PosPage>;

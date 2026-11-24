@@ -118,6 +118,16 @@ const TASK_COLUMN_ROUTES = new Set([
   POS_ROUTES.PlanPayPhone, POS_ROUTES.PlanPaymentResult
 ]);
 
+// The latest My items (39) entry in the history, with what came before it; a fresh 39 when there is none.
+function itemListState(current) {
+  for (let index = current.history.length - 1; index >= 0; index -= 1) {
+    if (current.history[index].current === POS_ROUTES.MyItems) {
+      return { ...current.history[index], history: current.history.slice(0, index) };
+    }
+  }
+  return createRouteState(POS_ROUTES.MyItems);
+}
+
 // Where Money received on 62 returns for each confirm step (MOMO16).
 const CONFIRM_RETURNS = {
   sale16: { route: POS_ROUTES.SplitPayment, matches: isSaleSplitHub },
@@ -276,21 +286,20 @@ export default function PosApp() {
   }
 
   function returnToItemList() {
-    commit((current) => {
-      let itemListIndex = -1;
-      for (let index = current.history.length - 1; index >= 0; index -= 1) {
-        if (current.history[index].current === POS_ROUTES.MyItems) {
-          itemListIndex = index;
-          break;
-        }
-      }
-      if (itemListIndex < 0) return createRouteState(POS_ROUTES.MyItems);
-      return {
-        ...current.history[itemListIndex],
-        history: current.history.slice(0, itemListIndex)
-      };
-    });
+    commit(itemListState);
   }
+
+  // Wide D8 is one page on the 39 route: 40 or 42 open when the window grows past the phone layout
+  // become 39 with that item selected in the pane (no identical entry to go Back to).
+  useEffect(() => {
+    if (!layout.wide) return;
+    if (routeState.current !== POS_ROUTES.EditItem && routeState.current !== POS_ROUTES.DeleteItem) return;
+    const itemId = routeState.params.itemId;
+    commit((current) => {
+      const list = itemListState(current);
+      return { ...list, params: { ...list.params, itemsSelected: itemId } };
+    });
+  }, [layout.wide, routeState.current]);
 
   function updateCurrentParams(params) {
     commit((current) => replaceRoute(current, current.current, { ...current.params, ...params }));
@@ -814,7 +823,9 @@ export default function PosApp() {
       onNavigate={navigate}
       onReturnToItems={returnToItemList}
       onCompleteSetup={completePosSetup}
+      onUpdateParams={updateCurrentParams}
       wide={layout.wide}
+      layoutMode={layout.mode}
     />
   ) : [
     POS_ROUTES.WhoOwesYou,
@@ -840,8 +851,7 @@ export default function PosApp() {
   );
 
   const page = (
-    // Wide 42 (wide_layout.page_types.dialog) is a dialog over 41: the same key as 41, so 41 is not remounted.
-    <PosErrorBoundary key={`${layout.wide && route === POS_ROUTES.DeleteItem ? POS_ROUTES.EditItem : route}:${pickRemount}`} onBack={navigateBack}>
+    <PosErrorBoundary key={`${route}:${pickRemount}`} onBack={navigateBack}>
       <Suspense fallback={<PosPage><p role="status">{t("app.loadingScreen")}</p></PosPage>}>
         {setupReady ? content : <PosPage><p role="status">{t("app.loadingScreen")}</p></PosPage>}
       </Suspense>
