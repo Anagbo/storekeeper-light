@@ -25,7 +25,7 @@ function SummaryLabel({ kind, className = "" }) {
   const key = { "money-in": "transactions.moneyIn", spent: "transactions.spent", "given-on-credit": "transactions.givenOnCredit" }[kind];
   return (
     <p className={`flex min-w-0 items-center gap-1.5 font-bold text-[#334155] ${className}`}>
-      <Icon data-summary-icon="" size={22} strokeWidth={2.2} className="shrink-0 text-[#334155]" aria-hidden="true" />
+      <Icon data-summary-icon="" size={22} strokeWidth={2.2} className="shrink-0 text-[#334155] max-[359px]:hidden" aria-hidden="true" />
       <span className="min-w-0">{t(key)}</span>
     </p>
   );
