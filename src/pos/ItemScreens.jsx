@@ -172,7 +172,7 @@ function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCom
       <label className="block">
         <span className="mb-1 block text-lg font-extrabold">{t("items.price")}</span>
         <span className="flex h-14 items-center gap-2 rounded-2xl border-[3px] border-slate-500 px-3">
-          <span className={`shrink-0 font-bold text-slate-700${pane ? " text-lg" : ""}`}>GHâ‚µ</span>
+          <span className={`shrink-0 font-bold text-slate-700${pane ? " text-lg" : ""}`}>GH₵</span>
           <AmountTextInput value={price} onValue={(value) => { setPrice(value); setError(""); }} placeholder="0.00" className="w-full min-w-0 bg-transparent text-lg font-bold outline-none" />
         </span>
       </label>
