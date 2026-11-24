@@ -287,7 +287,7 @@ test("3.11: with the switch off the profit card is hidden and no nudge shows (an
   }
 });
 
-test("3.11: the two debt tiles are white with a coloured edge and a clear link", async () => {
+test("3.11: the two debt tiles are white pressed buttons with a border, no coloured edge, neutral amounts, a clear link", async () => {
   const { view, navigations } = await mountMyMoney(reportFor());
   const text = textOf(view.tree);
   assert.ok(text.includes(`Owed to you${formatGhs(9300)}See who`) || (text.includes("Owed to you") && text.includes(formatGhs(9300)) && text.includes("See who")));
@@ -297,16 +297,19 @@ test("3.11: the two debt tiles are white with a coloured edge and a clear link",
   findButton(view.tree, "See list").props.onClick();
   assert.deepEqual(navigations.map((entry) => entry[0]), ["PeopleWhoOweYou", "YouOweSuppliers"]);
   assert.match(owed.props.className, /bg-white/);
-  assert.match(owed.props.className, /border-l-/);
+  assert.match(owed.props.className, /border-2 border-slate-300/);
+  assert.doesNotMatch(owed.props.className, /border-l-/, "no coloured left edge (24 Nov 2026)");
+  for (const node of [...walk(owed)].filter((child) => typeof child.props?.className === "string")) assert.doesNotMatch(node.props.className, /text-(rose|amber)-/, "neutral amount");
 });
 
-test("3.11: only one strong colour block; the other cards are white with a thin border", async () => {
+test("3.11: Money left and What you should have left are soft tiles; the other cards are white with a thin border", async () => {
   const { view } = await mountMyMoney(reportFor());
   const cards = [...walk(view.tree)].filter((node) => node.type === "section" || (node.type === "button" && /rounded-\[1[68]px\]/.test(node.props.className ?? "")));
-  const strong = cards.filter((node) => /bg-(emerald|green)-(8|9)00/.test(node.props.className));
-  assert.equal(strong.length, 1, "one strong block");
-  assert.match(textOf(strong[0]), /Money left/);
-  for (const card of cards.filter((node) => node !== strong[0])) {
+  assert.equal(cards.filter((node) => /bg-(emerald|green)-(8|9)00/.test(node.props.className)).length, 0, "no strong colour block");
+  const soft = cards.filter((node) => /bg-\[#F1F5F9\]/.test(node.props.className));
+  assert.deepEqual(soft.map((node) => node.props["data-block"] ?? node.props["data-card"]), ["money-left", "should-have-left"]);
+  for (const node of soft) assert.doesNotMatch(node.props.className, /(^|\s)border|text-white/);
+  for (const card of cards.filter((node) => !soft.includes(node))) {
     assert.match(card.props.className, /bg-white/, `card is white: ${textOf(card).slice(0, 30)}`);
     assert.doesNotMatch(card.props.className, /bg-(rose|amber|green|emerald)-\d+/);
   }

@@ -228,7 +228,7 @@ test("33: the heading follows the period; the caption is 'This period only. Chec
 // Changed 15 Nov 2026 (wiring 33 "Debts paid"): the two sentences under Cash and MoMo are now two rows
 // under a thicker line.
 const rowOf = (view, name) => [...walk(view.tree)].find((node) => node.type === "p" && node.props?.["data-row"] === name);
-test("33: Money in card: Cash and MoMo rows, then Debts paid (dark green) and On credit (dark crimson) under a thicker line", async () => {
+test("33: Money in card: Cash and MoMo rows, then Debts paid (dark green) and On credit (bold neutral) under a thicker line", async () => {
   const { view } = await mount(screenReport());
   const text = textOf(card(view, "money-in"));
   assert.ok(text.includes(`Money in${formatGhs(6000)}`));
@@ -241,7 +241,7 @@ test("33: Money in card: Cash and MoMo rows, then Debts paid (dark green) and On
   const paid = rowOf(view, "debts-paid");
   const credit = rowOf(view, "on-credit");
   assert.match(paid.props.className, /text-emerald-900/);
-  assert.match(credit.props.className, /text-rose-900/);
+  assert.match(credit.props.className, /text-\[#0F172A\]/, "On credit is bold neutral, not red (24 Nov 2026)");
   const cash = rowOf(view, "cash-in");
   for (const extra of [paid, credit]) {
     assert.doesNotMatch(extra.props.className, /\bbg-|\bborder\b|border-/, "no fill and no border");

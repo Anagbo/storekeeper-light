@@ -7,9 +7,11 @@ import { posText as t } from "./i18n.js";
 import { PHONE_LAYOUT } from "./layout.js";
 import { loadMyMoneyReport } from "./myMoneyReport.js";
 import { PosBackButton, PosCard, PosPage } from "./PosComponents.jsx";
+import { SOFT_HERO, SOFT_HERO_LABEL, SOFT_TILE } from "./softTile.js";
 
-// Brief 3.11 / wiring screen 33. One strong green block (Money left); every other card is white
-// with a thin border. Every figure follows the period except Owed to you and You owe suppliers.
+// Brief 3.11 / wiring screen 33. Money left is the soft hero, the same as Home (rules_global.soft_tiles,
+// 24 Nov 2026); What you should have left is a soft tile; every other card is white with a thin border.
+// No coloured left edge and no red or amber amounts (rules_global.left_edge_marker). Every figure follows the period except Owed to you and You owe suppliers.
 export const MY_MONEY_PERIODS = [["day", "money.today"], ["week", "money.thisWeek"], ["month", "money.thisMonth"]];
 const PERIOD_WORDS = { day: "money.periodToday", week: "money.periodThisWeek", month: "money.periodThisMonth" };
 // While amounts are hidden the comparison line must not say up or down (wiring 33 Hide amounts).
@@ -22,6 +24,7 @@ const COMPARISON_KEYS = {
 const cardClass = "min-w-0 rounded-[18px] border-2 border-slate-300 bg-white px-3.5 py-3";
 // Wide (D7): one inner padding (24px) and 8px-grid gaps for every card; neutral dark amounts at 700.
 const WIDE_CARD = "min-w-0 rounded-[18px] border-2 border-slate-300 bg-white p-6";
+const softCard = (wide) => `min-w-0 ${SOFT_TILE} ${wide ? "p-6" : "px-3.5 py-3"}`;
 const WIDE_AMOUNT = "whitespace-nowrap text-[40px] font-bold leading-tight text-[#0F172A]";
 const WIDE_NOTE = "text-[17px] leading-snug";
 
@@ -90,14 +93,14 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
         <PosCard className={w("col-span-2")}><p className="text-base font-semibold">{t("money.loading")}</p></PosCard>
       ) : (
         <>
-          {/* (1) The one strong block (wide: beside the profit card, or the full row when it is hidden). */}
-          <section data-block="money-left" className={`amount-fit-container rounded-[20px] bg-emerald-900 px-4 py-3 text-white ${w(`order-1 flex flex-col justify-center gap-2 p-6 ${report.showProfit ? "" : "col-span-2"}`)}`}>
-            <p className="text-base font-bold sm:text-lg">{t("money.moneyLeft", { period: periodWords })}</p>
+          {/* (1) The soft hero (wide: beside the profit card, or the full row when it is hidden). */}
+          <section data-block="money-left" className={`amount-fit-container ${SOFT_HERO} px-4 py-3 ${w(`order-1 flex flex-col justify-center gap-2 p-6 ${report.showProfit ? "" : "col-span-2"}`, "amount-fit-hero")}`}>
+            <p className={`text-base font-bold sm:text-lg ${SOFT_HERO_LABEL}`}>{t("money.moneyLeft", { period: periodWords })}</p>
             <p className={wide ? "whitespace-nowrap text-[56px] font-bold leading-tight" : "amount-fit font-extrabold leading-tight"}><Amount hidden={hidden} pesewas={summary.moneyLeft} /></p>
             {comparison && (
-              <p className={wide ? "text-[18px] leading-snug" : "text-base leading-snug sm:text-lg"}>{amountText(hidden ? HIDDEN_COMPARISON_KEYS[period] : COMPARISON_KEYS[period][comparison.kind], { amount: comparison.amountPesewas }, hidden)}</p>
+              <p className={`${wide ? "text-[18px] leading-snug" : "text-base leading-snug sm:text-lg"} ${SOFT_HERO_LABEL}`}>{amountText(hidden ? HIDDEN_COMPARISON_KEYS[period] : COMPARISON_KEYS[period][comparison.kind], { amount: comparison.amountPesewas }, hidden)}</p>
             )}
-            <p className={note("text-sm leading-snug sm:text-base")}>{t("money.moneyInMinusSpent")}</p>
+            <p className={`${note("text-sm leading-snug sm:text-base")} ${SOFT_HERO_LABEL}`}>{t("money.moneyInMinusSpent")}</p>
           </section>
 
           {(report.uncounted?.sales > 0 || report.uncounted?.other > 0) && (
@@ -118,7 +121,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
               {(summary.collectedIn > 0 || summary.givenOnCredit > 0) && (
                 <div data-line="money-in-extras" className="mt-1 flex flex-col gap-1 border-t-[3px] border-slate-300 pt-1.5">
                   {summary.collectedIn > 0 && <Row data-row="debts-paid" tone="text-emerald-900" label={t("money.debtsPaid")} hidden={hidden} amountPesewas={summary.collectedIn} />}
-                  {summary.givenOnCredit > 0 && <Row data-row="on-credit" tone={wide ? "" : "text-rose-900"} label={t("money.onCredit")} hidden={hidden} amountPesewas={summary.givenOnCredit} />}
+                  {summary.givenOnCredit > 0 && <Row data-row="on-credit" tone={wide ? "" : "text-[#0F172A]"} label={t("money.onCredit")} hidden={hidden} amountPesewas={summary.givenOnCredit} />}
                 </div>
               )}
             </section>
@@ -132,7 +135,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
             </section>
 
             {/* (4) What you should have left, this period only. */}
-            <section data-card="should-have-left" className={`flex flex-col ${w("gap-2", "gap-1")} ${card}`}>
+            <section data-card="should-have-left" className={`flex flex-col ${w("gap-2", "gap-1")} ${softCard(wide)}`}>
               <CardTitle wide={wide} hidden={hidden} amountPesewas={wide ? summary.cashShouldHave + summary.momoShouldHave : undefined}>{t("money.shouldHaveLeft")}</CardTitle>
               <Row data-row="cash-left" label={t("money.cash")} hidden={hidden} amountPesewas={summary.cashShouldHave} />
               <Row data-row="momo-left" label={t("money.momo")} hidden={hidden} amountPesewas={summary.momoShouldHave} />
@@ -158,13 +161,13 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
           {/* (6) Balances right now: they do not change with the period. */}
           <div data-tiles="" className={`grid min-w-0 grid-cols-2 ${w("order-5 col-span-2 gap-6", "gap-2")}`}>
             {[
-              ["PeopleWhoOweYou", "border-l-rose-900", "text-rose-900", "money.owedToYou", report.debtPesewas, "money.seeWho"],
-              ["YouOweSuppliers", "border-l-amber-700", "text-amber-900", "money.supplierBalances", report.supplierBalancePesewas, "money.seeList"]
-            ].map(([route, edge, tone, label, pesewas, link]) => (
-              <button key={route} type="button" onClick={() => onNavigate(route)} className={`amount-fit-container min-w-0 rounded-[16px] border-2 border-l-[6px] border-slate-300 ${edge} bg-white text-left text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 ${w("flex min-h-[48px] items-center justify-between gap-4 p-6", "px-2.5 py-2 sm:px-3")}`}>
+              ["PeopleWhoOweYou", "money.owedToYou", report.debtPesewas, "money.seeWho"],
+              ["YouOweSuppliers", "money.supplierBalances", report.supplierBalancePesewas, "money.seeList"]
+            ].map(([route, label, pesewas, link]) => (
+              <button key={route} type="button" onClick={() => onNavigate(route)} className={`amount-fit-container min-w-0 rounded-[16px] border-2 border-slate-300 bg-white text-left text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 ${w("flex min-h-[48px] items-center justify-between gap-4 p-6", "px-2.5 py-2 sm:px-3")}`}>
                 <span className="min-w-0">
                   <span className="block text-[15px] font-extrabold leading-snug sm:text-[17px]">{t(label)}</span>
-                  <span className={wide ? `block ${WIDE_AMOUNT}` : `amount-fit block font-extrabold leading-tight ${tone}`}><Amount hidden={hidden} pesewas={pesewas} /></span>
+                  <span className={wide ? `block ${WIDE_AMOUNT}` : "amount-fit block font-extrabold leading-tight text-[#0F172A]"}><Amount hidden={hidden} pesewas={pesewas} /></span>
                   <span className={`block text-emerald-900 ${wide ? "text-[17px] font-bold no-underline" : "text-base font-extrabold sm:text-[17px]"}`}>{t(link)}</span>
                 </span>
                 {wide && <ChevronRight size={28} className="shrink-0 text-slate-600" aria-hidden="true" />}
