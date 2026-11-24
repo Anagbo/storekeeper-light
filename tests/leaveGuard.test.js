@@ -102,6 +102,16 @@ test("wide Items: every exit asks (sidebar Home through leaveDraft, once; anothe
   assert.equal(app.route, "Home");
 });
 
+test("useLeaveGuard: the dirty flag is cleared when the screen unmounts (it never traps the owner)", async () => {
+  const app = await openWideItems();
+  await typeName(app, "Brown bread");
+  await app.resize(390);
+  assert.equal(app.route, "MyItems", "the phone list: the wide pane is gone");
+  await app.menu("Home");
+  assert.equal(leaveQuestion(app), null, "nothing left to ask about");
+  assert.equal(app.route, "Home");
+});
+
 test("wide Items: device Back with the question open means Stay (the dialog and the page stay)", async () => {
   const app = await openWideItems();
   await typeName(app, "Brown bread");

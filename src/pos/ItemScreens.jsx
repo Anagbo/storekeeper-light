@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Check, Search, Trash2, X } from "lucide-react";
 import { db } from "../db/db.js";
@@ -10,11 +10,11 @@ import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { posText as t } from "./i18n.js";
 import { shortSaveName } from "./saveLabel.js";
 import { AddButton, LeaveButton, PosBackButton, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
-import { useBackBlock, useBackHandler } from "./browserBack.js";
+import { useBackBlock } from "./browserBack.js";
 import { useFormErrors } from "./formErrors.js";
 import AmountTextInput from "./AmountTextInput.jsx";
 import WideDialog from "./WideDialog.jsx";
-import LeaveDraftDialog from "./LeaveDraftDialog.jsx";
+import { useLeaveGuard } from "./leaveGuard.js";
 
 // What normalizeProductInput (the save's own check) says is wrong, or "".
 function productInputProblem(input) {
@@ -172,7 +172,7 @@ function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCom
       <label className="block">
         <span className="mb-1 block text-lg font-extrabold">{t("items.price")}</span>
         <span className="flex h-14 items-center gap-2 rounded-2xl border-[3px] border-slate-500 px-3">
-          <span className={`shrink-0 font-bold text-slate-700${pane ? " text-lg" : ""}`}>GH₵</span>
+          <span className={`shrink-0 font-bold text-slate-700${pane ? " text-lg" : ""}`}>GHâ‚µ</span>
           <AmountTextInput value={price} onValue={(value) => { setPrice(value); setError(""); }} placeholder="0.00" className="w-full min-w-0 bg-transparent text-lg font-bold outline-none" />
         </span>
       </label>
@@ -592,29 +592,19 @@ function StarterBrowse({ onBack, onAdd, dialog = false }) {
 // (itemsSelected: an item id or "new"), changed by replacing the current entry like Owed's, so it
 // survives a trip away and Back. Nothing is selected on first opening.
 // Add from starter list (36) and Delete item (42) are WideDialogs over this page.
-// Unsaved changes: another row, New item or another page (the sidebar, onLeaveGuard) with
-// values that differ from the saved ones asks the leave question first; with nothing changed it just goes.
-function ItemsWide({ mode, params, onUpdateParams, onLeaveGuard }) {
+// Unsaved changes: another row, New item, Back or another page (useLeaveGuard) with values that
+// differ from the saved ones asks the leave question first; with nothing changed it just goes.
+function ItemsWide({ mode, params, onUpdateParams }) {
   const [query, setQuery] = useState("");
   const [deleting, setDeleting] = useState(null);
-  const [leaveAsk, setLeaveAsk] = useState(null);
   const [starterOpen, setStarterOpen] = useState(false);
   // The item whose Save just finished: its pane shows the quiet Saved line.
   const [justSaved, setJustSaved] = useState(null);
-  const dirtyRef = useRef(false);
-  function askFirst(proceed) {
-    if (dirtyRef.current) setLeaveAsk({ proceed });
-    else proceed();
-  }
-  const askRef = useRef(askFirst);
-  askRef.current = askFirst;
-  useEffect(() => {
-    onLeaveGuard?.((proceed) => askRef.current(proceed));
-    return () => onLeaveGuard?.(null);
-  }, []);
-  // A device or browser Back while the question is open is Stay: the page underneath does not change.
-  useBackHandler(leaveAsk !== null, () => setLeaveAsk(null));
-  const blocked = Boolean(deleting || leaveAsk || starterOpen);
+  // rules_global.leave_question: the pane's unsaved values, asked about by the one dialog in PosApp
+  // (a device Back with it open is Stay there).
+  const [dirty, setDirty] = useState(false);
+  const { askFirst, asking } = useLeaveGuard(dirty, t("items.leaveQuestion"));
+  const blocked = Boolean(deleting || asking || starterOpen);
   const result = useActiveProducts();
   const filteredItems = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -627,7 +617,7 @@ function ItemsWide({ mode, params, onUpdateParams, onLeaveGuard }) {
   const select = (next) => { setJustSaved(null); onUpdateParams?.({ itemsSelected: next }); };
   // A row or New item: the one already shown does nothing; another asks first when there are changes.
   const choose = (next) => { if (next !== selected) askFirst(() => select(next)); };
-  const onDirtyChange = (dirty) => { dirtyRef.current = dirty; };
+  const onDirtyChange = setDirty;
   // After Save the saved item stays selected (a new item becomes its own Edit item) with the Saved line.
   const onSaved = (saved) => {
     if (!saved) return;
@@ -716,19 +706,12 @@ function ItemsWide({ mode, params, onUpdateParams, onLeaveGuard }) {
       )}
       {/* Add from starter list over the same page: the pane and any unsaved edit in it stay as they are. */}
       {starterOpen && <StarterBrowse dialog onBack={() => setStarterOpen(false)} onAdd={addStarterProducts} />}
-      {leaveAsk && (
-        <LeaveDraftDialog
-          question={t("items.leaveQuestion")}
-          onStay={() => setLeaveAsk(null)}
-          onLeave={() => { const { proceed } = leaveAsk; setLeaveAsk(null); dirtyRef.current = false; proceed(); }}
-        />
-      )}
     </PosPage>
   );
 }
 
-export default function ItemScreens({ route, params = {}, onBack, onNavigate, onReturnToItems, onCompleteSetup, onUpdateParams, onLeaveGuard, wide = false, layoutMode = "phone" }) {
-  if (wide && route === "MyItems") return <ItemsWide mode={layoutMode} params={params} onUpdateParams={onUpdateParams} onLeaveGuard={onLeaveGuard} />;
+export default function ItemScreens({ route, params = {}, onBack, onNavigate, onReturnToItems, onCompleteSetup, onUpdateParams, wide = false, layoutMode = "phone" }) {
+  if (wide && route === "MyItems") return <ItemsWide mode={layoutMode} params={params} onUpdateParams={onUpdateParams} />;
   if (route === "MyItems") return <MyItems onBack={onBack} onNavigate={onNavigate} />;
   if (route === "NewItem") return <ItemEditor onBack={onBack} onSave={createProduct} onNavigate={onNavigate} setupFlow={params.setupFlow === true} onCompleteSetup={onCompleteSetup} />;
   // Wide: 40 and 42 become 39 with the item selected (PosApp); nothing is drawn for the moment between.

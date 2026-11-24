@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { recordCashSale } from "../db/sales.js";
 import { saveStarterCategories, setPreference, shouldShowPosSetup } from "../db/preferences.js";
 import { useSync } from "../hooks/useSync.js";
@@ -33,6 +33,7 @@ import {
 } from "./routes.js";
 import { createBrowserBack, useBackHandler } from "./browserBack.js";
 import LeaveDraftDialog from "./LeaveDraftDialog.jsx";
+import { guardAsks, LeaveGuardContext, useLeaveGuards } from "./leaveGuard.js";
 import Home from "./Home.jsx";
 import MenuDrawer from "./MenuDrawer.jsx";
 import WhatsAppOfflineSheet from "./WhatsAppOfflineSheet.jsx";
@@ -201,19 +202,27 @@ export default function PosApp() {
   // Wiring 16 (11 Nov 2026): leaving a sale draft that holds MoMo money already received (a locked
   // MoMo row on 16) asks first. Stay keeps everything; only Leave runs `proceed`, which must drop
   // the whole draft. With no received MoMo, `proceed` runs straight away, as before.
+  // rules_global.leave_question: the same dialog asks for a screen with unsaved values of its own
+  // (useLeaveGuard, leaveGuard.js) with that screen's question; Leave clears its flag, then proceeds.
   const [leaveAsk, setLeaveAsk] = useState(null);
+  const leaveGuards = useLeaveGuards();
+  function askLeaveGuard(proceed, options) {
+    const entry = leaveGuards.entry;
+    if (!guardAsks(entry, options)) {
+      proceed();
+      return;
+    }
+    setLeaveAsk({ question: entry.question, proceed: () => { entry.dirty = false; proceed(); } });
+  }
+  leaveGuards.ask = askLeaveGuard;
+  const leaveGuardContext = useMemo(() => ({ guards: leaveGuards, asking: leaveAsk !== null }), [leaveGuards, leaveAsk !== null]);
   function leaveDraft(proceed) {
     const amountPesewas = getReceivedMomoInDraft(routeRef.current);
     if (amountPesewas > 0) {
       setLeaveAsk({ amountPesewas, proceed });
       return;
     }
-    // A page with unsaved changes of its own (wide Items D8) asks its own question first.
-    if (leaveGuardRef.current) {
-      leaveGuardRef.current(proceed);
-      return;
-    }
-    proceed();
+    askLeaveGuard(proceed);
   }
   // A back press with the question open is Stay.
   useBackHandler(leaveAsk !== null, () => setLeaveAsk(null));
@@ -222,7 +231,6 @@ export default function PosApp() {
   // to the header Menu button when it closes.
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef(null);
-  const leaveGuardRef = useRef(null);
   const menuWasOpen = useRef(false);
   // rules_global.wide_layout: the one layout decision (layout.js), read here once and passed down.
   const layout = useLayout();
@@ -244,13 +252,8 @@ export default function PosApp() {
       leaveDraft(() => { commit(createRouteState(leaveTo)); setNotice(""); });
       return;
     }
-    // A page with unsaved changes of its own (wide Items D8) asks first; Back happens only after Leave.
-    if (leaveGuardRef.current) {
-      leaveGuardRef.current(() => { commit(backState); setNotice(""); });
-      return;
-    }
-    commit(backState);
-    setNotice("");
+    // A screen with unsaved values of its own asks first; Back happens only after Leave.
+    askLeaveGuard(() => { commit(backState); setNotice(""); });
   }
 
   function navigate(route, params = {}) {
@@ -388,14 +391,13 @@ export default function PosApp() {
   // pushes the destination, so the draft stays in history and Back returns to it (marked VIA_SIDEBAR so
   // Owed's Back does too, routes.js); Home follows the header Home rule (leaves the draft, asking first
   // when MoMo was received); the page already showing does nothing.
-  // A page with unsaved changes of its own (wide Items D8) can ask first: it registers
-  // leaveGuardRef.current(proceed) and calls proceed only after Leave.
+  // A screen with unsaved values (useLeaveGuard) asks first when the push would drop them; Home goes
+  // through leaveDraft, which asks once.
   function chooseFromSidebar(target) {
     if (target === routeRef.current.current) return;
     const go = () => navigate(target, { [VIA_SIDEBAR]: true });
-    // Home goes through leaveDraft, which asks once.
-    if (leaveGuardRef.current && target !== POS_ROUTES.Home) leaveGuardRef.current(go);
-    else go();
+    if (target === POS_ROUTES.Home) go();
+    else askLeaveGuard(go, { push: true });
   }
 
   // D11: attemptId comes from the screen (useSaveAttempt) and is passed to every writer.
@@ -859,7 +861,6 @@ export default function PosApp() {
       onReturnToItems={returnToItemList}
       onCompleteSetup={completePosSetup}
       onUpdateParams={updateCurrentParams}
-      onLeaveGuard={(guard) => { leaveGuardRef.current = guard; }}
       wide={layout.wide}
       layoutMode={layout.mode}
     />
@@ -902,6 +903,7 @@ export default function PosApp() {
     // first-run setup shows none of them (a centred column only). The page is centred, 1160px at most.
     // The layout also reaches the sheets drawn inside a screen (WideDialog.jsx useWideDialogs).
     <LayoutContext.Provider value={layout}>
+    <LeaveGuardContext.Provider value={leaveGuardContext}>
     <div className="pos-app flex max-w-full flex-col overflow-x-clip bg-white text-slate-950" style={POS_THEME.cssVariables} data-layout={layout.mode}>
       {!layout.wide && (
         <PosHeader
@@ -941,11 +943,13 @@ export default function PosApp() {
       {leaveAsk && (
         <LeaveDraftDialog
           amountPesewas={leaveAsk.amountPesewas}
+          question={leaveAsk.question}
           onStay={() => setLeaveAsk(null)}
           onLeave={() => { const { proceed } = leaveAsk; setLeaveAsk(null); proceed(); }}
         />
       )}
     </div>
+    </LeaveGuardContext.Provider>
     </LayoutContext.Provider>
   );
 }
