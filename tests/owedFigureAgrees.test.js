@@ -178,8 +178,10 @@ test("(c) collect part of a debt on 25/26/27: 26 Left to pay, 27 Still owed line
   const line27 = stillOwedLine(app);
   assert.ok(line27, "27 from 26: Still owed line");
   assert.equal(line27.text, "Still owed · KofiGH₵6.00");
-  assert.match(line27.className, /bg-rose-100/);
-  assert.match(line27.className, /text-rose-900/);
+  // Phone sweep (24 Nov 2026): the soft fill and neutral dark text, no pink.
+  assert.match(line27.className, /bg-\[#F1F5F9\]/);
+  assert.match(line27.className, /text-\[#0F172A\]/);
+  assert.doesNotMatch(line27.className, /rose/);
   await addPart(app, "Cash", "2.00", true);
   await addPart(app, "MoMo", "2.00");
   await app.tap(/^Customer sends to my number/);

@@ -19,6 +19,7 @@ import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
 import { useBackBlock } from "./browserBack.js";
+import { SOFT_TILE, SOFT_TILE_DIVIDERS } from "./softTile.js";
 
 export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, onSaveManualDebt }) {
   // The typed amount and note are kept in the route params (as the split parts on 16 are), so
@@ -120,7 +121,7 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, o
         <PosBackButton onClick={onBack} />
         <h1 className="min-w-0 text-2xl font-extrabold">How much do they owe?</h1>
       </div>
-      <div className="flex min-h-12 items-center gap-3 rounded-2xl border-2 border-emerald-900 bg-green-100 px-3">
+      <div className={`flex min-h-12 items-center gap-3 ${SOFT_TILE} px-3`}>
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-900 font-extrabold text-white">{displayName(params.customer?.name).slice(0, 1)}</span>
         <strong className="truncate text-lg">{displayName(params.customer?.name)}</strong>
       </div>
@@ -157,18 +158,18 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, o
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
       <SaveAttemptNotice saveAttempt={saveAttempt} busy={saving} onTryAgain={continueFlow} />
       {(hasPlanRecord || hasDueDate) && (
-        <section className="min-w-0 rounded-3xl border-2 border-emerald-900 bg-green-100 p-4">
+        <section className={`min-w-0 ${SOFT_TILE} p-4`}>
           <strong className="block text-lg">{t("manualDebt.existingTerms")}</strong>
           {/* Contract 53 existing_terms_card.rows_final (17 Nov 2026): label-value rows like the card on 72, short
               labels (rules_global.kv_labels), the period only in the Payment value. Debt replaces the line
               "Plan for the debt of …". The bar sits between Due and Paid. */}
-          <KeyValueRows name="existing-terms" className="mt-1">
+          <KeyValueRows name="existing-terms" className={`mt-1 ${SOFT_TILE_DIVIDERS}`}>
             <EventDetail label={t("kv.debt")} name="debt">{formatGhs(existingBalancePesewas)}</EventDetail>
             {hasPlan && (
               <>
                 <EventDetail label={t("kv.payment")} name="payment">{t(`kv.paymentEvery.${frequencyKey}`, { amount: formatGhs(debt.installmentAmount) })}</EventDetail>
                 <EventDetail label={t("kv.due")} name="due">
-                  <span className="inline-flex min-h-8 items-center rounded-xl border-2 border-emerald-900 px-2 font-extrabold text-emerald-950">
+                  <span className="inline-flex min-h-8 items-center rounded-xl border-2 border-emerald-900 bg-white px-2 font-extrabold text-emerald-950">
                     {getDebtDueLabel(debt.nextDueDate)}
                   </span>
                 </EventDetail>
@@ -259,8 +260,8 @@ export function ManualDebtSaved({ params, onDone, onNavigate, shopName }) {
         {params.note?.trim() && <EventDetail label={t("debtSaved.for")} name="for">{params.note.trim()}</EventDetail>}
       </dl>
       {initialPaymentPesewas > 0 && (
-        <div data-paying-today="" className="rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3 text-left" aria-live="polite">
-          <p className="mb-2 font-extrabold text-emerald-950">{t("credit.paymentRecorded")}</p>
+        <div data-paying-today="" className={`${SOFT_TILE} p-3 text-left`} aria-live="polite">
+          <p className="mb-2 font-extrabold text-[#0F172A]">{t("credit.paymentRecorded")}</p>
           <div className="flex flex-col gap-2">
             {initialPaymentParts.length > 0 ? (
               initialPaymentParts.map((part) => (
@@ -284,7 +285,7 @@ export function ManualDebtSaved({ params, onDone, onNavigate, shopName }) {
               </div>
             )}
           </div>
-          <div data-total-today="" className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 px-3 pt-2 font-extrabold text-emerald-950">
+          <div data-total-today="" className="mt-2 flex items-center justify-between gap-3 border-t border-[#E2E8F0] px-3 pt-2 font-extrabold text-[#0F172A]">
             <span>{t("credit.paymentRecordedTotal")}</span>
             <span data-paying-today-amount="" className="tabular-nums">{formatGhs(initialPaymentPesewas)}</span>
           </div>
