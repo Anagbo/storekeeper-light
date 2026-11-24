@@ -197,7 +197,7 @@ const sheetText = (view) => textOf(view.tree);
 
 test("25 Due now: '{left−1} left after this', never 'Payment x of y'", async () => {
   const view = await sheet(planDebt());
-  assert.match(sheetText(view), /41 left after this/);
+  assert.match(sheetText(view), /41 payments left after this/);
   assert.doesNotMatch(sheetText(view), /Payment \d+ of \d+|This is the last payment/);
   setLiveQuery(null);
 });
@@ -231,7 +231,8 @@ test("25 the last installment: 'This is the last payment.'", async () => {
     assert.doesNotMatch(sheetText(view), /left after this/);
   }
   const twoLeft = await sheet(planDebt({ amountPesewas: 2100 }));
-  assert.match(sheetText(twoLeft), /1 left after this/);
+  assert.match(sheetText(twoLeft), /1 payment left after this/);
+  assert.doesNotMatch(sheetText(twoLeft), /1 payments/);
   setLiveQuery(null);
 });
 

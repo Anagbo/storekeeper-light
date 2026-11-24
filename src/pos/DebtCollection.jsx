@@ -194,7 +194,9 @@ function CollectionSheet({ debt, params = {}, onClose, onNavigate, onUpdateParam
     ? ""
     : paymentsLeftAfter <= 0
       ? t("collect.lastPayment")
-      : t("collect.leftAfterThis", { left: paymentsLeftAfter });
+      : paymentsLeftAfter === 1
+        ? t("collect.leftAfterThisOne")
+        : t("collect.leftAfterThis", { left: paymentsLeftAfter });
 
   async function receivePayment() {
     if (busy || amountPesewas <= 0 || aboveBalance) return;
