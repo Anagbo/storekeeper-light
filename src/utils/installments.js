@@ -15,7 +15,7 @@ export function isValidDateString(value) {
 
 export const PAYMENT_FREQUENCIES = [
   { value: "weekly", label: "Weekly", daysPerCycle: 7 },
-  { value: "bi-weekly", label: "Bi-weekly", daysPerCycle: 14 },
+  { value: "bi-weekly", label: "Every 2 weeks", daysPerCycle: 14 },
   { value: "monthly", label: "Monthly", daysPerCycle: 30 }
 ];
 

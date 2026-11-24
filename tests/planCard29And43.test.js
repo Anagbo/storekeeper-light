@@ -89,7 +89,7 @@ test("GH₵10.00 paid on a GH₵20.00 weekly plan with GH₵50.00 owed: Paid 10.
 test("plan card on 43 (late): Was due instead of Next payment; bi-weekly and monthly words", async () => {
   const late = planCard((await detail({ nextDueDate: dateOffset(-2) })).tree);
   assert.deepEqual(rowsIn(late).at(-1), ["was-due", `Was due${dateOffset(-2).split("-").reverse().join("/")}`]);
-  for (const [frequency, word] of [["bi-weekly", "bi-weekly"], ["monthly", "monthly"]]) {
+  for (const [frequency, word] of [["bi-weekly", "every 2 weeks"], ["monthly", "monthly"]]) {
     const card = planCard((await detail({ nextDueDate: "2099-11-18", frequency })).tree);
     assert.deepEqual(rowsIn(card)[0], ["payment", `PaymentGH₵20.00 ${word}`]);
   }

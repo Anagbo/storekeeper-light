@@ -108,7 +108,7 @@ test("16/27 status rows for each state", () => {
   assert.deepEqual(pairs(splitPartRows({ paymentMethod: "momo", amountPesewas: 100, momoMethod: "paystack", verification: "verified" })), [["Status", "Received ✓"]]);
   // Owe with a plan: Person, Payment (the payment each time with its frequency word), First payment.
   assert.deepEqual(pairs(splitPartRows({ paymentMethod: "owe", amountPesewas: 100 }, OWE_PARAMS)), [["Person", "Juju"], ["Payment", "GH₵10.00 weekly"], ["First payment", "19/11/2026"]]);
-  for (const [frequency, word] of [["bi-weekly", "bi-weekly"], ["monthly", "monthly"]]) {
+  for (const [frequency, word] of [["bi-weekly", "every 2 weeks"], ["monthly", "monthly"]]) {
     const plan = { ...OWE_PARAMS.installmentPlan, frequency };
     assert.equal(splitPartRows({ paymentMethod: "owe" }, { ...OWE_PARAMS, installmentPlan: plan })[1].value, `GH₵10.00 ${word}`);
   }

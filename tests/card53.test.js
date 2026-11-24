@@ -7,7 +7,7 @@ import wiring from "../src/pos/wiring.json" with { type: "json" };
 import { findButton, loadJsx, render, textOf, walk } from "./helpers/renderJsx.js";
 
 // 53 "Existing payment terms" card. Contract 53 existing_terms_card.rows_final (17 Nov 2026): label-value rows
-// like the card on 72, short labels (rules_global.kv_labels): Debt, Payment (GH₵y weekly | bi-weekly | monthly),
+// like the card on 72, short labels (rules_global.kv_labels): Debt, Payment (GH₵y weekly | every 2 weeks | monthly),
 // Due (the tag), the progress bar, Paid, Still needed, Payments left, Next payment. Change at the bottom of the
 // card, full width, 52px, the "other" look, disabled until an amount is typed.
 
@@ -121,7 +121,7 @@ test("53 card: the Debt row names the debt the card describes; a due date withou
 for (const frequency of ["weekly", "bi-weekly", "monthly"]) {
   test(`53 card: ${frequency} follows the amount in the Payment row; Paid and Still needed keep short labels`, async () => {
     const { card } = await renderCard(planDebt({ frequency }));
-    assert.equal(row(card(), "payment"), `PaymentGH₵10.00 ${frequency}`);
+    assert.equal(row(card(), "payment"), `PaymentGH₵10.00 ${frequency === "bi-weekly" ? "every 2 weeks" : frequency}`);
     assert.equal(row(card(), "paid"), "PaidGH₵4.00");
     assert.equal(row(card(), "still-needed"), "Still neededGH₵6.00");
   });
@@ -137,7 +137,7 @@ test("53 card: the progress bar shows this cycle's progress (paid toward this in
 
 test("53 card: all the card's words come from the translation file", () => {
   for (const words of ["\"Debt\"", "\"Payment\"", "\"Due\"", "\"Paid\"", "\"Still needed\"", "\"Payments left\"", "\"Next payment\"",
-    "{amount} weekly", "{amount} bi-weekly", "{amount} monthly", "Existing payment terms", "\"Change\""]) {
+    "{amount} weekly", "{amount} every 2 weeks", "{amount} monthly", "Existing payment terms", "\"Change\""]) {
     assert.ok(i18n.includes(words), `i18n.js has ${words}`);
   }
   const card = source.slice(source.indexOf("(hasPlanRecord || hasDueDate) && ("), source.indexOf("<PosPrimaryButton", source.indexOf("(hasPlanRecord || hasDueDate) && (")));

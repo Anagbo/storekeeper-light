@@ -775,7 +775,7 @@ const ENGLISH = Object.freeze({
   "kv.nowOwed": "Now owed",
   // The payment frequency after the amount (decided 17 Nov 2026): "GH₵2.00 weekly".
   "kv.paymentEvery.weekly": "{amount} weekly",
-  "kv.paymentEvery.bi-weekly": "{amount} bi-weekly",
+  "kv.paymentEvery.bi-weekly": "{amount} every 2 weeks",
   "kv.paymentEvery.monthly": "{amount} monthly",
   // The Last reminder value: "today 14:05", "yesterday 14:05", "13/11/2026 09:03".
   "kv.reminderToday": "today {time}",

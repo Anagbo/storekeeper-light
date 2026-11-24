@@ -360,7 +360,7 @@ test("date advancement uses fixed weekly, bi-weekly, and 30-day monthly cycles",
 test("next-cycle dates calculate from today for every frequency", () => {
   assert.deepEqual(PAYMENT_FREQUENCIES.map(({ value, label, daysPerCycle }) => [value, label, daysPerCycle]), [
     ["weekly", "Weekly", 7],
-    ["bi-weekly", "Bi-weekly", 14],
+    ["bi-weekly", "Every 2 weeks", 14],
     ["monthly", "Monthly", 30]
   ]);
   assert.equal(getNextCycleDate("2026-10-25", "weekly"), "2026-11-01");

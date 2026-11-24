@@ -42,6 +42,6 @@ test("no Paid so far label and no '{done} of {total}' count string in the transl
 
 test("the Payment value carries the frequency word after the amount: weekly, bi-weekly, monthly", () => {
   for (const frequency of ["weekly", "bi-weekly", "monthly"]) {
-    assert.equal(t(`kv.paymentEvery.${frequency}`, { amount: "GH₵2.00" }), `GH₵2.00 ${frequency}`);
+    assert.equal(t(`kv.paymentEvery.${frequency}`, { amount: "GH₵2.00" }), `GH₵2.00 ${frequency === "bi-weekly" ? "every 2 weeks" : frequency}`);
   }
 });
