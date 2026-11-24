@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Check, Search, Trash2 } from "lucide-react";
 import { db } from "../db/db.js";
@@ -14,6 +14,7 @@ import { useBackBlock } from "./browserBack.js";
 import { useFormErrors } from "./formErrors.js";
 import AmountTextInput from "./AmountTextInput.jsx";
 import WideDialog from "./WideDialog.jsx";
+import LeaveDraftDialog from "./LeaveDraftDialog.jsx";
 
 // What normalizeProductInput (the save's own check) says is wrong, or "".
 function productInputProblem(input) {
@@ -60,7 +61,7 @@ function MyItems({ onBack, onNavigate }) {
   const empty = Boolean(result) && !result.error && result.products.length === 0;
   const starterButton = (
     // rules_global.button_system.open_text_sweep: "+ Add from starter list" is the add look.
-    <AddButton onClick={() => onNavigate("YourStarterList", { returnRoute: "MyItems" })}>{t("items.starterList")}</AddButton>
+    <AddButton onClick={() => askFirst(() => onNavigate("YourStarterList", { returnRoute: "MyItems" }))}>{t("items.starterList")}</AddButton>
   );
 
   return (
@@ -97,14 +98,30 @@ function MyItems({ onBack, onNavigate }) {
   );
 }
 
+// The Price field's text for a saved item ("" when it has no price yet).
+function priceText(item) {
+  return item?.default_price > 0 ? item.default_price.toFixed(2) : "";
+}
+
 // pane (wide D8): the same form, fields, checks and save as 40 and 41, drawn inside the Items page's right
 // pane instead of as its own page. onSaved(product) replaces Back; onDelete opens 42 over the page.
-function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCompleteSetup, pane = false, onSaved, onDelete }) {
+// onDirtyChange(dirty) tells the page whether the values differ from the saved ones; savedNotice starts
+// the pane with the quiet Saved line (a New item just saved, now shown as its Edit item).
+function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCompleteSetup, pane = false, onSaved, onDelete, onDirtyChange, savedNotice = false }) {
   const [name, setName] = useState(item?.name ?? "");
-  const [price, setPrice] = useState(item?.default_price > 0 ? item.default_price.toFixed(2) : "");
+  const [price, setPrice] = useState(() => priceText(item));
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   useBackBlock(saving);
+  // The saved values (what the owner would lose); typing a value back to them is not a change.
+  const [baseline, setBaseline] = useState(() => ({ name: item?.name ?? "", price: priceText(item) }));
+  const dirty = name !== baseline.name || price !== baseline.price;
+  const [showSaved, setShowSaved] = useState(savedNotice);
+  useEffect(() => {
+    if (!pane) return undefined;
+    onDirtyChange?.(dirty);
+    return () => onDirtyChange?.(false);
+  }, [pane, dirty]);
   // rules_global.form_errors: the same checks as the save (normalizeProductInput), one per field, so
   // a name problem goes once the name is fixed and a price problem once the price is.
   const formErrors = useFormErrors([
@@ -122,8 +139,15 @@ function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCom
     try {
       const saved = await onSave({ name, price });
       void requestBackgroundSync();
-      if (pane) onSaved?.(saved);
-      else if (setupFlow) await onCompleteSetup();
+      if (pane) {
+        // The pane stays on the saved item showing what was saved; the values are the new baseline.
+        const next = { name: saved?.name ?? name, price: saved ? priceText(saved) : price };
+        setName(next.name);
+        setPrice(next.price);
+        setBaseline(next);
+        setShowSaved(true);
+        onSaved?.(saved);
+      } else if (setupFlow) await onCompleteSetup();
       else onBack();
     } catch (saveError) {
       console.error("Could not save this item.", saveError);
@@ -171,6 +195,8 @@ function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCom
               <Check size={24} aria-hidden="true" />{saving ? t("items.saving") : t("items.save")}
             </PosPrimaryButton>
           </div>
+          {/* The quiet Saved line (no toast); its space is kept so the buttons never move. */}
+          <p role="status" data-items-saved="" className="min-h-[26px] text-right text-[17px] font-semibold text-slate-600">{showSaved && !dirty ? t("items.saved") : ""}</p>
         </div>
       </form>
     );
@@ -539,9 +565,26 @@ function StarterBrowse({ onBack, onAdd }) {
 // or New item, the phone's own form (ItemEditor pane). The selection is this route's own params
 // (itemsSelected: an item id or "new"), changed by replacing the current entry like Owed's, so it
 // survives a trip away and Back. Nothing is selected on first opening.
-function ItemsWide({ mode, params, onNavigate, onUpdateParams }) {
+// Unsaved changes: another row, New item, Starter list or another page (the sidebar, onLeaveGuard) with
+// values that differ from the saved ones asks the leave question first; with nothing changed it just goes.
+function ItemsWide({ mode, params, onNavigate, onUpdateParams, onLeaveGuard }) {
   const [query, setQuery] = useState("");
   const [deleting, setDeleting] = useState(null);
+  const [leaveAsk, setLeaveAsk] = useState(null);
+  // The item whose Save just finished: its pane shows the quiet Saved line.
+  const [justSaved, setJustSaved] = useState(null);
+  const dirtyRef = useRef(false);
+  function askFirst(proceed) {
+    if (dirtyRef.current) setLeaveAsk({ proceed });
+    else proceed();
+  }
+  const askRef = useRef(askFirst);
+  askRef.current = askFirst;
+  useEffect(() => {
+    onLeaveGuard?.((proceed) => askRef.current(proceed));
+    return () => onLeaveGuard?.(null);
+  }, []);
+  const blocked = Boolean(deleting || leaveAsk);
   const result = useActiveProducts();
   const filteredItems = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -551,11 +594,20 @@ function ItemsWide({ mode, params, onNavigate, onUpdateParams }) {
   const selected = params.itemsSelected;
   const ready = Boolean(result) && !result.error;
   const count = ready ? result.products.length : null;
-  const select = (next) => onUpdateParams?.({ itemsSelected: next });
+  const select = (next) => { setJustSaved(null); onUpdateParams?.({ itemsSelected: next }); };
+  // A row or New item: the one already shown does nothing; another asks first when there are changes.
+  const choose = (next) => { if (next !== selected) askFirst(() => select(next)); };
+  const onDirtyChange = (dirty) => { dirtyRef.current = dirty; };
+  // After Save the saved item stays selected (a new item becomes its own Edit item) with the Saved line.
+  const onSaved = (saved) => {
+    if (!saved) return;
+    onUpdateParams?.({ itemsSelected: saved.id });
+    setJustSaved(saved.id);
+  };
 
   return (
     <PosPage wide rail={rail} style={{ height: "100dvh" }} className="flex flex-col gap-5 tabular-nums">
-      <div data-items-top="" inert={deleting ? true : undefined} aria-hidden={deleting ? true : undefined} className="flex min-w-0 items-center justify-between gap-4">
+      <div data-items-top="" inert={blocked || undefined} aria-hidden={blocked || undefined} className="flex min-w-0 items-center justify-between gap-4">
         <div className="flex min-w-0 items-baseline gap-3">
           <h1 className="text-[30px] font-bold leading-tight text-[#0F172A]">{t("items.title")}</h1>
           {count !== null && (
@@ -568,10 +620,10 @@ function ItemsWide({ mode, params, onNavigate, onUpdateParams }) {
           <PosSecondaryButton type="button" aria-label={t("items.starterList")} onClick={() => onNavigate("YourStarterList", { returnRoute: "MyItems" })} className="whitespace-nowrap">
             {rail ? t("items.starterShort") : t("items.starterList")}
           </PosSecondaryButton>
-          <AddButton pressed={selected === "new"} onClick={() => select("new")} className="w-auto! whitespace-nowrap">{t("items.new")}</AddButton>
+          <AddButton pressed={selected === "new"} onClick={() => choose("new")} className="w-auto! whitespace-nowrap">{t("items.new")}</AddButton>
         </div>
       </div>
-      <div data-items-columns="" inert={deleting ? true : undefined} aria-hidden={deleting ? true : undefined} className="grid min-h-0 min-w-0 flex-1 gap-6" style={{ gridTemplateColumns: rail ? "260px minmax(0, 1fr)" : "clamp(340px, 36%, 400px) minmax(0, 1fr)" }}>
+      <div data-items-columns="" inert={blocked || undefined} aria-hidden={blocked || undefined} className="grid min-h-0 min-w-0 flex-1 gap-6" style={{ gridTemplateColumns: rail ? "260px minmax(0, 1fr)" : "clamp(340px, 36%, 400px) minmax(0, 1fr)" }}>
         <section data-items-list="" aria-label={t("items.title")} className="flex min-h-0 min-w-0 flex-col gap-3">
           <label className="flex min-h-14 shrink-0 items-center gap-2 rounded-2xl border-2 border-slate-500 bg-white px-3">
             <Search size={24} aria-hidden="true" />
@@ -594,7 +646,7 @@ function ItemsWide({ mode, params, onNavigate, onUpdateParams }) {
                     type="button"
                     data-item-row={item.id}
                     aria-current={current ? "true" : undefined}
-                    onClick={() => select(item.id)}
+                    onClick={() => choose(item.id)}
                     className={`flex min-h-[60px] shrink-0 items-center gap-3 rounded-2xl px-3 text-left ${current ? "border-[3px] border-emerald-900 bg-green-50" : "border-2 border-slate-300 bg-white hover:bg-slate-50"}`}
                   >
                     <strong className="min-w-0 flex-1 truncate text-[18px] font-bold text-[#0F172A]">{item.name}</strong>
@@ -611,9 +663,9 @@ function ItemsWide({ mode, params, onNavigate, onUpdateParams }) {
         </section>
         <div data-items-detail="" className="flex min-h-0 min-w-0 flex-col">
           {selected === "new" ? (
-            <ItemEditor key="new" pane onSave={createProduct} onSaved={() => select(undefined)} />
+            <ItemEditor key="new" pane onSave={createProduct} onSaved={onSaved} onDirtyChange={onDirtyChange} />
           ) : Number.isSafeInteger(selected) ? (
-            <EditItem key={selected} pane itemId={selected} onSaved={() => select(undefined)} onDelete={(item) => setDeleting({ id: item.id, name: item.name })} />
+            <EditItem key={selected} pane itemId={selected} savedNotice={justSaved === selected} onSaved={onSaved} onDirtyChange={onDirtyChange} onDelete={(item) => setDeleting({ id: item.id, name: item.name })} />
           ) : (
             // Nothing selected (first opening): only this plain text, no box; no item is chosen for the owner.
             <p data-items-choose="" className="px-2 py-6 text-[19px] font-semibold text-[#334155]">{t("items.choose")}</p>
@@ -630,12 +682,19 @@ function ItemsWide({ mode, params, onNavigate, onUpdateParams }) {
           onDelete={removeProduct}
         />
       )}
+      {leaveAsk && (
+        <LeaveDraftDialog
+          question={t("items.leaveQuestion")}
+          onStay={() => setLeaveAsk(null)}
+          onLeave={() => { const { proceed } = leaveAsk; setLeaveAsk(null); dirtyRef.current = false; proceed(); }}
+        />
+      )}
     </PosPage>
   );
 }
 
-export default function ItemScreens({ route, params = {}, onBack, onNavigate, onReturnToItems, onCompleteSetup, onUpdateParams, wide = false, layoutMode = "phone" }) {
-  if (wide && route === "MyItems") return <ItemsWide mode={layoutMode} params={params} onNavigate={onNavigate} onUpdateParams={onUpdateParams} />;
+export default function ItemScreens({ route, params = {}, onBack, onNavigate, onReturnToItems, onCompleteSetup, onUpdateParams, onLeaveGuard, wide = false, layoutMode = "phone" }) {
+  if (wide && route === "MyItems") return <ItemsWide mode={layoutMode} params={params} onNavigate={onNavigate} onUpdateParams={onUpdateParams} onLeaveGuard={onLeaveGuard} />;
   if (route === "MyItems") return <MyItems onBack={onBack} onNavigate={onNavigate} />;
   if (route === "NewItem") return <ItemEditor onBack={onBack} onSave={createProduct} onNavigate={onNavigate} setupFlow={params.setupFlow === true} onCompleteSetup={onCompleteSetup} />;
   // Wide: 40 and 42 become 39 with the item selected (PosApp); nothing is drawn for the moment between.
@@ -652,12 +711,12 @@ export default function ItemScreens({ route, params = {}, onBack, onNavigate, on
   return null;
 }
 
-function EditItem({ itemId, onBack, onNavigate, pane = false, onSaved, onDelete }) {
+function EditItem({ itemId, onBack, onNavigate, pane = false, onSaved, onDelete, onDirtyChange, savedNotice = false }) {
   const item = useLiveQuery(() => Number.isSafeInteger(itemId) ? db.products.get(itemId) : null, [itemId], undefined);
   if (pane) {
     if (item === undefined) return <p role="status" className="text-[17px]">{t("items.loading")}</p>;
     if (!item || item.active === false) return <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 text-[17px] font-semibold text-rose-950">{t("items.notFound")}</p>;
-    return <ItemEditor key={item.id} pane item={item} onSave={(input) => updateProduct(item.id, input)} onSaved={onSaved} onDelete={() => onDelete?.(item)} />;
+    return <ItemEditor key={item.id} pane item={item} savedNotice={savedNotice} onSave={(input) => updateProduct(item.id, input)} onSaved={onSaved} onDirtyChange={onDirtyChange} onDelete={() => onDelete?.(item)} />;
   }
   if (item === undefined) return <PosPage><p role="status">{t("items.loading")}</p></PosPage>;
   if (!item || item.active === false) {

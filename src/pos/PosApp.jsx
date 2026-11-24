@@ -214,6 +214,7 @@ export default function PosApp() {
   // to the header Menu button when it closes.
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef(null);
+  const leaveGuardRef = useRef(null);
   const menuWasOpen = useRef(false);
   // rules_global.wide_layout: the one layout decision (layout.js), read here once and passed down.
   const layout = useLayout();
@@ -360,9 +361,13 @@ export default function PosApp() {
   // pushes the destination, so the draft stays in history and Back returns to it (marked VIA_SIDEBAR so
   // Owed's Back does too, routes.js); Home follows the header Home rule (leaves the draft, asking first
   // when MoMo was received); the page already showing does nothing.
+  // A page with unsaved changes of its own (wide Items D8) can ask first: it registers
+  // leaveGuardRef.current(proceed) and calls proceed only after Leave.
   function chooseFromSidebar(target) {
     if (target === routeRef.current.current) return;
-    navigate(target, { [VIA_SIDEBAR]: true });
+    const go = () => navigate(target, { [VIA_SIDEBAR]: true });
+    if (leaveGuardRef.current) leaveGuardRef.current(go);
+    else go();
   }
 
   // D11: attemptId comes from the screen (useSaveAttempt) and is passed to every writer.
@@ -824,6 +829,7 @@ export default function PosApp() {
       onReturnToItems={returnToItemList}
       onCompleteSetup={completePosSetup}
       onUpdateParams={updateCurrentParams}
+      onLeaveGuard={(guard) => { leaveGuardRef.current = guard; }}
       wide={layout.wide}
       layoutMode={layout.mode}
     />

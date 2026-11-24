@@ -197,6 +197,8 @@ const ENGLISH = Object.freeze({
   "items.starterShort": "Starter list",
   "items.editTitle": "Edit item · {name}",
   "items.choose": "Choose an item to edit, or tap New item.",
+  "items.saved": "Saved",
+  "items.leaveQuestion": "Your changes to this item are not saved. Leave without saving?",
   "setup.finish": "Skip, I’ll add items later",
   "setup.saveFailed": "Setup could not be completed. Try again; any items already saved are still available.",
   "setup.priceTitle": "How much is {name}?",

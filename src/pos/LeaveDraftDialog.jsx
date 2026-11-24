@@ -6,7 +6,8 @@ import WideDialog, { useWideDialogs } from "./WideDialog.jsx";
 
 // Wiring 16 (11 Nov 2026): leaving a sale draft that holds MoMo money already received asks first.
 // Stay is the default (focused first, and what Escape and the phone back do); only Leave continues.
-export default function LeaveDraftDialog({ amountPesewas, onStay, onLeave }) {
+// `question` replaces the MoMo text for other drafts (wide Items D8: unsaved changes in the pane).
+export default function LeaveDraftDialog({ amountPesewas, question, onStay, onLeave }) {
   const stayRef = useRef(null);
   const leaveRef = useRef(null);
   const wideDialog = useWideDialogs();
@@ -37,7 +38,7 @@ export default function LeaveDraftDialog({ amountPesewas, onStay, onLeave }) {
   const body = (
     <>
         <p id="leave-draft-question" className="text-xl font-extrabold text-slate-950 [overflow-wrap:anywhere]">
-          {t("leaveDraft.receivedMomo", { amount: formatGhs(amountPesewas) })}
+          {question ?? t("leaveDraft.receivedMomo", { amount: formatGhs(amountPesewas) })}
         </p>
         {/* open_text_sweep (17 Nov 2026): the shared main and leave buttons (Leave goes without doing it), kept 60px. */}
         <PosPrimaryButton ref={stayRef} type="button" autoFocus onClick={onStay} className="min-h-[60px]!">
