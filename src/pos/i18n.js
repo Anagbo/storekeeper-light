@@ -520,6 +520,12 @@ const ENGLISH = Object.freeze({
   "money.estimatedProfit": "Estimated profit",
   "money.profitSum": "Sales {sales} − stock {stock} − other costs {other}",
   "money.averageFourWeeks": "Average of last 4 weeks: {amount}",
+  // Wiring 33 PROFIT VIEW (24 Nov 2026): profit from the cost saved on each item sold.
+  "money.profitTitle": "Profit {period}",
+  "money.profitCounts": "Profit counts {counted} of {total} items sold",
+  "money.profitCountsAll": "Profit counts all {total} items sold. A good guess, not exact.",
+  "money.profitGuess": "A good guess, not exact",
+  "money.addCosts": "Add costs to the rest",
   "settings.showEstimatedProfit": "Show estimated profit",
   "money.uncountedSale": "1 sale is not counted because its amounts do not match.",
   "money.uncountedSales": "{n} sales are not counted because their amounts do not match.",

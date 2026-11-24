@@ -6,7 +6,7 @@ import { Amount, amountText, HideAmountsButton } from "./HiddenAmount.jsx";
 import { posText as t } from "./i18n.js";
 import { PHONE_LAYOUT } from "./layout.js";
 import { loadMyMoneyReport } from "./myMoneyReport.js";
-import { PosBackButton, PosCard, PosPage } from "./PosComponents.jsx";
+import { PosBackButton, PosCard, PosPage, PosSecondaryButton } from "./PosComponents.jsx";
 import { SOFT_HERO, SOFT_HERO_LABEL, SOFT_TILE } from "./softTile.js";
 
 // Brief 3.11 / wiring screen 33. Money left is the soft hero, the same as Home (rules_global.soft_tiles,
@@ -137,8 +137,25 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
             </section>
           </div>
 
-          {/* (5) The profit card follows the period. */}
-          {report.showProfit && (
+          {/* (5) The profit card follows the period. Wiring 33 PROFIT VIEW: once at least one item sold in
+              the period has a cost, profit is worked out from the costs (N of M lines counted, an unknown
+              cost never zero); until then the cash-based Estimated profit card stays as it was. */}
+          {report.showProfit && report.itemProfit?.countedLines > 0 && (
+            <section data-card="profit" data-profit-view="items" className={`amount-fit-container flex min-w-0 flex-col ${w(`order-2 justify-center gap-2 ${WIDE_HERO_CARD} p-6`, `gap-1 ${SOFT_TILE} px-3.5 py-3`)}`}>
+              <p className={`text-lg font-extrabold ${wide ? "text-[#0F172A]" : ""}`}>{t("money.profitTitle", { period: periodWords })}</p>
+              <p className={wide ? WIDE_AMOUNT : "amount-fit font-extrabold leading-tight text-[#0F172A]"}><Amount hidden={hidden} pesewas={report.itemProfit.profitPesewas} /></p>
+              {report.itemProfit.countedLines < report.itemProfit.totalLines ? (
+                <>
+                  <p data-profit-counts="" className={`${note("text-base leading-snug")} text-[#0F172A]`}>{t("money.profitCounts", { counted: report.itemProfit.countedLines, total: report.itemProfit.totalLines })}</p>
+                  <p className="text-[15px] font-normal leading-snug text-[#475569]">{t("money.profitGuess")}</p>
+                  <PosSecondaryButton type="button" data-add-costs="" onClick={() => onNavigate("MyItems")} className={`mt-1 ${w("w-full max-w-[240px]", "w-full")}`}>{t("money.addCosts")}</PosSecondaryButton>
+                </>
+              ) : (
+                <p data-profit-counts="" className={`${note("text-base leading-snug")} text-[#0F172A]`}>{t("money.profitCountsAll", { total: report.itemProfit.totalLines })}</p>
+              )}
+            </section>
+          )}
+          {report.showProfit && !(report.itemProfit?.countedLines > 0) && (
             <section data-card="profit" className={`amount-fit-container flex flex-col ${w("order-2 justify-center gap-2", "gap-0.5")} ${card}`}>
               <p className={`text-lg font-extrabold ${wide ? "text-[#0F172A]" : ""}`}>{t("money.estimatedProfit")}</p>
               <p className={wide ? WIDE_AMOUNT : "amount-fit font-extrabold leading-tight text-emerald-900"}><Amount hidden={hidden} pesewas={summary.profit} /></p>

@@ -3,6 +3,7 @@ import { HIDE_AMOUNTS_PREFERENCE } from "../db/preferences.js";
 import { getFinancialTransactions, isSaleRecord, splitCountableTransactions, summarizeFinancialTransactions, summarizePosMoney } from "../lib/money.js";
 import { getMoneyPeriodRange, getOutstandingDebtPesewas } from "./money.js";
 import { getSupplierBalances } from "../utils/suppliers.js";
+import { getItemProfit } from "../lib/itemProfit.js";
 
 // Brief 3.11 / wiring screen 33: the numbers behind My money. All amounts are integer pesewas.
 
@@ -103,6 +104,8 @@ export function buildMyMoneyReport({ currentTransactions, debts, allTransactions
     summary,
     uncounted,
     showProfit: showProfit !== false,
+    // Wiring 33 PROFIT VIEW: profit from the cost saved on each sale line, with N of M lines counted.
+    itemProfit: showProfit !== false ? getItemProfit(currentTransactions) : null,
     averageProfitPesewas,
     debtPesewas: getOutstandingDebtPesewas(debts),
     supplierBalancePesewas: getSupplierBalances(allTransactions, suppliers)
