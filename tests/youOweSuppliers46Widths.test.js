@@ -35,7 +35,7 @@ test("46 in Edge (390, 768, 1280): neutral total, Late first, columns, equal Pay
       await app.open("suppliers", width, height);
       if (width < 768) await app.steps(["^Open menu$", "^My money"]);
       else await waitFor(() => app.evaluate(`(() => { const b = document.querySelector('[data-side-row="MyMoney"]'); if (!b) return false; b.click(); return true; })()`), "sidebar My money");
-      await waitFor(() => app.evaluate(`(() => { const card = [...document.querySelectorAll("main button")].find((b) => /You owe suppliers/.test(b.textContent)); if (!card) return false; card.click(); return true; })()`), "You owe suppliers");
+      await waitFor(() => app.evaluate(`(() => { const card = [...document.querySelectorAll("main button")].find((b) => /You owe suppliers/.test(b.textContent + " " + (b.getAttribute("aria-label") || ""))); if (!card) return false; card.click(); return true; })()`), "You owe suppliers");
       const m = await waitFor(async () => { const r = await app.evaluate(MEASURE); return r.names.length === 3 && r; }, `${width}: three cards`);
       assert.ok(m.scroll, `${width}: no sideways scroll`);
       assert.equal(m.names[0], "Late Wholesale", `${width}: Late first`);
