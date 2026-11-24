@@ -27,7 +27,7 @@ Working style (keeps token use low)
 - Never stretch a phone component to the page width. Buttons have a max width (about 160 to 240px). A person or list row is one compact line: name and tag, amount, then the buttons together at the right.
 - One hero number per screen (about 56px, bold 700). Every other amount is 36 to 40px at most, neutral dark #0F172A, app font at weight 700, never extra-bold or another font. Meaning comes from the label, the tag and the thin category edge, not from colouring a big number.
 - One saturated colour block per screen and one primary action. Every other button follows the button system (other = outlined dark).
-- All text, including labels and sublines, is 17px or larger (tags 15px or larger).
+- Text is 17px or larger. Exceptions: tags and helper lines at 15px or larger (helper style: 15px, #475569, normal weight). Never 16px.
 - Cards in a row have equal height and the same padding, on an 8px grid.
 - Touch targets 48px or taller; a whole tile is the target, not a small link inside it.
 - The same list is in the wiring: rules_global.wide_layout.design_principles (docs/handoff/journey-wiring.json).
