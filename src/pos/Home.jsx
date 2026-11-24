@@ -24,7 +24,7 @@ import { Amount, HiddenAmount, HideAmountsButton } from "./HiddenAmount.jsx";
 import { hasSavedPhone, PersonRow } from "./PartyCard.jsx";
 import { PosCard, PosPage, PosSecondaryButton } from "./PosComponents.jsx";
 import { useReminderCheck } from "./ReminderCheck.jsx";
-import { SOFT_HERO, SOFT_HERO_EYE, SOFT_HERO_LABEL } from "./softTile.js";
+import { SOFT_HERO, SOFT_HERO_EYE, SOFT_HERO_LABEL, WIDE_HERO } from "./softTile.js";
 import { createPosTransactionRows } from "./transactionFeed.js";
 import { TransactionTable } from "./TransactionTable.jsx";
 
@@ -68,18 +68,18 @@ const FOCUS = "focus-visible:outline focus-visible:outline-2 focus-visible:outli
 // Money in and Spent chips and a white eye button; Sell is the only saturated block on Home.
 function MoneyLeftBlock({ data, hidden, onToggleHidden, wide }) {
   return (
-    <section data-block="money-left" aria-label={t("home.cashLeftToday")} className={`amount-fit-container min-w-0 ${SOFT_HERO} ${wide ? "p-4" : "amount-fit-hero p-[18px]"}`}>
+    <section data-block="money-left" aria-label={t("home.cashLeftToday")} className={`amount-fit-container min-w-0 ${wide ? WIDE_HERO : `${SOFT_HERO} amount-fit-hero p-[18px]`}`}>
       <div className="-my-1.5 flex items-center justify-between gap-2">
         <p className={`min-w-0 text-lg font-bold ${SOFT_HERO_LABEL}`}>{t("home.cashLeftToday")}</p>
         <HideAmountsButton hidden={hidden} onToggle={onToggleHidden} className={SOFT_HERO_EYE} />
       </div>
       <p className={wide ? "mt-0.5 block whitespace-nowrap text-[56px] font-bold leading-none tracking-tight" : "amount-fit mt-0.5 font-extrabold tracking-tight"}><Amount hidden={hidden} pesewas={data.totals.cashLeft} /></p>
-      <div className={`flex ${wide ? "mt-3 gap-4" : "mt-2.5 gap-2"}`}>
-        <div className={`amount-fit-container min-w-0 flex-1 rounded-[14px] bg-white ${wide ? "px-4 py-2" : "px-3 py-2"}`}>
+      <div className={`flex ${wide ? "mt-auto gap-4 pt-3" : "mt-2.5 gap-2"}`}>
+        <div className={`amount-fit-container min-w-0 flex-1 rounded-[14px] ${wide ? "bg-[#F1F5F9] px-4 py-2" : "bg-white px-3 py-2"}`}>
           <p className={`font-bold ${wide ? "text-[17px] leading-tight" : "text-base"}`}>{t("home.moneyIn")}</p>
           <p className={wide ? "block whitespace-nowrap text-[28px] font-bold leading-tight" : "amount-fit font-extrabold"}><Amount hidden={hidden} pesewas={data.totals.moneyIn} /></p>
         </div>
-        <div className={`amount-fit-container min-w-0 flex-1 rounded-[14px] bg-white ${wide ? "px-4 py-2" : "px-3 py-2"}`}>
+        <div className={`amount-fit-container min-w-0 flex-1 rounded-[14px] ${wide ? "bg-[#F1F5F9] px-4 py-2" : "bg-white px-3 py-2"}`}>
           <p className={`font-bold ${wide ? "text-[17px] leading-tight" : "text-base"}`}>{t("home.moneySpent")}</p>
           <p className={wide ? "block whitespace-nowrap text-[28px] font-bold leading-tight" : "amount-fit font-extrabold"}><Amount hidden={hidden} pesewas={data.totals.moneySpent} /></p>
         </div>
