@@ -304,11 +304,16 @@ export function CollectPayment({ params, onClose, onNavigate, onUpdateParams, on
   return <CollectionSheet debt={debt} params={params ?? {}} onClose={onClose} onNavigate={onNavigate} onUpdateParams={onUpdateParams} onRecordCollection={onRecordCollection} />;
 }
 
+// Loading debt details (25 and the other debt screens): a soft grey tile only (rules_global.soft_tiles), never a pink or mint fill.
+function CollectionLoading() {
+  return <p role="status" data-loading-tile="" className={`${SOFT_TILE} px-4 py-4 text-[17px] font-bold text-slate-600`}>{t("collect.loading")}</p>;
+}
+
 function CollectionSheetError({ loading, onClose }) {
   const wideDialog = useWideDialogs();
   const body = (
     <>
-        <p role={loading ? "status" : "alert"} className="font-bold">{loading ? t("collect.loading") : t("collect.notFound")}</p>
+        {loading ? <CollectionLoading /> : <p role="alert" className="font-bold">{t("collect.notFound")}</p>}
         <PosSecondaryButton type="button" onClick={onClose} className="mt-4">{t("collect.close")}</PosSecondaryButton>
     </>
   );
@@ -347,7 +352,7 @@ export function CollectSplitPayment({ params, onBack, onNavigate, onUpdateParams
     void receive(getInitialPaymentParts({ ...params, splitTotalPesewas: totalPesewas }, totalPesewas));
   }, [debt]);
 
-  if (debt === undefined) return <PosPage><p role="status">{t("collect.loading")}</p></PosPage>;
+  if (debt === undefined) return <PosPage><CollectionLoading /></PosPage>;
   // Wiring 26/27 "Amount above the balance" (21 Nov 2026): 27 never offers Cash, MoMo or Done for a total
   // above the balance; it names the reason (the debt was found) instead of "could not be found".
   if (debt && Number.isSafeInteger(totalPesewas) && totalPesewas > debt.amountPesewas) {
@@ -451,7 +456,7 @@ function CollectPayPartScreen({ params, onBack, onNavigate, onUpdateParams, onRe
 
   return (
     <PosPage className="!pb-6 mx-auto flex max-w-2xl flex-col gap-3 px-4 sm:px-6 lg:justify-center">
-      {debt === undefined ? <p role="status">{t("collect.loading")}</p> : !debt ? <CollectionError>{t("collect.notFound")}</CollectionError> : (
+      {debt === undefined ? <CollectionLoading /> : !debt ? <CollectionError>{t("collect.notFound")}</CollectionError> : (
         <>
           <div className="flex items-center gap-2">
             <PosBackButton onClick={onBack} />
@@ -902,7 +907,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
   );
   return (
     <Page className="!pb-6 mx-auto flex max-w-2xl flex-col gap-3 px-4 sm:px-6">
-      {data === undefined ? <p role="status">{t("collect.loading")}</p> : !data ? <CollectionError>{t("collect.notFound")}</CollectionError> : (
+      {data === undefined ? <CollectionLoading /> : !data ? <CollectionError>{t("collect.notFound")}</CollectionError> : (
         <>
           {/* Wiring "Header of 29/43" (final, 16 Nov 2026): Back (to BACK: the previous screen in history, so the
               place on 32 or 22 is kept) is its own plain row above the contact card, left aligned. The card is
