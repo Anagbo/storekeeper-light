@@ -11,18 +11,16 @@ import { describeHomeTableRow, describeTransactionRow } from "./transactionFeed.
 // On credit. The full page passes totals (a Total today row); Home passes compact (title only in What, a
 // grey line for a Balance corrected and a Stock on credit row) and no totals.
 
-// Calmer colours (20 Nov 2026): a person chip is pink only when it says someone owes money; a person who
-// only paid (or a chip with only the name) gets a neutral white chip with a 2px grey outline (py-0 keeps
-// it the same height as the filled chips). Payment chips are unchanged.
+// Person chip (rules_global.soft_tiles, 24 Nov 2026): every person chip, owing or not, is the soft grey
+// chip (#F1F5F9, no border, dark text, the small person icon) at every width. Payment chips are unchanged.
 const CHIP_STYLES = {
   payment: "py-0.5 bg-[#CBD5E1] text-[#0F172A]",
   person: "py-0.5 bg-[#F1F5F9] text-[#0F172A]",
-  personNeutral: "border-2 border-slate-500 bg-white py-0 text-[#0F172A]",
   category: "py-0.5 bg-[#FDE68A] text-[#0F172A]",
   reason: "py-0.5 bg-[#CBD5E1] text-[#0F172A]",
   credit: "py-0.5 bg-[#F1F5F9] text-[#0F172A]"
 };
-const chipStyle = (chip) => (chip.kind === "person" && !chip.owes ? CHIP_STYLES.personNeutral : CHIP_STYLES[chip.kind] ?? CHIP_STYLES.payment);
+const chipStyle = (chip) => CHIP_STYLES[chip.kind] ?? CHIP_STYLES.payment;
 
 export function Chip({ chip, nowrap = false, wordWrap = false }) {
   return (

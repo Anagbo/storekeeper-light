@@ -67,7 +67,7 @@ test("24: Given on credit at zero is a dark number", async () => {
   assert.doesNotMatch(cls(amountIn(tile(tree, "given-on-credit"))), /7F1D1D|rose/);
 });
 
-test("24: the person chip is pink only when it says someone owes; Payment collected is a neutral outlined chip with the icon", async () => {
+test("24: every person chip is the soft grey chip with the icon, owing or not", async () => {
   await recordCreditSale({ amountPesewas: 1000, name: "ama", initialPaymentPesewas: 300, initialPaymentParts: [{ paymentMethod: "cash", amountPesewas: 300 }], paymentMethod: "cash", note: "Sale" });
   const ama = (await db.debts.toArray())[0];
   await recordDebtCollection({ debtId: ama.id, parts: [{ paymentMethod: "cash", amountPesewas: 200 }] });
@@ -79,8 +79,9 @@ test("24: the person chip is pink only when it says someone owes; Payment collec
   assert.equal(owes.props["data-owes"], "true");
   assert.match(cls(owes), /bg-\[#F1F5F9\]/, "owes: soft tile fill, not pink");
   assert.equal(paid.props["data-owes"], "false");
-  assert.doesNotMatch(cls(paid), /F1F5F9|FECDD3|rose|pink/, "paid only: not the soft fill");
-  for (const part of ["border-2", "border-slate-500", "bg-white"]) assert.ok(cls(paid).split(/\s+/).includes(part), `paid chip: ${part}`);
+  // Person chip (24 Nov 2026): the soft grey chip at every width, owing or not.
+  assert.match(cls(paid), /bg-\[#F1F5F9\]/, "paid only: the same soft grey chip");
+  assert.doesNotMatch(cls(paid), /border|FECDD3|rose|pink/, "paid only: no outline, no pink");
   assert.ok(all(paid, (node) => typeof node.type === "function" || node.type === "svg").length > 0, "the small person icon stays");
   // Payment chips are unchanged.
   const payment = all(tree, (node) => node.type === "span" && node.props["data-chip"] === "payment")[0];
