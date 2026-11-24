@@ -647,7 +647,8 @@ function ItemsWide({ mode, params, onUpdateParams, onLeaveGuard }) {
           <PosSecondaryButton type="button" aria-label={t("items.starterList")} onClick={() => setStarterOpen(true)} className="whitespace-nowrap">
             {rail ? t("items.starterShort") : t("items.starterList")}
           </PosSecondaryButton>
-          <AddButton pressed={selected === "new"} onClick={() => choose("new")} className="w-auto! whitespace-nowrap">{t("items.new")}</AddButton>
+          {/* Wide: + New item is the one solid green primary button; while its form is open it keeps a darker, ringed pressed look. */}
+          <PosPrimaryButton type="button" aria-pressed={selected === "new"} onClick={() => choose("new")} className={`w-auto whitespace-nowrap ${selected === "new" ? "bg-emerald-950! ring-4 ring-emerald-300" : ""}`}><span aria-hidden="true">+</span> {t("items.new")}</PosPrimaryButton>
         </div>
       </div>
       <div data-items-columns="" inert={blocked || undefined} aria-hidden={blocked || undefined} className="grid min-h-0 min-w-0 flex-1 gap-6" style={{ gridTemplateColumns: rail ? "260px minmax(0, 1fr)" : "clamp(340px, 36%, 400px) minmax(0, 1fr)" }}>
