@@ -98,6 +98,12 @@ function MyItems({ onBack, onNavigate }) {
   );
 }
 
+// wide_layout.keyboard_and_mouse: Enter in a text field of the wide pane does not save (no Enter shortcut on
+// D8); Save is pressed with the mouse, or with Enter or Space once it has focus.
+function keepEnterInField(event) {
+  if (event.key === "Enter" && event.target?.matches?.("input, textarea")) event.preventDefault();
+}
+
 // The Price field's text for a saved item ("" when it has no price yet).
 function priceText(item) {
   return item?.default_price > 0 ? item.default_price.toFixed(2) : "";
@@ -179,7 +185,7 @@ function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCom
   // outlined red at the left (not on New item), Save at the right.
   if (pane) {
     return (
-      <form data-items-pane="" aria-labelledby="item-pane-title" onSubmit={(event) => void submit(event)} className="flex min-h-0 min-w-0 flex-col rounded-[20px] border-2 border-slate-300 bg-white">
+      <form data-items-pane="" aria-labelledby="item-pane-title" onSubmit={(event) => void submit(event)} onKeyDown={keepEnterInField} className="flex min-h-0 min-w-0 flex-col rounded-[20px] border-2 border-slate-300 bg-white">
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">
           <h2 id="item-pane-title" className="line-clamp-2 break-words text-[24px] font-bold leading-tight text-[#0F172A]">{item ? t("items.editTitle", { name: item.name }) : t("items.new")}</h2>
           {fields}

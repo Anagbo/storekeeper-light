@@ -205,3 +205,35 @@ test("D8 Delete item: 42 returns focus to the item's row (the page heading when 
   assert.equal(returnFocusTarget({ opener: null, selector: shell.props.returnFocus, doc: doc([row]) }), row, "Keep: the row");
   assert.equal(returnFocusTarget({ opener: null, selector: shell.props.returnFocus, doc: doc([]) }), heading, "deleted: the heading");
 });
+
+const pressKey = (key) => { for (const listener of [...(window.__listeners.keydown ?? [])]) listener({ key, target: null, preventDefault() {}, stopPropagation() {} }); };
+
+test("D8 keyboard: Enter in a text field does not save; Escape closes the leave question (Stay) and the starter list", async () => {
+  const app = await openItems(1280);
+  await app.tap(/^Bread/);
+  await typeName(app, "Brown bread");
+  const form = find(app, "data-items-pane");
+  let prevented = 0;
+  const input = { matches: (selector) => /input/.test(selector) };
+  form.props.onKeyDown({ key: "Enter", target: input, preventDefault() { prevented += 1; } });
+  assert.equal(prevented, 1, "Enter in Item name or Price is stopped (no submit)");
+  const button = { matches: () => false };
+  form.props.onKeyDown({ key: "Enter", target: button, preventDefault() { prevented += 1; } });
+  assert.equal(prevented, 1, "Enter on a focused button keeps its normal press");
+  await app.settle();
+  assert.equal((await db.products.toArray()).find((item) => item.name === "Brown bread"), undefined, "nothing saved");
+
+  await app.tap(/^Sugar/);
+  assert.ok(leaveQuestion(app));
+  pressKey("Escape");
+  await app.settle();
+  assert.equal(leaveQuestion(app), null, "Escape is Stay");
+  assert.equal(paneTitle(app), "Edit item · Bread");
+  assert.equal(nameField(app).props.value, "Brown bread");
+
+  await app.tap("Add from starter list");
+  pressKey("Escape");
+  await app.settle();
+  assert.equal(nodes(app.view.tree).find((node) => node.props["aria-labelledby"] === "starter-browse-title"), undefined, "Escape closes the starter list");
+  assert.equal(nameField(app).props.value, "Brown bread");
+});
