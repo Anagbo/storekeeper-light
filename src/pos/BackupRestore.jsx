@@ -4,6 +4,7 @@ import { posText as t } from "./i18n.js";
 import { PosPage, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
 import { useBackBlock } from "./browserBack.js";
 import WideDialog, { useWideDialogs } from "./WideDialog.jsx";
+import { SettingsPane, useSettingsPane } from "./SettingsPane.jsx";
 
 // Screen 71 (brief 3.13): Backup and restore as a normal screen with Back. Layout only: the backup
 // and restore logic is the existing one in utils/backup.js. Restore asks first; a file that cannot
@@ -27,6 +28,8 @@ function countRecords(data) {
 
 export default function BackupRestore({ onBack }) {
   const wideDialog = useWideDialogs();
+  // Wide Settings (D13d): drawn in the Settings pane, without Back.
+  const pane = useSettingsPane();
   const fileInput = useRef(null);
   // A ref as well as the state, so a second tap in the same frame sees the first one.
   const busyRef = useRef(false);
@@ -101,12 +104,8 @@ export default function BackupRestore({ onBack }) {
     }
   }
 
-  return (
-    <PosPage className="flex flex-col gap-[14px]">
-      <div className="flex items-center gap-3">
-        <PosBackButton onClick={onBack} disabled={busy} />
-        <h1 className="text-2xl font-extrabold">{t("backup.title")}</h1>
-      </div>
+  const content = (
+    <>
       <p className={textClass}>{t("backup.intro")}</p>
 
       <section aria-labelledby="backup-save-title" className={cardClass}>
@@ -165,6 +164,16 @@ export default function BackupRestore({ onBack }) {
 
       {message && <p role="status" className="rounded-xl border-2 border-emerald-900 bg-emerald-50 p-3 text-base font-bold text-emerald-950">{message}</p>}
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 text-base font-bold text-rose-950">{error}</p>}
+    </>
+  );
+  if (pane) return <SettingsPane id="backup" title={t("backup.title")}>{content}</SettingsPane>;
+  return (
+    <PosPage className="flex flex-col gap-[14px]">
+      <div className="flex items-center gap-3">
+        <PosBackButton onClick={onBack} disabled={busy} />
+        <h1 className="text-2xl font-extrabold">{t("backup.title")}</h1>
+      </div>
+      {content}
     </PosPage>
   );
 }

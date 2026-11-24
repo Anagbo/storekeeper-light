@@ -9,6 +9,7 @@ import { PosCard, PosPage, PosPrimaryButton, PosStatusTag, PosBackButton } from 
 import { useBackBlock } from "./browserBack.js";
 import { EventDetail, KeyValueRows } from "./EventRows.jsx";
 import { posText as t } from "./i18n.js";
+import { SettingsPane, useSettingsPane } from "./SettingsPane.jsx";
 
 const NETWORKS = ["MTN", "Telecel", "AirtelTigo"];
 
@@ -63,8 +64,9 @@ export function MyPlan({
   const [payments, setPayments] = useState([]);
   useEffect(() => { listPlanPayments().then((rows) => setPayments(groupPlanPayments(rows))).catch((error) => console.error("Could not load plan payments.", error)); }, []);
   const status = planStatus(expiry || subscriptionExpiry, trialActive, trialExpiry);
-  return <PosPage className="flex flex-col gap-3">
-    <BackTitle title="My plan" onBack={onBack} />
+  // Wide Settings (D13c): drawn in the Settings pane, without Back.
+  const pane = useSettingsPane();
+  const content = <>
     <PosCard className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3"><h2 className="text-xl font-extrabold">Shop plan</h2><PosStatusTag tone={status.tone}>{status.label}</PosStatusTag></div>
       <p className="flex items-baseline gap-2"><span className="text-4xl font-extrabold">{formatGhs(PLAN_CONFIG.amountPesewas)}</span><span className="text-base font-semibold">a month</span></p>
@@ -84,6 +86,11 @@ export function MyPlan({
             <div className="flex shrink-0 flex-col items-end gap-1"><span className="whitespace-nowrap font-extrabold">{formatGhs(payment.amountPesewas)}</span>{planStatusLabel(payment.status) && <PosStatusTag compact tone={PLAN_STATUS_TONES[payment.status] ?? "neutral"}>{planStatusLabel(payment.status)}</PosStatusTag>}</div>
           </div>)}</div>}
     </PosCard>
+  </>;
+  if (pane) return <SettingsPane id="plan" title="My plan">{content}</SettingsPane>;
+  return <PosPage className="flex flex-col gap-3">
+    <BackTitle title="My plan" onBack={onBack} />
+    {content}
   </PosPage>;
 }
 

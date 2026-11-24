@@ -262,6 +262,8 @@ const ENGLISH = Object.freeze({
   "settings.planTrialUntil": "Trial until {date}",
   "settings.planNotActive": "Not active",
   "settings.planActiveTag": "Active",
+  "settings.shopDetail": "Name and preferences",
+  "settings.showProfitHelperWide": "A good guess, not exact",
   "backup.title": "Backup and restore",
   "backup.saveTitle": "Save a backup",
   "backup.intro": "Keep a copy of your sales, debts and items. It works without internet.",

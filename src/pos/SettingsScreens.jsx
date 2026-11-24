@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { CreditCard, Database, Smartphone } from "lucide-react";
+import { CreditCard, Database, Home, Smartphone } from "lucide-react";
 import { getPreference, setPreference } from "../db/preferences.js";
 import { formatDate } from "../lib/formatDate.js";
 import { posText as t } from "./i18n.js";
@@ -7,6 +7,10 @@ import { getMerchantMomoSettings } from "./momoConfig.js";
 import { SHOW_PROFIT_PREFERENCE } from "./myMoneyReport.js";
 import { PosPage, PosPrimaryButton, PosBackButton } from "./PosComponents.jsx";
 import { useFormErrors } from "./formErrors.js";
+import { PaymentSettings } from "./MoMoScreens.jsx";
+import { MyPlan } from "./PlanScreens.jsx";
+import BackupRestore from "./BackupRestore.jsx";
+import { SettingsPane, SettingsPaneContext } from "./SettingsPane.jsx";
 
 function SettingsGroup({ id, title, children }) {
   return (
@@ -18,13 +22,13 @@ function SettingsGroup({ id, title, children }) {
 }
 
 // A switch (role "switch") with its label and one helper line. The input is the real control; the
-// track and thumb are drawn beside it.
-function SwitchRow({ id, label, helper, checked, onChange }) {
+// track and thumb are drawn beside it. wide: the pane's sizes (label 19px, helper 17px, no side padding).
+function SwitchRow({ id, label, helper, checked, onChange, wide = false }) {
   return (
-    <label htmlFor={id} className="flex min-h-16 cursor-pointer items-center justify-between gap-3 px-4 py-3">
+    <label htmlFor={id} className={`flex min-h-16 cursor-pointer items-center justify-between gap-3 ${wide ? "py-2" : "px-4 py-3"}`}>
       <span className="min-w-0">
-        <span id={`${id}-label`} className="block text-lg font-extrabold">{label}</span>
-        <span id={`${id}-help`} className="block text-sm text-slate-700">{helper}</span>
+        <span id={`${id}-label`} className={`block font-extrabold ${wide ? "text-[19px]" : "text-lg"}`}>{label}</span>
+        <span id={`${id}-help`} className={`block text-slate-700 ${wide ? "text-[17px]" : "text-sm"}`}>{helper}</span>
       </span>
       <span className="relative inline-flex h-8 w-14 shrink-0 items-center">
         <input id={id} type="checkbox" role="switch" aria-checked={checked} aria-labelledby={`${id}-label`} aria-describedby={`${id}-help`} checked={checked} onChange={onChange} className="peer sr-only" />
@@ -49,6 +53,31 @@ function LinkRow({ id, icon: Icon, title, detail, tag, onClick }) {
   );
 }
 
+// Wide D13: one section row in the list, a 60px+ button with the phone row's icon, the title, its status
+// line (one line) and the Active tag on My plan. The selected one is marked (aria-current).
+function SectionRow({ id, icon: Icon, title, detail, tag, current, onClick }) {
+  return (
+    <button
+      type="button"
+      data-settings-row={id}
+      aria-current={current ? "true" : undefined}
+      aria-labelledby={`settings-row-${id}-title`}
+      aria-describedby={`settings-row-${id}-detail`}
+      onClick={onClick}
+      className={`flex min-h-[60px] w-full shrink-0 items-center gap-3 rounded-2xl px-3.5 py-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 ${current ? "border-[3px] border-emerald-900 bg-green-50" : "border-2 border-slate-300 bg-white hover:bg-slate-50"}`}
+    >
+      <Icon size={24} strokeWidth={2.2} aria-hidden="true" className="shrink-0 text-[#03543F]" />
+      <span className="min-w-0 flex-1">
+        <span id={`settings-row-${id}-title`} className="block truncate text-[18px] font-bold text-[#0F172A]">{title}</span>
+        <span id={`settings-row-${id}-detail`} data-settings-row-detail="" className="block truncate text-[15px] text-slate-700">{detail}</span>
+      </span>
+      {tag}
+    </button>
+  );
+}
+
+const SECTIONS = ["shop", "momo", "plan", "backup"];
+
 export function SettingsProfitTools({
   shopName,
   savedShopName,
@@ -57,14 +86,17 @@ export function SettingsProfitTools({
   onOpenBackup,
   onOpenMomoSettings,
   onOpenPlan,
+  onNavigate,
   params = {},
   onUpdateParams,
+  layoutMode = "phone",
   subscriptionEnabled = false,
   hasActiveSubscription = false,
   subscriptionExpiry = "",
   trialActive = false,
   trialExpiry = ""
 }) {
+  const wide = layoutMode !== "phone";
   // The name that was really saved. With none saved it is empty and the field shows My shop as a grey
   // placeholder. A caller that only passes shopName (the name in the header) starts with that name.
   const startingName = savedShopName ?? shopName;
@@ -93,11 +125,14 @@ export function SettingsProfitTools({
     getPreference(SHOW_PROFIT_PREFERENCE, true)
       .then((value) => { if (active) setShowProfit(value !== false); })
       .catch((loadError) => console.error("Could not load the profit setting.", loadError));
-    getMerchantMomoSettings()
-      .then((settings) => { if (active) setMomoSetUp(Boolean(settings.number)); })
-      .catch((loadError) => console.error("Could not load the MoMo settings.", loadError));
+    loadMomoSetUp(() => active);
     return () => { active = false; };
   }, []);
+  function loadMomoSetUp(stillActive = () => true) {
+    getMerchantMomoSettings()
+      .then((settings) => { if (stillActive()) setMomoSetUp(Boolean(settings.number)); })
+      .catch((loadError) => console.error("Could not load the MoMo settings.", loadError));
+  }
 
   async function changeShowProfit(checked) {
     setShowProfit(checked);
@@ -137,6 +172,69 @@ export function SettingsProfitTools({
     : trialActive && formatDate(trialExpiry)
       ? t("settings.planTrialUntil", { date: formatDate(trialExpiry) })
       : t("settings.planNotActive");
+  function changeDraft(value) {
+    setDraft(value);
+    onUpdateParams?.({ shopNameDraft: value });
+    setSaved(false);
+  }
+
+  if (wide) {
+    // Wide D13 (wide_layout.screens["47 Settings"]): list with detail on this route. The selected section
+    // is this route's own param (settingsSection), changed by replacing the entry, so the drafts kept in
+    // the same params (shopNameDraft, momoSettingsDraft) survive switching sections. No Back, no Done.
+    const sections = SECTIONS.filter((id) => id !== "plan" || subscriptionEnabled);
+    const section = sections.includes(params.settingsSection) ? params.settingsSection : "shop";
+    const select = (id) => { if (id !== section) onUpdateParams?.({ settingsSection: id }); };
+    const rail = layoutMode === "rail";
+    const rows = {
+      shop: { icon: Home, title: t("settings.groupShop"), detail: t("settings.shopDetail") },
+      momo: { icon: Smartphone, title: t("settings.momoPayments"), detail: momoSetUp ? t("settings.momoSetUp") : t("settings.momoNotSetUp") },
+      plan: { icon: CreditCard, title: t("settings.myPlan"), detail: planDetail, tag: hasActiveSubscription && <span className="shrink-0 rounded-lg border-2 border-emerald-900 bg-emerald-100 px-2 text-[15px] font-extrabold text-emerald-950">{t("settings.planActiveTag")}</span> },
+      backup: { icon: Database, title: t("settings.backup"), detail: t("settings.backupDetail") }
+    };
+    const pane = section === "momo" ? (
+      <PaymentSettings params={params} onBack={() => {}} onNavigate={onNavigate} onUpdateParams={onUpdateParams} onPaneSaved={() => loadMomoSetUp()} />
+    ) : section === "plan" ? (
+      <MyPlan expiry={subscriptionExpiry} onNavigate={onNavigate} subscriptionExpiry={subscriptionExpiry} trialActive={trialActive} trialExpiry={trialExpiry} />
+    ) : section === "backup" ? (
+      <BackupRestore />
+    ) : (
+      <SettingsPane id="shop" title={t("settings.groupShop")}>
+        <form onSubmit={saveShopName} className="flex flex-col gap-1">
+          <label htmlFor="settings-shop-name" className="block text-[17px] font-extrabold">{t("settings.shopName")}</label>
+          <div className="flex items-center gap-3">
+            <input id="settings-shop-name" maxLength={60} value={draft} placeholder={t("app.defaultShopName")} onChange={(event) => changeDraft(event.target.value)} className="h-14 min-w-0 flex-1 rounded-xl border-2 border-slate-500 px-3 text-lg placeholder:text-slate-500" />
+            <button
+              type="submit"
+              disabled={!nameChanged}
+              className={`flex min-h-14 min-w-[120px] shrink-0 items-center justify-center rounded-2xl border-2 px-4 text-[18px] font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 ${nameChanged ? "border-[#03543F] bg-[#03543F] text-white" : "cursor-not-allowed border-slate-300 bg-slate-200 text-slate-500"}`}
+            >
+              {t("settings.save")}
+            </button>
+          </div>
+        </form>
+        {saved && <p role="status" className="text-[17px] font-bold text-emerald-900">{t("settings.saved")}</p>}
+        {(shopNameErrors.message || error) && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 text-[17px] font-semibold text-rose-950">{shopNameErrors.message || error}</p>}
+        <div className="border-t-2 border-[#E2E8F0] pt-4">
+          <h3 id="settings-preferences" className="text-[15px] font-extrabold uppercase tracking-wider text-slate-700">{t("settings.groupPreferences")}</h3>
+          <SwitchRow wide id="settings-profit" label={t("settings.showEstimatedProfit")} helper={t("settings.showProfitHelperWide")} checked={showProfit} onChange={(event) => void changeShowProfit(event.target.checked)} />
+        </div>
+      </SettingsPane>
+    );
+    return (
+      <PosPage wide rail={rail} style={{ height: "100dvh" }} className="flex flex-col gap-5">
+        <h1 className="text-[30px] font-bold leading-tight text-[#0F172A]">{t("settings.title")}</h1>
+        <div data-settings-columns="" className="grid min-h-0 min-w-0 flex-1 gap-6" style={{ gridTemplateColumns: rail ? "280px minmax(0, 1fr)" : "clamp(340px, 36%, 400px) minmax(0, 1fr)" }}>
+          <nav data-settings-list="" aria-label={t("settings.title")} className="-m-1 flex min-h-0 min-w-0 flex-col gap-2.5 overflow-y-auto p-1">
+            {sections.map((id) => <SectionRow key={id} id={id} {...rows[id]} current={id === section} onClick={() => select(id)} />)}
+          </nav>
+          <div data-settings-detail="" className="flex min-h-0 min-w-0 flex-col">
+            <SettingsPaneContext.Provider value={layoutMode}>{pane}</SettingsPaneContext.Provider>
+          </div>
+        </div>
+      </PosPage>
+    );
+  }
 
   return (
     <PosPage className="flex flex-col gap-3">

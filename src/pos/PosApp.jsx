@@ -118,6 +118,9 @@ const TASK_COLUMN_ROUTES = new Set([
   POS_ROUTES.PlanPayPhone, POS_ROUTES.PlanPaymentResult
 ]);
 
+// Wide D13: the Settings section each of 63, 64 and 71 is drawn in.
+const SETTINGS_PANES = Object.freeze({ [POS_ROUTES.PaymentSettings]: "momo", [POS_ROUTES.MyPlan]: "plan", [POS_ROUTES.BackupRestore]: "backup" });
+
 // The latest My items (39) entry in the history, with what came before it; a fresh 39 when there is none.
 function itemListState(current) {
   for (let index = current.history.length - 1; index >= 0; index -= 1) {
@@ -299,6 +302,20 @@ export default function PosApp() {
     commit((current) => {
       const list = itemListState(current);
       return { ...list, params: { ...list.params, itemsSelected: itemId } };
+    });
+  }, [layout.wide, routeState.current]);
+
+  // Wide D13 is one page on the Settings route: 63, 64 or 71 opened from Settings when the window grows
+  // past the phone layout become Settings with that section in the pane (an unsaved MoMo draft goes along).
+  useEffect(() => {
+    if (!layout.wide) return;
+    const section = SETTINGS_PANES[routeState.current];
+    const below = routeState.history.at(-1);
+    if (!section || below?.current !== POS_ROUTES.SettingsProfitTools) return;
+    commit((current) => {
+      const { momoSettingsDraft } = current.params;
+      const settings = current.history.at(-1);
+      return { ...settings, history: current.history.slice(0, -1), params: { ...settings.params, settingsSection: section, ...(momoSettingsDraft && { momoSettingsDraft }) } };
     });
   }, [layout.wide, routeState.current]);
 
@@ -615,8 +632,10 @@ export default function PosApp() {
       onOpenBackup={() => navigate(POS_ROUTES.BackupRestore)}
       onOpenMomoSettings={() => navigate(POS_ROUTES.PaymentSettings)}
       onOpenPlan={() => navigate(POS_ROUTES.MyPlan)}
+      onNavigate={navigate}
       params={routeState.params}
       onUpdateParams={updateCurrentParams}
+      layoutMode={layout.mode}
       subscriptionEnabled={FEATURE_FLAGS.SHOW_SUBSCRIPTION_FEATURE}
       hasActiveSubscription={hasActiveSubscription}
       subscriptionExpiry={subscriptionExpiry}

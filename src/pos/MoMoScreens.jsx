@@ -12,6 +12,7 @@ import { useBackBlock } from "./browserBack.js";
 import { useFormErrors } from "./formErrors.js";
 import { EventDetail, KeyValueRows } from "./EventRows.jsx";
 import { posText as t } from "./i18n.js";
+import { SettingsPane, useSettingsPane } from "./SettingsPane.jsx";
 
 const NETWORKS = ["MTN", "Telecel", "AirtelTigo"];
 
@@ -195,8 +196,10 @@ function formatPhoneForReading(number = "") {
   return /^\d{10}$/.test(digits) ? `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}` : digits;
 }
 
-export function PaymentSettings({ params = {}, onBack, onNavigate, onUpdateParams }) {
+export function PaymentSettings({ params = {}, onBack, onNavigate, onUpdateParams, onPaneSaved }) {
   const taskColumn = useTaskColumn();
+  // Wide Settings (D13b): drawn in the Settings pane, without Back; the phone content in order.
+  const pane = useSettingsPane();
   const [settings, setSettings] = useState({ number: "", network: MOMO_CONFIG.defaultNetwork, defaultMethod: "ask" });
   // Opened from 62 with no MoMo number (wiring 62 "Set up MoMo number"): the Customer sends to my
   // number switch is already on and the number field is focused. Back without Save changes nothing.
@@ -254,8 +257,7 @@ export function PaymentSettings({ params = {}, onBack, onNavigate, onUpdateParam
   }
   const maskedLine = enabled && (normalizedNumber ?? settings.number) ? `Customers will send to ${maskPhoneNumber(normalizedNumber ?? settings.number)} · ${settings.network}` : "";
   const tapOptions = [["ask", "Ask me each time"], ["direct", "Always: customer sends to my number"], ...(PHONE_REQUEST_ENABLED ? [["phone", "Always: phone request"]] : [])];
-  return <PosPage className="flex flex-col gap-3">
-    <BackTitle title="MoMo payments" onBack={onBack} />
+  const content = <>
     <PosCard>
       <div className="flex min-h-12 items-center justify-between gap-3">
         <span className="min-w-0 text-lg font-extrabold">Customer sends to my number</span>
@@ -305,8 +307,14 @@ export function PaymentSettings({ params = {}, onBack, onNavigate, onUpdateParam
       </div>
     </PosCard>
     {saved && <p role="status">Saved.</p>}
+  </>;
+  const saveButton = <PosPrimaryButton type="button" onClick={() => void save()} className={`h-[60px] min-h-0 rounded-[18px] ${pane ? "max-w-[240px]" : ""}`}><Check size={28} aria-hidden="true" />Save</PosPrimaryButton>;
+  if (pane) return <SettingsPane id="momo" title="MoMo payments">{content}<div className="flex justify-end">{saveButton}</div></SettingsPane>;
+  return <PosPage className="flex flex-col gap-3">
+    <BackTitle title="MoMo payments" onBack={onBack} />
+    {content}
     <div className={taskColumn ? "mt-auto pt-3" : "safe-bottom fixed inset-x-0 bottom-0 z-30 border-t-[3px] border-slate-900 bg-white px-4 pt-3 lg:left-60"}>
-      <div className="mx-auto max-w-3xl"><PosPrimaryButton type="button" onClick={() => void save()} className="h-[60px] min-h-0 rounded-[18px]"><Check size={28} aria-hidden="true" />Save</PosPrimaryButton></div>
+      <div className="mx-auto max-w-3xl">{saveButton}</div>
     </div>
   </PosPage>;
 }
