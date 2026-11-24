@@ -112,6 +112,7 @@ const ENGLISH = Object.freeze({
   "supplier.dueToday": "Due today",
   "supplier.late": "Late {days} day{plural}",
   "supplier.dueDate": "Due {date}",
+  "supplier.wasDue": "Was due {date}",
   "supplier.noDueDate": "No due date",
   "supplier.pay": "Pay",
   "supplier.call": "Call {name}",

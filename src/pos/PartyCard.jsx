@@ -58,13 +58,15 @@ export function WhatsAppIcon({ size = 27 }) {
   );
 }
 
-const AMOUNT_SIZES = { 22: "text-[22px]", 24: "text-[24px]", 28: "text-[28px]" };
+const AMOUNT_SIZES = { 22: "text-[22px]", 24: "text-[24px]", 26: "text-[26px]", 28: "text-[28px]" };
 const SQUARE = "grid h-[52px] w-[52px] shrink-0 place-items-center rounded-[14px] border-2 bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800";
 
 // Top row: the name (bold 19px, up to 2 lines, capital first letter) and the amount (bold, never
 // shrunk or clipped) on the right; the due tag under the name. Bottom row: the green action (52px,
 // takes the remaining width), then WhatsApp (when given) and Call (only with a valid number).
 // `whatsapp.onClick` is the shared reminder check on 22 (rules_global.reminders).
+// `dateText` (46): the due date under the tag; `cardWide` (46 on wide): the larger name and amount, 15px tags,
+// the date beside the tag and the buttons at the bottom of an equal-height card.
 // `framed` draws the card border (46); on 22 the card sits inside the Owed card without one.
 export function PartyCard({
   framed = true,
@@ -84,6 +86,8 @@ export function PartyCard({
   extra = null,
   wide = false,
   maskedAmount = null,
+  dateText = "",
+  cardWide = false,
   ...rest
 }) {
   const shown = displayName(name);
@@ -96,14 +100,19 @@ export function PartyCard({
   // amount spans one row only (an empty spanned row made the row taller).
   // `wide` (22 Home wide, design_principles): one compact line, name with its tag below on the left,
   // the amount, then fixed-width buttons together at the right. The phone markup is not touched.
-  const nameCell = `col-start-1 row-start-1 line-clamp-2 min-w-0 break-words text-[19px] leading-tight ${wide ? "font-bold" : "font-extrabold"}`;
+  const nameCell = `col-start-1 row-start-1 line-clamp-2 min-w-0 break-words ${cardWide ? "text-[21px]" : "text-[19px]"} leading-tight ${wide || cardWide ? "font-bold" : "font-extrabold"}`;
   const nameColumn = (
     <>
       {framed ? <h2 className={nameCell}>{shown}</h2> : <span data-party-name="" className={nameCell}>{shown}</span>}
-      {dueDate && <div data-party-tag="" className={`${wide ? "col-start-1" : "col-span-full"} row-start-2 mt-1.5 whitespace-nowrap`}><DueTag dueDate={dueDate} today={today} wording={wording} large={wide} /></div>}
+      {dueDate && (
+        <div data-party-tag="" className={`${wide ? "col-start-1" : "col-span-full"} row-start-2 mt-1.5 whitespace-nowrap ${dateText ? (cardWide ? "flex flex-wrap items-center gap-x-3 gap-y-1" : "flex flex-col items-start gap-1") : ""}`}>
+          <DueTag dueDate={dueDate} today={today} wording={wording} large={wide || cardWide} />
+          {dateText && <span data-party-date="" className="text-[15px] font-semibold text-slate-600">{dateText}</span>}
+        </div>
+      )}
     </>
   );
-  const amount = <span data-party-amount="" className={`col-start-2 ${dueDate ? "row-span-2" : ""} row-start-1 whitespace-nowrap ${wide ? "self-center font-bold" : "font-extrabold"} leading-tight ${AMOUNT_SIZES[amountSize] ?? AMOUNT_SIZES[24]}`}>{maskedAmount ?? formatGhs(amountPesewas)}</span>;
+  const amount = <span data-party-amount="" className={`col-start-2 ${dueDate ? "row-span-2" : ""} row-start-1 whitespace-nowrap ${wide || cardWide ? "self-center font-bold" : "font-extrabold"} leading-tight ${AMOUNT_SIZES[amountSize] ?? AMOUNT_SIZES[24]}`}>{maskedAmount ?? formatGhs(amountPesewas)}</span>;
   const top = onNameClick ? (
     // rules_global.person_row: the whole top row (name, tag, amount and the space between) opens the
     // detail; a light grey tint while pressed, nothing at rest.
@@ -117,7 +126,7 @@ export function PartyCard({
   return (
     <Frame {...rest} className={`flex min-w-0 ${wide ? "flex-row items-center gap-4" : "flex-col gap-3"} ${framed ? "rounded-2xl border-2 border-slate-600 bg-white p-4" : ""}`}>
       {wide ? <div className="min-w-0 flex-1">{top}</div> : top}
-      <div className={`flex min-w-0 ${wide ? "shrink-0 gap-3" : "gap-2"}`}>
+      <div className={`flex min-w-0 ${wide ? "shrink-0 gap-3" : "gap-2"} ${cardWide ? "mt-auto" : ""}`}>
         <button type="button" aria-label={action.ariaLabel} onClick={action.onClick} className={`flex ${wide ? "h-12 w-40 shrink-0" : "h-[52px] min-w-0 flex-1"} items-center justify-center gap-2 rounded-[14px] border-2 border-emerald-950 bg-emerald-900 px-4 text-lg ${wide ? "font-bold" : "font-extrabold"} text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800`}>
           {ActionIcon && <ActionIcon size={22} aria-hidden="true" />}{action.label}
         </button>

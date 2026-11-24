@@ -3,6 +3,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { Banknote, Smartphone, Wallet } from "lucide-react";
 import { db } from "../db/db.js";
 import { displayName } from "../lib/displayName.js";
+import { formatDate } from "../lib/formatDate.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { localDateString } from "../utils/installments.js";
 import { getSupplierBalances, orderSuppliersByRecentUse, orderSuppliersByUrgency, SUPPLIER_CATEGORIES } from "../utils/suppliers.js";
@@ -354,17 +355,22 @@ export function YouOweSuppliers({ onBack, onPay }) {
             </div>
             <p data-supplier-total="" className={`${layout.wide ? "text-[40px]" : "mt-1 text-[28px]"} whitespace-nowrap font-bold leading-tight text-[#0F172A]`}>{formatGhs(suppliers.reduce((sum, supplier) => sum + supplier.balancePesewas, 0))}</p>
           </section>
+          <div data-supplier-grid="" className={`grid min-w-0 gap-3 ${layout.mode === "sidebar" ? "grid-cols-2" : "grid-cols-1"}`}>
           {orderSuppliersByUrgency(suppliers, today).map((supplier) => {
             const name = displayName(supplier.name);
+            const late = supplier.nextDueDate && supplier.nextDueDate < today;
+            const dateText = formatDate(supplier.nextDueDate) ? t(late ? "supplier.wasDue" : "supplier.dueDate", { date: formatDate(supplier.nextDueDate) }) : "";
             return (
               <PartyCard
                 key={supplier.id}
                 data-supplier={supplier.name}
                 name={supplier.name}
                 amountPesewas={supplier.balancePesewas}
-                amountSize={24}
+                amountSize={layout.wide ? 26 : 24}
                 dueDate={supplier.nextDueDate}
                 today={today}
+                dateText={dateText}
+                cardWide={layout.wide}
                 wording="supplier"
                 action={{ label: t("supplier.pay"), ariaLabel: t("supplier.payAria", { name }), icon: Wallet, onClick: () => { setSelectedSupplier(supplier); setAmount((supplier.balancePesewas / 100).toFixed(2)); setPaidWith("cash"); setError(""); } }}
                 phone={supplier.phone}
@@ -372,6 +378,7 @@ export function YouOweSuppliers({ onBack, onPay }) {
               />
             );
           })}
+          </div>
         </>
       )}
       {selectedSupplier && (() => {

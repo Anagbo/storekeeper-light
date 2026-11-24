@@ -39,6 +39,7 @@ const MEASURE = `(() => {
       return {
         name: nameEl.textContent, open: top.hasAttribute("data-person-open"), card: box(top.parentElement), top: box(top),
         nameBox: box(nameEl), nameHeight: nameEl.getBoundingClientRect().height, lineHeight: parseFloat(getComputedStyle(nameEl).lineHeight),
+        dateBottom: (top.querySelector("[data-party-date]")?.getBoundingClientRect().bottom) ?? 0,
         amount: amountEl.textContent, amountBox: box(amountEl), amountLines: lines(amountEl),
         tag: tagEl ? { text: tagEl.textContent, lines: lines(tagEl), ...box(tagEl), overflow: tagEl.scrollWidth > tagEl.clientWidth + 0.5 } : null
       };
@@ -63,7 +64,7 @@ function check(m, label, { open, expectedRows }) {
     assert.ok(row.tag.top >= row.amountBox.bottom - 0.5 || row.tag.right <= row.amountBox.left, `${what}: the tag never covers the amount`);
     assert.ok(Math.abs(row.amountBox.top - row.top.top) < 1, `${what}: the amount is on the name's line`);
     // The top row ends with its content: as tall as before 4k (name, gap and tag, or the amount).
-    const contentBottom = Math.max(row.tag.bottom, row.amountBox.bottom, row.nameBox.bottom);
+    const contentBottom = Math.max(row.tag.bottom, row.amountBox.bottom, row.nameBox.bottom, row.dateBottom);
     assert.ok(Math.abs(row.top.bottom - contentBottom) < 1, `${what}: the row is as tall as its content (${row.top.bottom} vs ${contentBottom})`);
     if (open) assert.ok(Math.abs(row.top.width - row.card.width) < 1, `${what}: the open button is the full card width`);
   }

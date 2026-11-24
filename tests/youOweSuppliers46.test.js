@@ -192,3 +192,19 @@ test("46 Pay sheet: a lowercase stored name is shown capitalised; the stored nam
   assert.equal(textOf(all(sheet, (n) => n.type === "h2")[0]), "Pay Kofi Wholesale");
   assert.equal(input[0].name, "kofi wholesale");
 });
+
+test("46 the due date sits under the tag as dd/mm/yyyy (Was due for late ones, none without a date)", async () => {
+  const late = dayOffset(-2);
+  const soon = dayOffset(5);
+  const tree = (await mount([
+    supplier({ name: "Late", nextDueDate: late, dueStatus: "late" }),
+    supplier({ name: "Soon", nextDueDate: soon, dueStatus: "upcoming" }),
+    supplier({ name: "Nodate" })
+  ])).tree;
+  const fmt = (iso) => iso.split("-").reverse().join("/");
+  const dateOf = (name) => all(cardOf(tree, name), (n) => n.props["data-party-date"] !== undefined)[0];
+  assert.equal(textOf(dateOf("Late")), `Was due ${fmt(late)}`);
+  assert.equal(textOf(dateOf("Soon")), `Due ${fmt(soon)}`);
+  assert.equal(dateOf("Nodate"), undefined);
+  assert.equal(all(tree, (n) => n.props["data-supplier-grid"] !== undefined).length, 1);
+});
