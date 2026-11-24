@@ -139,7 +139,7 @@ function OwedCard({ data, hidden, urgent, onNavigate, onWhatsApp, wide }) {
         <span data-owed-see-all="" className={`inline-flex min-h-12 shrink-0 items-center whitespace-nowrap text-[17px] text-emerald-900 ${wide ? "font-bold" : "font-extrabold"}`}>{t("home.seeAll")}</span>
       </button>
       <div className="h-px bg-slate-200" />
-      <p className={`uppercase tracking-[0.06em] text-slate-600 ${wide ? "text-[15px] font-bold" : "text-[13px] font-extrabold"}`}>{t("home.collectFirst")}</p>
+      <p className={`uppercase tracking-[0.06em] text-slate-600 ${wide ? "text-[17px] font-bold" : "text-[13px] font-extrabold"}`}>{t("home.collectFirst")}</p>
       {urgent.map((entry, index) => (
         <Fragment key={entry.debt.debtId}>
           {index > 0 && <div aria-hidden="true" className="h-px bg-slate-200" />}
