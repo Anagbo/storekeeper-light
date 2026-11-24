@@ -82,8 +82,6 @@ for (const [name, back] of [["on-screen Back", (app) => app.tap("Back")], ["phon
     const app = await open();
     await to53(app);
     await back(app);
-    // rules_global.leave_question (24 Nov 2026): Back from a changed 53 asks first; Leave is the ordinary Back.
-    await app.tap("Leave");
     assert.equal(app.route, "NewPerson");
     assert.equal(byPlaceholder(app, "e.g. Kofi Mensah").props.value, "Kofi");
     await submit34(app);

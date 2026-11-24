@@ -124,7 +124,7 @@ test("wide Items: device Back with the question open means Stay (the dialog and 
   assert.equal(leaveQuestion(app), null, "Back with the question open is Stay");
 });
 
-// Phone screens registered with useLeaveGuard (stage 4): 40, 41, 45, 53.
+// Phone screens registered with useLeaveGuard (stage 4): 40 and 41. 45 and 53 keep their draft in the route and never ask.
 async function openPhone() {
   const app = await openPosApp();
   after(() => app.restoreConsole());
@@ -152,7 +152,7 @@ async function to40(app) {
   assert.equal(app.route, "EditItem");
 }
 
-// 40, 41, 45 and 53 show the Menu button (no header Home tile, no tab bar): Menu Home is their Home,
+// 40 and 41 show the Menu button (no header Home tile, no tab bar): Menu Home is their Home,
 // and it goes through the same leaveDraft as the header Home and the tabs.
 test("40 Edit item (phone): changed values ask on Back, device Back, Menu Home and another Menu row; Stay keeps them", async () => {
   const app = await openPhone();
@@ -215,27 +215,22 @@ async function to45(app) {
   assert.equal(app.route, "StockOnCredit");
 }
 
-test("45 Stock on credit: changed values ask on Back and Menu Home, not on a Menu trip; unchanged just goes back", async () => {
+test("45 Stock on credit: never asks (the draft is kept in the route); Back and a Menu trip keep it", async () => {
   const app = await openPhone();
   await to45(app);
-  await app.tap("Back");
-  assert.equal(leaveQuestion(app), null, "nothing changed");
-  assert.equal(app.route, "SpentMoney");
-  await app.tap("No");
   await change(app, labelled(app, "Supplier name"), "Kofi wholesale");
   await app.tap("Back");
-  assertAsks(app, "StockOnCredit", "stock purchase");
-  await app.tap("Stay");
-  // A trip away keeps the draft in the route params: no question, and Back brings it back.
+  assert.equal(leaveQuestion(app), null, "Back does not ask");
+  assert.equal(app.route, "SpentMoney");
+  await app.tap("No");
+  assert.equal(labelled(app, "Supplier name").props.value, "Kofi wholesale", "the draft comes back");
   await app.menu("Settings");
   assert.equal(leaveQuestion(app), null);
-  assert.equal(app.route, "SettingsProfitTools");
   await app.tap("Back");
   assert.equal(app.route, "StockOnCredit");
   assert.equal(labelled(app, "Supplier name").props.value, "Kofi wholesale");
   await app.menu("Home");
-  assertAsks(app, "StockOnCredit", "stock purchase");
-  await app.tap("Leave");
+  assert.equal(leaveQuestion(app), null, "Menu Home does not ask");
   assert.equal(app.route, "Home");
 });
 
@@ -249,19 +244,17 @@ async function to53(app) {
   assert.equal(app.route, "ManualDebtAmount");
 }
 
-test("53 manual debt: a typed amount asks on device Back; unchanged just goes back", async () => {
+test("53 manual debt: never asks (the draft is kept in the route); device Back keeps the typed amount", async () => {
   const app = await openPhone();
   await to53(app);
+  await app.keys(["2", "5"]);
   await app.phoneBack();
-  assert.equal(leaveQuestion(app), null, "nothing changed");
+  assert.equal(leaveQuestion(app), null, "device Back does not ask");
   assert.equal(app.route, "NewPerson");
   nodes(app.view.tree).find((node) => node.type === "form").props.onSubmit({ preventDefault() {} });
   await app.settle();
-  await app.keys(["2", "5"]);
-  await app.phoneBack();
-  assertAsks(app, "ManualDebtAmount", "debt");
-  await app.tap("Leave");
-  assert.equal(app.route, "NewPerson");
+  assert.equal(app.route, "ManualDebtAmount");
+  assert.match(JSON.stringify(app.view.tree), /25/, "the typed amount comes back");
 });
 
 test("credit flow: Back inside 15 > 17 > 34 keeps the draft and never asks", async () => {

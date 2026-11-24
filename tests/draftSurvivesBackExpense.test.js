@@ -85,8 +85,6 @@ for (const [name, back] of [["on-screen Back", (app) => app.tap("Back")], ["phon
     await change(app, labelled(app, "Phone (optional)"), "0244556677");
     await change(app, labelled(app, "Pay by (optional)"), "2099-01-31");
     await back(app);
-    // rules_global.leave_question (24 Nov 2026): Back from a changed 45 asks first; Leave is the ordinary Back.
-    await app.tap("Leave");
     assert44(app);
     await app.tap("No");
     assert.equal(app.route, "StockOnCredit");
@@ -108,7 +106,6 @@ test("45: a chosen existing supplier survives Back to 44 and No again", async ()
   await app.settle();
   assert.equal(ama().props.checked, true);
   await app.tap("Back");
-  await app.tap("Leave"); // leave_question: a chosen supplier is a change
   await app.tap("No");
   assert.equal(ama().props.checked, true);
 });
