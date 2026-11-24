@@ -239,6 +239,11 @@ export default function PosApp() {
       leaveDraft(() => { commit(createRouteState(leaveTo)); setNotice(""); });
       return;
     }
+    // A page with unsaved changes of its own (wide Items D8) asks first; Back happens only after Leave.
+    if (leaveGuardRef.current) {
+      leaveGuardRef.current(() => { commit(backState); setNotice(""); });
+      return;
+    }
     commit(backState);
     setNotice("");
   }

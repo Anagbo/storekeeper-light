@@ -10,7 +10,7 @@ import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { posText as t } from "./i18n.js";
 import { shortSaveName } from "./saveLabel.js";
 import { AddButton, LeaveButton, PosBackButton, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
-import { useBackBlock } from "./browserBack.js";
+import { useBackBlock, useBackHandler } from "./browserBack.js";
 import { useFormErrors } from "./formErrors.js";
 import AmountTextInput from "./AmountTextInput.jsx";
 import WideDialog from "./WideDialog.jsx";
@@ -612,6 +612,8 @@ function ItemsWide({ mode, params, onUpdateParams, onLeaveGuard }) {
     onLeaveGuard?.((proceed) => askRef.current(proceed));
     return () => onLeaveGuard?.(null);
   }, []);
+  // A device or browser Back while the question is open is Stay: the page underneath does not change.
+  useBackHandler(leaveAsk !== null, () => setLeaveAsk(null));
   const blocked = Boolean(deleting || leaveAsk || starterOpen);
   const result = useActiveProducts();
   const filteredItems = useMemo(() => {
