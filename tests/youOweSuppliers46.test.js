@@ -24,7 +24,7 @@ const cls = (node) => String(node.props.className ?? "");
 const cardOf = (tree, name) => all(tree, (n) => n.type === "section" && n.props["data-supplier"] === name)[0];
 const tagOf = (tree, name) => all(cardOf(tree, name), (n) => /rounded-lg border-2/.test(cls(n)))[0];
 
-test("46 summary: count is plural and singular, total is bold, amber card", async () => {
+test("46 summary: count is plural and singular, total is bold, neutral soft tile (never amber)", async () => {
   const two = (await mount([supplier({ name: "Kofi Wholesale", balancePesewas: 20000 }), supplier({ name: "Madam Ama", balancePesewas: 8000 })])).tree;
   const text = textOf(two);
   assert.ok(text.includes("Total you owe"));
@@ -32,7 +32,8 @@ test("46 summary: count is plural and singular, total is bold, amber card", asyn
   assert.ok(text.includes("GH₵280.00"));
   const card = all(two, (n) => n.type === "section" && n.props["data-summary"] === "suppliers")[0];
   assert.ok(card, "summary card");
-  assert.match(cls(card), /bg-amber-/);
+  assert.match(cls(card), /bg-\[#F1F5F9\]/);
+  assert.ok(!/amber/.test(cls(card)), "never amber");
   assert.ok(all(card, (n) => /font-extrabold|font-bold/.test(cls(n)) && textOf(n) === "GH₵280.00").length > 0);
   const one = (await mount([supplier({ name: "Kofi Wholesale" })])).tree;
   assert.ok(textOf(one).includes("1 supplier"));

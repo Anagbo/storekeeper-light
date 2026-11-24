@@ -13,6 +13,8 @@ import { AddButton, PosBackButton, PosCard, PosPage, PosPrimaryButton, PosSecond
 import { useBackBlock, useBackHandler } from "./browserBack.js";
 import { useFormErrors } from "./formErrors.js";
 import WideDialog, { useWideDialogs } from "./WideDialog.jsx";
+import { useLayoutContext } from "./layout.js";
+import { SOFT_TILE } from "./softTile.js";
 
 const CATEGORY_LABELS = Object.freeze({
   stock: "expense.category.stock",
@@ -302,6 +304,7 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
 export function YouOweSuppliers({ onBack, onPay }) {
   const [selectedSupplier, setSelectedSupplier] = useState(null);
   const wideDialog = useWideDialogs();
+  const layout = useLayoutContext();
   const [amount, setAmount] = useState("");
   // Wiring 44 rule: Pay on 46 records Cash or MoMo (default Cash) for money owed from a No on 44.
   const [paidWith, setPaidWith] = useState("cash");
@@ -343,12 +346,13 @@ export function YouOweSuppliers({ onBack, onPay }) {
         <PosCard><p className="font-semibold">{t("supplier.empty")}</p></PosCard>
       ) : (
         <>
-          <section data-summary="suppliers" className="rounded-2xl border-2 border-amber-800 bg-amber-100 p-4 text-amber-950">
-            <div className="flex items-baseline justify-between gap-2">
-              <strong className="text-lg">{t("supplier.totalOwed")}</strong>
-              <span className="font-bold">{suppliers.length === 1 ? t("supplier.countOne") : t("supplier.countMany", { count: suppliers.length })}</span>
+          {/* D14 / 46: never amber. Wide: on the grey page with no card (as the Total owed on 32); phone: the soft grey tile. */}
+          <section data-summary="suppliers" className={layout.wide ? "flex items-center justify-between gap-4 px-1" : `${SOFT_TILE} p-4 text-[#0F172A]`}>
+            <div className={layout.wide ? "min-w-0" : "flex flex-1 items-baseline justify-between gap-2"}>
+              <strong className={`${layout.wide ? "block text-[17px]" : "text-lg"} text-[#334155]`}>{t("supplier.totalOwed")}</strong>
+              <span className={`${layout.wide ? "block text-[15px]" : ""} font-bold text-[#334155]`}>{suppliers.length === 1 ? t("supplier.countOne") : t("supplier.countMany", { count: suppliers.length })}</span>
             </div>
-            <p className="mt-1 whitespace-nowrap text-[28px] font-extrabold leading-tight">{formatGhs(suppliers.reduce((sum, supplier) => sum + supplier.balancePesewas, 0))}</p>
+            <p data-supplier-total="" className={`${layout.wide ? "text-[40px]" : "mt-1 text-[28px]"} whitespace-nowrap font-bold leading-tight text-[#0F172A]`}>{formatGhs(suppliers.reduce((sum, supplier) => sum + supplier.balancePesewas, 0))}</p>
           </section>
           {suppliers.map((supplier) => {
             const name = displayName(supplier.name);
