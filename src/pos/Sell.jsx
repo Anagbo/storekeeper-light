@@ -173,17 +173,17 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
               <output aria-live="polite" className="block min-w-0 whitespace-nowrap text-[#0F172A]" style={{ fontSize: "clamp(28px, 11.5cqi, 56px)", fontWeight: 700, lineHeight: 1.15 }}>{formatGhs(amountPesewas ?? 0)}</output>
             </section>
             <AmountKeypad label={t("sell.enterAmount")} disabled={hasSaleItems} onKey={appendDigit} fill maxKeyHeight={layout.mode === "rail" ? 80 : undefined} />
-            {!hasSaleItems && <p className="mt-auto text-center text-[17px] text-slate-600">{t("sell.keyboardHint")}</p>}
+            {!hasSaleItems && <p className="mt-auto text-center text-[15px] font-normal text-[#475569]">{t("sell.keyboardHint")}</p>}
           </div>
           <div className="flex min-w-0 flex-col gap-4">
-            <section className="flex items-center justify-between gap-3 rounded-[20px] border-2 border-slate-300 bg-white px-4 py-3.5">
-              <div className="min-w-0">
-                <p className="text-[17px] font-bold text-slate-600">{t("sell.items")}</p>
-                <p className="text-[17px] text-slate-600">{hasSaleItems ? t("sell.itemsAdded", { count: saleItems.length }) : t("sell.itemsNone")}</p>
+            <section className="flex flex-col gap-1 rounded-[20px] border-2 border-slate-300 bg-white px-4 py-3.5">
+              <div className="flex items-center justify-between gap-3">
+                <p className="min-w-0 text-[17px] font-bold text-slate-600">{t("sell.items")}</p>
+                <AddButton className="w-auto! shrink-0 whitespace-nowrap hover:bg-green-50" onClick={() => onNavigate("SellWithItems", { amountPesewas, saleItems })}>
+                  {t("sell.addItems")}
+                </AddButton>
               </div>
-              <AddButton className="w-auto! shrink-0 whitespace-nowrap hover:bg-green-50" onClick={() => onNavigate("SellWithItems", { amountPesewas, saleItems })}>
-                {t("sell.addItems")}
-              </AddButton>
+              <p className="text-[15px] font-normal text-[#475569]">{hasSaleItems ? t("sell.itemsAdded", { count: saleItems.length }) : t("sell.itemsNone")}</p>
             </section>
             <p id="sell-how-paid" className="text-[17px] font-bold text-slate-600">{t("review.howPaid")}</p>
             <div role="group" aria-labelledby="sell-how-paid" className="grid grid-cols-2 gap-3">
