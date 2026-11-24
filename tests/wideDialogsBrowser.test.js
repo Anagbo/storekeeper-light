@@ -51,7 +51,13 @@ test("wide dialogs in Edge (768, 1280): 46 Pay sheet and 25 Collect", { skip: br
     };
     const side = (route) => waitFor(() => app.evaluate(`(() => { const b = document.querySelector('[data-side-row="${route}"]'); if (!b) return false; b.click(); return true; })()`), `sidebar ${route}`);
     const checkDialog = async (at, name) => {
-      const m = await waitFor(() => app.evaluate(MEASURE), `${at} ${name}: the dialog`);
+      let m = await waitFor(() => app.evaluate(MEASURE), `${at} ${name}: the dialog`);
+      // Debt details load after the dialog opens: poll up to 10 seconds, then measure again.
+      for (const start = Date.now(); /Loading debt details/.test(m.text) && Date.now() - start < 10_000;) {
+        await sleep(100);
+        m = (await app.evaluate(MEASURE)) || m;
+      }
+      assert.doesNotMatch(m.text, /Loading debt details/, `${at} ${name}: debt details loaded`);
       assert.equal(m.width, 520, `${at} ${name}: 520px wide`);
       assert.ok(m.centre < 2 && m.middle < 2, `${at} ${name}: centred (${m.centre}, ${m.middle})`);
       assert.ok(m.scrimCovers, `${at} ${name}: the scrim covers the window`);
