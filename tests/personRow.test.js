@@ -19,6 +19,8 @@ const all = (tree, match) => [...walk(tree)].filter((node) => node.props && matc
 // Host elements only (the AddButton component node carries the same label as the <button> it draws).
 const byLabel = (tree, label) => all(tree, (n) => typeof n.type === "string" && n.props["aria-label"] === label)[0];
 const cls = (node) => String(node?.props?.className ?? "");
+const classList = (str) => String(str).split(" ").filter(Boolean).sort();
+const sameClasses = (actual, expected, msg) => assert.deepEqual(classList(actual), classList(expected), msg);
 const inside = (outer, node) => [...walk(outer)].includes(node);
 const realDay = (offset) => {
   const date = new Date();
@@ -90,12 +92,12 @@ test("22: Home's buttons are unchanged (Collect, icon-only WhatsApp and Call, or
   const controls = all(row, (n) => (n.type === "button" || n.type === "a") && n.props["data-person-open"] === undefined);
   assert.deepEqual(controls.map((n) => n.props["aria-label"]), ["Collect payment from Sera", "WhatsApp Sera", "Call Sera"]);
   assert.equal(textOf(controls[0]), "Collect");
-  assert.equal(cls(controls[0]), COLLECT);
-  assert.equal(cls(controls[1]), `${SQUARE} border-emerald-900 text-emerald-900`);
+  sameClasses(cls(controls[0]), COLLECT);
+  sameClasses(cls(controls[1]), `${SQUARE} border-emerald-900 text-emerald-900`);
   assert.equal(textOf(controls[1]), "", "WhatsApp is icon only");
   assert.equal(controls[2].type, "a");
   assert.equal(controls[2].props.href, "tel:0244123456");
-  assert.equal(cls(controls[2]), `${SQUARE} border-[#0F172A] text-[#0F172A]`);
+  sameClasses(cls(controls[2]), `${SQUARE} border-[#0F172A] text-[#0F172A]`);
   assert.equal(textOf(controls[2]), "", "Call is icon only");
   controls[0].props.onClick();
   assert.equal(withPhone.navigated.at(-1)[0], "CollectPayment");
@@ -105,7 +107,7 @@ test("22: Home's buttons are unchanged (Collect, icon-only WhatsApp and Call, or
   const noPhoneControls = all(noPhoneRow, (n) => n.type === "button" && n.props["data-person-open"] === undefined);
   assert.deepEqual(noPhoneControls.map((n) => n.props["aria-label"]), ["Collect payment from Sera", "Add phone or WhatsApp contact for Sera"]);
   assert.equal(noPhoneControls[1].props["data-look"], "add");
-  assert.match(cls(noPhoneControls[1]), /w-auto! shrink-0 px-3!/);
+  for (const c of ["w-auto!", "shrink-0", "px-3!"]) assert.ok(classList(cls(noPhoneControls[1])).includes(c), `has ${c}`);
   assert.equal(textOf(noPhoneControls[1]).replace(/\s+/g, " ").trim(), "+ Add contact");
   noPhoneControls[1].props.onClick();
   assert.deepEqual(noPhone.navigated.at(-1), ["DebtorDetail", { debtId: "d1", customerName: "sera", editContact: true }]);
