@@ -108,3 +108,12 @@ export function orderSuppliersByRecentUse(suppliers, transactions = []) {
   return [...suppliers].sort((left, right) => usedAt(right) - usedAt(left)
     || String(left.nameLower ?? left.name ?? "").localeCompare(String(right.nameLower ?? right.name ?? "")));
 }
+
+// 46 order (phone and wide, 24 Nov 2026): Late first (most days late first), then soonest due, then no
+// due date; the same date keeps the incoming (name) order. A new array; the records are not changed.
+export function orderSuppliersByUrgency(suppliers, today = localDateString()) {
+  const date = (supplier) => (/^\d{4}-\d{2}-\d{2}$/.test(supplier.nextDueDate ?? "") ? supplier.nextDueDate : "");
+  const rank = (supplier) => (!date(supplier) ? 2 : date(supplier) < today ? 0 : 1);
+  return [...suppliers].sort((left, right) => rank(left) - rank(right)
+    || date(left).localeCompare(date(right)));
+}

@@ -5,7 +5,7 @@ import { db } from "../db/db.js";
 import { displayName } from "../lib/displayName.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { localDateString } from "../utils/installments.js";
-import { getSupplierBalances, orderSuppliersByRecentUse, SUPPLIER_CATEGORIES } from "../utils/suppliers.js";
+import { getSupplierBalances, orderSuppliersByRecentUse, orderSuppliersByUrgency, SUPPLIER_CATEGORIES } from "../utils/suppliers.js";
 import { posText as t } from "./i18n.js";
 import AmountTextInput from "./AmountTextInput.jsx";
 import { PartyCard } from "./PartyCard.jsx";
@@ -354,7 +354,7 @@ export function YouOweSuppliers({ onBack, onPay }) {
             </div>
             <p data-supplier-total="" className={`${layout.wide ? "text-[40px]" : "mt-1 text-[28px]"} whitespace-nowrap font-bold leading-tight text-[#0F172A]`}>{formatGhs(suppliers.reduce((sum, supplier) => sum + supplier.balancePesewas, 0))}</p>
           </section>
-          {suppliers.map((supplier) => {
+          {orderSuppliersByUrgency(suppliers, today).map((supplier) => {
             const name = displayName(supplier.name);
             return (
               <PartyCard

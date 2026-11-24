@@ -67,13 +67,17 @@ test("46 due tag wording and colour for every case", async () => {
   assert.equal(tagOf(tree, "Nodate"), undefined, "no tag without a due date");
 });
 
-test("46 cards are listed soonest due first", async () => {
+test("46 cards: Late first (most days late first), then soonest due, then no due date", async () => {
   const input = [
-    supplier({ name: "Ama", nextDueDate: dayOffset(-1), dueStatus: "late" }),
-    supplier({ name: "Kofi", nextDueDate: dayOffset(3), dueStatus: "upcoming" })
+    supplier({ name: "Nodate" }),
+    supplier({ name: "Soon", nextDueDate: dayOffset(3), dueStatus: "upcoming" }),
+    supplier({ name: "LateOne", nextDueDate: dayOffset(-1), dueStatus: "late" }),
+    supplier({ name: "Far", nextDueDate: dayOffset(10), dueStatus: "upcoming" }),
+    supplier({ name: "LateFive", nextDueDate: dayOffset(-5), dueStatus: "late" })
   ];
   const text = textOf((await mount(input)).tree);
-  assert.ok(text.indexOf("Ama") < text.indexOf("Kofi"));
+  const at = (name) => text.indexOf(name);
+  assert.ok(at("LateFive") < at("LateOne") && at("LateOne") < at("Soon") && at("Soon") < at("Far") && at("Far") < at("Nodate"));
 });
 
 test("46 Call only with a valid number; never a disabled Call; Pay always; accessible names", async () => {
