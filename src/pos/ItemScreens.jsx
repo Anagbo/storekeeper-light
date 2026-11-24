@@ -61,7 +61,7 @@ function MyItems({ onBack, onNavigate }) {
   const empty = Boolean(result) && !result.error && result.products.length === 0;
   const starterButton = (
     // rules_global.button_system.open_text_sweep: "+ Add from starter list" is the add look.
-    <AddButton onClick={() => askFirst(() => onNavigate("YourStarterList", { returnRoute: "MyItems" }))}>{t("items.starterList")}</AddButton>
+    <AddButton onClick={() => onNavigate("YourStarterList", { returnRoute: "MyItems" })}>{t("items.starterList")}</AddButton>
   );
 
   return (
@@ -222,7 +222,7 @@ function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCom
   );
 }
 
-function DeleteItem({ itemId, itemName, onBack, onReturnToItems, onDelete, dialog = false }) {
+function DeleteItem({ itemId, itemName, onBack, onReturnToItems, onDelete, dialog = false, returnFocus }) {
   const [busy, setBusy] = useState(false);
   useBackBlock(busy);
   const [error, setError] = useState("");
@@ -259,7 +259,7 @@ function DeleteItem({ itemId, itemName, onBack, onReturnToItems, onDelete, dialo
   // a scrim click are Keep (Back), not while the item is being removed.
   if (dialog) {
     return (
-      <WideDialog role="alertdialog" labelledBy="delete-item-title" onClose={() => { if (!busy) onBack(); }}>
+      <WideDialog role="alertdialog" labelledBy="delete-item-title" returnFocus={returnFocus} onClose={() => { if (!busy) onBack(); }}>
         <div className="flex flex-col gap-3 text-center">{body}</div>
       </WideDialog>
     );
@@ -449,7 +449,8 @@ const chipClass = (pressed) => `min-h-11 rounded-full border-2 px-4 text-base fo
 // unchanged): "Add from starter list", nothing ticked, category chips (All, the setup categories or the
 // popular ones, More categories), search across every category, items already in My items shown as
 // "Added" and not tickable (name, case ignored), "Add N items" disabled at 0, Back only, back to 39.
-function StarterBrowse({ onBack, onAdd }) {
+// dialog (wide D8): the same content as a WideDialog over the Items page; Back, Escape and the scrim close it.
+function StarterBrowse({ onBack, onAdd, dialog = false }) {
   const result = useActiveProducts();
   const setup = useSetupCategories();
   const chips = useMemo(() => starterChipCategories(setup?.setupCategories), [setup]);
@@ -507,10 +508,9 @@ function StarterBrowse({ onBack, onAdd }) {
     <button key={id} type="button" aria-pressed={chip === id} onClick={() => pickChip(id)} className={chipClass(chip === id)}>{name}</button>
   );
 
-  return (
-    <PosPage className="flex flex-col gap-3">
-      <ScreenHeader title={t("items.starterBrowseTitle")} onBack={onBack} />
-      <p className="text-base text-slate-800">{t("items.starterBrowseHint")}</p>
+  const body = (
+    <>
+      <p className={dialog ? "text-[17px] text-slate-800" : "text-base text-slate-800"}>{t("items.starterBrowseHint")}</p>
       {result === undefined || setup === undefined ? <p role="status">{t("items.loading")}</p> : (
         <div className="flex flex-col gap-2">
           <div role="group" aria-label={t("items.starterCategories")} className="flex flex-wrap gap-2">
@@ -556,6 +556,25 @@ function StarterBrowse({ onBack, onAdd }) {
       <PosPrimaryButton type="button" disabled={saving || result === undefined || selectedCount === 0} onClick={() => void addSelected()} className="mt-auto">
         {saving ? t("items.saving") : t(selectedCount === 1 ? "items.addOne" : "items.addCount", { count: selectedCount })}
       </PosPrimaryButton>
+    </>
+  );
+  if (dialog) {
+    return (
+      <WideDialog labelledBy="starter-browse-title" onClose={() => { if (!saving) onBack(); }}>
+        <div className="flex min-w-0 flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <PosBackButton onClick={onBack} disabled={saving} />
+            <h2 id="starter-browse-title" className="line-clamp-2 min-w-0 break-words text-2xl font-extrabold leading-tight">{t("items.starterBrowseTitle")}</h2>
+          </div>
+          {body}
+        </div>
+      </WideDialog>
+    );
+  }
+  return (
+    <PosPage className="flex flex-col gap-3">
+      <ScreenHeader title={t("items.starterBrowseTitle")} onBack={onBack} />
+      {body}
     </PosPage>
   );
 }
@@ -565,12 +584,14 @@ function StarterBrowse({ onBack, onAdd }) {
 // or New item, the phone's own form (ItemEditor pane). The selection is this route's own params
 // (itemsSelected: an item id or "new"), changed by replacing the current entry like Owed's, so it
 // survives a trip away and Back. Nothing is selected on first opening.
-// Unsaved changes: another row, New item, Starter list or another page (the sidebar, onLeaveGuard) with
+// Add from starter list (36) and Delete item (42) are WideDialogs over this page.
+// Unsaved changes: another row, New item or another page (the sidebar, onLeaveGuard) with
 // values that differ from the saved ones asks the leave question first; with nothing changed it just goes.
-function ItemsWide({ mode, params, onNavigate, onUpdateParams, onLeaveGuard }) {
+function ItemsWide({ mode, params, onUpdateParams, onLeaveGuard }) {
   const [query, setQuery] = useState("");
   const [deleting, setDeleting] = useState(null);
   const [leaveAsk, setLeaveAsk] = useState(null);
+  const [starterOpen, setStarterOpen] = useState(false);
   // The item whose Save just finished: its pane shows the quiet Saved line.
   const [justSaved, setJustSaved] = useState(null);
   const dirtyRef = useRef(false);
@@ -584,7 +605,7 @@ function ItemsWide({ mode, params, onNavigate, onUpdateParams, onLeaveGuard }) {
     onLeaveGuard?.((proceed) => askRef.current(proceed));
     return () => onLeaveGuard?.(null);
   }, []);
-  const blocked = Boolean(deleting || leaveAsk);
+  const blocked = Boolean(deleting || leaveAsk || starterOpen);
   const result = useActiveProducts();
   const filteredItems = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -617,7 +638,7 @@ function ItemsWide({ mode, params, onNavigate, onUpdateParams, onLeaveGuard }) {
           )}
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          <PosSecondaryButton type="button" aria-label={t("items.starterList")} onClick={() => onNavigate("YourStarterList", { returnRoute: "MyItems" })} className="whitespace-nowrap">
+          <PosSecondaryButton type="button" aria-label={t("items.starterList")} onClick={() => setStarterOpen(true)} className="whitespace-nowrap">
             {rail ? t("items.starterShort") : t("items.starterList")}
           </PosSecondaryButton>
           <AddButton pressed={selected === "new"} onClick={() => choose("new")} className="w-auto! whitespace-nowrap">{t("items.new")}</AddButton>
@@ -680,8 +701,11 @@ function ItemsWide({ mode, params, onNavigate, onUpdateParams, onLeaveGuard }) {
           onBack={() => setDeleting(null)}
           onReturnToItems={() => { setDeleting(null); select(undefined); }}
           onDelete={removeProduct}
+          returnFocus={`[data-item-row="${deleting.id}"]`}
         />
       )}
+      {/* Add from starter list over the same page: the pane and any unsaved edit in it stay as they are. */}
+      {starterOpen && <StarterBrowse dialog onBack={() => setStarterOpen(false)} onAdd={addStarterProducts} />}
       {leaveAsk && (
         <LeaveDraftDialog
           question={t("items.leaveQuestion")}
@@ -694,7 +718,7 @@ function ItemsWide({ mode, params, onNavigate, onUpdateParams, onLeaveGuard }) {
 }
 
 export default function ItemScreens({ route, params = {}, onBack, onNavigate, onReturnToItems, onCompleteSetup, onUpdateParams, onLeaveGuard, wide = false, layoutMode = "phone" }) {
-  if (wide && route === "MyItems") return <ItemsWide mode={layoutMode} params={params} onNavigate={onNavigate} onUpdateParams={onUpdateParams} onLeaveGuard={onLeaveGuard} />;
+  if (wide && route === "MyItems") return <ItemsWide mode={layoutMode} params={params} onUpdateParams={onUpdateParams} onLeaveGuard={onLeaveGuard} />;
   if (route === "MyItems") return <MyItems onBack={onBack} onNavigate={onNavigate} />;
   if (route === "NewItem") return <ItemEditor onBack={onBack} onSave={createProduct} onNavigate={onNavigate} setupFlow={params.setupFlow === true} onCompleteSetup={onCompleteSetup} />;
   // Wide: 40 and 42 become 39 with the item selected (PosApp); nothing is drawn for the moment between.

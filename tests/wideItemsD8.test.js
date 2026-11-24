@@ -70,6 +70,9 @@ test("D8 phone is unchanged: 39 is its own page with the rows and no pane", asyn
   await app.menu("Items");
   assert.equal(app.route, "MyItems");
   assert.equal(find(app, "data-items-detail"), null);
+  await app.tap(/Add from starter list$/);
+  assert.equal(app.route, "YourStarterList", "the starter list is its own page on the phone");
+  await app.tap("Back");
   await app.tap(/^Sugar/);
   assert.equal(app.route, "EditItem");
 });
@@ -171,4 +174,34 @@ test("D8 Save: the saved row stays selected with the new price, and the pane sho
   assert.equal(rowFor(app, "Rice").props["aria-current"], "true");
   await typeName(app, "Rice 5kg");
   assert.equal(savedLine(app), "", "typing again hides Saved");
+});
+
+test("D8 Add from starter list: a WideDialog over the same page; Back closes it and an unsaved edit in the pane stays", async () => {
+  const app = await openItems(1280);
+  await app.tap(/^Bread/);
+  await typeName(app, "Brown bread");
+  await app.tap(/Add from starter list$/);
+  assert.equal(app.route, "MyItems", "no new page");
+  const dialog = nodes(app.view.tree).find((node) => node.props["data-wide-dialog"] !== undefined && node.props["aria-labelledby"] === "starter-browse-title");
+  assert.ok(dialog, "the starter list is a WideDialog");
+  assert.equal(leaveQuestion(app), null, "no leave question: the page stays");
+  assert.ok(nodes(app.view.tree).find((node) => node.props.inert && node.props["data-items-columns"] !== undefined), "the page behind is inert");
+  await app.tap("Back");
+  assert.equal(nodes(app.view.tree).find((node) => node.props["aria-labelledby"] === "starter-browse-title"), undefined, "closed");
+  assert.equal(nameField(app).props.value, "Brown bread", "the edit is still there");
+});
+
+test("D8 Delete item: 42 returns focus to the item's row (the page heading when the row is gone)", async () => {
+  const app = await openItems(768);
+  await app.tap(/^Sugar/);
+  const sugarId = app.params.itemsSelected;
+  await app.tap("Delete item");
+  const shell = nodes(app.view.tree).find((node) => node.type?.name === "WideDialog");
+  assert.equal(shell.props.returnFocus, `[data-item-row="${sugarId}"]`, "focus goes back to the Sugar row");
+  const { returnFocusTarget } = await import("../src/pos/dialogFocus.js");
+  const heading = { tagName: "H1", isConnected: true, focus() {}, closest: () => null };
+  const row = { tagName: "BUTTON", isConnected: true, focus() {}, closest: () => null };
+  const doc = (rows) => ({ querySelectorAll: (selector) => (selector === shell.props.returnFocus ? rows : selector.includes("h1") ? [heading] : []) });
+  assert.equal(returnFocusTarget({ opener: null, selector: shell.props.returnFocus, doc: doc([row]) }), row, "Keep: the row");
+  assert.equal(returnFocusTarget({ opener: null, selector: shell.props.returnFocus, doc: doc([]) }), heading, "deleted: the heading");
 });

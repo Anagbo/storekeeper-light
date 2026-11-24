@@ -8,6 +8,8 @@ import { FOCUSABLE, focusElement, openerSelector, returnFocusTarget, trapTabTarg
 // on the scrim call onClose (the sheet's Cancel or Close; Stay on the leave question). Focus starts
 // inside (the sheet's own autoFocus if it has one, else the first control), Tab stays inside, and on
 // close it returns to the button that opened it, or to the page's main heading when that is gone.
+// returnFocus (a selector) names where focus goes instead of the opener (wide Items: 42 returns to the
+// item's row), still the main heading when nothing matches.
 
 // True when the sheets are drawn as WideDialogs (layout mode from layout.js, never a width read).
 export function useWideDialogs() {
@@ -33,13 +35,15 @@ function currentOpener() {
   return Date.now() - lastPress.at < 1000 ? lastPress.element : active;
 }
 
-export default function WideDialog({ label, labelledBy, describedBy, role = "dialog", onClose, children }) {
+export default function WideDialog({ label, labelledBy, describedBy, role = "dialog", returnFocus, onClose, children }) {
   const panelRef = useRef(null);
   const selfRef = useRef(null);
   selfRef.current ??= {};
   // Read while rendering, before the page behind is replaced (the focused tile is gone after the commit).
   const openerRef = useRef(undefined);
-  if (openerRef.current === undefined) {
+  if (openerRef.current === undefined && returnFocus) {
+    openerRef.current = { element: null, selector: returnFocus };
+  } else if (openerRef.current === undefined) {
     const opener = typeof document === "undefined" ? null : currentOpener();
     openerRef.current = { element: opener, selector: openerSelector(opener) };
   }
