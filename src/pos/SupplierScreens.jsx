@@ -9,7 +9,7 @@ import { localDateString } from "../utils/installments.js";
 import { getSupplierBalances, orderSuppliersByRecentUse, orderSuppliersByUrgency, SUPPLIER_CATEGORIES } from "../utils/suppliers.js";
 import { posText as t } from "./i18n.js";
 import AmountTextInput from "./AmountTextInput.jsx";
-import { PartyCard } from "./PartyCard.jsx";
+import { PartyCard, dueTag } from "./PartyCard.jsx";
 import { AddButton, PosBackButton, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { useBackBlock, useBackHandler } from "./browserBack.js";
 import { useFormErrors } from "./formErrors.js";
@@ -358,6 +358,8 @@ export function YouOweSuppliers({ onBack, onPay }) {
           <div data-supplier-grid="" className={`grid min-w-0 gap-3 ${layout.mode === "sidebar" ? "grid-cols-2" : "grid-cols-1"}`}>
           {orderSuppliersByUrgency(suppliers, today).map((supplier) => {
             const name = displayName(supplier.name);
+            // 46: Pay is solid green only for Late and Due in 3 days or less; outlined otherwise.
+            const urgent = ((dueTag(supplier.nextDueDate, { today, wording: "supplier" })?.days ?? Infinity) <= 3);
             const late = supplier.nextDueDate && supplier.nextDueDate < today;
             const dateText = formatDate(supplier.nextDueDate) ? t(late ? "supplier.wasDue" : "supplier.dueDate", { date: formatDate(supplier.nextDueDate) }) : "";
             return (
@@ -371,8 +373,9 @@ export function YouOweSuppliers({ onBack, onPay }) {
                 today={today}
                 dateText={dateText}
                 cardWide={layout.wide}
+                reserveCall
                 wording="supplier"
-                action={{ label: t("supplier.pay"), ariaLabel: t("supplier.payAria", { name }), icon: Wallet, onClick: () => { setSelectedSupplier(supplier); setAmount((supplier.balancePesewas / 100).toFixed(2)); setPaidWith("cash"); setError(""); } }}
+                action={{ label: t("supplier.pay"), ariaLabel: t("supplier.payAria", { name }), icon: Wallet, outlined: !urgent, onClick: () => { setSelectedSupplier(supplier); setAmount((supplier.balancePesewas / 100).toFixed(2)); setPaidWith("cash"); setError(""); } }}
                 phone={supplier.phone}
                 callLabel={t("supplier.call", { name })}
               />

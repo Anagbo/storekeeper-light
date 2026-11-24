@@ -67,6 +67,8 @@ const SQUARE = "grid h-[52px] w-[52px] shrink-0 place-items-center rounded-[14px
 // `whatsapp.onClick` is the shared reminder check on 22 (rules_global.reminders).
 // `dateText` (46): the due date under the tag; `cardWide` (46 on wide): the larger name and amount, 15px tags,
 // the date beside the tag and the buttons at the bottom of an equal-height card.
+// `action.outlined` (46): the outlined green Pay (2px #03543F, white, green text) for a supplier not urgent;
+// `reserveCall` keeps the 52px Call slot (empty) when there is no number, so Pay is the same width on every card.
 // `framed` draws the card border (46); on 22 the card sits inside the Owed card without one.
 export function PartyCard({
   framed = true,
@@ -88,6 +90,7 @@ export function PartyCard({
   maskedAmount = null,
   dateText = "",
   cardWide = false,
+  reserveCall = false,
   ...rest
 }) {
   const shown = displayName(name);
@@ -126,8 +129,8 @@ export function PartyCard({
   return (
     <Frame {...rest} className={`flex min-w-0 ${wide ? "flex-row items-center gap-4" : "flex-col gap-3"} ${framed ? "rounded-2xl border-2 border-slate-600 bg-white p-4" : ""}`}>
       {wide ? <div className="min-w-0 flex-1">{top}</div> : top}
-      <div className={`flex min-w-0 ${wide ? "shrink-0 gap-3" : "gap-2"} ${cardWide ? "mt-auto" : ""}`}>
-        <button type="button" aria-label={action.ariaLabel} onClick={action.onClick} className={`flex ${wide ? "h-12 w-40 shrink-0" : "h-[52px] min-w-0 flex-1"} items-center justify-center gap-2 rounded-[14px] border-2 border-emerald-950 bg-emerald-900 px-4 text-lg ${wide ? "font-bold" : "font-extrabold"} text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800`}>
+      <div className={`flex min-w-0 ${wide ? "shrink-0 gap-3" : "gap-2"} ${cardWide ? "mt-auto justify-end" : ""}`}>
+        <button type="button" aria-label={action.ariaLabel} onClick={action.onClick} className={`flex ${wide ? "h-12 w-40 shrink-0" : cardWide ? "h-[52px] w-48 shrink-0" : "h-[52px] min-w-0 flex-1"} items-center justify-center gap-2 rounded-[14px] border-2 px-4 text-lg ${wide || cardWide ? "font-bold" : "font-extrabold"} ${action.outlined ? "border-[#03543F] bg-white text-[#03543F]" : "border-emerald-950 bg-emerald-900 text-white"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800`}>
           {ActionIcon && <ActionIcon size={22} aria-hidden="true" />}{action.label}
         </button>
         {/* rules_global.whatsapp_links: a button that calls the shared opener (src/lib/openWhatsApp.js). */}
@@ -141,6 +144,7 @@ export function PartyCard({
             <Phone size={22} aria-hidden="true" />
           </a>
         )}
+        {!callHref && reserveCall && <span data-call-slot="" aria-hidden="true" className="h-[52px] w-[52px] shrink-0" />}
         {extra}
       </div>
     </Frame>

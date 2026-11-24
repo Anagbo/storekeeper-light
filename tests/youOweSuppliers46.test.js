@@ -82,7 +82,7 @@ test("46 cards: Late first (most days late first), then soonest due, then no due
 
 test("46 Call only with a valid number; never a disabled Call; Pay always; accessible names", async () => {
   const tree = (await mount([
-    supplier({ name: "Kofi Wholesale", phone: "024 123 4567" }),
+    supplier({ name: "Kofi Wholesale", phone: "024 123 4567", nextDueDate: dayOffset(1), dueStatus: "upcoming" }),
     supplier({ name: "Madam Ama", phone: "" }),
     supplier({ name: "Bad Number", phone: "12" })
   ])).tree;
@@ -207,4 +207,36 @@ test("46 the due date sits under the tag as dd/mm/yyyy (Was due for late ones, n
   assert.equal(textOf(dateOf("Soon")), `Due ${fmt(soon)}`);
   assert.equal(dateOf("Nodate"), undefined);
   assert.equal(all(tree, (n) => n.props["data-supplier-grid"] !== undefined).length, 1);
+});
+
+test("46 Pay is solid green only for Late and Due in 3 days or less, outlined green otherwise", async () => {
+  const tree = (await mount([
+    supplier({ name: "Late", nextDueDate: dayOffset(-1), dueStatus: "late" }),
+    supplier({ name: "Today", nextDueDate: dayOffset(0), dueStatus: "today" }),
+    supplier({ name: "Three", nextDueDate: dayOffset(3), dueStatus: "upcoming" }),
+    supplier({ name: "Four", nextDueDate: dayOffset(4), dueStatus: "upcoming" }),
+    supplier({ name: "Nodate" })
+  ])).tree;
+  const pay = (name) => cls(all(tree, (n) => n.type === "button" && n.props["aria-label"] === `Pay ${name}`)[0]);
+  for (const name of ["Late", "Today", "Three"]) assert.match(pay(name), /bg-emerald-900/, name);
+  for (const name of ["Four", "Nodate"]) {
+    assert.match(pay(name), /bg-white/, name);
+    assert.match(pay(name), /border-\[#03543F\]/, name);
+    assert.match(pay(name), /text-\[#03543F\]/, name);
+    assert.ok(!/bg-emerald-900/.test(pay(name)), name);
+  }
+});
+
+test("46 Pay has the same width on every card: the Call slot stays reserved and empty without a number", async () => {
+  const tree = (await mount([
+    supplier({ name: "WithPhone", phone: "0241234567" }),
+    supplier({ name: "NoPhone", phone: "" })
+  ])).tree;
+  const slots = (name) => all(cardOf(tree, name), (n) => n.props["data-call-slot"] !== undefined);
+  assert.equal(slots("WithPhone").length, 0);
+  assert.equal(slots("NoPhone").length, 1);
+  assert.match(cls(slots("NoPhone")[0]), /w-\[52px\]/);
+  assert.equal(slots("NoPhone")[0].props["aria-hidden"], "true");
+  const payClass = (name) => cls(all(cardOf(tree, name), (n) => n.type === "button" && /^Pay /.test(n.props["aria-label"] ?? ""))[0]);
+  assert.equal(payClass("WithPhone").replace(/bg-\S+|border-\S+|text-\S+/g, ""), payClass("NoPhone").replace(/bg-\S+|border-\S+|text-\S+/g, ""));
 });
