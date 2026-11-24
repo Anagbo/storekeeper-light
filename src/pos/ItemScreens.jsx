@@ -185,19 +185,19 @@ function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCom
   // outlined red at the left (not on New item), Save at the right.
   if (pane) {
     return (
-      <form data-items-pane="" aria-labelledby="item-pane-title" onSubmit={(event) => void submit(event)} onKeyDown={keepEnterInField} className="flex min-h-0 min-w-0 flex-col rounded-[20px] border-2 border-slate-300 bg-white">
+      <form data-items-pane="" aria-labelledby="item-pane-title" onSubmit={(event) => void submit(event)} onKeyDown={keepEnterInField} className="@container flex min-h-0 min-w-0 flex-col rounded-[20px] border-2 border-slate-300 bg-white">
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">
           <h2 id="item-pane-title" className="line-clamp-2 break-words text-[24px] font-bold leading-tight text-[#0F172A]">{item ? t("items.editTitle", { name: item.name }) : t("items.new")}</h2>
           {fields}
         </div>
         <div data-items-pane-actions="" className="flex flex-col gap-2 border-t-2 border-slate-200 px-6 py-4">
-          <div className="flex items-center justify-between gap-3">
+          <div data-items-pane-buttons="" className="flex flex-col-reverse gap-3 @[440px]:flex-row @[440px]:items-center @[440px]:justify-between">
             {item ? (
-              <PosSecondaryButton type="button" data-delete-item="" disabled={saving} onClick={onDelete} tone="danger" className="w-auto max-w-[240px] whitespace-nowrap">
+              <PosSecondaryButton type="button" data-delete-item="" disabled={saving} onClick={onDelete} tone="danger" className="w-full whitespace-nowrap @[440px]:w-auto @[440px]:max-w-[240px]">
                 <Trash2 size={20} aria-hidden="true" />{t("items.delete")}
               </PosSecondaryButton>
-            ) : <span />}
-            <PosPrimaryButton type="submit" disabled={saving} className="w-auto min-w-[160px] max-w-[240px]">
+            ) : <span className="hidden @[440px]:block" />}
+            <PosPrimaryButton type="submit" disabled={saving} className="w-full @[440px]:w-auto @[440px]:min-w-[160px] @[440px]:max-w-[240px]">
               <Check size={24} aria-hidden="true" />{saving ? t("items.saving") : t("items.save")}
             </PosPrimaryButton>
           </div>
