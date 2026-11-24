@@ -151,7 +151,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
                   <PosSecondaryButton type="button" data-add-costs="" onClick={() => onNavigate("MyItems")} className={`mt-1 ${w("w-full max-w-[240px]", "w-full")}`}>{t("money.addCosts")}</PosSecondaryButton>
                 </>
               ) : (
-                <p data-profit-counts="" className={`${note("text-base leading-snug")} text-[#0F172A]`}>{t("money.profitCountsAll", { total: report.itemProfit.totalLines })}</p>
+                <p data-profit-counts="" className={`${note("text-base leading-snug")} text-[#0F172A]`}>{report.itemProfit.totalLines === 1 ? t("money.profitCountsOne") : t("money.profitCountsAll", { total: report.itemProfit.totalLines })}</p>
               )}
             </section>
           )}

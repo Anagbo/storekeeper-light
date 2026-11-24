@@ -180,7 +180,7 @@ test("profit view in Edge at 340, 768 and 1280: N of M, all counted, button, no 
       await waitFor(() => app.evaluate(`!document.querySelector("[data-card=profit]") && /Sugar/.test(document.querySelector("main").innerText) && /Cost not set/.test(document.querySelector("main").innerText)`), `${at}: Add costs to the rest opens Items`);
 
       const all = await openMyMoney(app, "all", width, height);
-      assert.match(all.text, /Profit counts all 1 items sold\. A good guess, not exact\./, `${at}: all counted`);
+      assert.match(all.text, /Profit counts the 1 item sold\. A good guess, not exact\./, `${at}: all counted`);
       assert.equal(all.button, null, `${at}: no button when all are counted`);
     }
 

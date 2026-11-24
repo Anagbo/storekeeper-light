@@ -524,6 +524,7 @@ const ENGLISH = Object.freeze({
   "money.profitTitle": "Profit {period}",
   "money.profitCounts": "Profit counts {counted} of {total} items sold",
   "money.profitCountsAll": "Profit counts all {total} items sold. A good guess, not exact.",
+  "money.profitCountsOne": "Profit counts the 1 item sold. A good guess, not exact.",
   "money.profitGuess": "A good guess, not exact",
   "money.addCosts": "Add costs to the rest",
   "settings.showEstimatedProfit": "Show estimated profit",
