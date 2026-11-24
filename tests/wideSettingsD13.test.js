@@ -94,3 +94,36 @@ test("a 63, 64 or 71 opened from Settings on the phone becomes that pane when th
   assert.equal(app.route, "SettingsProfitTools");
   assert.equal(pane(app).props["data-settings-pane"], "backup");
 });
+
+const pressKey = (key) => { for (const listener of [...(window.__listeners.keydown ?? [])]) listener({ key, target: null, preventDefault() {}, stopPropagation() {} }); };
+const dialog = (app) => nodes(app.view.tree).find((node) => node.props["data-wide-dialog"] !== undefined) ?? null;
+const footer = (app) => nodes(app.view.tree).find((node) => node.props["data-settings-pane-footer"] !== undefined) ?? null;
+
+test("D13b MoMo pane: Save pinned in the pane footer; a changed number asks in a WideDialog with the phone words; Save stays on Settings", async () => {
+  for (const width of [768, 1280]) {
+    await db.settings.clear();
+    await setPreference("posSetupCompleted", true);
+    const app = await open(width);
+    await app.side("SettingsProfitTools");
+    await row(app, "momo");
+    assert.deepEqual(buttonNames(footer(app)), ["Save"], `${width}: Save is the pane footer`);
+    await app.tap("Customer sends to my number");
+    await app.type("My MoMo number", "0241234567");
+    await app.tap(/^Save$/);
+    assert.ok(dialog(app), `${width}: the confirmation is a WideDialog`);
+    assert.equal(dialog(app).props.role, "alertdialog");
+    assert.match(textOf(dialog(app)), /^Customers will send money to 024 ••• 4567 \(MTN\)\. Is this your number\?Yes, saveChange$/);
+    pressKey("Escape");
+    await app.settle();
+    assert.equal(dialog(app), null, `${width}: Escape is Change`);
+    assert.equal(app.input("My MoMo number").props.value, "0241234567", `${width}: the number is still typed`);
+    await app.tap(/^Save$/);
+    await app.tap("Yes, save");
+    assert.equal(dialog(app), null);
+    assert.equal(app.route, "SettingsProfitTools", `${width}: Save stays on Settings`);
+    assert.equal(pane(app).props["data-settings-pane"], "momo");
+    assert.equal(app.params.momoSettingsDraft, undefined, `${width}: the draft is dropped after Save`);
+    assert.equal((await db.settings.get("momoReceivingNumber"))?.value, "0241234567");
+    assert.match(textOf(rows(app)[1]), /Set up$/, `${width}: the row says Set up`);
+  }
+});

@@ -13,6 +13,7 @@ import { useFormErrors } from "./formErrors.js";
 import { EventDetail, KeyValueRows } from "./EventRows.jsx";
 import { posText as t } from "./i18n.js";
 import { SettingsPane, useSettingsPane } from "./SettingsPane.jsx";
+import WideDialog, { useWideDialogs } from "./WideDialog.jsx";
 
 const NETWORKS = ["MTN", "Telecel", "AirtelTigo"];
 
@@ -200,6 +201,7 @@ export function PaymentSettings({ params = {}, onBack, onNavigate, onUpdateParam
   const taskColumn = useTaskColumn();
   // Wide Settings (D13b): drawn in the Settings pane, without Back; the phone content in order.
   const pane = useSettingsPane();
+  const wideDialog = useWideDialogs();
   const [settings, setSettings] = useState({ number: "", network: MOMO_CONFIG.defaultNetwork, defaultMethod: "ask" });
   // Opened from 62 with no MoMo number (wiring 62 "Set up MoMo number"): the Customer sends to my
   // number switch is already on and the number field is focused. Back without Save changes nothing.
@@ -220,6 +222,7 @@ export function PaymentSettings({ params = {}, onBack, onNavigate, onUpdateParam
   function keepDraft(patch) {
     draftRef.current = { ...(draftRef.current ?? {}), ...patch };
     onUpdateParams?.({ momoSettingsDraft: draftRef.current });
+    setSaved(false);
   }
   useEffect(() => { getMerchantMomoSettings().then((value) => {
     const draft = draftRef.current ?? {};
@@ -248,6 +251,21 @@ export function PaymentSettings({ params = {}, onBack, onNavigate, onUpdateParam
       await saveReceivingNumber({ enabled, number: numberInput, network: settings.network });
       if (tapChoiceChanged) await setPreference("momoDefault", settings.defaultMethod);
       setSaved(true);
+      if (pane) {
+        // In the Settings pane Save stays on Settings: the draft is dropped, the saved values are shown
+        // again and the MoMo payments row says Set up or Not set up.
+        draftRef.current = null;
+        onUpdateParams?.({ momoSettingsDraft: undefined });
+        const value = await getMerchantMomoSettings();
+        setSettings(value);
+        setNumberInput(value.number);
+        setEnabled(Boolean(value.number));
+        setTapChoiceChanged(false);
+        setConfirming(false);
+        savingRef.current = false;
+        onPaneSaved?.();
+        return;
+      }
       onBack();
     } catch (saveError) {
       savingRef.current = false;
@@ -255,6 +273,15 @@ export function PaymentSettings({ params = {}, onBack, onNavigate, onUpdateParam
       setError(saveError instanceof TypeError ? saveError.message : "Could not save. Please try again.");
     }
   }
+  // The masked confirmation (phone words). On wide (wide_layout.page_types.dialog) it is a small
+  // WideDialog over the pane or the task column; Escape and the scrim are Change, focus goes back to Save.
+  const confirmBody = <>
+    <p id="momo-confirm-question" role="alert" className="text-lg font-extrabold">Customers will send money to {maskPhoneNumber(normalizedNumber)} ({settings.network}). Is this your number?</p>
+    <div className="mt-2 grid grid-cols-2 gap-2">
+      <PosPrimaryButton type="button" onClick={() => void save()}><Check size={24} aria-hidden="true" />Yes, save</PosPrimaryButton>
+      <PosSecondaryButton type="button" onClick={() => setConfirming(false)}>Change</PosSecondaryButton>
+    </div>
+  </>;
   const maskedLine = enabled && (normalizedNumber ?? settings.number) ? `Customers will send to ${maskPhoneNumber(normalizedNumber ?? settings.number)} · ${settings.network}` : "";
   const tapOptions = [["ask", "Ask me each time"], ["direct", "Always: customer sends to my number"], ...(PHONE_REQUEST_ENABLED ? [["phone", "Always: phone request"]] : [])];
   const content = <>
@@ -274,13 +301,7 @@ export function PaymentSettings({ params = {}, onBack, onNavigate, onUpdateParam
         {maskedLine && <p className="mt-2 text-base font-bold text-emerald-900">{maskedLine}</p>}
       </>}
     </PosCard>
-    {confirming && <PosCard className="border-amber-700 bg-amber-50">
-      <p role="alert" className="text-lg font-extrabold">Customers will send money to {maskPhoneNumber(normalizedNumber)} ({settings.network}). Is this your number?</p>
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        <PosPrimaryButton type="button" onClick={() => void save()}><Check size={24} aria-hidden="true" />Yes, save</PosPrimaryButton>
-        <PosSecondaryButton type="button" onClick={() => setConfirming(false)}>Change</PosSecondaryButton>
-      </div>
-    </PosCard>}
+    {confirming && !wideDialog && <PosCard className="border-amber-700 bg-amber-50">{confirmBody}</PosCard>}
     {(numberErrors.message || error) && <p role="alert" className="text-base font-bold text-rose-900">{numberErrors.message || error}</p>}
     <PosCard>
       <div data-row="phone-request" className="flex min-h-12 items-center justify-between gap-3">
@@ -309,10 +330,13 @@ export function PaymentSettings({ params = {}, onBack, onNavigate, onUpdateParam
     {saved && <p role="status">Saved.</p>}
   </>;
   const saveButton = <PosPrimaryButton type="button" onClick={() => void save()} className={`h-[60px] min-h-0 rounded-[18px] ${pane ? "max-w-[240px]" : ""}`}><Check size={28} aria-hidden="true" />Save</PosPrimaryButton>;
-  if (pane) return <SettingsPane id="momo" title="MoMo payments">{content}<div className="flex justify-end">{saveButton}</div></SettingsPane>;
+  const confirmDialog = confirming && wideDialog && <WideDialog role="alertdialog" labelledBy="momo-confirm-question" onClose={() => setConfirming(false)}><div className="flex flex-col gap-2">{confirmBody}</div></WideDialog>;
+  // Wide Settings (D13b): Save is pinned at the bottom of the pane while the content scrolls.
+  if (pane) return <><SettingsPane id="momo" title="MoMo payments" footer={saveButton}>{content}</SettingsPane>{confirmDialog}</>;
   return <PosPage className="flex flex-col gap-3">
     <BackTitle title="MoMo payments" onBack={onBack} />
     {content}
+    {confirmDialog}
     <div className={taskColumn ? "mt-auto pt-3" : "safe-bottom fixed inset-x-0 bottom-0 z-30 border-t-[3px] border-slate-900 bg-white px-4 pt-3 lg:left-60"}>
       <div className="mx-auto max-w-3xl">{saveButton}</div>
     </div>
