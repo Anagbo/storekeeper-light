@@ -158,7 +158,7 @@ test("45 layout order: totals card (Still owed dark red), Paid now card, supplie
   assert.deepEqual(order, ["totals", "paid-now", "supplier", "pay-by"]);
   const totals = all(view.tree, (n) => n.props["data-card"] === "totals")[0];
   assert.ok(textOf(totals).includes("Stock total") && textOf(totals).includes("Still owed"));
-  assert.match(cls(all(totals, (n) => n.props["data-still-owed"] !== undefined)[0]), /text-rose-800/);
+  assert.match(cls(all(totals, (n) => n.props["data-still-owed"] !== undefined)[0]), /text-\[#0F172A\]/);
   const paid = all(view.tree, (n) => n.props["data-card"] === "paid-now")[0];
   assert.ok(textOf(paid).includes("Paid now"));
   assert.match(cls(all(paid, (n) => n.type === "input")[0]), /text-right/);

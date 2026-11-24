@@ -90,7 +90,7 @@ test("30: the owe row is the last row of the sale card: label, small grey line, 
   assert.match(cls(part("data-owe-sub")), /text-sm text-slate-700/, "14px grey");
   assert.equal(textOf(part("data-owe-amount")), "GH₵5.00");
   assert.equal(part("data-owe-amount").type, "strong");
-  assert.match(cls(part("data-owe-amount")), /text-rose-900/);
+  assert.match(cls(part("data-owe-amount")), /text-\[#0F172A\]/);
   assert.match(cls(row), /items-center/, "the amount is centred against the two lines");
   assert.doesNotMatch(textOf(view.tree), /owes GH₵|still owes/, "the old sentence is gone");
   // A long name is cut at 10 characters with an ellipsis.

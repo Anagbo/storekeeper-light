@@ -235,7 +235,7 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
       </div>
       <section data-card="totals" className={`flex flex-col gap-2 ${card}`}>
         <div className="flex items-center justify-between gap-3 text-[17px]"><span>{t("expense.stockTotal")}</span><strong className="whitespace-nowrap text-xl">{formatGhs(amountPesewas ?? 0)}</strong></div>
-        <div className="flex items-center justify-between gap-3 text-[17px]"><span>{t("expense.stillOwed")}</span><strong data-still-owed="" className={`whitespace-nowrap text-xl ${owedPesewas > 0 ? "text-rose-800" : "text-emerald-900"}`}>{formatGhs(owedPesewas)}</strong></div>
+        <div className="flex items-center justify-between gap-3 text-[17px]"><span>{t("expense.stillOwed")}</span><strong data-still-owed="" className={`whitespace-nowrap text-xl ${owedPesewas > 0 ? "text-[#0F172A]" : "text-emerald-900"}`}>{formatGhs(owedPesewas)}</strong></div>
       </section>
       <section data-card="paid-now" className={card}>
         <label className="block">

@@ -49,8 +49,8 @@ export const DASH = <span className="font-normal text-slate-500">—</span>;
 // amber-brown with −, credit dark red with no sign, a correction plain dark with no sign.
 const CELL_TONES = {
   in: { className: "text-[#03543F]", sign: "+" },
-  spent: { className: "text-[#92400E]", sign: "−" },
-  credit: { className: "text-[#7F1D1D]", sign: "" },
+  spent: { className: "text-[#0F172A]", sign: "−" },
+  credit: { className: "text-[#0F172A]", sign: "" },
   neutral: { className: "text-slate-800", sign: "" }
 };
 

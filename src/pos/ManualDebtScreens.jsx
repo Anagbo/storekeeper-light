@@ -127,7 +127,7 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, o
       </div>
       <div className="rounded-2xl border-2 border-slate-500 bg-white px-4 py-2 text-right">
         <span className="block text-base font-bold text-slate-700">Amount owed</span>
-        <strong className="block text-4xl font-extrabold text-rose-900 sm:text-5xl">{formatGhs(amountPesewas)}</strong>
+        <strong className="block text-4xl font-extrabold text-[#0F172A] sm:text-5xl">{formatGhs(amountPesewas)}</strong>
       </div>
       <AmountKeypad label="Amount keypad" onKey={pressAmount} />
       <label className="block">
@@ -249,7 +249,7 @@ export function ManualDebtSaved({ params, onDone, onNavigate, shopName }) {
         <div className="mx-auto mb-4 grid h-24 w-24 place-items-center rounded-full bg-emerald-900 text-white"><Check size={56} aria-hidden="true" /></div>
         <h1 className="text-2xl font-extrabold">Saved as credit</h1>
         <p className="mt-2 text-xl font-bold">{displayName(params.customer?.name)}</p>
-        <p className="mt-2 text-3xl font-extrabold text-rose-900 sm:text-4xl">{displayName(params.customer?.name)} owes {formatGhs(balance)}</p>
+        <p className="mt-2 text-3xl font-extrabold text-[#0F172A] sm:text-4xl">{displayName(params.customer?.name)} owes {formatGhs(balance)}</p>
       </div>
       {/* Debt saved layout (wiring ManualDebtSaved rules, 17 Nov 2026): the card is only label-value rows
           in the What happened row style (grey label left, bold value right, thin dividers): Before, Added

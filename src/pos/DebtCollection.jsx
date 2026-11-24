@@ -218,7 +218,7 @@ function CollectionSheet({ debt, params = {}, onClose, onNavigate, onUpdateParam
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 id="collect-title" className="text-2xl font-extrabold">{t("collect.from", { name: displayName(debt.customerName) })}</h1>
-            <p className="mt-1 text-base font-semibold">{t("collect.owes")} <strong className="text-rose-900">{formatGhs(debt.amountPesewas)}</strong></p>
+            <p className="mt-1 text-base font-semibold">{t("collect.owes")} <strong className="text-[#0F172A]">{formatGhs(debt.amountPesewas)}</strong></p>
             <div className="mt-1"><PosStatusTag tone={getDebtDueLabel(debt.isInstallmentPlan ? debt.nextDueDate : debt.dueDate).startsWith("Late ") ? "red" : "amber"}>
               {getDebtDueLabel(debt.isInstallmentPlan ? debt.nextDueDate : debt.dueDate)}
             </PosStatusTag></div>
@@ -461,7 +461,7 @@ function CollectPayPartScreen({ params, onBack, onNavigate, onUpdateParams, onRe
             <p className="text-[17px] font-bold text-slate-800">{t("collect.namePays", { name: displayName(debt.customerName) })}</p>
             {/* Decided 15 Nov 2026: the amount is shown like every other pad (GH₵8.00), typed only on the keypad. */}
             <output aria-live="polite" aria-label={t("collect.amountToCollect")} className="amount-fit block font-extrabold">{formatGhs(amountPesewas ?? 0)}</output>
-            <p className="text-lg font-bold text-rose-900">{t("collect.leftToPay", { amount: formatGhs(Math.max(0, debt.amountPesewas - (amountPesewas ?? 0))) })}</p>
+            <p className="text-lg font-bold text-[#0F172A]">{t("collect.leftToPay", { amount: formatGhs(Math.max(0, debt.amountPesewas - (amountPesewas ?? 0))) })}</p>
           </section>
           {aboveBalance && <CollectionError>{t("collect.amountTooHigh")}</CollectionError>}
           <AmountKeypad label={t("collect.enterAmount")} onKey={(digit) => {
@@ -601,7 +601,7 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
         <div className="border-t-2 border-dashed border-slate-400 pt-2">
           <div className="flex justify-between gap-2">
             <span>{t("collect.customerStillOwes", { name: displayName(result.customerName) })}</span>
-            <strong className="text-rose-900">{formatGhs(result.remainingPesewas)}</strong>
+            <strong className="text-[#0F172A]">{formatGhs(result.remainingPesewas)}</strong>
           </div>
         </div>
       </section>

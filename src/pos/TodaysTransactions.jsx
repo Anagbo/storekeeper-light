@@ -39,8 +39,8 @@ const TILE_AMOUNT = "whitespace-nowrap text-[length:min(22px,14.3cqi)] font-extr
 // with no sign (nothing was received).
 const AMOUNT_TONES = {
   in: { className: "text-[#03543F]", sign: "+" },
-  spent: { className: "text-[#92400E]", sign: "−" },
-  credit: { className: "text-[#7F1D1D]", sign: "" },
+  spent: { className: "text-[#0F172A]", sign: "−" },
+  credit: { className: "text-[#0F172A]", sign: "" },
   neutral: { className: "text-slate-800", sign: "" }
 };
 

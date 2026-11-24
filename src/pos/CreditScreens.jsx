@@ -90,7 +90,7 @@ function CustomerChoice({ customer, selected, onSelect }) {
       {customer.totalDebtPesewas > 0 && (wide ? (
         <span data-person-amount="" className="shrink-0 whitespace-nowrap text-right text-[17px] font-bold tabular-nums text-[#0F172A]">{formatGhs(customer.totalDebtPesewas)}</span>
       ) : (
-        <span className="amount-fit-container w-24 shrink-0 text-right font-extrabold text-rose-900">
+        <span className="amount-fit-container w-24 shrink-0 text-right font-extrabold text-[#0F172A]">
           <span className="amount-fit">{formatGhs(customer.totalDebtPesewas)}</span>
         </span>
       ))}
@@ -1073,7 +1073,7 @@ function CreditSaved({ params, onHome, onNavigate, shopName }) {
         </div>
         <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 text-base sm:text-lg">
           <span className="min-w-0">{t("credit.thisSale")}</span>
-          <strong className="whitespace-nowrap text-right text-rose-900 tabular-nums">+ {formatGhs(result?.addedDebtPesewas ?? 0)}</strong>
+          <strong className="whitespace-nowrap text-right text-[#0F172A] tabular-nums">+ {formatGhs(result?.addedDebtPesewas ?? 0)}</strong>
         </div>
         <div className="flex min-w-0 items-start justify-between gap-3 text-base sm:text-lg">
           <span className="shrink-0">{t("credit.payBack")}</span>

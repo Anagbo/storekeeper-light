@@ -83,7 +83,7 @@ function MyItems({ onBack, onNavigate }) {
           {filteredItems.map((item) => (
             <button key={item.id} type="button" onClick={() => onNavigate("EditItem", { itemId: item.id })} className="flex min-h-[60px] items-center gap-3 rounded-2xl border-2 border-slate-500 bg-white px-3 text-left">
               <strong className="min-w-0 flex-1 truncate text-lg">{item.name}</strong>
-              <span className={`shrink-0 font-extrabold ${item.default_price > 0 ? "text-emerald-900" : "text-amber-900"}`}>
+              <span className={`shrink-0 font-extrabold ${item.default_price > 0 ? "text-emerald-900" : "text-[#0F172A]"}`}>
                 {item.default_price > 0 ? formatGhs(toPesewas(item.default_price)) : t("items.setPrice")}
               </span>
             </button>

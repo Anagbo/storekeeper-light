@@ -100,7 +100,7 @@ test("24: a credit-only sale shows \"Sold on credit\", GH₵8.00 in dark red wit
   const [row] = rowViews((await mount(rows, totals)).tree);
   assert.equal(row.title, "Sold on credit");
   assert.equal(row.amount, "GH₵8.00");
-  assert.match(cls(row.amountNode), /text-\[#7F1D1D\]/);
+  assert.match(cls(row.amountNode), /text-\[#0F172A\]/);
   assert.deepEqual(row.chips, [{ kind: "person", text: "Juju owes GH₵8.00" }]); // amount in the chip since 15 Nov 2026
 });
 
@@ -127,7 +127,7 @@ test("24: spent shows −amount in amber-brown with an amber category chip", asy
   const [row] = rowViews((await mount(rows, totals)).tree);
   assert.equal(row.title, "Spent");
   assert.equal(row.amount, "−GH₵10.00");
-  assert.match(cls(row.amountNode), /text-\[#92400E\]/);
+  assert.match(cls(row.amountNode), /text-\[#0F172A\]/);
   assert.deepEqual(row.chips, [{ kind: "category", text: "Transport" }]);
 });
 
@@ -217,7 +217,7 @@ test("24: stock GH₵80.00 with nothing paid is \"Stock on credit\", dark red wi
   const [row] = rowViews((await mount(rows, totals)).tree);
   assert.equal(row.title, "Stock on credit");
   assert.equal(row.amount, "GH₵80.00");
-  assert.match(cls(row.amountNode), /text-\[#7F1D1D\]/);
+  assert.match(cls(row.amountNode), /text-\[#0F172A\]/);
   assert.deepEqual(row.chips, [{ kind: "person", text: "You owe Kofi Wholesale GH₵80.00" }]); // amount in the chip since 15 Nov 2026
   const chip = all(row.node, (n) => n.props["data-chip"] === "person" && n.type === "span")[0];
   assert.match(cls(chip), /bg-\[#F1F5F9\]/, "soft tile chip");
@@ -255,7 +255,7 @@ test("24: stock GH₵80.00 with GH₵30.00 paid is \"Stock\", −GH₵30.00 in a
   const [row] = rowViews((await mount(rows, totals)).tree);
   assert.equal(row.title, "Stock");
   assert.equal(row.amount, "−GH₵30.00");
-  assert.match(cls(row.amountNode), /text-\[#92400E\]/);
+  assert.match(cls(row.amountNode), /text-\[#0F172A\]/);
   assert.deepEqual(row.chips, [{ kind: "person", text: "You owe Kofi Wholesale GH₵50.00" }]);
   assert.equal(totals.expenses, 3000);
 });
@@ -266,7 +266,7 @@ test("24: stock GH₵80.00 fully paid is a normal Spent row", async () => {
   const [row] = rowViews((await mount(rows, totals)).tree);
   assert.equal(row.title, "Spent");
   assert.equal(row.amount, "−GH₵80.00");
-  assert.match(cls(row.amountNode), /text-\[#92400E\]/);
+  assert.match(cls(row.amountNode), /text-\[#0F172A\]/);
   assert.deepEqual(row.chips, [{ kind: "category", text: "Stock" }]);
 });
 

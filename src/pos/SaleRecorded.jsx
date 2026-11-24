@@ -140,7 +140,7 @@ export default function SaleRecorded({ transaction, creditResult, shopName, onDo
                       </span>
                       <span data-owe-sub="" className={`block ${wide ? "text-[17px]" : "text-sm"} text-slate-700`}>{t("saleRecorded.fromThisSale")}</span>
                     </span>
-                    <strong data-owe-amount="" className="shrink-0 whitespace-nowrap text-rose-900">{formatGhs(owedPesewas)}</strong>
+                    <strong data-owe-amount="" className="shrink-0 whitespace-nowrap text-[#0F172A]">{formatGhs(owedPesewas)}</strong>
                   </div>
                   {/* Total owed on 30 (21 Nov 2026): a key-value row like the other rows of the card, under its own
                       dashed divider, only when the customer had an earlier balance (otherwise it would equal the
