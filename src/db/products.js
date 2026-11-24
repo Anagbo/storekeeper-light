@@ -46,6 +46,19 @@ export function normalizeProductInput({ name, price = "", pricePesewas: givenPes
   };
 }
 
+// The cost snapshot for each sale line (wiring COST IS PRIVATE): the item's cost now, looked up by
+// productId; null when the line has no item or the item has no cost. Old sales are never given one.
+// Runs inside the sale's own transaction, so db.products must be in its table list.
+export async function withCostAtSale(items) {
+  const lines = [];
+  for (const item of items) {
+    const product = Number.isSafeInteger(item.productId) ? await db.products.get(item.productId) : null;
+    const cost = product?.cost_price_pesewas;
+    lines.push({ ...item, cost_at_sale_pesewas: Number.isSafeInteger(cost) && cost >= 0 ? cost : null });
+  }
+  return lines;
+}
+
 async function assertUniqueProductName(name, excludedId) {
   const products = await db.products.toArray();
   const duplicate = products.find((product) =>

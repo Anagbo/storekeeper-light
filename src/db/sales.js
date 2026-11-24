@@ -3,6 +3,7 @@ import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
 import { getMomoConfirmedPesewas, getMomoDetails, getMomoVerification, MOMO_VERIFICATION } from "../pos/momoMapping.js";
 import { runIdempotentSave } from "./saveAttempts.js";
 import { db } from "./db.js";
+import { withCostAtSale } from "./products.js";
 
 export async function recordCashSale({
   amountPesewas,
@@ -56,11 +57,13 @@ export async function recordCashSale({
   // D11: the same attemptId with the same sale returns the first save; nothing is added twice.
   return runIdempotentSave({
     db,
-    tables: [db.transactions],
+    tables: [db.transactions, db.products],
     attemptId,
     content: { amountPesewas, cashReceivedPesewas, momoReceivedPesewas, saleItems: items, momoVerification, momoConfirmedPesewas },
     now
   }, async () => {
+    // Each line keeps the item's cost at the time of sale (read in this same transaction).
+    transaction.items_json = JSON.stringify(await withCostAtSale(items));
     await db.transactions.add(transaction);
     return transaction;
   });

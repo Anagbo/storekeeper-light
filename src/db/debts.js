@@ -3,6 +3,7 @@ import { upsertCustomer } from "./customers.js";
 import { recalculateCustomerDebtBalance, writeStoredPlanTotal } from "./debtLedger.js";
 import { runTransactionWithTimeout } from "./runTransactionWithTimeout.js";
 import { runIdempotentSave } from "./saveAttempts.js";
+import { withCostAtSale } from "./products.js";
 import { createId } from "../lib/ids.js";
 import { PLAN_ERROR, planError } from "../lib/planErrors.js";
 import { isValidGhanaCardNumber } from "../lib/ghanaCardNumber.js";
@@ -343,7 +344,7 @@ export async function recordCreditSale({
     initialPaymentPesewas, initialPaymentParts, paymentMethod, note: cleanNote, itemDescription: cleanItemDescription,
     quantity, transactionNote: cleanTransactionNote, saleItems: cleanSaleItems, creditReason: cleanCreditReason
   };
-  return runIdempotentSave({ db, tables: [db.debts, db.customers, db.transactions, db.payments], attemptId, content: attemptContent, now }, async () => {
+  return runIdempotentSave({ db, tables: [db.debts, db.customers, db.transactions, db.payments, db.products], attemptId, content: attemptContent, now }, async () => {
     const previousDebtPesewas = await getUnpaidCustomerBalance(cleanName);
     const existingDebtsBeforeSale = await db.debts
       .where("status")
@@ -569,8 +570,9 @@ export async function recordCreditSale({
       ghanaCardNumber: cleanGhanaCardNumber,
       customerName: cleanName,
       phone: cleanPhone,
+      // Each item line keeps the item's cost at the time of sale (read in this same transaction).
       items_json: JSON.stringify(cleanSaleItems.length
-        ? cleanSaleItems
+        ? await withCostAtSale(cleanSaleItems)
         : [{ name: cleanItemDescription, quantity, total_amount: amountPesewas }]),
       itemDescription: cleanItemDescription,
       ...(cleanCreditReason && { creditReason: cleanCreditReason }),

@@ -24,7 +24,15 @@ export function normalizeSaleItems(items) {
     if (!Number.isSafeInteger(total_amount)) {
       throw new RangeError("The item total is too large.");
     }
-    return { productId, name, ...(isOtherAmount ? { subtitle: item.subtitle } : {}), quantity, unitPricePesewas, total_amount };
+    // The cost snapshot (wiring COST IS PRIVATE) is passed through when present: integer pesewas or null.
+    const cost = item?.cost_at_sale_pesewas;
+    if (cost !== undefined && cost !== null && (!Number.isSafeInteger(cost) || cost < 0)) {
+      throw new TypeError("The item cost snapshot is invalid.");
+    }
+    return {
+      productId, name, ...(isOtherAmount ? { subtitle: item.subtitle } : {}), quantity, unitPricePesewas, total_amount,
+      ...(cost !== undefined && { cost_at_sale_pesewas: cost })
+    };
   });
 }
 

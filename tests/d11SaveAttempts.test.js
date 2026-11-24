@@ -216,3 +216,44 @@ test("D11 messages: checking and unknown wording as approved", () => {
   assert.equal(posText("save.outcomeUnknown"), "We could not confirm this was saved. Tap Try again. It will not be recorded twice.");
   assert.equal(posText("save.tryAgain"), "Try again");
 });
+
+// --- cost snapshot (wiring COST IS PRIVATE): filled at save time from the item's current cost ---
+
+async function costItems() {
+  await db.products.clear();
+  const bread = await db.products.add({ name: "Bread", default_price: 10, cost_price_pesewas: 700, active: true });
+  const water = await db.products.add({ name: "Water", default_price: 3, active: true });
+  return [
+    { productId: bread, name: "Bread", quantity: 2, unitPricePesewas: 1000 },
+    { productId: water, name: "Water", quantity: 1, unitPricePesewas: 300 },
+    { productId: null, name: "Other amount", subtitle: "From Sell", quantity: 1, unitPricePesewas: 200 }
+  ];
+}
+const savedCosts = (transaction) => JSON.parse(transaction.items_json).map((line) => line.cost_at_sale_pesewas);
+
+for (const [label, payment] of [
+  ["cash", { cashReceivedPesewas: 2500, momoReceivedPesewas: 0 }],
+  ["MoMo", { cashReceivedPesewas: 0, momoReceivedPesewas: 2500 }],
+  ["split", { cashReceivedPesewas: 1000, momoReceivedPesewas: 1500 }]
+]) {
+  test(`cost snapshot: a ${label} sale stores each line's cost at the time of sale (null when unknown)`, async () => {
+    const saleItems = await costItems();
+    const sale = await recordCashSale({ amountPesewas: 2500, ...payment, saleItems, attemptId: `cost-${label}` });
+    assert.deepEqual(savedCosts(sale), [700, null, null]);
+    assert.deepEqual(savedCosts(await db.transactions.get(sale.id)), [700, null, null]);
+    // A later change of the item's cost does not change the saved sale.
+    await db.products.update(saleItems[0].productId, { cost_price_pesewas: 900 });
+    assert.deepEqual(savedCosts(await db.transactions.get(sale.id)), [700, null, null]);
+    // The same attempt again still returns the first save.
+    const again = await recordCashSale({ amountPesewas: 2500, ...payment, saleItems, attemptId: `cost-${label}` });
+    assert.equal(again.id, sale.id);
+    assert.equal(await db.transactions.count(), 1);
+  });
+}
+
+test("cost snapshot: a credit sale stores each line's cost at the time of sale", async () => {
+  const saleItems = await costItems();
+  const result = await recordCreditSale({ amountPesewas: 2500, name: "Ama", initialPaymentPesewas: 500, saleItems, attemptId: "cost-credit" });
+  const sale = await db.transactions.get(result.transactionId);
+  assert.deepEqual(savedCosts(sale), [700, null, null]);
+});

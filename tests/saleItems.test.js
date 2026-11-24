@@ -48,3 +48,20 @@ test("item sale validation rejects invalid quantities, prices and overflowing to
     { productId: 2, name: "Water", quantity: 1, unitPricePesewas: 1 }
   ]), RangeError);
 });
+
+test("the cost snapshot is passed through, never dropped (wiring COST IS PRIVATE)", () => {
+  const items = normalizeSaleItems([
+    { productId: 1, name: "Bread", quantity: 2, unitPricePesewas: 1000, cost_at_sale_pesewas: 700 },
+    { productId: 2, name: "Water", quantity: 1, unitPricePesewas: 300, cost_at_sale_pesewas: 0 },
+    { productId: 3, name: "Milo", quantity: 1, unitPricePesewas: 300, cost_at_sale_pesewas: null },
+    { productId: 4, name: "Soap", quantity: 1, unitPricePesewas: 300 }
+  ]);
+  assert.equal(items[0].cost_at_sale_pesewas, 700);
+  assert.equal(items[1].cost_at_sale_pesewas, 0);
+  assert.equal(items[2].cost_at_sale_pesewas, null);
+  assert.equal(Object.hasOwn(items[2], "cost_at_sale_pesewas"), true, "null is kept as null");
+  assert.equal(Object.hasOwn(items[3], "cost_at_sale_pesewas"), false, "an absent snapshot is not invented");
+  assert.throws(() => normalizeSaleItems([
+    { productId: 1, name: "Bread", quantity: 1, unitPricePesewas: 1000, cost_at_sale_pesewas: -5 }
+  ]), /cost snapshot/);
+});

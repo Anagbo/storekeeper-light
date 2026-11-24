@@ -88,7 +88,8 @@ test("journey C carries the typed amount through the cart and review into screen
     now: 123
   });
   assert.equal(transaction.payment_method, "cash");
-  assert.deepEqual(JSON.parse(transaction.items_json), [otherAmount, bread]);
+  // Each saved line also carries its cost snapshot (null here: no cost set).
+  assert.deepEqual(JSON.parse(transaction.items_json), [otherAmount, bread].map((line) => ({ ...line, cost_at_sale_pesewas: null })));
 });
 
 test("a sale without items completes directly from screen 15", async () => {

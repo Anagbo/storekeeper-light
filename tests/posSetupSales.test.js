@@ -72,7 +72,8 @@ test("cash and MoMo sale persistence records split tender and item detail atomic
     name: "Rice",
     quantity: 3,
     unitPricePesewas: 500,
-    total_amount: 1500
+    total_amount: 1500,
+    cost_at_sale_pesewas: null
   }]);
   assert.deepEqual(await db.transactions.toArray(), [transaction]);
 });
