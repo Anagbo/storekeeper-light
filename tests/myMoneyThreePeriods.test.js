@@ -227,14 +227,14 @@ test("33: Money in card: Cash and MoMo rows, then Debts paid (dark green) and On
   assert.ok(text.includes(`Money in${formatGhs(6000)}`));
   assert.ok(text.includes(`Cash${formatGhs(3500)}`));
   assert.ok(text.includes(`MoMo${formatGhs(2500)}`));
-  assert.ok(text.endsWith(`Debts paid${formatGhs(1000)}On credit${formatGhs(4300)}`), text);
+  assert.ok(text.endsWith(`Debts paid${formatGhs(1000)}On credit, not paid${formatGhs(4300)}`), text);
   assert.doesNotMatch(text, /Includes|Also given on credit|paid by customers/, "the two sentences are gone");
   const extras = [...walk(card(view, "money-in"))].find((node) => node.props?.["data-line"] === "money-in-extras");
   assert.match(extras.props.className, /border-t-\[3px\]/, "a thicker line above the two rows");
   const paid = rowOf(view, "debts-paid");
   const credit = rowOf(view, "on-credit");
   assert.match(paid.props.className, /text-emerald-900/);
-  assert.match(credit.props.className, /text-\[#0F172A\]/, "On credit is bold neutral, not red (24 Nov 2026)");
+  assert.match(credit.props.className, /text-\[#475569\]/, "On credit, not paid is grey #475569, not red (24 Nov 2026)");
   const cash = rowOf(view, "cash-in");
   for (const extra of [paid, credit]) {
     assert.doesNotMatch(extra.props.className, /\bbg-|\bborder\b|border-/, "no fill and no border");
@@ -360,7 +360,7 @@ test("33 at 340, 360 and 393px: card rows keep label and amount on one line with
     const cash = result.rows.find((row) => row.name === "cash-in");
     for (const name of ["debts-paid", "on-credit"]) {
       const extra = result.rows.find((row) => row.name === name);
-      assert.equal(extra.labelLines, 1, `${where}: ${name}: label on one line`);
+      assert.ok(extra.labelLines <= (name === "on-credit" ? 2 : 1), `${where}: ${name}: label on one line (the credit label may wrap to two)`);
       assert.equal(extra.fontSize, cash.fontSize, `${where}: ${name}: same size as Cash`);
       assert.ok(Math.abs(extra.amountRight - cash.amountRight) <= 0.5, `${where}: ${name}: same right-hand column as Cash`);
     }

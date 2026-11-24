@@ -497,7 +497,7 @@ const ENGLISH = Object.freeze({
   "money.cash": "Cash",
   "money.momo": "MoMo",
   "money.debtsPaid": "Debts paid",
-  "money.onCredit": "On credit",
+  "money.onCredit": "On credit, not paid",
   "money.paidInCash": "Paid in cash",
   "money.paidByMomo": "Paid by MoMo",
   "money.methodNotRecorded": "Method not recorded",

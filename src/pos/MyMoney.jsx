@@ -110,7 +110,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
               {(summary.collectedIn > 0 || summary.givenOnCredit > 0) && (
                 <div data-line="money-in-extras" className="mt-1 flex flex-col gap-1 border-t-[3px] border-slate-300 pt-1.5">
                   {summary.collectedIn > 0 && <Row data-row="debts-paid" tone="text-emerald-900" label={t("money.debtsPaid")} hidden={hidden} amountPesewas={summary.collectedIn} />}
-                  {summary.givenOnCredit > 0 && <Row data-row="on-credit" tone={wide ? "" : "text-[#0F172A]"} label={t("money.onCredit")} hidden={hidden} amountPesewas={summary.givenOnCredit} />}
+                  {summary.givenOnCredit > 0 && <Row data-row="on-credit" tone="text-[#475569]" label={t("money.onCredit")} hidden={hidden} amountPesewas={summary.givenOnCredit} />}
                 </div>
               )}
             </section>
