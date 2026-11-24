@@ -103,7 +103,7 @@ export function PartyCard({
       {dueDate && <div data-party-tag="" className={`${wide ? "col-start-1" : "col-span-full"} row-start-2 mt-1.5 whitespace-nowrap`}><DueTag dueDate={dueDate} today={today} wording={wording} large={wide} /></div>}
     </>
   );
-  const amount = <span data-party-amount="" className={`col-start-2 ${dueDate ? "row-span-2" : ""} row-start-1 whitespace-nowrap ${wide ? "font-bold" : "font-extrabold"} leading-tight ${AMOUNT_SIZES[amountSize] ?? AMOUNT_SIZES[24]}`}>{maskedAmount ?? formatGhs(amountPesewas)}</span>;
+  const amount = <span data-party-amount="" className={`col-start-2 ${dueDate ? "row-span-2" : ""} row-start-1 whitespace-nowrap ${wide ? "self-center font-bold" : "font-extrabold"} leading-tight ${AMOUNT_SIZES[amountSize] ?? AMOUNT_SIZES[24]}`}>{maskedAmount ?? formatGhs(amountPesewas)}</span>;
   const top = onNameClick ? (
     // rules_global.person_row: the whole top row (name, tag, amount and the space between) opens the
     // detail; a light grey tint while pressed, nothing at rest.
