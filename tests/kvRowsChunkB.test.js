@@ -184,9 +184,9 @@ test("chunk B screens at 340, 360 and 393px: 16 status rows, 30 owe row and butt
     }
     if (result.page === "24") {
       for (const tile of result.tiles) {
-        assert.equal(tile.bg, "rgb(255, 255, 255)", `${where} / ${tile.name}: white card`);
-        assert.equal(tile.left, "6px", `${where} / ${tile.name}: 6px left edge`);
-        assert.equal(tile.top, "2px", `${where} / ${tile.name}: 2px border`);
+        assert.equal(tile.bg, "rgb(241, 245, 249)", `${where} / ${tile.name}: soft tile`);
+        assert.equal(tile.left, "0px", `${where} / ${tile.name}: no left edge`);
+        assert.equal(tile.top, "0px", `${where} / ${tile.name}: no border`);
         assert.equal(tile.amountOverflow, false, `${where} / ${tile.name}: GH₵12,345.00 is not clipped`);
         assert.ok(parseFloat(tile.amountFont) <= 22 && parseFloat(tile.amountFont) >= 17, `${where} / ${tile.name}: the amount is 22px at most (${tile.amountFont})`);
         assert.equal(tile.labelLines, 1, `${where} / ${tile.name}: the label is one line`);
