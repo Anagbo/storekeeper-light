@@ -75,8 +75,8 @@ async function bundle(seeds, env) {
   return result.outputFiles[0].text;
 }
 
-async function launch(dir) {
-  const profile = join(dir, "profile");
+async function launch(dir, attempt = 1) {
+  const profile = join(dir, `profile${attempt}`);
   const child = spawn(browser, ["--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check", `--user-data-dir=${profile}`, "--remote-debugging-port=0", "about:blank"], { stdio: "ignore" });
   const exited = new Promise((resolve) => child.once("exit", resolve));
   try {
@@ -120,8 +120,10 @@ async function launch(dir) {
     };
     return { send, evaluate, close };
   } catch (error) {
+    // A failed start: stop the browser and remove its profile so the retry starts clean.
     child.kill();
     await Promise.race([exited, sleep(5000)]);
+    try { rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 }); } catch { /* removed with the temp folder later */ }
     throw error;
   }
 }
@@ -149,7 +151,7 @@ export async function withEdgeApp({ seeds, env = {} }, run) {
   try {
     for (let attempt = 1; ; attempt += 1) {
       try {
-        session = await launch(dir);
+        session = await launch(dir, attempt);
         break;
       } catch (error) {
         if (attempt >= 2) throw error;
