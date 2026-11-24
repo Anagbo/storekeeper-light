@@ -94,7 +94,7 @@ test("47: Show estimated profit is the only switch, with one helper line; no Sou
   assert.doesNotMatch(text, /Sound and voice feedback/, "no switch that does nothing (decision 10 Nov 2026)");
   assert.doesNotMatch(text, /Play confirmation sounds and spoken messages/);
   assert.match(text, /Show estimated profit/);
-  assert.match(text, /Shows or hides the Estimated profit card on My money/);
+  assert.match(text, /A good guess, not exact/);
   assert.doesNotMatch(text, /Track cost price/);
   for (const node of list) assert.equal(node.props.type, "checkbox");
 });

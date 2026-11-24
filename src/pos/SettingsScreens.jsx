@@ -217,7 +217,7 @@ export function SettingsProfitTools({
         {(shopNameErrors.message || error) && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 text-[17px] font-semibold text-rose-950">{shopNameErrors.message || error}</p>}
         <div className="border-t-2 border-[#E2E8F0] pt-4">
           <h3 id="settings-preferences" className="text-[15px] font-extrabold uppercase tracking-wider text-slate-700">{t("settings.groupPreferences")}</h3>
-          <SwitchRow wide id="settings-profit" label={t("settings.showEstimatedProfit")} helper={t("settings.showProfitHelperWide")} checked={showProfit} onChange={(event) => void changeShowProfit(event.target.checked)} />
+          <SwitchRow wide id="settings-profit" label={t("settings.showEstimatedProfit")} helper={t("settings.showProfitHelper")} checked={showProfit} onChange={(event) => void changeShowProfit(event.target.checked)} />
         </div>
       </SettingsPane>
     );
