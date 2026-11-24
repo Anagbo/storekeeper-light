@@ -5,7 +5,7 @@ import { ENV } from "./helpers/lookChecks.js";
 
 // Wide My money (33, D7) in real Edge at 1024x768, 1280x800 and 1440x900 (below 1024 the phone layout stays,
 // so 768x1024 only has to fit): GH₵12,345.00 in the sales, the credit, the expense and the owed lines.
-// No sideways scroll, no clipped or wrapped amount; card titles 17px/700, card totals 24px/700, the hero 700.
+// No sideways scroll, no clipped or wrapped amount; card titles 17px/800, card totals 24px/700, the hero 700.
 const SEEDS = { money: `await setPreference("posSetupCompleted", true);
   await recordCashSale({ amountPesewas: 1234500 });
   await recordCashSale({ amountPesewas: 1234500, cashReceivedPesewas: 0, momoReceivedPesewas: 1234500 });
@@ -39,7 +39,7 @@ test("wide My money: fits at 768 to 1440, amounts whole, same card headers, size
       assert.equal(m.heroWeight, "700", `${at}: hero 700`);
       for (const c of m.cards) {
         assert.ok(c, `${at}: three cards`);
-        assert.deepEqual([c.titleSize, c.titleWeight, c.titleLines, c.totalSize, c.totalWeight, c.below, c.leftAligned], [17, "700", 1, 24, "700", true, true], `${at}: ${c.id} header (${c.text})`);
+        assert.deepEqual([c.titleSize, c.titleWeight, c.titleLines, c.totalSize, c.totalWeight, c.below, c.leftAligned], [17, "800", 1, 24, "700", true, true], `${at}: ${c.id} header (${c.text})`);
       }
       for (const s of m.see) assert.deepEqual([s.size, s.weight, s.deco], [17, "700", "none"], `${at}: See who / See list`);
       assert.equal(m.see.length, 2, `${at}: both links`);

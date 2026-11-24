@@ -19,6 +19,9 @@ const cardClass = "min-w-0 rounded-[18px] border-2 border-slate-300 bg-white px-
 const WIDE_CARD = "min-w-0 rounded-[18px] border-2 border-slate-300 bg-white p-6";
 const softCard = (wide) => `min-w-0 ${SOFT_TILE} ${wide ? "p-6" : "px-3.5 py-3"}`;
 const WIDE_AMOUNT = "whitespace-nowrap text-[40px] font-bold leading-tight text-[#0F172A]";
+// Wide hero (D7): white card, 2px #CBD5E1 border, 20px radius, as on Home. Every wide card label is dark, 800, 17px or more.
+const WIDE_HERO_CARD = "rounded-[20px] border-2 border-[#CBD5E1] bg-white text-[#0F172A]";
+const WIDE_LABEL = "text-[18px] font-extrabold leading-snug text-[#0F172A]";
 const WIDE_NOTE = "text-[17px] leading-snug";
 
 // One label and amount on a line; the amount never wraps or shrinks. `tone` colours the whole row and
@@ -35,7 +38,7 @@ function Row({ label, amountPesewas, hidden, tone = "", ...rest }) {
 function CardTitle({ children, amountPesewas, hidden, wide = false }) {
   return (
     <div className={wide ? "flex min-w-0 flex-col" : "flex min-w-0 flex-wrap items-baseline justify-between gap-x-3"}>
-      <p className={wide ? "flex items-center gap-1 whitespace-nowrap text-[17px] font-bold text-[#0F172A]" : "flex items-center gap-1 text-base font-extrabold sm:text-lg"}>{children}</p>
+      <p className={wide ? "flex items-center gap-1 whitespace-nowrap text-[17px] font-extrabold text-[#0F172A]" : "flex items-center gap-1 text-base font-extrabold sm:text-lg"}>{children}</p>
       {amountPesewas !== undefined && <p className={wide ? "whitespace-nowrap text-2xl font-bold text-[#0F172A]" : "whitespace-nowrap text-xl font-extrabold"}><Amount hidden={hidden} pesewas={amountPesewas} /></p>}
     </div>
   );
@@ -87,10 +90,10 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
       ) : (
         <>
           {/* (1) The soft hero (wide: beside the profit card, or the full row when it is hidden). */}
-          <section data-block="money-left" className={`amount-fit-container ${SOFT_HERO} px-4 py-3 ${w(`order-1 flex flex-col justify-center gap-2 p-6 ${report.showProfit ? "" : "col-span-2"}`, "amount-fit-hero")}`}>
-            <p className={`text-base font-bold sm:text-lg ${SOFT_HERO_LABEL}`}>{t("money.moneyLeft", { period: periodWords })}</p>
+          <section data-block="money-left" className={`amount-fit-container ${wide ? WIDE_HERO_CARD : `${SOFT_HERO} px-4 py-3`} ${w(`order-1 flex flex-col justify-center gap-2 p-6 ${report.showProfit ? "" : "col-span-2"}`, "amount-fit-hero")}`}>
+            <p className={wide ? WIDE_LABEL : `text-base font-bold sm:text-lg ${SOFT_HERO_LABEL}`}>{t("money.moneyLeft", { period: periodWords })}</p>
             <p className={wide ? "whitespace-nowrap text-[56px] font-bold leading-tight" : "amount-fit font-extrabold leading-tight"}><Amount hidden={hidden} pesewas={summary.moneyLeft} /></p>
-            <p className={`${note("text-sm leading-snug sm:text-base")} ${SOFT_HERO_LABEL}`}>{t("money.moneyInMinusSpent")}</p>
+            <p className={`${note("text-sm leading-snug sm:text-base")} ${wide ? "text-[#0F172A]" : SOFT_HERO_LABEL}`}>{t("money.moneyInMinusSpent")}</p>
           </section>
 
           {(report.uncounted?.sales > 0 || report.uncounted?.other > 0) && (
