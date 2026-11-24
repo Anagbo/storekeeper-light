@@ -208,6 +208,11 @@ export default function PosApp() {
       setLeaveAsk({ amountPesewas, proceed });
       return;
     }
+    // A page with unsaved changes of its own (wide Items D8) asks its own question first.
+    if (leaveGuardRef.current) {
+      leaveGuardRef.current(proceed);
+      return;
+    }
     proceed();
   }
   // A back press with the question open is Stay.
@@ -388,7 +393,8 @@ export default function PosApp() {
   function chooseFromSidebar(target) {
     if (target === routeRef.current.current) return;
     const go = () => navigate(target, { [VIA_SIDEBAR]: true });
-    if (leaveGuardRef.current) leaveGuardRef.current(go);
+    // Home goes through leaveDraft, which asks once.
+    if (leaveGuardRef.current && target !== POS_ROUTES.Home) leaveGuardRef.current(go);
     else go();
   }
 

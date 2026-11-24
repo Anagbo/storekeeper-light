@@ -85,6 +85,23 @@ test("wide Items: device Back with an unchanged edit goes back without a questio
   assert.equal(app.route, "Home");
 });
 
+test("wide Items: every exit asks (sidebar Home through leaveDraft, once; another sidebar page)", async () => {
+  const app = await openWideItems();
+  await typeName(app, "Brown bread");
+  await app.side("Home");
+  assert.equal(app.route, "MyItems");
+  assert.ok(leaveQuestion(app), "Home asks");
+  await app.tap("Stay");
+  await app.side("SettingsProfitTools");
+  assert.equal(app.route, "MyItems");
+  assert.ok(leaveQuestion(app), "another page asks");
+  await app.tap("Stay");
+  await app.side("Home");
+  await app.tap("Leave");
+  assert.equal(leaveQuestion(app), null, "one question, not two");
+  assert.equal(app.route, "Home");
+});
+
 test("wide Items: device Back with the question open means Stay (the dialog and the page stay)", async () => {
   const app = await openWideItems();
   await typeName(app, "Brown bread");
