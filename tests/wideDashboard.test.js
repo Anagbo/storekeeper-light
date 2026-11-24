@@ -262,11 +262,16 @@ for (const width of [768, 1280]) {
   });
 }
 
-test("one strong green block on wide Home (Money left); Sell is a button", async () => {
+// Home hero B (24 Nov 2026): Money left is a soft grey tile; Sell is the only saturated block.
+test("wide Home: Money left is a soft tile and Sell is the only strong green block", async () => {
   await seedOwing();
   const app = await open(1280);
   const green = within(homeNode(app), (node) => typeof node.type === "string" && node.type !== "button" && /(^|\s)bg-emerald-900(\s|$)/.test(node.props?.className ?? ""));
-  assert.deepEqual(green.map((node) => node.props["data-block"]), ["money-left"]);
+  assert.deepEqual(green, [], "no block (only buttons) is solid green");
+  assert.match(within(homeNode(app), (node) => node.props?.["data-home-sell"] === "")[0].props.className, /(^|\s)bg-emerald-900(\s|$)/);
+  const hero = within(homeNode(app), (node) => node.props?.["data-block"] === "money-left")[0];
+  for (const part of ["bg-[#F1F5F9]", "rounded-[24px]", "text-[#0F172A]"]) assert.ok(hero.props.className.split(/\s+/).includes(part), part);
+  assert.ok(!/border-|text-white/.test(hero.props.className), "no border, no white text");
 });
 
 test("wide Home stores nothing and changes no stored value", async () => {
