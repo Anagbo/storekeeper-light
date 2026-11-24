@@ -14,13 +14,6 @@ import { SOFT_HERO, SOFT_HERO_LABEL, SOFT_TILE } from "./softTile.js";
 // No coloured left edge and no red or amber amounts (rules_global.left_edge_marker). Every figure follows the period except Owed to you and You owe suppliers.
 export const MY_MONEY_PERIODS = [["day", "money.today"], ["week", "money.thisWeek"], ["month", "money.thisMonth"]];
 const PERIOD_WORDS = { day: "money.periodToday", week: "money.periodThisWeek", month: "money.periodThisMonth" };
-// While amounts are hidden the comparison line must not say up or down (wiring 33 Hide amounts).
-const HIDDEN_COMPARISON_KEYS = { day: "money.comparedWithYesterday", week: "money.comparedWithLastWeek", month: "money.comparedWithLastMonth" };
-const COMPARISON_KEYS = {
-  day: { more: "money.moreThanYesterday", less: "money.lessThanYesterday", same: "money.sameAsYesterday" },
-  week: { more: "money.moreThanLastWeek", less: "money.lessThanLastWeek", same: "money.sameAsLastWeek" },
-  month: { more: "money.moreThanLastMonth", less: "money.lessThanLastMonth", same: "money.sameAsLastMonth" }
-};
 const cardClass = "min-w-0 rounded-[18px] border-2 border-slate-300 bg-white px-3.5 py-3";
 // Wide (D7): one inner padding (24px) and 8px-grid gaps for every card; neutral dark amounts at 700.
 const WIDE_CARD = "min-w-0 rounded-[18px] border-2 border-slate-300 bg-white p-6";
@@ -64,7 +57,6 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
   const report = useLiveQuery(() => loadMyMoneyReport({ period, now }), [period, now.getTime()], null);
   const periodWords = t(PERIOD_WORDS[period]);
   const summary = report?.summary;
-  const comparison = report?.comparison;
   // Hidden until the setting is known to be false: a real amount never flashes.
   const hidden = report?.hideAmounts !== false;
   const toggleHidden = () => saveHideAmounts(!hidden).catch(() => {});
@@ -97,9 +89,6 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
           <section data-block="money-left" className={`amount-fit-container ${SOFT_HERO} px-4 py-3 ${w(`order-1 flex flex-col justify-center gap-2 p-6 ${report.showProfit ? "" : "col-span-2"}`, "amount-fit-hero")}`}>
             <p className={`text-base font-bold sm:text-lg ${SOFT_HERO_LABEL}`}>{t("money.moneyLeft", { period: periodWords })}</p>
             <p className={wide ? "whitespace-nowrap text-[56px] font-bold leading-tight" : "amount-fit font-extrabold leading-tight"}><Amount hidden={hidden} pesewas={summary.moneyLeft} /></p>
-            {comparison && (
-              <p className={`${wide ? "text-[18px] leading-snug" : "text-base leading-snug sm:text-lg"} ${SOFT_HERO_LABEL}`}>{amountText(hidden ? HIDDEN_COMPARISON_KEYS[period] : COMPARISON_KEYS[period][comparison.kind], { amount: comparison.amountPesewas }, hidden)}</p>
-            )}
             <p className={`${note("text-sm leading-snug sm:text-base")} ${SOFT_HERO_LABEL}`}>{t("money.moneyInMinusSpent")}</p>
           </section>
 

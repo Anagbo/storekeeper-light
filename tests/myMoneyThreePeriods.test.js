@@ -54,13 +54,6 @@ test("each period counts only its own rows: Today, This week (from Monday) and T
   assert.equal((await report("month")).summary.moneyIn, 7000);
 });
 
-test("the comparison follows the period: yesterday, last week, last month", async () => {
-  await db.transactions.bulkAdd([cashSale("today", at(18), 5000), cashSale("yesterday", at(17), 2000), cashSale("last-week", at(10), 1000), cashSale("last-month", at(20, 10, 9), 500)]);
-  assert.deepEqual((await report("day")).comparison, { kind: "more", amountPesewas: 3000 });
-  assert.deepEqual((await report("week")).comparison, { kind: "more", amountPesewas: 6000 });
-  assert.deepEqual((await report("month")).comparison, { kind: "more", amountPesewas: 7500 });
-});
-
 test("Owed to you and You owe suppliers are the balance now, the same for every period", async () => {
   await db.debts.bulkAdd([
     { id: "d1", status: "unpaid", amountPesewas: 9300, total_owed: 9300, createdAt: at(1, 10, 8) },
@@ -186,7 +179,7 @@ function screenReport(summaryOverrides = {}) {
       cashShouldHave: 2500, momoShouldHave: 2000, moneyLeft: 4200, sales: 5000, stockBought: 0, otherCosts: 1800, profit: 3200,
       ...summaryOverrides
     },
-    comparison: null, uncounted: { sales: 0, other: 0 }, hideAmounts: false, showProfit: true, averageProfitPesewas: 1000, debtPesewas: 9300, supplierBalancePesewas: 28000
+    uncounted: { sales: 0, other: 0 }, hideAmounts: false, showProfit: true, averageProfitPesewas: 1000, debtPesewas: 9300, supplierBalancePesewas: 28000
   };
 }
 async function mount(report, props = {}) {

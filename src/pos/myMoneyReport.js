@@ -1,22 +1,14 @@
 import { db as defaultDb } from "../db/db.js";
 import { HIDE_AMOUNTS_PREFERENCE } from "../db/preferences.js";
 import { getFinancialTransactions, isSaleRecord, splitCountableTransactions, summarizeFinancialTransactions, summarizePosMoney } from "../lib/money.js";
-import { getMoneyPeriodRange, getOutstandingDebtPesewas, getPreviousMoneyPeriodRange } from "./money.js";
+import { getMoneyPeriodRange, getOutstandingDebtPesewas } from "./money.js";
 import { getSupplierBalances } from "../utils/suppliers.js";
 
 // Brief 3.11 / wiring screen 33: the numbers behind My money. All amounts are integer pesewas.
 
 export const SHOW_PROFIT_PREFERENCE = "showEstimatedProfit";
 
-// A money amount above GH₵1,000,000 cannot be a real week for this shop; it is far more likely a
-// typing slip or a unit mistake, so the comparison is not shown for it (wiring rule, screen 33).
-export const MAX_PLAUSIBLE_PESEWAS = 100_000_000;
-
 const AVERAGE_WEEKS = 4;
-
-function isPlausible(pesewas) {
-  return Number.isSafeInteger(pesewas) && Math.abs(pesewas) <= MAX_PLAUSIBLE_PESEWAS;
-}
 
 function expenseAmountPesewas(transaction) {
   const amount = transaction.amountPesewas ?? transaction.total_amount;
@@ -99,42 +91,16 @@ export function summarizeMyMoneyChecked(allTransactions) {
   };
 }
 
-/**
- * The one calm line under Money left: more than, less than, or the same as the period before.
- * Returns null (no line) when there is nothing to compare with, or when a value cannot be real.
- */
-export function describeComparison({ currentPesewas, previousPesewas, hasPreviousData }) {
-  if (!hasPreviousData) return null;
-  if (!isPlausible(currentPesewas) || !isPlausible(previousPesewas)) return null;
-  const difference = currentPesewas - previousPesewas;
-  if (!isPlausible(difference)) return null;
-  if (difference === 0) return { kind: "same", amountPesewas: 0 };
-  return { kind: difference > 0 ? "more" : "less", amountPesewas: Math.abs(difference) };
-}
-
-export function buildMyMoneyReport({ currentTransactions, previousTransactions, debts, allTransactions, suppliers, showProfit, averageProfitPesewas = null }) {
+export function buildMyMoneyReport({ currentTransactions, debts, allTransactions, suppliers, showProfit, averageProfitPesewas = null }) {
   const { summary, skipped: skippedNow } = summarizeMyMoneyChecked(currentTransactions);
-  const { summary: previous, skipped: skippedBefore } = summarizeMyMoneyChecked(previousTransactions);
-  // What is left out of the figures shown, this period and the one it is compared with.
-  const skipped = [...skippedNow, ...skippedBefore];
+  // What is left out of the figures shown (this period only).
+  const skipped = skippedNow;
   const uncounted = {
     sales: skipped.filter((record) => isSaleRecord(record)).length,
     other: skipped.filter((record) => !isSaleRecord(record)).length
   };
-  const comparison = describeComparison({
-    currentPesewas: summary.moneyLeft,
-    previousPesewas: previous.moneyLeft,
-    hasPreviousData: previousTransactions.some((transaction) => transaction.type !== "income_reversal")
-  });
-  if (!comparison && previousTransactions.length > 0 && (!isPlausible(summary.moneyLeft) || !isPlausible(previous.moneyLeft))) {
-    console.warn("My money: a total is above one million cedis, so the comparison is hidden. Check the amounts that were entered.", {
-      current: summary.moneyLeft,
-      previous: previous.moneyLeft
-    });
-  }
   return {
     summary,
-    comparison,
     uncounted,
     showProfit: showProfit !== false,
     averageProfitPesewas,
@@ -155,11 +121,9 @@ export function buildMyMoneyReport({ currentTransactions, previousTransactions, 
  */
 export async function loadMyMoneyReport({ period, now = new Date(), database = defaultDb }) {
   const current = getMoneyPeriodRange(period, now);
-  const previous = getPreviousMoneyPeriodRange(period, now);
   // rules_global.hide_amounts: the setting is read with the figures, so 33 never shows them before it is known.
-  const [currentTransactions, previousTransactions, debts, allTransactions, suppliers, profitSetting, hideSetting] = await Promise.all([
+  const [currentTransactions, debts, allTransactions, suppliers, profitSetting, hideSetting] = await Promise.all([
     getFinancialTransactions(current, database),
-    getFinancialTransactions(previous, database),
     database.debts.where("status").equals("unpaid").toArray(),
     database.transactions.toArray(),
     database.suppliers.toArray(),
@@ -168,7 +132,7 @@ export async function loadMyMoneyReport({ period, now = new Date(), database = d
   ]);
   const showProfit = profitSetting?.value !== false;
   const averageProfitPesewas = showProfit && period === "week" ? await loadAverageWeeklyProfit(current, database) : null;
-  return { ...buildMyMoneyReport({ currentTransactions, previousTransactions, debts, allTransactions, suppliers, showProfit, averageProfitPesewas }), hideAmounts: hideSetting?.value === true };
+  return { ...buildMyMoneyReport({ currentTransactions, debts, allTransactions, suppliers, showProfit, averageProfitPesewas }), hideAmounts: hideSetting?.value === true };
 }
 
 export async function loadAverageWeeklyProfit(currentRange, database = defaultDb) {

@@ -29,7 +29,7 @@ async function homeHtml(hideAmounts) {
 async function myMoneyHtml(hideAmounts) {
   const { default: MyMoney } = await loadJsx("src/pos/MyMoney.jsx");
   const summary = Object.fromEntries(["moneyIn", "cashIn", "momoIn", "collectedIn", "givenOnCredit", "moneySpent", "spentCash", "spentMomo", "spentUnrecorded", "cashShouldHave", "momoShouldHave", "moneyLeft", "sales", "stockBought", "otherCosts", "profit"].map((name) => [name, BIG]));
-  setLiveQuery(() => ({ hideAmounts, summary, comparison: { kind: "more", amountPesewas: BIG }, showProfit: true, averageProfitPesewas: BIG, debtPesewas: BIG, supplierBalancePesewas: BIG, uncounted: { sales: 0, other: 0 } }));
+  setLiveQuery(() => ({ hideAmounts, summary, showProfit: true, averageProfitPesewas: BIG, debtPesewas: BIG, supplierBalancePesewas: BIG, uncounted: { sales: 0, other: 0 } }));
   try {
     return toHtml(render({ type: MyMoney, props: { onNavigate() {} } }).tree);
   } finally {

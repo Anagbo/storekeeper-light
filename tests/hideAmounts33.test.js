@@ -11,7 +11,7 @@ import { hostShape, moneyPieces } from "./helpers/hiddenAmountScan.js";
 
 // Wiring 33 "Hide amounts" and rules_global.hide_amounts: the eye button (48px) beside the title
 // "My money" hides every shop figure on the screen behind "GH₵ ••••". Sentences keep their words; the
-// comparison line becomes "Compared with yesterday: GH₵ ••••" so it does not say up or down.
+// there is no comparison line (removed 24 Nov 2026).
 
 globalThis.HTMLElement ??= class {};
 const tick = () => new Promise((resolve) => setTimeout(resolve, 2));
@@ -104,7 +104,6 @@ test("33: hidden replaces every figure on the screen (a scan finds no money text
     assert.equal(node.props["aria-label"], "Amount hidden");
   }
   const text = textOf(view.tree);
-  assert.match(text, /Compared with yesterday: GH₵ ••••/);
   assert.doesNotMatch(text, /more than|less than|Same as/);
   assert.match(text, /Sales GH₵ •••• − stock GH₵ •••• − other costs GH₵ ••••/);
   for (const label of ["Money left today", "Money in", "Cash", "MoMo", "What you should have left", "Estimated profit", "Owed to you"]) {
@@ -112,12 +111,11 @@ test("33: hidden replaces every figure on the screen (a scan finds no money text
   }
 });
 
-test("33: every period stays hidden, and the comparison never says up or down while hidden", async () => {
+test("33: every period stays hidden and has no comparison line", async () => {
   const { default: MyMoney } = await loadJsx("src/pos/MyMoney.jsx");
   const report = (kind) => ({
     hideAmounts: true,
     summary: { moneyIn: 9, cashIn: 9, momoIn: 0, collectedIn: 5, givenOnCredit: 5, moneySpent: 9, spentCash: 9, spentMomo: 0, spentUnrecorded: 5, cashShouldHave: 9, momoShouldHave: 0, moneyLeft: 9, sales: 9, stockBought: 9, otherCosts: 9, profit: 9 },
-    comparison: { kind, amountPesewas: 2500 },
     showProfit: true,
     averageProfitPesewas: 9500,
     debtPesewas: 9300,
@@ -126,11 +124,10 @@ test("33: every period stays hidden, and the comparison never says up or down wh
   for (const kind of ["more", "less", "same"]) {
     setLiveQuery(() => report(kind));
     const view = render({ type: MyMoney, props: { onNavigate() {} } });
-    for (const [period, words] of [["Today", "yesterday"], ["This week", "last week"], ["This month", "last month"]]) {
+    for (const period of ["Today", "This week", "This month"]) {
       findButton(view.tree, period).props.onClick();
       view.rerender();
       const text = textOf(view.tree);
-      assert.ok(text.includes(`Compared with ${words}: GH₵ ••••`), `${kind}, ${period}`);
       assert.doesNotMatch(text, /more than|less than|Same as/);
       assert.deepEqual(moneyPieces(view.tree), [], `${kind}, ${period}: no amount`);
     }
@@ -164,7 +161,7 @@ test("33: the hidden form does not leak the length of any figure", async () => {
   const shapes = [];
   for (const amount of [5, 123_456_789_00]) {
     const summary = Object.fromEntries(["moneyIn", "cashIn", "momoIn", "collectedIn", "givenOnCredit", "moneySpent", "spentCash", "spentMomo", "spentUnrecorded", "cashShouldHave", "momoShouldHave", "moneyLeft", "sales", "stockBought", "otherCosts", "profit"].map((name) => [name, amount]));
-    setLiveQuery(() => ({ hideAmounts: true, summary, comparison: { kind: "more", amountPesewas: amount }, showProfit: true, averageProfitPesewas: amount, debtPesewas: amount, supplierBalancePesewas: amount }));
+    setLiveQuery(() => ({ hideAmounts: true, summary, showProfit: true, averageProfitPesewas: amount, debtPesewas: amount, supplierBalancePesewas: amount }));
     const view = render({ type: MyMoney, props: { onNavigate() {} } });
     shapes.push(JSON.stringify(hostShape(view.tree)));
   }

@@ -56,12 +56,11 @@ test("A: tapping This month on 33 loads with realistic data, and so does This we
   assert.ok(Number.isSafeInteger(results["This week"].summary.profit));
 });
 
-test("A: an empty month (and week) loads with zeros and no comparison", async () => {
+test("A: an empty month (and week) loads with zeros", async () => {
   for (const period of ["week", "month"]) {
     const report = await loadMyMoneyReport({ period, now: new Date() });
     assert.equal(report.summary.moneyLeft, 0);
     assert.equal(report.summary.profit, 0);
-    assert.equal(report.comparison, null);
     assert.equal(report.debtPesewas, 0);
   }
 });
@@ -103,7 +102,6 @@ for (const iso of EDGE_DATES) {
         for (const value of Object.values(summary)) assert.ok(Number.isSafeInteger(value), `${period} ${withRecords}: ${JSON.stringify(summary)}`);
         assert.equal(summary.moneyLeft, summary.moneyIn - summary.moneySpent);
         assert.equal(summary.spentStock + summary.spentOther, summary.moneySpent);
-        if (report.comparison) assert.ok(["more", "less", "same"].includes(report.comparison.kind));
         if (!withRecords) assert.equal(summary.moneyLeft, 0);
       }
     }
@@ -120,5 +118,4 @@ test("A: the month before this month is the previous calendar month, even from J
   ]);
   const report = await loadMyMoneyReport({ period: "month", now: jan });
   assert.equal(report.summary.moneyLeft, 10000);
-  assert.deepEqual(report.comparison, { kind: "more", amountPesewas: 3000 });
 });

@@ -112,7 +112,7 @@ test("33: a month with one bad credit sale plus normal sales loads; totals exclu
   assert.ok(warnings.calls.some((line) => line.includes(BAD_ID)), "the warning has the sale id");
 });
 
-test("33: the real case, the bad sale is in the month before: This month still loads and says so", async () => {
+test("33: the real case, the bad sale is in the month before: This month still loads and does not count it", async () => {
   const now = new Date(2026, 10, 10, 12);
   await db.transactions.bulkPut([normal("this", new Date(2026, 10, 9, 10).getTime()), { ...badCreditSale(new Date(2026, 9, 25, 13).getTime()) }, normal("last", new Date(2026, 9, 20, 10).getTime(), { amountPesewas: 2000, total_amount: 2000, cashReceivedPesewas: 2000 })]);
   const warnings = captureWarnings();
@@ -123,8 +123,7 @@ test("33: the real case, the bad sale is in the month before: This month still l
     warnings.restore();
   }
   assert.equal(report.summary.sales, 5000);
-  assert.deepEqual(report.uncounted, { sales: 1, other: 0 });
-  assert.deepEqual(report.comparison, { kind: "more", amountPesewas: 3000 }, "last month is compared without the bad sale");
+  assert.deepEqual(report.uncounted, { sales: 0, other: 0 }, "nothing from last month is shown, so nothing is said about it");
   const week = await loadMyMoneyReport({ period: "week", now });
   assert.deepEqual(week.uncounted, { sales: 0, other: 0 }, "a week that does not touch the bad sale says nothing");
 });
@@ -155,7 +154,7 @@ async function mountMyMoney(report) {
 function baseReport(uncounted) {
   return {
     summary: { moneyIn: 8000, cashIn: 5000, momoIn: 3000, moneySpent: 0, spentStock: 0, spentOther: 0, moneyLeft: 8000, sales: 8000, stockBought: 0, otherCosts: 0, profit: 8000 },
-    comparison: null, hideAmounts: false, showProfit: true, averageProfitPesewas: null, debtPesewas: 0, supplierBalancePesewas: 0, uncounted
+    hideAmounts: false, showProfit: true, averageProfitPesewas: null, debtPesewas: 0, supplierBalancePesewas: 0, uncounted
   };
 }
 

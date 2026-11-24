@@ -8,10 +8,8 @@ import { getPreference } from "../src/db/preferences.js";
 import { formatGhs } from "../src/lib/money.js";
 import { posText } from "../src/pos/i18n.js";
 import {
-  MAX_PLAUSIBLE_PESEWAS,
   SHOW_PROFIT_PREFERENCE,
   buildMyMoneyReport,
-  describeComparison,
   loadAverageWeeklyProfit,
   summarizeMyMoney
 } from "../src/pos/myMoneyReport.js";
@@ -85,51 +83,6 @@ test("3.11: a credit sale is counted once in the profit (when it is sold), with 
   assert.equal(later.moneyIn, 800);
 });
 
-// ---- the comparison --------------------------------------------------------------------------
-
-test("3.11: the comparison says more or less, never up/down or a drop", () => {
-  assert.deepEqual(describeComparison({ currentPesewas: 4000, previousPesewas: 2500, hasPreviousData: true }), { kind: "more", amountPesewas: 1500 });
-  assert.deepEqual(describeComparison({ currentPesewas: 2500, previousPesewas: 4000, hasPreviousData: true }), { kind: "less", amountPesewas: 1500 });
-  assert.deepEqual(describeComparison({ currentPesewas: 2500, previousPesewas: 2500, hasPreviousData: true }), { kind: "same", amountPesewas: 0 });
-});
-
-test("3.11: no comparison when the earlier period has no records", () => {
-  assert.equal(describeComparison({ currentPesewas: 4000, previousPesewas: 0, hasPreviousData: false }), null);
-});
-
-test("3.11: a value that cannot be real is not compared (a possible unit bug)", () => {
-  assert.equal(MAX_PLAUSIBLE_PESEWAS, 100_000_000, "GH₵1,000,000");
-  // The reported case: this week GH₵1,091.00 against a week of GH₵1,006,209.00.
-  assert.equal(describeComparison({ currentPesewas: 109100, previousPesewas: 100620900 + 0, hasPreviousData: true }), null);
-  assert.equal(describeComparison({ currentPesewas: 100_000_001, previousPesewas: 5000, hasPreviousData: true }), null);
-  assert.equal(describeComparison({ currentPesewas: 5000, previousPesewas: -100_000_001, hasPreviousData: true }), null);
-  assert.equal(describeComparison({ currentPesewas: Number.NaN, previousPesewas: 5000, hasPreviousData: true }), null);
-  assert.equal(describeComparison({ currentPesewas: 12.5, previousPesewas: 5000, hasPreviousData: true }), null);
-  // Exactly GH₵1,000,000 is still shown.
-  assert.deepEqual(describeComparison({ currentPesewas: 100_000_000, previousPesewas: 100_000_000 - 7, hasPreviousData: true }), { kind: "more", amountPesewas: 7 });
-});
-
-test("3.11: the report built from the reported data hides the comparison instead of showing GH₵1,005,118.00", () => {
-  const warnings = [];
-  const originalWarn = console.warn;
-  console.warn = (...args) => warnings.push(args);
-  try {
-    const report = buildMyMoneyReport({
-      currentTransactions: [{ id: "c", type: "sale", amountPesewas: 109100, paymentType: "cash" }],
-      previousTransactions: [{ id: "p", type: "sale", amountPesewas: 100620900, paymentType: "cash" }],
-      debts: [],
-      allTransactions: [],
-      suppliers: [],
-      showProfit: true
-    });
-    assert.equal(report.summary.moneyLeft, 109100);
-    assert.equal(report.comparison, null);
-  } finally {
-    console.warn = originalWarn;
-  }
-  assert.ok(warnings.length >= 1, "the unrealistic value is logged for the owner");
-});
-
 // ---- the 4-week average -----------------------------------------------------------------------
 
 const at = (month, day, hour = 10) => new Date(2026, month, day, hour).getTime();
@@ -179,7 +132,6 @@ function reportFor(overrides = {}) {
       spentCash: 12000, spentMomo: 4000, spentUnrecorded: 2000, cashShouldHave: 6000, momoShouldHave: 0,
       moneyLeft: 4000, sales: 30000, stockBought: 15000, otherCosts: 3000, profit: 12000
     },
-    comparison: { kind: "more", amountPesewas: 2500 },
     hideAmounts: false,
     showProfit: true,
     averageProfitPesewas: 9500,
@@ -231,30 +183,20 @@ test("3.11: Money in and Money spent show their breakdowns through the formatter
   assert.ok(text.includes(formatGhs(18000)));
 });
 
-test("3.11: the comparison line is calm and neutral for more and for less", async () => {
-  // Today is the default period, so the line compares with yesterday (This week: tests/myMoneyThreePeriods).
-  const more = textOf((await mountMyMoney(reportFor({ comparison: { kind: "more", amountPesewas: 2500 } }))).view.tree);
-  assert.ok(more.includes(`${formatGhs(2500)} more than yesterday`));
-  const less = textOf((await mountMyMoney(reportFor({ comparison: { kind: "less", amountPesewas: 2500 } }))).view.tree);
-  assert.ok(less.includes(`${formatGhs(2500)} less than yesterday`));
-  assert.doesNotMatch(less, /\bDown\b|\bUp\b|drop|fell|lost|worse/i);
-  const same = textOf((await mountMyMoney(reportFor({ comparison: { kind: "same", amountPesewas: 0 } }))).view.tree);
-  assert.match(same, /Same as yesterday/);
-  const none = textOf((await mountMyMoney(reportFor({ comparison: null }))).view.tree);
-  assert.doesNotMatch(none, /yesterday|last week|last month/);
-  assert.doesNotMatch(none, /NaN|undefined/);
-});
-
-test("3.11: the comparison line for the month says last month", async () => {
+test("3.11: no comparison line (more than / less than) on any period", async () => {
   const { default: MyMoney } = await loadJsx("src/pos/MyMoney.jsx");
-  setLiveQuery(() => reportFor({ comparison: { kind: "less", amountPesewas: 100 } }));
+  setLiveQuery(() => reportFor({}));
   const view = render({ type: MyMoney, props: { onNavigate() {} } });
-  findButton(view.tree, "This month").props.onClick();
-  view.rerender();
+  for (const [button, label] of [["Today", "Money left today"], ["This week", "Money left this week"], ["This month", "Money left this month"]]) {
+    if (button !== "Today") {
+      findButton(view.tree, button).props.onClick();
+      view.rerender();
+    }
+    const text = textOf(view.tree);
+    assert.ok(text.includes(label), label);
+    assert.doesNotMatch(text, /more than|less than|Same as|yesterday|last week|last month/);
+  }
   setLiveQuery(null);
-  const text = textOf(view.tree);
-  assert.match(text, /Money left this month/);
-  assert.ok(text.includes(`${formatGhs(100)} less than last month`));
 });
 
 test("3.11: the Estimated profit card shows the tag, the sum and the average of the last 4 weeks", async () => {

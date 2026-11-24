@@ -327,7 +327,7 @@ async function myMoney(layout) {
   const { default: MyMoney } = await loadJsx("src/pos/MyMoney.jsx");
   setLiveQuery(() => ({
     summary: { moneyIn: 6000, cashIn: 3500, momoIn: 2500, collectedIn: 0, givenOnCredit: 0, moneySpent: 1800, spentStock: 0, spentOther: 1800, spentCash: 1000, spentMomo: 800, spentUnrecorded: 0, cashShouldHave: 2500, momoShouldHave: 1700, moneyLeft: 4200, sales: 5000, stockBought: 0, otherCosts: 1800, profit: 3200 },
-    comparison: null, uncounted: { sales: 0, other: 0 }, hideAmounts: false, showProfit: true, averageProfitPesewas: null, debtPesewas: 9300, supplierBalancePesewas: 28000
+    uncounted: { sales: 0, other: 0 }, hideAmounts: false, showProfit: true, averageProfitPesewas: null, debtPesewas: 9300, supplierBalancePesewas: 28000
   }));
   const view = render({ type: MyMoney, props: { onNavigate() {}, layout } });
   setLiveQuery(null);
