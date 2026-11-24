@@ -26,11 +26,11 @@ const WIDE_NOTE = "text-[17px] leading-snug";
 
 // One label and amount on a line; the amount never wraps or shrinks. `tone` colours the whole row and
 // makes the label bold (Debts paid, On credit): text only, no fill and no border.
-function Row({ label, amountPesewas, hidden, tone = "", ...rest }) {
+function Row({ label, amountPesewas, hidden, tone = "", minus = false, ...rest }) {
   return (
     <p {...rest} className={`flex min-w-0 items-baseline justify-between gap-3 text-base sm:text-lg ${tone}`}>
       <span className={`min-w-0 ${tone ? "font-bold" : ""}`}>{label}</span>
-      <strong className="shrink-0 whitespace-nowrap"><Amount hidden={hidden} pesewas={amountPesewas} /></strong>
+      <strong className="shrink-0 whitespace-nowrap">{minus && !hidden ? "−" : ""}<Amount hidden={hidden} pesewas={amountPesewas} /></strong>
     </p>
   );
 }
@@ -62,7 +62,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
   const summary = report?.summary;
   // Hidden until the setting is known to be false: a real amount never flashes.
   const hidden = report?.hideAmounts !== false;
-  const shouldBeTotal = summary ? summary.cashShouldHave + summary.momoShouldHave : 0;
+  const shouldBeTotal = summary ? summary.cashShouldHave + summary.momoShouldHave - summary.spentUnrecorded : 0;
   const toggleHidden = () => saveHideAmounts(!hidden).catch(() => {});
 
   return (
@@ -90,7 +90,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
       ) : (
         <>
           {/* (1) The soft hero (wide: beside the profit card, or the full row when it is hidden). */}
-          <section data-block="money-left" className={`amount-fit-container ${wide ? WIDE_HERO_CARD : `${SOFT_HERO} px-4 py-3`} ${w(`order-1 flex flex-col justify-center gap-2 p-6 ${report.showProfit ? "" : "col-span-2"}`, "amount-fit-hero")}`}>
+          <section data-block="money-left" className={`amount-fit-container ${wide ? WIDE_HERO_CARD : `${SOFT_HERO} px-4 py-3`} ${w(`order-1 flex flex-col justify-start gap-2 p-6 ${report.showProfit ? "" : "col-span-2"}`, "amount-fit-hero")}`}>
             <p className={wide ? WIDE_LABEL : `text-base font-bold sm:text-lg ${SOFT_HERO_LABEL}`}>{t("money.moneyLeft", { period: periodWords })}</p>
             <p className={wide ? "whitespace-nowrap text-[56px] font-bold leading-tight" : "amount-fit font-extrabold leading-tight"}><Amount hidden={hidden} pesewas={summary.moneyLeft} /></p>
             <p className={`${note("text-sm leading-snug sm:text-base")} ${wide ? "text-[#0F172A]" : SOFT_HERO_LABEL}`}>{t("money.moneyInMinusSpent")}</p>
@@ -133,6 +133,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
               <CardTitle wide={wide} hidden={hidden} amountPesewas={wide ? shouldBeTotal : undefined}>{t("money.shouldHaveLeft")}{!wide && <>{" · "}<Amount hidden={hidden} pesewas={shouldBeTotal} /></>}</CardTitle>
               <Row data-row="cash-left" label={t("money.cash")} hidden={hidden} amountPesewas={summary.cashShouldHave} />
               <Row data-row="momo-left" label={t("money.momo")} hidden={hidden} amountPesewas={summary.momoShouldHave} />
+              {summary.spentUnrecorded > 0 && <Row data-row="unrecorded-left" minus label={t("money.methodNotRecorded")} hidden={hidden} amountPesewas={summary.spentUnrecorded} />}
               <p className={`${note("text-sm leading-snug sm:text-base")} text-slate-700`}>{t("money.shouldHaveLeftCaption")}</p>
             </section>
           </div>
@@ -141,7 +142,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
               the period has a cost, profit is worked out from the costs (N of M lines counted, an unknown
               cost never zero); until then the cash-based Estimated profit card stays as it was. */}
           {report.showProfit && report.itemProfit?.countedLines > 0 && (
-            <section data-card="profit" data-profit-view="items" className={`amount-fit-container flex min-w-0 flex-col ${w(`order-2 justify-center gap-2 ${WIDE_HERO_CARD} p-6`, `gap-1 ${SOFT_TILE} px-3.5 py-3`)}`}>
+            <section data-card="profit" data-profit-view="items" className={`amount-fit-container flex min-w-0 flex-col ${w(`order-2 justify-start gap-2 ${WIDE_HERO_CARD} p-6`, `gap-1 ${SOFT_TILE} px-3.5 py-3`)}`}>
               <p className={`text-lg font-extrabold ${wide ? "text-[#0F172A]" : ""}`}>{t("money.profitTitle", { period: periodWords })}</p>
               <p className={wide ? WIDE_AMOUNT : "amount-fit font-extrabold leading-tight text-[#0F172A]"}><Amount hidden={hidden} pesewas={report.itemProfit.profitPesewas} /></p>
               {report.itemProfit.countedLines < report.itemProfit.totalLines ? (
@@ -156,7 +157,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
             </section>
           )}
           {report.showProfit && !(report.itemProfit?.countedLines > 0) && (
-            <section data-card="profit" className={`amount-fit-container flex flex-col ${w("order-2 justify-center gap-2", "gap-0.5")} ${card}`}>
+            <section data-card="profit" className={`amount-fit-container flex flex-col ${w("order-2 justify-start gap-2", "gap-0.5")} ${card}`}>
               <p className={`text-lg font-extrabold ${wide ? "text-[#0F172A]" : ""}`}>{t("money.estimatedProfit")}</p>
               <p className={wide ? WIDE_AMOUNT : "amount-fit font-extrabold leading-tight text-emerald-900"}><Amount hidden={hidden} pesewas={summary.profit} /></p>
               <p className={`break-words ${note("text-sm leading-snug sm:text-base")} text-slate-800`}>{amountText("money.profitSum", { sales: summary.sales, stock: summary.stockBought, other: summary.otherCosts }, hidden)}</p>

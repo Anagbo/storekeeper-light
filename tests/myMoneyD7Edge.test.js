@@ -11,6 +11,16 @@ const SEEDS = { money: `await setPreference("posSetupCompleted", true);
   await recordCreditSale({ name: "Abena Konadu", phone: "0244123456", amountPesewas: 1234500, dueDate: new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10), now: Date.now() });
   await recordExpense({ amountPesewas: 1234500, paidAmountPesewas: 0, category: "stock", newSupplier: { name: "Kofi" }, paidWith: "cash", payBy: new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10) });` };
 
+const UNREC = { money: `await setPreference("posSetupCompleted", true);
+  await recordCashSale({ amountPesewas: 1234500 });
+  await recordExpense({ amountPesewas: 10500, paidAmountPesewas: 10500, category: "stock", newSupplier: { name: "Kofi" } });` };
+
+const TIE = `(() => {
+  const hero = document.querySelector("[data-block=money-left] p:nth-of-type(2)").textContent.trim();
+  const card = document.querySelector("[data-card=should-have-left]");
+  return { hero, total: card.querySelector("p:nth-of-type(2)").textContent.trim(), text: card.innerText };
+})()`;
+
 const MEASURE = `(() => {
   const rows = [...document.querySelectorAll("main [data-row]")].map((row) => {
     const [label, amount] = row.children;
@@ -76,6 +86,41 @@ test("My money D7: fits, no comparison, hero follows the period, links, hidden a
         await waitFor(() => app.evaluate(`!document.querySelector("[data-card=money-in]")`), `${at}: ${link} leaves My money`);
         await waitFor(() => app.evaluate(`document.querySelector("main").innerText`).then((text) => heading.test(text)), `${at}: ${link} opens its screen`);
       }
+    }
+  });
+});
+
+test("My money: the Where your money should be total equals the hero amount (This month with unrecorded spending, Today with none)", { skip: browser ? false : "no Chrome or Edge found (set HEADER_TEST_BROWSER)", timeout: 600_000 }, async () => {
+  await withEdgeApp({ seeds: UNREC, env: ENV }, async (app) => {
+    await openMyMoney(app, 1280, 800).catch(async () => { await app.open("money", 1280, 800); await app.steps(["^My money$"]); await sleep(500); });
+    await app.click("^This month$");
+    await sleep(400);
+    const m = await app.evaluate(TIE);
+    assert.equal(m.total, m.hero, "This month: card total equals the hero amount");
+    assert.match(m.text.replace(/\s+/g, " "), /Method not recorded −GH₵105\.00/);
+  });
+  await withEdgeApp({ seeds: SEEDS, env: ENV }, async (app) => {
+    await openMyMoney(app, 1280, 800);
+    await app.click("^Today$");
+    await sleep(400);
+    const m = await app.evaluate(TIE);
+    assert.equal(m.total, m.hero, "Today: card total equals the hero amount");
+    assert.doesNotMatch(m.text, /Method not recorded/);
+  });
+});
+
+test("My money wide: the hero and Estimated profit labels sit on the same top at 1024 and 1280", { skip: browser ? false : "no Chrome or Edge found (set HEADER_TEST_BROWSER)", timeout: 600_000 }, async () => {
+  await withEdgeApp({ seeds: SEEDS, env: ENV }, async (app) => {
+    for (const [width, height] of [[1024, 768], [1280, 800]]) {
+      await openMyMoney(app, width, height);
+      const m = await app.evaluate(`(() => {
+        const top = (el) => el.getBoundingClientRect().top;
+        const hero = document.querySelector("[data-block=money-left]");
+        const profit = document.querySelector("[data-card=profit]");
+        return { hero: top(hero.querySelector("p")), profit: top(profit.querySelector("p")), hh: hero.offsetHeight, ph: profit.offsetHeight };
+      })()`);
+      assert.ok(Math.abs(m.hero - m.profit) <= 1, `${width}px: labels at ${m.hero} and ${m.profit}`);
+      assert.ok(Math.abs(m.hh - m.ph) <= 1, `${width}px: equal card height`);
     }
   });
 });

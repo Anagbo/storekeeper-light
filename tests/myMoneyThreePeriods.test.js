@@ -294,7 +294,7 @@ test("33: Where your money should be shows Cash and MoMo; the layout order follo
   const text = textOf(card(view, "should-have-left"));
   assert.ok(text.includes(`Cash${formatGhs(2500)}`));
   assert.ok(text.includes(`MoMo${formatGhs(2000)}`));
-  assert.ok(text.startsWith(`Where your money should be · ${formatGhs(4500)}`), `phone: the total (Cash + MoMo) is in the title line: ${text}`);
+  assert.ok(text.startsWith(`Where your money should be · ${formatGhs(4200)}`), `phone: the total (Cash + MoMo − unrecorded spending, = Money left) is in the title line: ${text}`);
   const order = textOf(view.tree);
   const at = (label) => order.indexOf(label);
   assert.ok(at("Money left today") < at("Money in") && at("Money in") < at("Money spent") && at("Money spent") < at("Where your money should be") && at("Where your money should be") < at("Estimated profit") && at("Estimated profit") < at("Owed to you"));
@@ -357,7 +357,7 @@ test("33 at 340, 360 and 393px: card rows keep label and amount on one line with
   for (const result of results) {
     const where = `${result.width}px`;
     assert.equal(result.pageOverflow, false, `${where}: no horizontal scroll`);
-    assert.equal(result.rows.length, 9, `${where}: every row is there (Debts paid and On credit since 15 Nov 2026)`);
+    assert.equal(result.rows.length, 10, `${where}: every row is there (Debts paid and On credit since 15 Nov 2026; Method not recorded in the should-be card since 24 Nov 2026)`);
     const cash = result.rows.find((row) => row.name === "cash-in");
     for (const name of ["debts-paid", "on-credit"]) {
       const extra = result.rows.find((row) => row.name === name);
@@ -371,6 +371,17 @@ test("33 at 340, 360 and 393px: card rows keep label and amount on one line with
       assert.ok(row.amountRight <= row.right + 0.5, `${where}: ${row.text}: amount inside the card`);
     }
   }
+});
+
+test("33: Where your money should be ties to Money left: cash + MoMo − unrecorded spending, with a Method not recorded row", async () => {
+  const { view } = await mount(screenReport({ cashShouldHave: 102364216, momoShouldHave: 261300, spentUnrecorded: 10500, moneyLeft: 102615016 }));
+  const text = textOf(card(view, "should-have-left"));
+  assert.ok(text.startsWith(`Where your money should be · ${formatGhs(102615016)}`), text);
+  assert.ok(text.includes(`Method not recorded−${formatGhs(10500)}`), text);
+  assert.equal(102364216 + 261300 - 10500, 102615016);
+  const none = await mount(screenReport({ spentUnrecorded: 0, cashShouldHave: 2500, momoShouldHave: 2000, moneyLeft: 4500 }));
+  assert.doesNotMatch(textOf(card(none.view, "should-have-left")), /Method not recorded/);
+  assert.ok(textOf(card(none.view, "should-have-left")).startsWith(`Where your money should be · ${formatGhs(4500)}`));
 });
 
 // ---- wide layout (D7) ----------------------------------------------------------------------------------------
