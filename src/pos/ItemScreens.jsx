@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Check, Search, Trash2 } from "lucide-react";
+import { Check, Search, Trash2, X } from "lucide-react";
 import { db } from "../db/db.js";
 import { createProduct, normalizeProductInput, removeProduct, updateProduct, addStarterProducts } from "../db/products.js";
 import { getAllStarterItems, groupCoreItemsByCategory, mergeStarterItems, starterChipCategories, starterItemsForChip } from "../db/starterItems.js";
@@ -518,7 +518,7 @@ function StarterBrowse({ onBack, onAdd, dialog = false }) {
     <>
       <p className={dialog ? "text-[17px] text-slate-800" : "text-base text-slate-800"}>{t("items.starterBrowseHint")}</p>
       {result === undefined || setup === undefined ? <p role="status">{t("items.loading")}</p> : (
-        <div className="flex flex-col gap-2">
+        <div className={dialog ? "-m-1 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-1" : "flex flex-col gap-2"}>
           <div role="group" aria-label={t("items.starterCategories")} className="flex flex-wrap gap-2">
             {chipButton({ id: "all", name: t("items.starterAll") })}
             {chips.chosen.map(chipButton)}
@@ -559,7 +559,7 @@ function StarterBrowse({ onBack, onAdd, dialog = false }) {
       )}
       <p className="text-sm text-slate-700">{t("items.priceLater")}</p>
       {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{error}</p>}
-      <PosPrimaryButton type="button" disabled={saving || result === undefined || selectedCount === 0} onClick={() => void addSelected()} className="mt-auto">
+      <PosPrimaryButton type="button" disabled={saving || result === undefined || selectedCount === 0} onClick={() => void addSelected()} className={dialog ? "shrink-0" : "mt-auto"}>
         {saving ? t("items.saving") : t(selectedCount === 1 ? "items.addOne" : "items.addCount", { count: selectedCount })}
       </PosPrimaryButton>
     </>
@@ -567,9 +567,10 @@ function StarterBrowse({ onBack, onAdd, dialog = false }) {
   if (dialog) {
     return (
       <WideDialog labelledBy="starter-browse-title" onClose={() => { if (!saving) onBack(); }}>
-        <div className="flex min-w-0 flex-col gap-3">
-          <div className="flex items-center gap-3">
-            <PosBackButton onClick={onBack} disabled={saving} />
+        {/* Wide dialog: the header button is Close; the list scrolls by itself and the action stays in view. */}
+        <div className="flex max-h-[calc(100dvh-84px)] min-h-0 min-w-0 flex-col gap-3">
+          <div className="flex shrink-0 items-center gap-3">
+            <PosSecondaryButton type="button" onClick={onBack} disabled={saving}><X size={22} aria-hidden="true" />{t("collect.close")}</PosSecondaryButton>
             <h2 id="starter-browse-title" className="line-clamp-2 min-w-0 break-words text-2xl font-extrabold leading-tight">{t("items.starterBrowseTitle")}</h2>
           </div>
           {body}

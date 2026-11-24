@@ -176,7 +176,7 @@ test("D8 Save: the saved row stays selected with the new price, and the pane sho
   assert.equal(savedLine(app), "", "typing again hides Saved");
 });
 
-test("D8 Add from starter list: a WideDialog over the same page; Back closes it and an unsaved edit in the pane stays", async () => {
+test("D8 Add from starter list: a WideDialog over the same page; Close closes it and an unsaved edit in the pane stays", async () => {
   const app = await openItems(1280);
   await app.tap(/^Bread/);
   await typeName(app, "Brown bread");
@@ -186,7 +186,7 @@ test("D8 Add from starter list: a WideDialog over the same page; Back closes it 
   assert.ok(dialog, "the starter list is a WideDialog");
   assert.equal(leaveQuestion(app), null, "no leave question: the page stays");
   assert.ok(nodes(app.view.tree).find((node) => node.props.inert && node.props["data-items-columns"] !== undefined), "the page behind is inert");
-  await app.tap("Back");
+  await app.tap("Close");
   assert.equal(nodes(app.view.tree).find((node) => node.props["aria-labelledby"] === "starter-browse-title"), undefined, "closed");
   assert.equal(nameField(app).props.value, "Brown bread", "the edit is still there");
 });

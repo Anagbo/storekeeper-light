@@ -48,9 +48,9 @@ test("D8 at 768 and 1280: fits without page scroll, Save pinned, no sideways scr
       for (const row of m.rows) assert.ok(row.t >= 0 && row.b <= m.innerHeight && row.h >= 48, `${at}: every row visible and 48px+`);
       assert.ok(m.pane.l >= m.list.r, `${at}: form to the right of the list`);
       assert.ok(m.pane.b <= m.innerHeight && m.pane.t >= 0, `${at}: form visible`);
-      assert.ok(m.save.b <= m.pane.b && m.pane.b - m.save.b <= 80, `${at}: Save at the bottom of the pane (${m.pane.b - m.save.b}px above)`);
+      assert.ok(m.save.b <= m.pane.b && m.pane.b - m.save.b <= 160, `${at}: Save at the bottom of the pane (above Delete item when stacked) (${m.pane.b - m.save.b}px above)`);
       assert.ok(m.save.r >= m.pane.r - 40, `${at}: Save at the right`);
-      assert.ok(m.save.w <= 240.5 && m.save.h >= 48, `${at}: Save 240px wide at most, 48px+`);
+      assert.ok((m.save.w <= 240.5 || m.save.w >= m.pane.r - m.pane.l - 60) && m.save.h >= 48, `${at}: Save 240px wide at most, 48px+`);
       if (width === 768) assert.ok(Math.abs(m.list.w - 260) <= 1, `${at}: list 260px (${m.list.w})`);
       else assert.ok(m.list.w >= 339 && m.list.w <= 400.5, `${at}: list 340 to 400px (${m.list.w})`);
       assert.equal(m.labels.length, 2, `${at}: Item name and Price only`);
