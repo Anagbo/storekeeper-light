@@ -27,7 +27,8 @@ export function guardAsks(entry, { push = false } = {}) {
 // A screen: dirty is whether the values differ from the start; question is its own wording.
 // Returns askFirst(proceed) for its own in-page switches (wide Items rows), release() for a
 // successful save that leaves (nothing is lost), and asking (the question is open).
-export function useLeaveGuard(dirty, question, { keptOnTripAway = false } = {}) {
+// enabled: false when another component owns the question for this screen (the wide Items pane).
+export function useLeaveGuard(dirty, question, { keptOnTripAway = false, enabled = true } = {}) {
   const context = useContext(LeaveGuardContext);
   const entryRef = useRef(null);
   entryRef.current ??= { dirty: false, question, keptOnTripAway };
@@ -39,13 +40,13 @@ export function useLeaveGuard(dirty, question, { keptOnTripAway = false } = {}) 
   }, [dirty, question, keptOnTripAway]);
   useEffect(() => {
     const guards = context?.guards;
-    if (!guards) return undefined;
+    if (!guards || !enabled) return undefined;
     guards.entry = entry;
     return () => {
       entry.dirty = false;
       if (guards.entry === entry) guards.entry = null;
     };
-  }, [context?.guards]);
+  }, [context?.guards, enabled]);
   return {
     askFirst(proceed) {
       const guards = context?.guards;

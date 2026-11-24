@@ -16,6 +16,7 @@ import { useFormErrors } from "./formErrors.js";
 import WideDialog, { useWideDialogs } from "./WideDialog.jsx";
 import { useLayoutContext } from "./layout.js";
 import { SOFT_TILE } from "./softTile.js";
+import { useLeaveGuard } from "./leaveGuard.js";
 
 const CATEGORY_LABELS = Object.freeze({
   stock: "expense.category.stock",
@@ -181,6 +182,11 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
   const [saving, setSaving] = useState(false);
   useBackBlock(saving);
   const [error, setError] = useState("");
+  // rules_global.leave_question: anything typed or chosen differs from the empty start. The draft is in
+  // the route params, so a trip away (sidebar, Menu row) keeps it and does not ask; Back, a tab and Home do.
+  const changed = !["", "0"].includes(paidAmount) || Boolean(supplierId) || newSupplier || Boolean(supplierName) ||
+    Boolean(supplierPhone) || Boolean(payBy) || paidWith !== "cash";
+  useLeaveGuard(changed, t("expense.leaveQuestion"), { keptOnTripAway: true });
   const paidPesewas = toPesewas(paidAmount);
   const validPaidAmount = Number.isSafeInteger(paidPesewas) && paidPesewas >= 0 && paidPesewas <= amountPesewas;
   const owedPesewas = Math.max(0, amountPesewas - (Number.isSafeInteger(paidPesewas) ? paidPesewas : 0));

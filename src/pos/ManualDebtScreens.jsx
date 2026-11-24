@@ -20,6 +20,7 @@ import { useSaveAttempt } from "./useSaveAttempt.js";
 import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
 import { useBackBlock } from "./browserBack.js";
 import { SOFT_TILE, SOFT_TILE_DIVIDERS } from "./softTile.js";
+import { useLeaveGuard } from "./leaveGuard.js";
 
 export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, onSaveManualDebt }) {
   // The typed amount and note are kept in the route params (as the split parts on 16 are), so
@@ -36,6 +37,9 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, o
   const today = localDateString();
   const [takenOn, setTakenOn] = useState(params.takenOn ?? today);
   const [pickingDate, setPickingDate] = useState(false);
+  // rules_global.leave_question: the amount, note or date differ from the empty start. The draft is in
+  // the route params, so a trip away keeps it and does not ask; Back, a tab and Home do.
+  useLeaveGuard(amountText !== "" || note !== "" || takenOn !== today, t("manualDebt.leaveQuestion"), { keptOnTripAway: true });
   const amountPesewas = amountTextToPesewas(amountText);
   const amountValid = Number.isSafeInteger(amountPesewas) && amountPesewas > 0;
   const debt = params.customer?.debt;

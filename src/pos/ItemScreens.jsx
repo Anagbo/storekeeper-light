@@ -123,6 +123,9 @@ function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCom
   const [baseline, setBaseline] = useState(() => ({ name: item?.name ?? "", price: priceText(item) }));
   const dirty = name !== baseline.name || price !== baseline.price;
   const [showSaved, setShowSaved] = useState(savedNotice);
+  // rules_global.leave_question: the phone 40 and 41 ask before an exit drops the typed values (on wide
+  // the Items page asks for its pane).
+  const leaveGuard = useLeaveGuard(dirty, t("items.leaveQuestion"), { enabled: !pane });
   useEffect(() => {
     if (!pane) return undefined;
     onDirtyChange?.(dirty);
@@ -153,8 +156,12 @@ function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCom
         setBaseline(next);
         setShowSaved(true);
         onSaved?.(saved);
-      } else if (setupFlow) await onCompleteSetup();
-      else onBack();
+      } else {
+        // Saved: nothing is lost by leaving now.
+        leaveGuard.release();
+        if (setupFlow) await onCompleteSetup();
+        else onBack();
+      }
     } catch (saveError) {
       console.error("Could not save this item.", saveError);
       setError(saveError instanceof TypeError ? saveError.message : t("items.saveFailed"));

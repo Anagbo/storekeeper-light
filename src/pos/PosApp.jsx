@@ -214,6 +214,10 @@ export default function PosApp() {
     }
     setLeaveAsk({ question: entry.question, proceed: () => { entry.dirty = false; proceed(); } });
   }
+  // A save that leaves the screen: nothing is lost, so the exit after it never asks.
+  function releaseLeaveGuard() {
+    if (leaveGuards.entry) leaveGuards.entry.dirty = false;
+  }
   leaveGuards.ask = askLeaveGuard;
   const leaveGuardContext = useMemo(() => ({ guards: leaveGuards, asking: leaveAsk !== null }), [leaveGuards, leaveAsk !== null]);
   function leaveDraft(proceed) {
@@ -253,6 +257,7 @@ export default function PosApp() {
       return;
     }
     // A screen with unsaved values of its own asks first; Back happens only after Leave.
+    // Leave is the ordinary Back: a draft that Back keeps (45, 53: draft_survives_trip_away) stays kept.
     askLeaveGuard(() => { commit(backState); setNotice(""); });
   }
 
@@ -381,10 +386,12 @@ export default function PosApp() {
   // A row closes the drawer and goes to that screen, pushed on the page the drawer was opened from,
   // so Back from it returns there. Home is the header Home rule (it leaves the draft). The row for
   // the page already showing only closes the drawer.
+  // A screen with unsaved values in its own state (Edit item, New item) asks first, as the sidebar does.
   function chooseFromMenu(target) {
     setMenuOpen(false);
     if (target === routeRef.current.current) return;
-    navigate(target);
+    if (target === POS_ROUTES.Home) navigate(target);
+    else askLeaveGuard(() => navigate(target), { push: true });
   }
 
   // wide_layout (decided 21 Nov 2026): a sidebar or rail tap is a Menu choice, not a bottom-bar tab. It
@@ -549,6 +556,7 @@ export default function PosApp() {
       ...details
     });
     void requestBackgroundSync();
+    releaseLeaveGuard();
     switchTab(POS_ROUTES.Home);
     setNotice(stockSavedNotice(result));
   }
