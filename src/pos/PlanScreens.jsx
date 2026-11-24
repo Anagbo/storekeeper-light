@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Banknote, Check, Smartphone } from "lucide-react";
+import { Banknote, Check, Smartphone, X } from "lucide-react";
 import { formatDate } from "../lib/formatDate.js";
 import { formatGhs } from "../lib/money.js";
 import { getPreference } from "../db/preferences.js";
 import { appendPlanPayment, createPlanCashCode, getPlanLastUsedMethod, getPlanPaymentConfiguration, groupPlanPayments, listPlanPayments, PLAN_CONFIG, planMethodLabel, planPaymentRows, planStatusLabel } from "./planPayments.js";
 import { PHONE_REQUEST_ENABLED } from "./momoConfig.js";
-import { PosCard, PosPage, PosPrimaryButton, PosStatusTag, PosBackButton } from "./PosComponents.jsx";
+import { PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, PosBackButton } from "./PosComponents.jsx";
 import { useBackBlock } from "./browserBack.js";
 import { EventDetail, KeyValueRows } from "./EventRows.jsx";
 import { posText as t } from "./i18n.js";
-import { SettingsPane, useSettingsPane } from "./SettingsPane.jsx";
+import { PANE_BUTTON, SettingsPane, useSettingsPane } from "./SettingsPane.jsx";
+import { SOFT_TILE, SOFT_TILE_DIVIDERS } from "./softTile.js";
+import WideDialog from "./WideDialog.jsx";
 
 const NETWORKS = ["MTN", "Telecel", "AirtelTigo"];
 
@@ -64,8 +66,29 @@ export function MyPlan({
   const [payments, setPayments] = useState([]);
   useEffect(() => { listPlanPayments().then((rows) => setPayments(groupPlanPayments(rows))).catch((error) => console.error("Could not load plan payments.", error)); }, []);
   const status = planStatus(expiry || subscriptionExpiry, trialActive, trialExpiry);
-  // Wide Settings (D13c): drawn in the Settings pane, without Back.
+  // Wide Settings (D13c): drawn in the Settings pane, without Back. The plan card and the payments are
+  // soft tiles (read-only), Pay now is the only green button and opens 65 as a WideDialog over the pane.
   const pane = useSettingsPane();
+  const [paying, setPaying] = useState(false);
+  if (pane) return <SettingsPane id="plan" title="My plan">
+    <section aria-labelledby="plan-card-title" data-plan-card="" className={`${SOFT_TILE} flex flex-col gap-2 p-5`}>
+      <div className="flex items-center justify-between gap-3"><h3 id="plan-card-title" className="text-xl font-extrabold">Shop plan</h3><PosStatusTag tone={status.tone} large>{status.label}</PosStatusTag></div>
+      <p className="flex items-baseline gap-2 text-[#0F172A]"><span className="text-[36px] font-bold">{formatGhs(PLAN_CONFIG.amountPesewas)}</span><span className="text-[17px] font-semibold">a month</span></p>
+      {status.rows
+        ? <KeyValueRows name="plan-status" className={SOFT_TILE_DIVIDERS}>{status.rows.map((row) => <EventDetail key={row.name} label={row.label} name={row.name}>{row.value}</EventDetail>)}</KeyValueRows>
+        : <p className="text-[17px] font-bold text-slate-800">{status.line}</p>}
+    </section>
+    {status.kind !== "ended" && <p className="text-[17px]">Your sales and records stay safe if a payment is late.</p>}
+    <PosPrimaryButton type="button" onClick={() => setPaying(true)} className={PANE_BUTTON}>Pay now</PosPrimaryButton>
+    <h3 className="text-[15px] font-extrabold uppercase tracking-wider text-slate-700">Payments</h3>
+    {payments.length === 0
+      ? <p className="text-[17px]">No payments yet.</p>
+      : <div className="flex flex-col gap-2">{payments.map((payment) => <div key={payment.id} data-row="payment" className={`${SOFT_TILE} flex items-center justify-between gap-3 px-4 py-3`}>
+          <div className="min-w-0"><p className="text-[17px] font-extrabold">{planMethodLabel(payment.method)}</p><p className="text-[17px] text-slate-700">{formatDate(payment.createdAt)}</p></div>
+          <div className="flex shrink-0 flex-col items-end gap-1"><span className="whitespace-nowrap text-[17px] font-bold text-[#0F172A]">{formatGhs(payment.amountPesewas)}</span>{planStatusLabel(payment.status) && <PosStatusTag compact large tone={PLAN_STATUS_TONES[payment.status] ?? "neutral"}>{planStatusLabel(payment.status)}</PosStatusTag>}</div>
+        </div>)}</div>}
+    {paying && <PlanPayMethod dialog onBack={() => setPaying(false)} onNavigate={onNavigate} />}
+  </SettingsPane>;
   const content = <>
     <PosCard className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3"><h2 className="text-xl font-extrabold">Shop plan</h2><PosStatusTag tone={status.tone}>{status.label}</PosStatusTag></div>
@@ -87,7 +110,6 @@ export function MyPlan({
           </div>)}</div>}
     </PosCard>
   </>;
-  if (pane) return <SettingsPane id="plan" title="My plan">{content}</SettingsPane>;
   return <PosPage className="flex flex-col gap-3">
     <BackTitle title="My plan" onBack={onBack} />
     {content}
@@ -100,14 +122,23 @@ function MethodTile({ icon: Icon, title, detail, disabled = false, onClick, chil
 
 // 65: helper and tag text from the wiring file (K15). Last used shows only on the
 // method stored by the last plan payment; the fee comes from configuration.
-export function PlanPayMethod({ onBack, onNavigate }) {
+// dialog (wide Settings, D13c): the same content as a WideDialog over the My plan pane; Close, Escape and the
+// scrim close it and focus goes back to Pay now. A method opens its screen (66, 67, 68) as on the phone.
+export function PlanPayMethod({ onBack, onNavigate, dialog = false }) {
   const [lastUsed, setLastUsed] = useState("");
   useEffect(() => { getPlanLastUsedMethod().then(setLastUsed).catch((error) => console.error("Could not load the last plan payment method.", error)); }, []);
-  return <PosPage className="flex flex-col gap-3"><BackTitle title="Pay for my plan" onBack={onBack} /><p className="text-[22px] font-extrabold">{formatGhs(PLAN_CONFIG.amountPesewas)} for 1 month</p><h2 className="text-lg font-bold">How do you want to pay?</h2>
+  const body = <><p className="text-[22px] font-extrabold">{formatGhs(PLAN_CONFIG.amountPesewas)} for 1 month</p><h2 className="text-lg font-bold">How do you want to pay?</h2>
     <MethodTile icon={Banknote} title="Cash" detail="Give cash to a StoreKeeper agent." onClick={() => onNavigate("PlanPayCash")}>{lastUsed === "cash" && <PosStatusTag compact>Last used</PosStatusTag>}<PosStatusTag compact>Free</PosStatusTag></MethodTile>
     <MethodTile icon={Smartphone} title="Mobile money" detail="Send to our number. Enter the message code." onClick={() => onNavigate("PlanPayMoMo")}>{lastUsed === "momo_direct" && <PosStatusTag compact>Last used</PosStatusTag>}<PosStatusTag compact>Free</PosStatusTag></MethodTile>
     <MethodTile icon={Smartphone} title="Phone request" detail={PHONE_REQUEST_ENABLED ? "Approve on your phone. Confirmed by itself." : "Not available yet"} disabled={!PHONE_REQUEST_ENABLED} onClick={() => onNavigate("PlanPayPhone")}>{PHONE_REQUEST_ENABLED && lastUsed === "momo_paystack" && <PosStatusTag compact>Last used</PosStatusTag>}{/* No Fee tag (20 Nov 2026): as on 68, the plan fee is not shown until the owner decides who bears it. */}</MethodTile>
-  </PosPage>;
+  </>;
+  if (dialog) return <WideDialog labelledBy="plan-pay-title" onClose={onBack}>
+    <div className="flex flex-col gap-3 [&_.text-base]:text-[17px] [&_.text-sm]:text-[17px]">
+      <div className="flex items-center gap-3"><PosSecondaryButton type="button" onClick={onBack}><X size={22} aria-hidden="true" />{t("collect.close")}</PosSecondaryButton><h2 id="plan-pay-title" className="min-w-0 text-2xl font-extrabold">Pay for my plan</h2></div>
+      {body}
+    </div>
+  </WideDialog>;
+  return <PosPage className="flex flex-col gap-3"><BackTitle title="Pay for my plan" onBack={onBack} />{body}</PosPage>;
 }
 
 // One save at a time for plan payment buttons (66, 67, 68). The guard is released

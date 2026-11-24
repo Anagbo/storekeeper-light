@@ -127,3 +127,35 @@ test("D13b MoMo pane: Save pinned in the pane footer; a changed number asks in a
     assert.match(textOf(rows(app)[1]), /Set up$/, `${width}: the row says Set up`);
   }
 });
+
+test("D13c My plan pane: soft plan card, Pay now the only green button, opens 65 as a WideDialog over the pane", async () => {
+  for (const width of [768, 1280]) {
+    const app = await open(width);
+    await app.side("SettingsProfitTools");
+    await row(app, "plan");
+    const card = nodes(pane(app)).find((node) => node.props["data-plan-card"] !== undefined);
+    assert.match(card.props.className, /bg-\[#F1F5F9\]/, `${width}: the plan card is a soft tile`);
+    assert.doesNotMatch(card.props.className, /border/);
+    assert.match(textOf(card), /^Shop planLateGH₵15\.00a month/);
+    const green = nodes(pane(app)).filter((node) => node.type === "button" && node.props["data-look"] === "main");
+    assert.deepEqual(green.map((node) => textOf(node)), ["Pay now"], `${width}: Pay now is the only green button`);
+    assert.match(textOf(pane(app)), /PaymentsNo payments yet\.$/);
+    await app.tap("Pay now");
+    assert.equal(app.route, "SettingsProfitTools", `${width}: 65 opens over the pane, not as a screen`);
+    assert.ok(dialog(app));
+    assert.match(textOf(dialog(app)), /^ClosePay for my planGH₵15\.00 for 1 monthHow do you want to pay\?Cash/);
+    assert.ok(pane(app), `${width}: the pane stays behind the dialog`);
+    pressKey("Escape");
+    await app.settle();
+    assert.equal(dialog(app), null, `${width}: Escape closes 65`);
+    await app.tap("Pay now");
+    await app.tap(/^Close$/);
+    assert.equal(dialog(app), null, `${width}: Close closes 65`);
+    await app.tap("Pay now");
+    await app.tap(/^Cash/);
+    assert.equal(app.route, "PlanPayCash", `${width}: a method opens its screen`);
+    await app.phoneBack();
+    assert.equal(app.route, "SettingsProfitTools");
+    assert.equal(pane(app).props["data-settings-pane"], "plan", `${width}: Back returns to the My plan pane`);
+  }
+});
