@@ -146,6 +146,11 @@ const ENGLISH = Object.freeze({
   "items.name": "Item name",
   "items.namePlaceholder": "e.g. Bread",
   "items.price": "Price (GH₵)",
+  // Wiring 40/41 COST PRICE and 39 COST NOT SET (24 Nov 2026).
+  "items.cost": "What you paid for one",
+  "items.optional": "(optional)",
+  "items.costHelper": "Only you see this. We use it to work out your profit.",
+  "items.costNotSet": "Cost not set",
   "items.save": "Save",
   "items.saving": "Saving…",
   "items.saveFailed": "The item could not be saved. No changes were committed. Try again.",

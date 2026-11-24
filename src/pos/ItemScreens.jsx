@@ -6,6 +6,7 @@ import { createProduct, normalizeProductInput, removeProduct, updateProduct, add
 import { getAllStarterItems, groupCoreItemsByCategory, mergeStarterItems, starterChipCategories, starterItemsForChip } from "../db/starterItems.js";
 import { loadStarterCategories } from "../db/preferences.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
+import { formatPesewasText } from "../lib/parsePesewas.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { posText as t } from "./i18n.js";
 import { shortSaveName } from "./saveLabel.js";
@@ -83,7 +84,10 @@ function MyItems({ onBack, onNavigate }) {
         <div className="flex flex-col gap-2">
           {filteredItems.map((item) => (
             <button key={item.id} type="button" onClick={() => onNavigate("EditItem", { itemId: item.id })} className="flex min-h-[60px] items-center gap-3 rounded-2xl border-2 border-slate-500 bg-white px-3 text-left">
-              <strong className="min-w-0 flex-1 truncate text-lg">{item.name}</strong>
+              <span className="flex min-w-0 flex-1 flex-col">
+                <strong className="truncate text-lg">{item.name}</strong>
+                {hasNoCost(item) && <span data-cost-not-set="" className="text-[15px] font-normal leading-snug text-[#475569]">{t("items.costNotSet")}</span>}
+              </span>
               <span className={`shrink-0 font-extrabold ${item.default_price > 0 ? "text-emerald-900" : "text-[#0F172A]"}`}>
                 {item.default_price > 0 ? formatGhs(toPesewas(item.default_price)) : t("items.setPrice")}
               </span>
@@ -109,6 +113,20 @@ function priceText(item) {
   return item?.default_price > 0 ? item.default_price.toFixed(2) : "";
 }
 
+// The cost field's text for a saved item ("" when no cost is set; "0.00" for a real cost of 0).
+function costText(item) {
+  return formatPesewasText(item?.cost_price_pesewas);
+}
+
+// Wiring 39 COST NOT SET: the small grey line under the name when the item has no cost (0 is a cost).
+function hasNoCost(item) {
+  return !Number.isSafeInteger(item?.cost_price_pesewas);
+}
+
+function itemValues(item) {
+  return { name: item?.name ?? "", price: priceText(item), cost: costText(item) };
+}
+
 // pane (wide D8): the same form, fields, checks and save as 40 and 41, drawn inside the Items page's right
 // pane instead of as its own page. onSaved(product) replaces Back; onDelete opens 42 over the page.
 // onDirtyChange(dirty) tells the page whether the values differ from the saved ones; savedNotice starts
@@ -116,12 +134,14 @@ function priceText(item) {
 function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCompleteSetup, pane = false, onSaved, onDelete, onDirtyChange, savedNotice = false }) {
   const [name, setName] = useState(item?.name ?? "");
   const [price, setPrice] = useState(() => priceText(item));
+  // Wiring 40/41 COST PRICE: part of the draft, so the leave question covers it too.
+  const [cost, setCost] = useState(() => costText(item));
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   useBackBlock(saving);
   // The saved values (what the owner would lose); typing a value back to them is not a change.
-  const [baseline, setBaseline] = useState(() => ({ name: item?.name ?? "", price: priceText(item) }));
-  const dirty = name !== baseline.name || price !== baseline.price;
+  const [baseline, setBaseline] = useState(() => itemValues(item));
+  const dirty = name !== baseline.name || price !== baseline.price || cost !== baseline.cost;
   const [showSaved, setShowSaved] = useState(savedNotice);
   // rules_global.leave_question: the phone 40 and 41 ask before an exit drops the typed values (on wide
   // the Items page asks for its pane).
@@ -135,7 +155,8 @@ function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCom
   // a name problem goes once the name is fixed and a price problem once the price is.
   const formErrors = useFormErrors([
     ["name", productInputProblem({ name, price: "" })],
-    ["price", productInputProblem({ name: "x", price })]
+    ["price", productInputProblem({ name: "x", price })],
+    ["cost", productInputProblem({ name: "x", cost })]
   ]);
 
   async function submit(event) {
@@ -146,13 +167,15 @@ function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCom
     setSaving(true);
     setError("");
     try {
-      const saved = await onSave({ name, price });
+      // An empty cost is sent as "" and saved as null (Cost not set), never as zero.
+      const saved = await onSave({ name, price, cost });
       void requestBackgroundSync();
       if (pane) {
         // The pane stays on the saved item showing what was saved; the values are the new baseline.
-        const next = { name: saved?.name ?? name, price: saved ? priceText(saved) : price };
+        const next = saved ? itemValues(saved) : { name, price, cost };
         setName(next.name);
         setPrice(next.price);
+        setCost(next.cost);
         setBaseline(next);
         setShowSaved(true);
         onSaved?.(saved);
@@ -182,6 +205,15 @@ function ItemEditor({ item, onBack, onNavigate, onSave, setupFlow = false, onCom
           <span className={`shrink-0 font-bold text-slate-700${pane ? " text-lg" : ""}`}>GH₵</span>
           <AmountTextInput value={price} onValue={(value) => { setPrice(value); setError(""); }} placeholder="0.00" className="w-full min-w-0 bg-transparent text-lg font-bold outline-none" />
         </span>
+      </label>
+      {/* Wiring 40/41 COST PRICE: optional, under Price; on the wide pane half the pane width. */}
+      <label data-cost-field="" className={`block min-w-0${pane ? " w-full @[440px]:w-1/2" : ""}`}>
+        <span className="mb-1 block text-lg font-extrabold">{t("items.cost")} <span className="text-[15px] font-normal text-[#475569]">{t("items.optional")}</span></span>
+        <span className="flex h-14 items-center gap-2 rounded-2xl border-[3px] border-slate-500 px-3">
+          <span className={`shrink-0 font-bold text-slate-700${pane ? " text-lg" : ""}`}>GH₵</span>
+          <AmountTextInput value={cost} onValue={(value) => { setCost(value); setError(""); }} placeholder="0.00" aria-describedby={`cost-helper${pane ? "-pane" : ""}`} className="w-full min-w-0 bg-transparent text-lg font-bold outline-none" />
+        </span>
+        <span id={`cost-helper${pane ? "-pane" : ""}`} data-cost-helper="" className="mt-1 block text-[15px] font-normal leading-snug text-[#475569]">{t("items.costHelper")}</span>
       </label>
       {(formErrors.message || error) && <p role="alert" className={`rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950${pane ? " text-[17px]" : ""}`}>{formErrors.message || error}</p>}
     </>
@@ -677,7 +709,10 @@ function ItemsWide({ mode, params, onUpdateParams }) {
                     onClick={() => choose(item.id)}
                     className={`flex min-h-[60px] shrink-0 items-center gap-3 rounded-2xl px-3 text-left ${current ? "border-[3px] border-emerald-900 bg-green-50" : "border-2 border-slate-300 bg-white hover:bg-slate-50"}`}
                   >
-                    <strong className="min-w-0 flex-1 truncate text-[18px] font-bold text-[#0F172A]">{item.name}</strong>
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <strong className="truncate text-[18px] font-bold text-[#0F172A]">{item.name}</strong>
+                      {hasNoCost(item) && <span data-cost-not-set="" className="text-[15px] font-normal leading-snug text-[#475569]">{t("items.costNotSet")}</span>}
+                    </span>
                     <span className="shrink-0 text-[17px] font-bold text-[#0F172A]">
                       {item.default_price > 0 ? formatGhs(toPesewas(item.default_price)) : t("items.setPrice")}
                     </span>
