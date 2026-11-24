@@ -10,7 +10,7 @@ import { PosBackButton, PosCard, PosPage } from "./PosComponents.jsx";
 import { SOFT_HERO, SOFT_HERO_LABEL, SOFT_TILE } from "./softTile.js";
 
 // Brief 3.11 / wiring screen 33. Money left is the soft hero, the same as Home (rules_global.soft_tiles,
-// 24 Nov 2026); What you should have left is a soft tile; every other card is white with a thin border.
+// 24 Nov 2026); Where your money should be is a soft tile on the phone and a white card on wide; every other card is white with a thin border.
 // No coloured left edge and no red or amber amounts (rules_global.left_edge_marker). Every figure follows the period except Owed to you and You owe suppliers.
 export const MY_MONEY_PERIODS = [["day", "money.today"], ["week", "money.thisWeek"], ["month", "money.thisMonth"]];
 const PERIOD_WORDS = { day: "money.periodToday", week: "money.periodThisWeek", month: "money.periodThisMonth" };
@@ -59,11 +59,12 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
   const summary = report?.summary;
   // Hidden until the setting is known to be false: a real amount never flashes.
   const hidden = report?.hideAmounts !== false;
+  const shouldBeTotal = summary ? summary.cashShouldHave + summary.momoShouldHave : 0;
   const toggleHidden = () => saveHideAmounts(!hidden).catch(() => {});
 
   return (
     // Wide layout (D7): the title with the period selector at the top right; Money left and
-    // the profit card side by side; the three cards Money in, Money spent and What you should have left
+    // the profit card side by side; the three cards Money in, Money spent and Where your money should be
     // in one row; then the two balance tiles. Same content and order of reading as the phone.
     <PosPage wide={layout.wide} rail={layout.mode === "rail"} style={layout.wide ? undefined : { paddingTop: 10 }} className={`${w("grid min-h-0 grid-cols-2 content-start items-stretch gap-5", "flex flex-col gap-2.5")} ${layout.wide ? "tabular-nums" : ""}`}>
       <div data-wide-header="" className={w("col-span-2 flex flex-row items-center justify-between gap-5", "flex flex-col gap-2.5")}>
@@ -123,9 +124,10 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
               {summary.spentUnrecorded > 0 && <Row data-row="unrecorded-spent" label={t("money.methodNotRecorded")} hidden={hidden} amountPesewas={summary.spentUnrecorded} />}
             </section>
 
-            {/* (4) What you should have left, this period only. */}
-            <section data-card="should-have-left" className={`flex flex-col ${w("gap-2", "gap-1")} ${softCard(wide)}`}>
-              <CardTitle wide={wide} hidden={hidden} amountPesewas={wide ? summary.cashShouldHave + summary.momoShouldHave : undefined}>{t("money.shouldHaveLeft")}</CardTitle>
+            {/* (4) Where your money should be, this period only. */}
+            <section data-card="should-have-left" className={`flex flex-col ${w("gap-2", "gap-1")} ${wide ? card : softCard(wide)}`}>
+              {/* The total (Cash + MoMo): big at the top on wide, in the title line on the phone ("Where your money should be · amount"). */}
+              <CardTitle wide={wide} hidden={hidden} amountPesewas={wide ? shouldBeTotal : undefined}>{t("money.shouldHaveLeft")}{!wide && <>{" · "}<Amount hidden={hidden} pesewas={shouldBeTotal} /></>}</CardTitle>
               <Row data-row="cash-left" label={t("money.cash")} hidden={hidden} amountPesewas={summary.cashShouldHave} />
               <Row data-row="momo-left" label={t("money.momo")} hidden={hidden} amountPesewas={summary.momoShouldHave} />
               <p className={`${note("text-sm leading-snug sm:text-base")} text-slate-700`}>{t("money.shouldHaveLeftCaption")}</p>

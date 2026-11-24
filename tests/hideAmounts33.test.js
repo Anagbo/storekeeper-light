@@ -106,7 +106,7 @@ test("33: hidden replaces every figure on the screen (a scan finds no money text
   const text = textOf(view.tree);
   assert.doesNotMatch(text, /more than|less than|Same as/);
   assert.match(text, /Sales GH₵ •••• − stock GH₵ •••• − other costs GH₵ ••••/);
-  for (const label of ["Money left today", "Money in", "Cash", "MoMo", "What you should have left", "Estimated profit", "Owed to you"]) {
+  for (const label of ["Money left today", "Money in", "Cash", "MoMo", "Where your money should be", "Estimated profit", "Owed to you"]) {
     assert.ok(text.includes(label), `${label} keeps its words`);
   }
 });

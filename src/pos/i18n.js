@@ -501,7 +501,7 @@ const ENGLISH = Object.freeze({
   "money.paidInCash": "Paid in cash",
   "money.paidByMomo": "Paid by MoMo",
   "money.methodNotRecorded": "Method not recorded",
-  "money.shouldHaveLeft": "What you should have left",
+  "money.shouldHaveLeft": "Where your money should be",
   "money.shouldHaveLeftCaption": "This period only. Check your MoMo balance.",
   "money.loading": "Loading your money…",
   "money.moneyIn": "Money in",

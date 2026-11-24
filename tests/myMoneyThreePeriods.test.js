@@ -140,7 +140,7 @@ test("spending parts add up to Money spent: Paid in cash + Paid by MoMo + Method
   assert.equal(summary.spentCash + summary.spentMomo + summary.spentUnrecorded, summary.moneySpent);
 });
 
-test("What you should have left: cash in − cash spent, MoMo in − MoMo spent; with unrecorded spending they explain Money left", () => {
+test("Where your money should be: cash in − cash spent, MoMo in − MoMo spent; with unrecorded spending they explain Money left", () => {
   const summary = summarizeMyMoney([splitSale("s", 1, 3000, 2000), expense("c", 1, 500, { paidWith: "cash" }), expense("m", 1, 800, { paidWith: "momo" }), expense("old", 1, 100)]);
   assert.equal(summary.cashShouldHave, 2500);
   assert.equal(summary.momoShouldHave, 1200);
@@ -289,14 +289,15 @@ test("33: Money spent card shows Method not recorded only when above zero", asyn
   assert.doesNotMatch(textOf(card(none.view, "money-spent")), /Method not recorded/);
 });
 
-test("33: What you should have left shows Cash and MoMo; the layout order follows the wiring", async () => {
+test("33: Where your money should be shows Cash and MoMo; the layout order follows the wiring", async () => {
   const { view } = await mount(screenReport());
   const text = textOf(card(view, "should-have-left"));
   assert.ok(text.includes(`Cash${formatGhs(2500)}`));
   assert.ok(text.includes(`MoMo${formatGhs(2000)}`));
+  assert.ok(text.startsWith(`Where your money should be · ${formatGhs(4500)}`), `phone: the total (Cash + MoMo) is in the title line: ${text}`);
   const order = textOf(view.tree);
   const at = (label) => order.indexOf(label);
-  assert.ok(at("Money left today") < at("Money in") && at("Money in") < at("Money spent") && at("Money spent") < at("What you should have left") && at("What you should have left") < at("Estimated profit") && at("Estimated profit") < at("Owed to you"));
+  assert.ok(at("Money left today") < at("Money in") && at("Money in") < at("Money spent") && at("Money spent") < at("Where your money should be") && at("Where your money should be") < at("Estimated profit") && at("Estimated profit") < at("Owed to you"));
 });
 
 // ---- the period buttons at 340px -----------------------------------------------------------------------------
@@ -413,7 +414,7 @@ test("33 wide (D7) at 1024, 1280 and 1440px: selector top right, Money left besi
     assert.ok(r.moneyLeft.right <= r.profit.left, `${where}: Money left on the left`);
     assert.equal(r.moneyIn.top, r.moneySpent.top, `${where}: one row`);
     assert.equal(r.moneySpent.top, r.shouldHave.top, `${where}: one row`);
-    assert.ok(r.moneyIn.right <= r.moneySpent.left && r.moneySpent.right <= r.shouldHave.left, `${where}: Money in, Money spent, What you should have left`);
+    assert.ok(r.moneyIn.right <= r.moneySpent.left && r.moneySpent.right <= r.shouldHave.left, `${where}: Money in, Money spent, Where your money should be`);
     assert.ok(Math.abs(r.moneyIn.width - r.shouldHave.width) <= 1, `${where}: equal cards`);
     assert.ok(r.moneyIn.top >= r.profit.bottom, `${where}: the cards under the first row`);
     assert.ok(r.tiles.top >= r.shouldHave.bottom, `${where}: the balance tiles last`);

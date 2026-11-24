@@ -244,7 +244,7 @@ test("3.11: the two debt tiles are white pressed buttons with a border, no colou
   for (const node of [...walk(owed)].filter((child) => typeof child.props?.className === "string")) assert.doesNotMatch(node.props.className, /text-(rose|amber)-/, "neutral amount");
 });
 
-test("3.11: Money left and What you should have left are soft tiles; the other cards are white with a thin border", async () => {
+test("3.11: Money left and Where your money should be are soft tiles on the phone; the other cards are white with a thin border", async () => {
   const { view } = await mountMyMoney(reportFor());
   const cards = [...walk(view.tree)].filter((node) => node.type === "section" || (node.type === "button" && /rounded-\[1[68]px\]/.test(node.props.className ?? "")));
   assert.equal(cards.filter((node) => /bg-(emerald|green)-(8|9)00/.test(node.props.className)).length, 0, "no strong colour block");
