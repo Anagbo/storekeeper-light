@@ -19,7 +19,7 @@ const MEASURE = `(() => {
   const amounts = [...document.querySelectorAll("main p, main span, main strong")].filter((el) => el.getClientRects().length && /^[−-]?GH₵[0-9,]+[.][0-9]{2}$/.test(el.textContent.trim())).map((el) => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return { text: el.textContent, lines: lines(el), clipped: el.scrollWidth > el.clientWidth + 0.5, r: r.right, l: r.left, size: parseFloat(cs.fontSize), weight: cs.fontWeight }; });
   const cards = ["money-in", "money-spent", "should-have-left"].map((id) => { const c = document.querySelector("[data-card=" + id + "]"); if (!c) return null; if (innerWidth < 1024) return null; const [title, total] = c.firstElementChild.children; const tr = title.getBoundingClientRect(), ar = total.getBoundingClientRect(); return { id, titleSize: parseFloat(getComputedStyle(title).fontSize), titleWeight: getComputedStyle(title).fontWeight, titleLines: lines(title), totalSize: parseFloat(getComputedStyle(total).fontSize), totalWeight: getComputedStyle(total).fontWeight, below: ar.top >= tr.bottom - 1, leftAligned: Math.abs(ar.left - tr.left) < 1, text: total.textContent }; });
   const hero = [...document.querySelectorAll("[data-block=money-left] p")].find((p) => /^GH₵/.test(p.textContent.trim()));
-  const see = [...document.querySelectorAll("main span")].filter((el) => /^See (who|list)$/.test(el.textContent.trim())).map((el) => { const cs = getComputedStyle(el); return { size: parseFloat(cs.fontSize), weight: cs.fontWeight, deco: cs.textDecorationLine }; });
+  const see = [...document.querySelectorAll("main button")].filter((el) => /^See (who|list)$/.test(el.textContent.trim())).map((el) => { const cs = getComputedStyle(el); return { size: parseFloat(cs.fontSize), weight: cs.fontWeight, deco: cs.textDecorationLine }; });
   return { innerWidth, scrollWidth: document.documentElement.scrollWidth, amounts, cards, heroWeight: hero && getComputedStyle(hero).fontWeight, see };
 })()`;
 
@@ -41,7 +41,7 @@ test("wide My money: fits at 768 to 1440, amounts whole, same card headers, size
         assert.ok(c, `${at}: three cards`);
         assert.deepEqual([c.titleSize, c.titleWeight, c.titleLines, c.totalSize, c.totalWeight, c.below, c.leftAligned], [17, "800", 1, 24, "700", true, true], `${at}: ${c.id} header (${c.text})`);
       }
-      for (const s of m.see) assert.deepEqual([s.size, s.weight, s.deco], [17, "700", "none"], `${at}: See who / See list`);
+      for (const s of m.see) assert.deepEqual([s.size, s.weight, s.deco], [17, "800", "none"], `${at}: See who / See list`);
       assert.equal(m.see.length, 2, `${at}: both links`);
     }
   });

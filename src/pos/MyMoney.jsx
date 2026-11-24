@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { ArrowUpRight, ChevronRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { saveHideAmounts } from "../db/preferences.js";
 import { Amount, amountText, HideAmountsButton } from "./HiddenAmount.jsx";
 import { posText as t } from "./i18n.js";
@@ -154,14 +154,20 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
             {[
               ["PeopleWhoOweYou", "money.owedToYou", report.debtPesewas, "money.seeWho"],
               ["YouOweSuppliers", "money.supplierBalances", report.supplierBalancePesewas, "money.seeList"]
-            ].map(([route, label, pesewas, link]) => (
-              <button key={route} type="button" onClick={() => onNavigate(route)} className={`amount-fit-container min-w-0 rounded-[16px] border-2 border-slate-300 bg-white text-left text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 ${w("flex min-h-[48px] items-center justify-between gap-4 p-6", "px-2.5 py-2 sm:px-3")}`}>
+            ].map(([route, label, pesewas, link]) => wide ? (
+              // Wide (D7): a white card with the label, the amount and a full-width 52px outlined button; the whole card opens the screen too.
+              <div key={route} data-link-card={route} onClick={() => onNavigate(route)} className="amount-fit-container flex min-w-0 cursor-pointer flex-col gap-3 rounded-[18px] border-2 border-slate-300 bg-white p-6 text-slate-950">
+                <span className={WIDE_LABEL}>{t(label)}</span>
+                <span className={`block ${WIDE_AMOUNT}`}><Amount hidden={hidden} pesewas={pesewas} /></span>
+                <button type="button" aria-label={`${t(link)}: ${t(label)}`} onClick={(event) => { event.stopPropagation(); onNavigate(route); }} className="h-[52px] w-full rounded-[14px] border-2 border-slate-500 bg-white text-[17px] font-extrabold text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">{t(link)}</button>
+              </div>
+            ) : (
+              <button key={route} type="button" onClick={() => onNavigate(route)} className={`amount-fit-container min-w-0 rounded-[16px] border-2 border-slate-300 bg-white text-left text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 px-2.5 py-2 sm:px-3`}>
                 <span className="min-w-0">
                   <span className="block text-[15px] font-extrabold leading-snug sm:text-[17px]">{t(label)}</span>
-                  <span className={wide ? `block ${WIDE_AMOUNT}` : "amount-fit block font-extrabold leading-tight text-[#0F172A]"}><Amount hidden={hidden} pesewas={pesewas} /></span>
-                  <span className={`block text-emerald-900 ${wide ? "text-[17px] font-bold no-underline" : "text-base font-extrabold sm:text-[17px]"}`}>{t(link)}</span>
+                  <span className="amount-fit block font-extrabold leading-tight text-[#0F172A]"><Amount hidden={hidden} pesewas={pesewas} /></span>
+                  <span className="block text-base font-extrabold text-emerald-900 sm:text-[17px]">{t(link)}</span>
                 </span>
-                {wide && <ChevronRight size={28} className="shrink-0 text-slate-600" aria-hidden="true" />}
               </button>
             ))}
           </div>
