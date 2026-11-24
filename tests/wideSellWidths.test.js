@@ -18,7 +18,7 @@ const MEASURE = `(() => {
   const tiles = ["Cash", "MoMo", "Owe", "Split payment"].map((label) => controls.find((c) => c.label === label));
   const done = controls.find((c) => c.label === "Done");
   const right = document.querySelector("[data-sell-wide] > div:last-child");
-  const small = [...document.querySelectorAll("main p, main output, main h1, main b, main span")].filter((el) => el.getClientRects().length && el.textContent.trim() && !el.closest("[aria-hidden=true]")).filter((el) => parseFloat(getComputedStyle(el).fontSize) < 17).map((el) => el.tagName + " " + getComputedStyle(el).fontSize + " " + el.textContent.trim().slice(0, 30));
+  const small = [...document.querySelectorAll("main p, main output, main h1, main b, main span")].filter((el) => el.getClientRects().length && el.textContent.trim() && !el.closest("[aria-hidden=true]")).filter((el) => { const cs = getComputedStyle(el); const px = parseFloat(cs.fontSize); const helper = el.tagName === "P" && px >= 15 && cs.fontWeight === "400" && cs.color === "rgb(71, 85, 105)"; return px < 17 && !helper; }).map((el) => el.tagName + " " + getComputedStyle(el).fontSize + " " + el.textContent.trim().slice(0, 30));
   return {
     innerWidth, innerHeight, scrollWidth: document.documentElement.scrollWidth, wide: !!document.querySelector("[data-sell-wide]"),
     amount: { text: amount.textContent, lines: lines(amount), clipped: amount.scrollWidth > amount.clientWidth + 0.5, size: getComputedStyle(amount).fontSize, weight: getComputedStyle(amount).fontWeight, ...box(amount) },
