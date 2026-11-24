@@ -196,3 +196,27 @@ test("D13d Backup pane: two soft tiles with the phone's arrows, green Download b
     assert.equal(pane(app).props["data-settings-pane"], "backup");
   }
 });
+
+test("D13 drafts: an unsaved Shop name and MoMo number survive switching sections, with no leave question; the sidebar leaves them", async () => {
+  for (const width of [768, 1280]) {
+    const app = await open(width);
+    await app.side("SettingsProfitTools");
+    await app.type("settings-shop-name", "Ama Provisions");
+    await row(app, "momo");
+    await app.tap("Customer sends to my number");
+    await app.type("My MoMo number", "0551234567");
+    await row(app, "backup");
+    assert.equal(dialog(app), null, `${width}: no leave question inside Settings`);
+    await row(app, "shop");
+    assert.equal(app.input("settings-shop-name").props.value, "Ama Provisions", `${width}: the Shop name is kept`);
+    assert.equal(app.button(/^Save$/).props.disabled, false, `${width}: Save still green`);
+    await row(app, "momo");
+    assert.equal(app.input("My MoMo number").props.value, "0551234567", `${width}: the MoMo number is kept`);
+    assert.equal(app.route, "SettingsProfitTools");
+    await app.side("Home");
+    await app.side("SettingsProfitTools");
+    assert.equal(pane(app).props["data-settings-pane"], "shop", `${width}: Settings opens on Shop again`);
+    assert.notEqual(app.input("settings-shop-name").props.value, "Ama Provisions", `${width}: leaving Settings drops the draft (phone rules)`);
+    assert.equal((await db.settings.get("momoReceivingNumber"))?.value ?? "", "", "nothing saved");
+  }
+});
