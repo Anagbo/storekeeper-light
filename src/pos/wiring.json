@@ -218,7 +218,8 @@
     "Draft survives a trip away (bug found 11 Nov 2026): the amount typed on the keypad, the payment choice (Cash or MoMo) and any items added are kept when the owner goes to a screen opened from 15 (Add items, Owe and its steps, Split payment, MoMo and its steps, Menu > Settings) and comes back with Back or the phone's back button. 15 must show the same amount, not 0.00. The draft is cleared only after a sale is saved (Done), or when the owner taps the header Home or a different bottom-bar tab (Home, Owed). Like the split screen, 15 keeps its draft in the route parameters. After a MoMo pick returns, the pending MoMo values are removed so an old amount can never come back.",
     "Done on 15 (final, 17 Nov 2026): Done is NOT pinned. It is the 60px solid green button at the end of the content, with bottom space so that it ends fully above the fixed bottom bar (the raised Sell button) when you scroll to the end. On 15 the keypad keys are 54px high (62px elsewhere, key spacing unchanged). With these sizes Done is fully visible without scrolling from about 740px of screen height up (360x740, 393x800, 393x852); on shorter screens (340x640, 340x667, 360x667) the screen scrolls about 40 to 65px and Done is reached at the end of the scroll. Accepted: the amount card, the spacing between blocks and the \"+ Add items\" row are not changed to win more room. Nothing on 15 is covered by a floating element. \"+ Add items\" is the add look, compact 44px on this screen only.",
     "Keyboard (decided 23 Nov 2026, all widths, behaviour fix): a focused keypad key counts as no focus, so digits, '.' and ',' keep going to the pad after a mouse click and Enter means Done (when Done is enabled) instead of pressing that key again. The Delete key does the same as Backspace. Any other focused button (for example a payment tile) keeps its normal Enter and Space behaviour, and keys typed in a text field are never taken by the pad. Escape closes a dialog.",
-    "Last sale box wording (decided 23 Nov 2026): amount is the sale total (formatGhs), time through formatTime. Method: Cash, MoMo or Split when nothing is owed; 'On credit' when the whole sale was put on credit; 'Part paid' when some money was received and some is owed. Read-only indexed query on today's sale types (sale, installment_sale, installment_addon), newest first, run after Sell has drawn."
+    "Last sale box wording (decided 23 Nov 2026): amount is the sale total (formatGhs), time through formatTime. Method: Cash, MoMo or Split when nothing is owed; 'On credit' when the whole sale was put on credit; 'Part paid' when some money was received and some is owed. Read-only indexed query on today's sale types (sale, installment_sale, installment_addon), newest first, run after Sell has drawn.",
+    "COST IS PRIVATE (decided 24 Nov 2026): when a sale is saved, each item line copies the item's cost into cost_at_sale_pesewas (null when none). No cost figure ever appears on Sell, receipts, the WhatsApp receipt or any customer-facing text. Changing the price of a line does not change its cost snapshot."
    ]
   },
   "16": {
@@ -1636,7 +1637,8 @@
     "Estimated profit follows the period (Today: sales − stock − other costs for today). The line \"Average of last 4 weeks\" shows only for This week and only with at least 4 weeks of data.",
     "Wide layout (D7, revised 24 Nov 2026): page title row with the selector on the right. Row 1: hero card (white, 2px #CBD5E1 border, 20px radius, as on Home) and the Estimated profit card, equal height. Row 2: Money in, Money spent, Where your money should be, three equal white cards, all labels in the same dark 800 style. Row 3: Owed to you and You owe suppliers as white cards, each with the amount and a full-width 52px outlined button \"See who\" / \"See list\" (whole card is also tappable). No chevrons, no coloured edges, no green fill on any card. Phone: same text changes; phone keeps the soft grey hero.",
     "\"Debts paid\" is the debt payments collected in the period. It is already inside Cash and MoMo and is never added again. Cash + MoMo = Money in.",
-    "Hide amounts (decided 16 Nov 2026): the eye button hides every shop figure on this screen (sales, profit, money in, money spent, what you should have left, owed to you, you owe suppliers) and shows \"GH₵ ••••\" of fixed width instead, so the length of the number is not leaked. See rules_global.hide_amounts."
+    "Hide amounts (decided 16 Nov 2026): the eye button hides every shop figure on this screen (sales, profit, money in, money spent, what you should have left, owed to you, you owe suppliers) and shows \"GH₵ ••••\" of fixed width instead, so the length of the number is not leaked. See rules_global.hide_amounts.",
+    "PROFIT VIEW (decided 24 Nov 2026, mock approved): card \"Profit today / this week / this month\" with the amount, the line \"Profit counts N of M items sold\" (only when N < M), the helper \"A good guess, not exact\", and an outlined button \"Add costs to the rest\" that opens Items (hidden when N = M; then one line \"Profit counts all M items sold. A good guess, not exact.\"). Profit = sum over sale lines with a known cost_at_sale_pesewas of (price paid per unit - cost_at_sale) x quantity. Lines with no cost and keypad-only sales (no item) are not counted and are the M - N. The cash-based Estimated profit card stays until at least one sold item in the period has a cost; from then on this card replaces it (same position, same Hide amounts and Settings switch behaviour). Never treat an unknown cost as zero. Hidden by the same Settings switch as the current profit card."
    ]
   },
   "34": {
@@ -2253,7 +2255,8 @@
    ],
    "bottom_bar": false,
    "rules": [
-    "Empty list on 39 (decided 17 Nov 2026): the hint \"You have no items yet. Add one or choose from the starter list.\" is plain text (17px, no box) directly under the Back and \"My items\" row, above the Find item field, so it is read first. Under it, top to bottom: Find item, \"+ New item\", \"+ Add from starter list\" (the two add buttons together, full width, add look). When the list has items there is no hint; the order is Find item, \"+ New item\", the item list, then \"+ Add from starter list\" at the end."
+    "Empty list on 39 (decided 17 Nov 2026): the hint \"You have no items yet. Add one or choose from the starter list.\" is plain text (17px, no box) directly under the Back and \"My items\" row, above the Find item field, so it is read first. Under it, top to bottom: Find item, \"+ New item\", \"+ Add from starter list\" (the two add buttons together, full width, add look). When the list has items there is no hint; the order is Find item, \"+ New item\", the item list, then \"+ Add from starter list\" at the end.",
+    "COST NOT SET (decided 24 Nov 2026, mock approved): an item with no cost shows the small grey line \"Cost not set\" (15px, #475569, normal weight, no colour, no icon) under its name on the phone list and the wide list. Items with a cost (including 0) show nothing extra. The cost amount itself is never shown on the list."
    ]
   },
   "40": {
@@ -2291,7 +2294,8 @@
    ],
    "bottom_bar": false,
    "rules": [
-    "Leave question (decided 24 Nov 2026): if the typed values differ from the start, Back (on-screen or device), a tab or the header Home asks first: Your changes to this item are not saved. Leave without saving? Stay or Leave. Nothing changed: just go back. See rules_global.leave_question."
+    "Leave question (decided 24 Nov 2026): if the typed values differ from the start, Back (on-screen or device), a tab or the header Home asks first: Your changes to this item are not saved. Leave without saving? Stay or Leave. Nothing changed: just go back. See rules_global.leave_question.",
+    "COST PRICE (decided 24 Nov 2026, mock approved): optional field \"What you paid for one\" with the small tag \"(optional)\" under Price, on phone Edit item (41) and New item (40) and on the wide Items pane. Helper (15px, #475569): \"Only you see this. We use it to work out your profit.\" Stored as cost_price_pesewas (integer or null; empty = null, never zero; 0 is a real value). Same number rules as Price. It is part of the item draft, so the leave question (rules_global.leave_question) also covers it. Wide: the field takes half the pane width; Save stays on its own row."
    ]
   },
   "41": {
@@ -2321,7 +2325,8 @@
    ],
    "bottom_bar": false,
    "rules": [
-    "Leave question (decided 24 Nov 2026): if the typed values differ from the start, Back (on-screen or device), a tab or the header Home asks first: Your changes to this item are not saved. Leave without saving? Stay or Leave. Nothing changed: just go back. See rules_global.leave_question."
+    "Leave question (decided 24 Nov 2026): if the typed values differ from the start, Back (on-screen or device), a tab or the header Home asks first: Your changes to this item are not saved. Leave without saving? Stay or Leave. Nothing changed: just go back. See rules_global.leave_question.",
+    "COST PRICE (decided 24 Nov 2026, mock approved): optional field \"What you paid for one\" with the small tag \"(optional)\" under Price, on phone Edit item (41) and New item (40) and on the wide Items pane. Helper (15px, #475569): \"Only you see this. We use it to work out your profit.\" Stored as cost_price_pesewas (integer or null; empty = null, never zero; 0 is a real value). Same number rules as Price. It is part of the item draft, so the leave question (rules_global.leave_question) also covers it. Wide: the field takes half the pane width; Save stays on its own row."
    ]
   },
   "42": {
