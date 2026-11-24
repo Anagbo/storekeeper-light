@@ -513,7 +513,6 @@ const ENGLISH = Object.freeze({
   "amounts.hiddenText": "GH₵ ••••",
   "money.stockOther": "Stock {stock} · Other {other}",
   "money.estimatedProfit": "Estimated profit",
-  "money.estimate": "Estimate",
   "money.profitSum": "Sales {sales} − stock {stock} − other costs {other}",
   "money.averageFourWeeks": "Average of last 4 weeks: {amount}",
   "settings.showEstimatedProfit": "Show estimated profit",

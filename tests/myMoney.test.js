@@ -199,7 +199,7 @@ test("3.11: no comparison line (more than / less than) on any period", async () 
   setLiveQuery(null);
 });
 
-test("3.11: the Estimated profit card shows the tag, the sum and the average of the last 4 weeks", async () => {
+test("3.11: the Estimated profit card shows the sum and the average of the last 4 weeks", async () => {
   // The 4-week average shows only for This week (wiring 33, 15 Nov 2026).
   const { default: MyMoney } = await loadJsx("src/pos/MyMoney.jsx");
   setLiveQuery(() => reportFor());
@@ -210,7 +210,7 @@ test("3.11: the Estimated profit card shows the tag, the sum and the average of 
   setLiveQuery(null);
   const text = textOf(view.tree);
   assert.match(text, /Estimated profit/);
-  assert.match(text, /Estimate/);
+  assert.doesNotMatch(text, /Estimate(?!d)/, "no Estimate tag (24 Nov 2026)");
   assert.ok(text.includes(formatGhs(12000)));
   assert.ok(text.includes(`Sales ${formatGhs(30000)} − stock ${formatGhs(15000)} − other costs ${formatGhs(3000)}`));
   assert.ok(text.includes(`Average of last 4 weeks: ${formatGhs(9500)}`));

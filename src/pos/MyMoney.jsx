@@ -137,10 +137,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
           {/* (5) The profit card follows the period. */}
           {report.showProfit && (
             <section data-card="profit" className={`amount-fit-container flex flex-col ${w("order-2 justify-center gap-2", "gap-0.5")} ${card}`}>
-              <div className="flex items-center justify-between gap-2">
-                <p className={`text-lg font-extrabold ${wide ? "text-[#0F172A]" : ""}`}>{t("money.estimatedProfit")}</p>
-                <span className={`rounded-[10px] border-2 border-slate-500 bg-slate-100 px-2 ${wide ? "text-[17px]" : "text-[15px]"} font-extrabold text-slate-950`}>{t("money.estimate")}</span>
-              </div>
+              <p className={`text-lg font-extrabold ${wide ? "text-[#0F172A]" : ""}`}>{t("money.estimatedProfit")}</p>
               <p className={wide ? WIDE_AMOUNT : "amount-fit font-extrabold leading-tight text-emerald-900"}><Amount hidden={hidden} pesewas={summary.profit} /></p>
               <p className={`break-words ${note("text-sm leading-snug sm:text-base")} text-slate-800`}>{amountText("money.profitSum", { sales: summary.sales, stock: summary.stockBought, other: summary.otherCosts }, hidden)}</p>
               {report.averageProfitPesewas !== null && period === "week" && (
