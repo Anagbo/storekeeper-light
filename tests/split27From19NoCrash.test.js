@@ -81,7 +81,7 @@ function singlePanel(app) {
     status: textOf(nodes(row).find((node) => node.props["data-row-status"] !== undefined) ?? { props: {} }).trim(),
     text: textOf(row).replace(/\s+/g, " ").trim()
   }));
-  const total = textOf(nodes(box).find((node) => /border-t border-emerald-200/.test(node.props.className ?? ""))).match(/GH₵([\d,.]+)/)[1];
+  const total = textOf(nodes(box).find((node) => node.props["data-total-today"] !== undefined)).match(/GH₵([\d,.]+)/)[1];
   return { rows, totalPesewas: Math.round(Number(total) * 100) };
 }
 

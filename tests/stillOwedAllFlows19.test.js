@@ -40,9 +40,9 @@ async function open() {
 }
 
 function panel(app) {
-  const box = nodes(app.view.tree).find((node) => /bg-emerald-50/.test(node.props.className ?? "") && /Paying today/.test(textOf(node)));
+  const box = nodes(app.view.tree).find((node) => node.props["data-paying-today"] !== undefined && /Paying today/.test(textOf(node)));
   if (!box) return null;
-  const total = nodes(box).find((node) => /border-t border-emerald-200/.test(node.props.className ?? ""));
+  const total = nodes(box).find((node) => node.props["data-total-today"] !== undefined);
   const owed = nodes(box).find((node) => node.props["data-still-owed"] !== undefined);
   const amountOf = (node) => cedis(textOf(node).match(/GH₵[\d,.]+/g).at(-1));
   return {
@@ -104,7 +104,7 @@ test("phone repro: GH₵8.00 to KOFI MENSAH, 2.00 today split Cash 1.00 + MoMo 1
   assert.equal(box.total, 200);
   assert.equal(box.owedText, "Still owed · Kofi MensahGH₵6.00");
   assert.equal(box.owedPesewas, owedAtTop(app) - box.total);
-  assert.match(box.owedClass, /bg-rose-100/);
+  assert.match(box.owedClass, /bg-white/, "neutral Still owed row inside the soft tile (24 Nov 2026)");
 
   await app.tap(/^Save plan$/);
   if (app.route === "MoMoDirect") await app.tap("Money received");

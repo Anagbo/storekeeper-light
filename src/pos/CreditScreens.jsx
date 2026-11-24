@@ -35,7 +35,8 @@ import { getCreditReasonCase } from "./creditDraft.js";
 
 function CreditAmount({ amountPesewas, wide = false }) {
   // Wide D10 (19): the soft tile (rules_global.soft_tiles), label above a 40px bold neutral amount that
-  // shrinks to fit a long figure instead of clipping. The phone keeps the pink row.
+  // shrinks to fit a long figure instead of clipping. The phone (phone sweep, 24 Nov 2026): one soft tile
+  // row, label left, amount right, neutral dark, no pink.
   if (wide) {
     return (
       <section data-owed-tile="" className={`amount-fit-container min-w-0 ${SOFT_TILE} px-4 py-3`}>
@@ -45,7 +46,7 @@ function CreditAmount({ amountPesewas, wide = false }) {
     );
   }
   return (
-    <div className="amount-fit-container amount-fit-row flex items-center justify-between gap-3 rounded-2xl bg-rose-100 px-4 py-3 text-rose-950">
+    <div data-owed-tile="" className={`amount-fit-container amount-fit-row flex items-center justify-between gap-3 ${SOFT_TILE} px-4 py-3 text-[#0F172A]`}>
       <span className="text-lg font-bold">{t("credit.owed")}</span>
       <strong className="amount-fit text-right font-extrabold">{formatGhs(amountPesewas)}</strong>
     </div>
@@ -490,29 +491,29 @@ function RecordedPartRow({ part }) {
 }
 
 // 19 "Owe in the draft panel" (12 Nov 2026): the rows above "Total today" are only the paid parts
-// (Cash, MoMo) and add up to it. What is still owed is a separate pink row below the total
+// (Cash, MoMo) and add up to it. What is still owed is a separate neutral row below the total
 // (StillOwedRow, shared with 27).
 
 const paidOnly = (parts) => parts.filter((part) => part.paymentMethod !== "owe");
 
 // The Paying today panel on 19 (one of three: the recorded parts, one method, or the parts paid on 16).
-// The phone keeps its mint panel. Wide D10: the soft tile (#F1F5F9, no border, white rows, a #E2E8F0
-// divider) with the neutral Still owed row, drawn in the summary column.
+// Phone and wide D10 (soft tiles on phone 19, 24 Nov 2026): the soft tile (#F1F5F9, no border, white
+// rows, a #E2E8F0 divider) with the neutral Still owed row; on wide it is drawn in the summary column.
 function PayingTodayPanel({ wide, single = false, totalPesewas, stillOwedPesewas, customerName, children }) {
   const box = wide
     ? `${SOFT_TILE} p-4`
-    : `${single ? "mt-3 " : ""}rounded-2xl border-2 border-emerald-800 bg-emerald-50 p-3`;
+    : `${single ? "mt-3 " : ""}${SOFT_TILE} p-3`;
   return (
     <div {...(single ? { "data-single-method-panel": "" } : {})} data-paying-today="" className={box} aria-live="polite">
-      <p className={wide ? "mb-2 text-[19px] font-bold text-[#0F172A]" : "mb-2 font-extrabold text-emerald-950"}>{t("credit.payingToday")}</p>
+      <p className={wide ? "mb-2 text-[19px] font-bold text-[#0F172A]" : "mb-2 font-extrabold text-[#0F172A]"}>{t("credit.payingToday")}</p>
       <div className="flex flex-col gap-2">{children}</div>
       <div data-total-today="" className={wide
         ? "mt-2 flex items-center justify-between gap-3 border-t border-[#E2E8F0] px-3 pt-2 text-[19px] font-bold text-[#0F172A]"
-        : "mt-2 flex items-center justify-between gap-3 border-t border-emerald-200 px-3 pt-2 font-extrabold text-emerald-950"}>
+        : "mt-2 flex items-center justify-between gap-3 border-t border-[#E2E8F0] px-3 pt-2 font-extrabold text-[#0F172A]"}>
         <span>{t("credit.totalToday")}</span>
         <span data-paying-today-amount="" className="shrink-0 whitespace-nowrap tabular-nums">{formatGhs(totalPesewas)}</span>
       </div>
-      <StillOwedRow amountPesewas={stillOwedPesewas} customerName={customerName} neutral={wide} />
+      <StillOwedRow amountPesewas={stillOwedPesewas} customerName={customerName} neutral />
     </div>
   );
 }
@@ -569,7 +570,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
       ? [{ paymentMethod: "momo", amountPesewas: params.momoConfirmedPesewas, momoMethod: params.momoMethod, verification: params.verification }]
       : [];
   const hasReceivedMomo = recordedParts.some(isLockedMomoRow);
-  // Wiring 19 "Still owed row, all flows": the pink row is the customer's balance after this sale and
+  // Wiring 19 "Still owed row, all flows": the neutral row is the customer's balance after this sale and
   // today's payment (what 31 shows as "owes"). With a payment already made on 16 the Owed figure at
   // the top is already net of it; a payment taken on 19 is taken off here.
   const stillOwedAfterTodayPesewas = Math.max(0, maxCreditPesewas -

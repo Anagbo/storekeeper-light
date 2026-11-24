@@ -124,8 +124,8 @@ test("D10 has the phone's controls and accessible names (Back moves to the top l
   assert.equal(one(phone.view.tree, "data-d10"), null);
   const phonePanel = byAttr(phone.view.tree, "data-paying-today");
   assert.equal(phonePanel.length, 1);
-  assert.match(classOf(phonePanel[0]), /bg-emerald-50/, "phone keeps the mint panel");
-  assert.match(classOf(one(phonePanel[0], "data-still-owed")), /bg-rose-100/, "phone keeps the pink row");
+  assert.match(classOf(phonePanel[0]), /bg-\[#F1F5F9\]/, "phone: the same soft tile (24 Nov 2026)");
+  assert.doesNotMatch(classOf(one(phonePanel[0], "data-still-owed")), /rose/, "phone: neutral Still owed row");
   const phoneInputs = nodes(phonePage).filter((node) => node.type === "input").map((node) => node.props["aria-label"] ?? node.props.type);
   for (const width of WIDTHS) {
     const app = await open(width);

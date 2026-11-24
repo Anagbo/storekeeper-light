@@ -61,10 +61,10 @@ async function to19(app, { cash, momo, owe }) {
 
 // What the panel shows: the payment rows, the total line and the pink row.
 function panel(app) {
-  const box = nodes(app.view.tree).find((node) => /bg-emerald-50/.test(node.props.className ?? "") && /Paying today/.test(textOf(node)));
+  const box = nodes(app.view.tree).find((node) => node.props["data-paying-today"] !== undefined && /Paying today/.test(textOf(node)));
   assert.ok(box, `no Paying today panel: ${app.text()}`);
-  const rows = nodes(box).filter((node) => /rounded-xl bg-white/.test(node.props.className ?? ""));
-  const total = nodes(box).find((node) => /border-t border-emerald-200/.test(node.props.className ?? ""));
+  const rows = nodes(box).filter((node) => /rounded-xl bg-white/.test(node.props.className ?? "") && node.props["data-still-owed"] === undefined);
+  const total = nodes(box).find((node) => node.props["data-total-today"] !== undefined);
   const owed = nodes(box).find((node) => node.props["data-still-owed"] !== undefined);
   const amountOf = (node) => cedis(textOf(node).match(/GH₵[\d,.]+/g).at(-1));
   return {
@@ -90,8 +90,8 @@ test("Cash 4.00 + MoMo 3.00 + Owe 1.00: two payment rows, Total today 7.00, a pi
   assert.equal(shown.total, 700);
   assert.equal(shown.owedText, "Still owed · JujuGH₵11.00");
   assert.equal(shown.owedPesewas, 1000 + 100);
-  assert.match(shown.owedClass, /bg-rose-100/);
-  assert.match(shown.owedClass, /text-rose-900/);
+  assert.match(shown.owedClass, /bg-white/, "neutral Still owed row inside the soft tile (24 Nov 2026)");
+  assert.doesNotMatch(shown.owedClass, /rose|pink/);
 });
 
 test("saved amounts are unchanged: Cash 4.00 + MoMo 3.00 paid, GH₵1.00 added to Juju", async () => {
