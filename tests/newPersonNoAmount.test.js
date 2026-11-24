@@ -109,10 +109,11 @@ test("34 sale on credit: one read-only line with the sale's amount, and Next ope
   assertOnlyPersonInputs(app.view.tree);
   const line = owesLine(app.view.tree);
   assert.equal(textOf(line).replace(/\s+/g, " ").trim(), "Owes from this sale: GH₵8.00");
-  assert.match(line.props.className, /\bbg-rose-100\b/, "pink background");
+  assert.match(line.props.className, /bg-\[#F1F5F9\]/, "soft tile background (24 Nov 2026)");
+  assert.doesNotMatch(line.props.className, /rose|pink/);
   const amount = [...walk(line)].find((node) => node.type === "strong");
   assert.equal(textOf(amount), "GH₵8.00");
-  assert.match(amount.props.className, /\btext-rose-900\b/, "amount in dark red");
+  assert.match(amount.props.className, /text-\[#0F172A\]/, "amount neutral dark");
   assert.doesNotMatch(shown(app), /Amount owed|You can change it/);
   await fill34(app);
   await submit34(app);

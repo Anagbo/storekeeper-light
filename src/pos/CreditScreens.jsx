@@ -56,14 +56,14 @@ function CreditAmount({ amountPesewas, wide = false }) {
 // 34 in a sale (wiring "No amount field on 34"): one read-only row, label left, amount right, never
 // wrapping. The amount is up to 28px; a longer amount gets a smaller font so it still fits the row:
 // the box is the container, the label keeps about 10.5rem, and a bold amount character is about
-// 0.62em wide (measured at 340px).
+// 0.62em wide (measured at 340px). Soft tile (phone sweep, 24 Nov 2026): #F1F5F9, neutral dark amount.
 function OwesFromSale({ amountPesewas }) {
   const amountText = formatGhs(amountPesewas);
   return (
-    <p data-owes-from-sale="" className="@container flex min-h-14 items-center justify-between gap-2 rounded-2xl bg-rose-100 px-3 py-2 text-slate-900">
+    <p data-owes-from-sale="" className={`@container flex min-h-14 items-center justify-between gap-2 ${SOFT_TILE} px-3 py-2 text-[#0F172A]`}>
       <span className="shrink-0 whitespace-nowrap text-base font-bold">{t("credit.owesFromThisSale")}</span>{" "}
       <strong
-        className="min-w-0 overflow-hidden whitespace-nowrap font-extrabold leading-tight text-rose-900"
+        className="min-w-0 overflow-hidden whitespace-nowrap font-extrabold leading-tight text-[#0F172A]"
         style={{ "--amount-chars": String(amountText.length), fontSize: "clamp(0.75rem, calc((100cqi - 10.5rem) / (var(--amount-chars) * 0.62)), 1.75rem)" }}
       >
         {amountText}
