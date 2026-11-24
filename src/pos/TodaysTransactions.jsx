@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
+import { ArrowDown, ArrowUp, CreditCard } from "lucide-react";
 import { db } from "../db/db.js";
 import { formatDate, formatTime } from "../lib/formatDate.js";
 import {
@@ -13,6 +14,22 @@ import { PosBackButton, PosPage } from "./PosComponents.jsx";
 import { createPosTransactionRows, describeTransactionRow, filterPosTransactionRows } from "./transactionFeed.js";
 import { Chip, sumWideRows, TransactionTable } from "./TransactionTable.jsx";
 import { PHONE_LAYOUT } from "./layout.js";
+import { SOFT_TILE } from "./softTile.js";
+
+// Summary tiles (rules_global.soft_tiles, 24 Nov 2026, phone and wide): Money in, Spent and Given on
+// credit are soft tiles (#F1F5F9, no border, no coloured edge, dark text). Each label has a small neutral
+// 22px icon: arrow up for Money in, arrow down for Spent, card for Given on credit.
+const SUMMARY_ICONS = { "money-in": ArrowUp, spent: ArrowDown, "given-on-credit": CreditCard };
+function SummaryLabel({ kind, className = "" }) {
+  const Icon = SUMMARY_ICONS[kind];
+  const key = { "money-in": "transactions.moneyIn", spent: "transactions.spent", "given-on-credit": "transactions.givenOnCredit" }[kind];
+  return (
+    <p className={`flex min-w-0 items-center gap-1.5 font-bold text-[#334155] ${className}`}>
+      <Icon data-summary-icon="" size={22} strokeWidth={2.2} className="shrink-0 text-[#334155]" aria-hidden="true" />
+      <span className="min-w-0">{t(key)}</span>
+    </p>
+  );
+}
 
 const FILTERS = ["all", "sold", "spent", "credit"];
 // The Spent and Given on credit amounts: 22px bold, smaller only when the tile is too narrow for it.
@@ -52,23 +69,23 @@ function TransactionRow({ row }) {
 
 // ---- Wide layout (wiring 24, D4): three cards, the filters, then one table. Wide only; the phone is unchanged. ----
 
-const WIDE_CARD = "flex min-w-0 flex-col justify-center rounded-[18px] border-2 border-l-[6px] border-slate-300 bg-white px-4 py-4 text-[#0F172A]";
+const WIDE_CARD = `flex min-w-0 flex-col justify-center ${SOFT_TILE} px-4 py-4 text-[#0F172A]`;
 // 40px bold at most; smaller only when the card is too narrow for GH₵12,345.00 (never clipped).
 const WIDE_AMOUNT = "block whitespace-nowrap text-[length:max(28px,min(40px,12.5cqi))] font-bold leading-tight";
 
 function WideSummary({ totals, rail }) {
   return (
     <section aria-label={t("transactions.summary")} className={`grid min-w-0 gap-4 ${rail ? "grid-cols-2" : "grid-cols-[1.5fr_1fr_1fr]"}`}>
-      <div data-summary="money-in" className={`amount-fit-container flex min-w-0 flex-col justify-center rounded-[18px] bg-[#03543F] px-4 py-4 text-white ${rail ? "col-span-2" : ""}`}>
-        <p className="text-[17px] font-bold">{t("transactions.moneyIn")}</p>
+      <div data-summary="money-in" className={`amount-fit-container ${WIDE_CARD} ${rail ? "col-span-2" : ""}`}>
+        <SummaryLabel kind="money-in" className="text-[17px]" />
         <p data-wide-amount="" className="block whitespace-nowrap text-[length:max(28px,min(56px,12.5cqi))] font-bold leading-none">{formatGhs(totals.cashInflow)}</p>
       </div>
-      <div data-summary="spent" className={`amount-fit-container border-l-amber-700 ${WIDE_CARD}`}>
-        <p className="text-[17px] font-bold">{t("transactions.spent")}</p>
+      <div data-summary="spent" className={`amount-fit-container ${WIDE_CARD}`}>
+        <SummaryLabel kind="spent" className="text-[17px]" />
         <p data-wide-amount="" className={WIDE_AMOUNT}>{formatGhs(totals.expenses)}</p>
       </div>
-      <div data-summary="given-on-credit" className={`amount-fit-container border-l-rose-900 ${WIDE_CARD}`}>
-        <p className="text-[17px] font-bold">{t("transactions.givenOnCredit")}</p>
+      <div data-summary="given-on-credit" className={`amount-fit-container ${WIDE_CARD}`}>
+        <SummaryLabel kind="given-on-credit" className="text-[17px]" />
         <p data-credit-amount="" data-wide-amount="" className={WIDE_AMOUNT}>{formatGhs(totals.creditGiven)}</p>
       </div>
     </section>
@@ -173,23 +190,21 @@ export default function TodaysTransactions({ onBack, layout = PHONE_LAYOUT }) {
       ) : (
         <>
           <section aria-label={t("transactions.summary")} className="flex flex-col gap-2 lg:gap-4">
-            <div data-summary="money-in" className="min-w-0 rounded-[20px] bg-[#03543F] px-4 py-3 text-white">
-              <p className="text-base font-bold">{t("transactions.moneyIn")}</p>
+            <div data-summary="money-in" className={`min-w-0 ${SOFT_TILE} px-4 py-3 text-[#0F172A]`}>
+              <SummaryLabel kind="money-in" className="text-base" />
               <p className="whitespace-nowrap text-[34px] font-extrabold leading-tight">{formatGhs(data.totals.cashInflow)}</p>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              {/* Calmer colours (20 Nov 2026): white cards, 2px light grey border, a 6px coloured left edge
-                  (amber for Spent, red for Given on credit) like the debt tiles on My money; dark numbers, dark
-                  red only for Given on credit above zero. Never a coloured fill. The borders take 8px of the
-                  width, so, like the My money tiles, the amount follows the tile width (22px at most) and
-                  a five-digit cedi amount is never clipped at 340px. */}
-              <div data-summary="spent" className="amount-fit-container min-w-0 rounded-[18px] border-2 border-l-[6px] border-slate-300 border-l-amber-700 bg-white px-1.5 py-2 sm:px-3 text-[#0F172A]">
-                <p className="text-base font-bold">{t("transactions.spent")}</p>
+              {/* Soft tiles (24 Nov 2026): no border, no coloured edge, dark numbers (Given on credit is not
+                  red). The amount follows the tile width (22px at most), so a five-digit cedi amount is never
+                  clipped at 340px. */}
+              <div data-summary="spent" className={`amount-fit-container min-w-0 ${SOFT_TILE} px-1.5 py-2 sm:px-3 text-[#0F172A]`}>
+                <SummaryLabel kind="spent" className="text-base" />
                 <p className={TILE_AMOUNT}>{formatGhs(data.totals.expenses)}</p>
               </div>
-              <div data-summary="given-on-credit" className="amount-fit-container min-w-0 rounded-[18px] border-2 border-l-[6px] border-slate-300 border-l-rose-900 bg-white px-1.5 py-2 sm:px-3 text-[#0F172A]">
-                <p className="text-base font-bold">{t("transactions.givenOnCredit")}</p>
-                <p data-credit-amount="" className={`${TILE_AMOUNT} ${data.totals.creditGiven > 0 ? "text-[#7F1D1D]" : ""}`}>{formatGhs(data.totals.creditGiven)}</p>
+              <div data-summary="given-on-credit" className={`amount-fit-container min-w-0 ${SOFT_TILE} px-1.5 py-2 sm:px-3 text-[#0F172A]`}>
+                <SummaryLabel kind="given-on-credit" className="text-base" />
+                <p data-credit-amount="" className={TILE_AMOUNT}>{formatGhs(data.totals.creditGiven)}</p>
               </div>
             </div>
           </section>

@@ -10,10 +10,9 @@ import { getMoneyPeriodRange } from "../src/pos/money.js";
 import { createPosTransactionRows, describeTransactionRow } from "../src/pos/transactionFeed.js";
 import { loadJsx, render, setLiveQuery, textOf, walk } from "./helpers/renderJsx.js";
 
-// Wiring 24, "Calmer colours" (decided 20 Nov 2026, mockup approved): Money in stays dark green. Spent and
-// Given on credit are white cards with a 2px light grey border and a 6px coloured left edge (amber, red), like
-// the debt tiles on My money; dark numbers (dark red only for Given on credit above zero), never a coloured
-// fill. A person chip is pink only when it says someone owes money; a person who only paid gets a neutral white
+// Wiring 24, Summary tiles (rules_global.soft_tiles, 24 Nov 2026, replaces "Calmer colours" of 20 Nov):
+// Money in, Spent and Given on credit are soft tiles (#F1F5F9, no border, no coloured edge) with dark
+// numbers (Given on credit is not red) and a small neutral icon before each label. A person chip is pink only when it says someone owes money; a person who only paid gets a neutral white
 // chip with a 2px grey outline and the person icon. Payment chips and filters are unchanged.
 
 after(async () => {
@@ -43,23 +42,22 @@ async function mountToday() {
 const tile = (tree, name) => all(tree, (node) => node.props["data-summary"] === name)[0];
 const amountIn = (node) => all(node, (child) => child.type === "p").at(-1);
 
-test("24: Spent and Given on credit are white cards with a 2px light grey border and a 6px amber / red left edge", async () => {
+test("24: Money in, Spent and Given on credit are soft tiles with a neutral icon, no edge, dark numbers", async () => {
   await recordCashSale({ amountPesewas: 500, cashReceivedPesewas: 500, momoReceivedPesewas: 0, parts: [{ paymentMethod: "cash", amountPesewas: 500 }], saleItems: [] });
   await recordCreditSale({ amountPesewas: 800, name: "juju", note: "Sale" });
   await recordExpense({ amountPesewas: 300, paidAmountPesewas: 300, category: "transport", note: "" });
   const tree = await mountToday();
-  for (const [name, edge] of [["spent", "border-l-amber-700"], ["given-on-credit", "border-l-rose-900"]]) {
+  for (const name of ["money-in", "spent", "given-on-credit"]) {
     const card = tile(tree, name);
-    for (const part of ["bg-white", "border-2", "border-slate-300", "border-l-[6px]", edge, "text-[#0F172A]"]) {
+    for (const part of ["bg-[#F1F5F9]", "text-[#0F172A]"]) {
       assert.ok(cls(card).split(/\s+/).includes(part), `${name}: ${part} (${cls(card)})`);
     }
-    assert.doesNotMatch(cls(card), /bg-\[#F|bg-rose|bg-amber|bg-pink/, `${name}: no coloured fill`);
+    assert.doesNotMatch(cls(card), /(^|\s)border|bg-rose|bg-amber|bg-pink|bg-\[#03543F\]|text-white/, `${name}: no border, edge or coloured fill`);
+    assert.ok(all(card, (node) => node.props["data-summary-icon"] !== undefined && node.props.size === 22).length > 0, `${name}: a 22px icon`);
   }
   assert.doesNotMatch(cls(amountIn(tile(tree, "spent"))), /text-\[#92400E\]|amber|rose/, "the Spent number is dark");
-  assert.match(cls(amountIn(tile(tree, "given-on-credit"))), /text-\[#7F1D1D\]/, "Given on credit above zero is dark red");
+  assert.doesNotMatch(cls(amountIn(tile(tree, "given-on-credit"))), /7F1D1D|rose/, "Given on credit above zero is not red");
   assert.equal(textOf(amountIn(tile(tree, "given-on-credit"))), "GH₵8.00");
-  // Money in is unchanged.
-  assert.match(cls(tile(tree, "money-in")), /bg-\[#03543F\] .*text-white/);
 });
 
 test("24: Given on credit at zero is a dark number", async () => {
@@ -107,11 +105,11 @@ const channel = (value) => { const c = value / 255; return c <= 0.03928 ? c / 12
 const luminance = ([r, g, b]) => 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
 const onWhite = (value) => { const l = luminance(hex(value)); return 1.05 / (l + 0.05); };
 
-test("24: contrast of the new text and edges on white", () => {
-  for (const [what, colour] of [["dark numbers and labels #0F172A", "#0F172A"], ["Given on credit #7F1D1D", "#7F1D1D"], ["neutral chip text #0F172A", "#0F172A"]]) {
+test("24: contrast of the text and the chip outline on white", () => {
+  for (const [what, colour] of [["dark numbers #0F172A", "#0F172A"], ["labels and icons #334155", "#334155"], ["neutral chip text #0F172A", "#0F172A"]]) {
     assert.ok(onWhite(colour) >= 4.5, `${what}: ${onWhite(colour).toFixed(2)}:1`);
   }
-  for (const [what, colour] of [["amber edge (amber-700 #B45309)", "#B45309"], ["red edge (rose-900 #881337)", "#881337"], ["chip outline slate-500 (about #62748E)", "#62748E"]]) {
+  for (const [what, colour] of [["chip outline slate-500 (about #62748E)", "#62748E"]]) {
     assert.ok(onWhite(colour) >= 3, `${what}: ${onWhite(colour).toFixed(2)}:1`);
   }
 });
