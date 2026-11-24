@@ -130,6 +130,8 @@ const ENGLISH = Object.freeze({
   "items.title": "My items",
   "items.find": "Find item",
   "items.new": "New item",
+  // The wide Items page (list with detail) is titled Items; the phone page keeps My items.
+  "items.wideTitle": "Items",
   "items.loading": "Loading items…",
   "items.loadFailed": "Items could not be loaded. Try again.",
   "items.noMatches": "No items match that search.",

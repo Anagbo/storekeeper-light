@@ -636,7 +636,7 @@ function ItemsWide({ mode, params, onUpdateParams, onLeaveGuard }) {
     <PosPage wide rail={rail} style={{ height: "100dvh" }} className="flex flex-col gap-5 tabular-nums">
       <div data-items-top="" inert={blocked || undefined} aria-hidden={blocked || undefined} className="flex min-w-0 items-center justify-between gap-4">
         <div className="flex min-w-0 items-baseline gap-3">
-          <h1 className="text-[30px] font-bold leading-tight text-[#0F172A]">{t("items.title")}</h1>
+          <h1 className="text-[30px] font-bold leading-tight text-[#0F172A]">{t("items.wideTitle")}</h1>
           {count !== null && (
             <p data-items-count="" className="whitespace-nowrap text-[17px] text-slate-600">
               {rail ? <>{count}<span className="sr-only"> {t(count === 1 ? "items.countOne" : "items.countMany", { count }).replace(/^\d+ /, "")}</span></> : t(count === 1 ? "items.countOne" : "items.countMany", { count })}
@@ -651,7 +651,7 @@ function ItemsWide({ mode, params, onUpdateParams, onLeaveGuard }) {
         </div>
       </div>
       <div data-items-columns="" inert={blocked || undefined} aria-hidden={blocked || undefined} className="grid min-h-0 min-w-0 flex-1 gap-6" style={{ gridTemplateColumns: rail ? "260px minmax(0, 1fr)" : "clamp(340px, 36%, 400px) minmax(0, 1fr)" }}>
-        <section data-items-list="" aria-label={t("items.title")} className="flex min-h-0 min-w-0 flex-col gap-3">
+        <section data-items-list="" aria-label={t("items.wideTitle")} className="flex min-h-0 min-w-0 flex-col gap-3">
           <label className="flex min-h-14 shrink-0 items-center gap-2 rounded-2xl border-2 border-slate-500 bg-white px-3">
             <Search size={24} aria-hidden="true" />
             <span className="sr-only">{t("items.find")}</span>
