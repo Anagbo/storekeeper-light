@@ -116,7 +116,8 @@ function Uncounted({ data }) {
   );
 }
 
-// 22 Owed card (redesign 11 Nov 2026): white, 2px light grey border, thicker red left edge.
+// 22 Owed card (redesign 11 Nov 2026): white, 2px light grey border; no coloured left edge (24 Nov 2026).
+// See all has a 48px minimum touch target.
 // "Nobody owes" (14 Nov 2026): the caller renders it only when someone has a balance above zero.
 // Each Collect first person is the shared PersonRow (rules_global.person_row): the whole top row opens
 // the person; Collect, WhatsApp and Call keep their own targets; WhatsApp goes through openWhatsApp.
@@ -128,14 +129,14 @@ function OwedCard({ data, hidden, urgent, onNavigate, onWhatsApp, wide }) {
     owedLate > 0 ? t("home.lateCount", { n: owedLate }) : ""
   ].filter(Boolean).join(" · ");
   return (
-    <section data-owed-card="" aria-label={t("home.owedToYou")} className={`flex min-w-0 flex-col gap-2.5 rounded-[18px] border-2 border-l-8 border-slate-300 border-l-rose-700 bg-white ${wide ? "px-5 py-4" : "px-4 py-3.5"}`}>
+    <section data-owed-card="" aria-label={t("home.owedToYou")} className={`flex min-w-0 flex-col gap-2.5 rounded-[18px] border-2 border-slate-300 bg-white ${wide ? "px-5 py-4" : "px-4 py-3.5"}`}>
       <button type="button" onClick={() => onNavigate("PeopleWhoOweYou")} aria-label={t("home.owedSeeAllAria")} className="flex w-full min-w-0 flex-wrap items-start justify-between gap-x-2 gap-y-1 text-left text-[#0F172A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800">
         <span className="min-w-0">
           <span className="block text-[17px] font-bold text-slate-600">{t("home.owedToYou")}</span>
           <b data-owed-total="" className={`block whitespace-nowrap leading-tight text-[#0F172A] ${wide ? "text-[40px] font-bold" : "text-[30px] font-extrabold"}`}><Amount hidden={hidden} pesewas={data.debtPesewas} /></b>
           {owedPeople > 0 && <span data-owed-count="" className={`mt-0.5 block text-slate-600 ${wide ? "text-[17px]" : "text-[15px]"}`}>{owedCountLine}</span>}
         </span>
-        <span className={`shrink-0 whitespace-nowrap pt-0.5 text-[17px] text-emerald-900 ${wide ? "font-bold" : "font-extrabold"}`}>{t("home.seeAll")}</span>
+        <span data-owed-see-all="" className={`inline-flex min-h-12 shrink-0 items-center whitespace-nowrap text-[17px] text-emerald-900 ${wide ? "font-bold" : "font-extrabold"}`}>{t("home.seeAll")}</span>
       </button>
       <div className="h-px bg-slate-200" />
       <p className={`uppercase tracking-[0.06em] text-slate-600 ${wide ? "text-[15px] font-bold" : "text-[13px] font-extrabold"}`}>{t("home.collectFirst")}</p>

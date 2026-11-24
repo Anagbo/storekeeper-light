@@ -108,11 +108,14 @@ const realDay = (offset) => {
 };
 const urgent = (extra = {}) => ({ debtId: "d1", customerName: "sera", amountPesewas: 2000, dueDate: realDay(-1), phone: "0244123456", ...extra });
 
-test("22 Owed card: white card with a red left edge; the top part opens 32; total bold and dark; people and late", async () => {
+test("22 Owed card: white card, 2px grey border, no coloured left edge; the top part opens 32; total bold and dark; people and late", async () => {
   const { tree, navigated } = await renderHome({ urgentDebt: urgent(), owed: { people: 5, late: 1 } });
   const card = all(tree, (n) => n.props["data-owed-card"] !== undefined)[0];
   assert.ok(card);
-  for (const want of ["bg-white", "border-2", "border-l-8", "border-slate-300", "border-l-rose-700"]) assert.ok(cls(card).split(/\s+/).includes(want), want);
+  for (const want of ["bg-white", "border-2", "border-slate-300"]) assert.ok(cls(card).split(/\s+/).includes(want), want);
+  assert.ok(!/(^|\s)border-l-/.test(cls(card)), "no coloured left edge");
+  const seeAll = all(card, (n) => n.props["data-owed-see-all"] !== undefined)[0];
+  assert.match(cls(seeAll), /(^|\s)min-h-12(\s|$)/, "See all is at least 48px high");
   assert.ok(!/bg-rose-200|bg-pink/.test(cls(card)), "not a pink block");
   const top = all(card, (n) => n.type === "button" && n.props["aria-label"] === "Owed to you, see all")[0];
   assert.ok(top);
