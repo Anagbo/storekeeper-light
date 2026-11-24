@@ -24,6 +24,7 @@ const MEASURE = `(() => {
     scrollWidth: document.documentElement.scrollWidth,
     rows,
     links,
+    heroBox: (() => { const r = document.querySelector("[data-block=money-left]").getBoundingClientRect(); return { left: r.left, right: r.right, height: r.height }; })(),
     hero: (document.querySelector("[data-block=money-left] p") || {}).textContent || "",
     text: document.querySelector("main").innerText
   };
@@ -38,7 +39,7 @@ const openMyMoney = async (app, width, height) => {
 
 test("My money D7: fits, no comparison, hero follows the period, links, hidden amounts", { skip: browser ? false : "no Chrome or Edge found (set HEADER_TEST_BROWSER)", timeout: 600_000 }, async () => {
   await withEdgeApp({ seeds: SEEDS, env: ENV }, async (app) => {
-    for (const [width, height] of [[340, 740], [768, 1024], [1280, 800]]) {
+    for (const [width, height] of [[340, 740], [768, 1024], [1024, 768], [1280, 800]]) {
       const at = `${width}px`;
       await openMyMoney(app, width, height);
       for (const [button, label] of [["^Today$", "Money left today"], ["^This week$", "Money left this week"], ["^This month$", "Money left this month"]]) {
@@ -47,6 +48,7 @@ test("My money D7: fits, no comparison, hero follows the period, links, hidden a
         const m = await app.evaluate(MEASURE);
         assert.ok(m.scrollWidth <= m.innerWidth, `${at} ${label}: no sideways scroll`);
         assert.doesNotMatch(m.text, /more than|less than/, `${at} ${label}: no comparison line`);
+        assert.ok(m.heroBox.left >= 0 && m.heroBox.right <= m.innerWidth + 0.5 && m.heroBox.height > 0, `${at} ${label}: hero card is inside the screen`);
         for (const row of m.rows) assert.ok(row.gap >= 0, `${at} ${label}: ${row.name} label does not overlap its amount`);
       }
       await app.click("^Today$");
@@ -58,7 +60,7 @@ test("My money D7: fits, no comparison, hero follows the period, links, hidden a
       assert.match(m.text, /On credit, not paid/);
       assert.match(m.text, /Where your money should be/);
       assert.equal(m.links.length, 2, `${at}: both link buttons`);
-      if (width >= 1024) for (const link of m.links) assert.ok(link.height >= 48, `${at}: ${link.text} is ${link.height}px high`);
+      if (width >= 768) for (const link of m.links) assert.ok(link.height >= 48, `${at}: ${link.text} is ${link.height}px high`);
 
       // Hide amounts: every figure, the new total included, becomes the fixed GH₵ •••• .
       await app.click("^Hide amounts$");
