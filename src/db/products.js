@@ -8,7 +8,26 @@ export { getStarterItemsForCategories, STARTER_CATEGORIES, STARTER_ITEMS } from 
 
 // The price comes either as text (the item forms) or as whole pesewas (the 37 number pad,
 // which never builds a decimal). Either way it is checked as whole pesewas.
-export function normalizeProductInput({ name, price = "", pricePesewas: givenPesewas }) {
+// What the owner paid for one (wiring 40/41 COST PRICE): integer pesewas or null. Blank text is
+// null, never zero; 0 is a real cost. Undefined means "not sent": the saved cost is kept.
+export function normalizeCostInput({ cost, costPricePesewas }) {
+  if (costPricePesewas !== undefined) {
+    if (costPricePesewas === null) return null;
+    if (!Number.isSafeInteger(costPricePesewas) || costPricePesewas < 0) throw new TypeError(COST_PROBLEM);
+    return costPricePesewas;
+  }
+  if (cost === undefined) return undefined;
+  if (cost === null) return null;
+  const text = String(cost).trim();
+  if (!text) return null;
+  const pesewas = toPesewas(text);
+  if (!Number.isSafeInteger(pesewas) || pesewas < 0) throw new TypeError(COST_PROBLEM);
+  return pesewas;
+}
+
+const COST_PROBLEM = "Enter a valid amount for what you paid, or leave it empty.";
+
+export function normalizeProductInput({ name, price = "", pricePesewas: givenPesewas, cost, costPricePesewas }) {
   const cleanName = typeof name === "string" ? name.trim() : "";
   const hasPesewas = givenPesewas !== undefined;
   const priceText = hasPesewas ? "" : String(price).trim();
@@ -18,9 +37,12 @@ export function normalizeProductInput({ name, price = "", pricePesewas: givenPes
   if (!Number.isSafeInteger(pricePesewas) || ((priceText || hasPesewas) && pricePesewas <= 0)) {
     throw new TypeError(`Enter a valid item price greater than ${formatGhs(0)}.`);
   }
+  const costPesewas = normalizeCostInput({ cost, costPricePesewas });
   return {
     name: cleanName,
-    default_price: pricePesewas / 100
+    default_price: pricePesewas / 100,
+    // Absent key: updateProduct keeps the saved cost (the 37 Set price path sends no cost).
+    ...(costPesewas !== undefined && { cost_price_pesewas: costPesewas })
   };
 }
 

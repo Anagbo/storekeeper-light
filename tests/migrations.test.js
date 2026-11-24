@@ -78,3 +78,25 @@ test("upgrades a v11 database to v12 with supplier storage and indexes", async (
   assert.ok(db.transactions.schema.indexes.some((index) => index.name === "supplierId"));
   assert.equal((await db.transactions.get("stock-1")).supplierId, "supplier-1");
 });
+
+test("an old item and an old sale read their cost as unknown (null), never zero", async () => {
+  await createLegacyDatabase(1, {
+    products: "++id, name, updatedAt, syncStatus, [name+updatedAt], [syncStatus+updatedAt]",
+    transactions: "id, type, createdAt, updatedAt, syncStatus, [type+createdAt], [syncStatus+updatedAt]",
+    debts: "id, customerName, phone, status, updatedAt, syncStatus, [status+updatedAt], [customerName+status], [syncStatus+updatedAt]"
+  }, {
+    products: [{ id: 1, name: "Bread", default_price: 15 }],
+    transactions: [{
+      id: "sale-old", type: "sale", amountPesewas: 1500, paymentType: "cash", createdAt: 100,
+      items_json: JSON.stringify([{ productId: 1, name: "Bread", quantity: 1, unitPricePesewas: 1500, total_amount: 1500 }])
+    }],
+    debts: []
+  });
+
+  await db.open();
+  assert.equal(db.verno, 14, "no Dexie version bump for the cost fields");
+  const product = await db.products.get(1);
+  assert.equal(product.cost_price_pesewas ?? null, null);
+  const [line] = JSON.parse((await db.transactions.get("sale-old")).items_json);
+  assert.equal(line.cost_at_sale_pesewas ?? null, null);
+});
