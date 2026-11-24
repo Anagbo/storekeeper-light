@@ -84,7 +84,7 @@ test("wide dialogs in Edge (768, 1280): 46 Pay sheet and 25 Collect", { skip: br
 
       // 46 Pay sheet over My money > You owe suppliers: Escape is Cancel, focus back on Pay Kofi.
       await side("MyMoney");
-      await waitFor(() => app.evaluate(`(() => { const card = [...document.querySelectorAll("main button")].find((b) => /You owe suppliers/.test(b.textContent)); if (!card) return false; card.click(); return true; })()`), "You owe suppliers");
+      await waitFor(() => app.evaluate(`(() => { const card = [...document.querySelectorAll("main button")].find((b) => /You owe suppliers/.test(b.textContent + " " + (b.getAttribute("aria-label") || ""))); if (!card) return false; card.click(); return true; })()`), "You owe suppliers");
       await app.click("^Pay Kofi$");
       await checkDialog(at, "46");
       await key("Escape");
