@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Banknote, Smartphone, Wallet } from "lucide-react";
 import { db } from "../db/db.js";
@@ -16,6 +16,8 @@ import { useFormErrors } from "./formErrors.js";
 import WideDialog, { useWideDialogs } from "./WideDialog.jsx";
 import { useLayoutContext } from "./layout.js";
 import { SOFT_TILE } from "./softTile.js";
+import { findDuplicatePerson, suppliersWithBalances } from "./duplicatePerson.js";
+import DuplicatePersonQuestion from "./DuplicatePersonQuestion.jsx";
 
 const CATEGORY_LABELS = Object.freeze({
   stock: "expense.category.stock",
@@ -164,7 +166,7 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
   // 45: the most recently used suppliers come first (undefined while loading).
   const suppliers = useLiveQuery(async () => {
     const [records, linked] = await Promise.all([db.suppliers.toArray(), db.transactions.where("supplierId").above("").toArray()]);
-    return orderSuppliersByRecentUse(records, linked);
+    return orderSuppliersByRecentUse(suppliersWithBalances(records, linked), linked);
   }, [], undefined);
   const amountPesewas = Number.isSafeInteger(params?.amountPesewas) ? params.amountPesewas : 0;
   // draft_survives_trip_away: Paid now, the supplier (chosen or typed) and the pay-by date are also
@@ -196,6 +198,27 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
     ["supplierName", owedPesewas > 0 && isNew && !supplierName.trim() ? t("expense.supplierNameRequired") : ""]
   ]);
 
+  // rules_global.duplicate_person: a new supplier with the name or phone of a known one (owed 0 too)
+  // is asked about under the field; Save waits for the answer. "Use this person" picks that supplier;
+  // a phone match saved as new has another name, a name match must be renamed (kept by name).
+  const [keptAsNew, setKeptAsNew] = useState("");
+  const useThisPerson = useRef(null);
+  const nameInput = useRef(null);
+  const duplicate = isNew ? findDuplicatePerson(listed, { name: supplierName, phone: supplierPhone }) : null;
+  const duplicateKey = duplicate ? `${duplicate.by}:${duplicate.person.id}` : "";
+  const renaming = Boolean(duplicate && keptAsNew === duplicateKey && duplicate.by === "name");
+  const unresolved = Boolean(duplicate && keptAsNew !== duplicateKey) || renaming;
+  const question = unresolved ? (
+    <DuplicatePersonQuestion
+      match={duplicate}
+      supplier
+      renaming={renaming}
+      buttonRef={useThisPerson}
+      onUse={() => chooseSupplier(duplicate.person.id)}
+      onNew={() => { setKeptAsNew(duplicateKey); if (duplicate.by === "name") setTimeout(() => nameInput.current?.focus(), 0); }}
+    />
+  ) : null;
+
   function chooseSupplier(id) {
     // The new supplier fields are hidden, but what was typed in them is kept until Save.
     setNewSupplier(false);
@@ -207,6 +230,10 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
     if (saving || !Number.isSafeInteger(paidPesewas) || paidPesewas < 0 || paidPesewas > amountPesewas) return;
     setError("");
     if (!formErrors.check()) return;
+    if (owedPesewas > 0 && unresolved) {
+      (renaming ? nameInput : useThisPerson).current?.focus();
+      return;
+    }
     setSaving(true);
     setError("");
     try {
@@ -283,8 +310,10 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
             </div>
             {isNew && (
               <div data-new-supplier-fields="" className="flex flex-col gap-2.5 pt-1">
-                <label className="block"><span className="mb-1.5 block text-[15px] font-bold text-slate-600">{t("expense.supplierName")}</span><input value={supplierName} onChange={(event) => { setSupplierName(event.target.value); onUpdateParams?.({ stockSupplierName: event.target.value }); }} className={field} /></label>
+                <label className="block"><span className="mb-1.5 block text-[15px] font-bold text-slate-600">{t("expense.supplierName")}</span><input ref={nameInput} value={supplierName} onChange={(event) => { setSupplierName(event.target.value); onUpdateParams?.({ stockSupplierName: event.target.value }); }} className={field} /></label>
+                {duplicate?.by === "name" && question}
                 <label className="block"><span className="mb-1.5 block text-[15px] font-bold text-slate-600">{t("expense.supplierPhone")}</span><input type="tel" inputMode="tel" value={supplierPhone} onChange={(event) => { setSupplierPhone(event.target.value); onUpdateParams?.({ stockSupplierPhone: event.target.value }); }} className={field} /></label>
+                {duplicate?.by === "phone" && question}
               </div>
             )}
           </section>

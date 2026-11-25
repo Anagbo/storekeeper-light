@@ -110,9 +110,11 @@ async function openNineteen({ existing, sale = 8000, each = "40" }) {
   a.start("NewPerson", { amountPesewas: sale, saleItems: [] });
   input(a.tree, (props) => props.autoComplete === "name").props.onChange({ target: { value: existing ? "Ama" : "Kofi New" } });
   a.rerender(); a.flush();
-  if (existing) await waitFor(() => { a.rerender(); return [...walk(a.tree)].some((node) => node.props?.role === "status" && /already owes/.test(textOf(node))); }, "the existing debtor line");
+  // rules_global.duplicate_person (25 Nov 2026): an existing name is asked about; "Use this person" goes on.
+  if (existing) await waitFor(() => { a.rerender(); return [...walk(a.tree)].some((node) => node.props?.role === "status" && /already exists/.test(textOf(node))); }, "the duplicate question");
   const status = [...walk(a.tree)].filter((node) => node.props?.role === "status").map(textOf);
-  [...walk(a.tree)].find((node) => node.type === "form").props.onSubmit({ preventDefault() {} });
+  if (existing) findButton(a.tree, "Use this person").props.onClick();
+  else [...walk(a.tree)].find((node) => node.type === "form").props.onSubmit({ preventDefault() {} });
   await waitFor(() => a.state.current === "WhenWillTheyPay", "18 to open");
   assert.equal(a.state.current, "WhenWillTheyPay");
   findButton(a.tree, "A little at a time").props.onClick();
@@ -184,7 +186,7 @@ const GRID = [
 for (const row of GRID) {
   test(`${row.name}: back on 19 Owed is the full balance, Today is selected, Save plan works once, Money in and balance are right`, async () => {
     const { a, status } = await openNineteen({ existing: row.existing, each: row.each });
-    if (row.existing) assert.deepEqual(status, ["Ama already owes GH₵248.20. This will be added to Ama’s debt."]);
+    if (row.existing) assert.deepEqual(status, ["Ama already exists (owes GH₵248.20). Use this person?"]);
     const fullBalance = row.existing + 8000;
     if (row.nextCycleFirst) chooseNextCycle(a);
     choose(a, "Today");

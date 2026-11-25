@@ -30,6 +30,8 @@ import { useFormErrors } from "./formErrors.js";
 import AmountTextInput from "./AmountTextInput.jsx";
 import { confirmDirectMomoParts, describeSplitPart, isLockedMomoRow, isUnconfirmedDirectMomo } from "./splitTender.js";
 import { CREDIT_REASON_MAX } from "../lib/creditReason.js";
+import { findDuplicatePerson, loadKnownCustomers } from "./duplicatePerson.js";
+import DuplicatePersonQuestion from "./DuplicatePersonQuestion.jsx";
 import { loadRecentCreditReasons } from "../db/recentReasons.js";
 import { getCreditReasonCase } from "./creditDraft.js";
 
@@ -208,9 +210,17 @@ function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
   const [name, setName] = useState(params.newPersonName ?? "");
   const [phone, setPhone] = useState(params.newPersonPhone ?? "");
   const [ghanaCardNumber, setGhanaCardNumber] = useState(params.newPersonGhanaCard ?? "");
-  // Someone who already owes under the name typed here: the debt is added to theirs (the writers
-  // find it by name), so say so, and carry what they owe so 19 sizes the plan on the whole balance.
-  const [existingDebtor, setExistingDebtor] = useState(null);
+  // rules_global.duplicate_person: someone already known by this name or phone (owing 0 too) is asked
+  // about under the field: Use this person (goes on as if picked on 17, so 19 sizes the plan on the whole
+  // balance) or Save as a new person. Next waits for that answer. A phone match saved as new is a
+  // different name, so a new person; a name match must be renamed (the writers keep people by name).
+  const [duplicate, setDuplicate] = useState(null);
+  const [keptAsNew, setKeptAsNew] = useState("");
+  const useThisPerson = useRef(null);
+  const nameInput = useRef(null);
+  const duplicateKey = duplicate ? `${duplicate.by}:${duplicate.person.id || duplicate.person.name}` : "";
+  const renaming = Boolean(duplicate && keptAsNew === duplicateKey && duplicate.by === "name");
+  const unresolved = Boolean(duplicate && keptAsNew !== duplicateKey) || renaming;
   const phoneInvalid = Boolean(phone.trim() && !normalizeWhatsAppPhone(phone));
   // Wiring 34 "Error on 34" and rules_global.form_errors: there is no amount field here, so the box
   // names only the name, phone or card; it shows after Next and goes as soon as that is fixed.
@@ -221,25 +231,23 @@ function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
   ]);
 
   useEffect(() => {
-    const typedName = name.trim().toLowerCase();
-    if (!typedName) {
-      setExistingDebtor(null);
+    if (!name.trim() && !phone.trim()) {
+      setDuplicate(null);
       return undefined;
     }
     let active = true;
-    db.debts.where("status").equals("unpaid").toArray().then((debts) => {
-      if (!active) return;
-      const matching = debts.filter((debt) => (debt.customerName ?? debt.customer_name ?? "").trim().toLowerCase() === typedName);
-      const totalDebtPesewas = matching.reduce((sum, debt) => sum + (debt.amountPesewas ?? debt.total_owed ?? 0), 0);
-      setExistingDebtor(totalDebtPesewas > 0
-        ? { name: (matching[0].customerName ?? matching[0].customer_name).trim(), totalDebtPesewas }
-        : null);
+    loadKnownCustomers().then((people) => {
+      if (active) setDuplicate(findDuplicatePerson(people, { name, phone }));
     }).catch((lookupError) => {
-      console.error("Could not check whether this person already owes.", lookupError);
-      if (active) setExistingDebtor(null);
+      console.error("Could not check whether this person already exists.", lookupError);
+      if (active) setDuplicate(null);
     });
     return () => { active = false; };
-  }, [name]);
+  }, [name, phone]);
+
+  function goOn(customer, extra = {}) {
+    onNavigate(params.manualDebt ? "ManualDebtAmount" : "WhenWillTheyPay", { ...params, customer, ...extra });
+  }
 
   function continueWithNewCustomer(event) {
     event.preventDefault();
@@ -248,18 +256,26 @@ function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
     // A sale always reaches 34 with its amount (Owe on 15 needs one); without it there is nothing to
     // owe and nothing the owner can fix here, so Next does nothing.
     if (!params.manualDebt && amountOwedPesewas <= 0) return;
-    onNavigate(params.manualDebt ? "ManualDebtAmount" : "WhenWillTheyPay", {
-      ...params,
-      customer: {
-        name: cleanName,
-        nameLower: cleanName.toLowerCase(),
-        phone: phone.trim(),
-        ghanaCardNumber: normalizeGhanaCardNumber(ghanaCardNumber),
-        ...(existingDebtor && { totalDebtPesewas: existingDebtor.totalDebtPesewas })
-      },
-      isNewCustomer: true
-    });
+    if (unresolved) {
+      (renaming ? nameInput : useThisPerson).current?.focus();
+      return;
+    }
+    goOn({
+      name: cleanName,
+      nameLower: cleanName.toLowerCase(),
+      phone: phone.trim(),
+      ghanaCardNumber: normalizeGhanaCardNumber(ghanaCardNumber)
+    }, { isNewCustomer: true });
   }
+
+  function saveAsNew() {
+    setKeptAsNew(duplicateKey);
+    if (duplicate?.by === "name") setTimeout(() => nameInput.current?.focus(), 0);
+  }
+
+  const question = unresolved ? (
+    <DuplicatePersonQuestion match={duplicate} renaming={renaming} buttonRef={useThisPerson} onUse={() => goOn(duplicate.person)} onNew={saveAsNew} />
+  ) : null;
 
   return (
     <PosPage className="flex flex-col gap-3">
@@ -271,19 +287,16 @@ function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
         {!params.manualDebt && <OwesFromSale amountPesewas={amountOwedPesewas} />}
         <label className="block">
           <span className="mb-1 block font-extrabold">{t("credit.name")}</span>
-          <input autoComplete="name" placeholder={t("credit.namePlaceholder")} value={name} onChange={(event) => { setName(event.target.value); onUpdateParams?.({ newPersonName: event.target.value }); }} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />
+          <input ref={nameInput} autoComplete="name" placeholder={t("credit.namePlaceholder")} value={name} onChange={(event) => { setName(event.target.value); onUpdateParams?.({ newPersonName: event.target.value }); }} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />
           <span className="text-sm text-slate-700">{t("credit.nameHint")}</span>
-          {existingDebtor && (
-            <span role="status" className="mt-1 block rounded-xl border-2 border-amber-700 bg-amber-100 p-2 text-sm font-semibold text-amber-950">
-              {t("credit.existingDebtor", { name: displayName(existingDebtor.name), amount: formatGhs(existingDebtor.totalDebtPesewas) })}
-            </span>
-          )}
         </label>
+        {duplicate?.by === "name" && question}
         <label className="block">
           <span className="mb-1 block font-extrabold">{t("credit.phone")}</span>
           <input type="tel" inputMode="tel" autoComplete="tel" placeholder={t("credit.phonePlaceholder")} value={phone} onChange={(event) => { setPhone(event.target.value); onUpdateParams?.({ newPersonPhone: event.target.value }); }} aria-invalid={phoneInvalid} aria-describedby="new-person-phone-hint" className={`h-14 w-full rounded-2xl border-[3px] px-3 text-lg ${phoneInvalid ? "border-rose-900" : "border-slate-500"}`} />
           <span id="new-person-phone-hint" className={`text-sm ${phoneInvalid ? "text-rose-900" : "text-slate-700"}`}>{phoneInvalid ? t("contact.invalidPhone") : t("credit.phoneHint")}</span>
         </label>
+        {duplicate?.by === "phone" && question}
         <label className="block">
           <span className="mb-1 block font-extrabold">{t("credit.ghanaCard")}</span>
           <input autoCapitalize="characters" maxLength="15" placeholder={t("credit.ghanaCardPlaceholder")} value={ghanaCardNumber} onChange={(event) => { const formatted = formatGhanaCard(event.target.value); setGhanaCardNumber(formatted); onUpdateParams?.({ newPersonGhanaCard: formatted }); }} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />

@@ -158,20 +158,22 @@ async function newPersonView(params, navigated = []) {
   return render({ type: CreditScreens, props: { route: "NewPerson", params, onBack() {}, onNavigate: (...args) => navigated.push(args) } });
 }
 
-test("34: the name of someone who already owes shows the warning; other names and paid-off debts do not", async () => {
+// rules_global.duplicate_person (25 Nov 2026) replaced the old "already owes" line: a paid-off name
+// (owes 0) is now asked about too.
+test("34: the name of someone who already owes asks the duplicate question; paid-off names too; others do not", async () => {
   await older(3000);
   await db.debts.add({ id: "paid-one", customerName: "Kofi", customer_name: "Kofi", status: "paid", amountPesewas: 0, total_owed: 0, createdAt: 1 });
   const view = await newPersonView({ amountPesewas: 5000 });
-  assert.doesNotMatch(textOf(view.tree), /already owes/);
+  assert.doesNotMatch(textOf(view.tree), /already exists/);
   await typeName(view, "  ama ");
-  assert.match(textOf(view.tree), /Ama already owes GH₵30\.00\. This will be added to Ama’s debt\./);
+  assert.match(textOf(view.tree), /Ama already exists \(owes GH₵30\.00\)\. Use this person\?/);
   assert.deepEqual(alerts(view.tree), []);
   await typeName(view, "Esi");
-  assert.doesNotMatch(textOf(view.tree), /already owes/);
+  assert.doesNotMatch(textOf(view.tree), /already exists/);
   await typeName(view, "Kofi");
-  assert.doesNotMatch(textOf(view.tree), /already owes/);
+  assert.match(textOf(view.tree), /Kofi already exists \(owes GH₵0\.00\)/);
   await typeName(view, "");
-  assert.doesNotMatch(textOf(view.tree), /already owes/);
+  assert.doesNotMatch(textOf(view.tree), /already exists/);
 });
 
 test("34 to 19: the older debt is carried, so the plan is sized on the whole balance and saves (20 and 80 each time)", async () => {
@@ -181,12 +183,14 @@ test("34 to 19: the older debt is carried, so the plan is sized on the whole bal
     const navigated = [];
     const view = await newPersonView({ amountPesewas: 5000 }, navigated);
     await typeName(view, "Ama");
+    // Next waits for the duplicate question; "Use this person" carries Ama's balance on.
     [...walk(view.tree)].find((node) => node.type === "form").props.onSubmit({ preventDefault() {} });
+    assert.equal(navigated.length, 0);
+    findButton(view.tree, "Use this person").props.onClick();
     assert.equal(navigated.length, 1);
     const [route, params] = navigated[0];
     assert.equal(route, "WhenWillTheyPay");
     assert.equal(params.customer.totalDebtPesewas, 3000);
-    assert.equal(params.isNewCustomer, true);
     const result = await save19({ ...params, ...nextCycle(each) });
     assert.deepEqual([result.saved, result.alerts], [true, []], `${each} each time`);
     const debts = await db.debts.toArray();
@@ -255,7 +259,7 @@ test("18: Today is still a valid fixed due date", async (t) => {
 test("the new messages read exactly as approved; the existing ones are unchanged", () => {
   assert.equal(posText("credit.eachTimeTooHigh"), TOO_HIGH);
   assert.equal(posText("credit.debtChanged"), DEBT_CHANGED);
-  assert.equal(posText("credit.existingDebtor", { name: "Ama", amount: "GH₵30.00" }), "Ama already owes GH₵30.00. This will be added to Ama’s debt.");
+  assert.equal(posText("duplicate.exists", { name: "Ama", amount: "GH₵30.00" }), "Ama already exists (owes GH₵30.00). Use this person?");
   assert.equal(posText("credit.paymentTodayTooHigh", { amount: "GH₵60.00" }), "The payment today cannot exceed GH₵60.00.");
   assert.equal(posText("credit.invalidDueDate"), DATE_MESSAGE);
   assert.equal(posText("credit.invalidInstallment"), "Enter a valid installment amount, frequency and payment date.");
