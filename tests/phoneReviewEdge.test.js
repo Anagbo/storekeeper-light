@@ -150,3 +150,86 @@ test("Suppliers: Pay is full width when no supplier has a phone (340, 390px)", {
     }
   });
 });
+
+const TILES = `(() => [...document.querySelectorAll("[data-payment-tile]")].filter((el) => el.offsetParent).map((el) => {
+  const cs = getComputedStyle(el); const r = el.getBoundingClientRect();
+  const tick = el.querySelector("[data-tile-tick]"); const tr = tick && tick.getBoundingClientRect();
+  const label = el.querySelector("span:not([data-tile-tick])");
+  return { text: el.textContent.trim(), selected: el.getAttribute("aria-pressed") === "true", disabled: el.disabled, bg: cs.backgroundColor, border: cs.borderTopColor, borderWidth: cs.borderTopWidth, color: cs.color,
+    labelSize: label ? parseFloat(getComputedStyle(label).fontSize) : 0, height: r.height, left: r.left, right: r.right, tick: Boolean(tick), tickSize: tr ? tr.width : 0, tickInside: tr ? tr.right <= r.right + 0.5 && tr.top >= r.top - 0.5 : false };
+}))()`;
+
+function checkTiles(tiles, width, where, minHeight) {
+  assert.ok(tiles.length >= 3, `${width} ${where}: Cash, MoMo and Owe tiles`);
+  const selected = tiles.filter((tile) => tile.selected);
+  assert.equal(selected.length, 1, `${width} ${where}: one tile is selected`);
+  const [tile] = selected;
+  assert.equal(tile.bg, "rgb(209, 250, 229)", `${width} ${where}: mint fill`);
+  assert.equal(tile.border, "rgb(3, 84, 63)", `${width} ${where}: #03543F border`);
+  assert.equal(tile.borderWidth, "2px", `${width} ${where}: 2px border`);
+  assert.ok(tile.tick && tile.tickInside, `${width} ${where}: the tick badge is in the top-right corner`);
+  assert.equal(Math.round(tile.tickSize), 16, `${width} ${where}: the tick badge is 16px`);
+  for (const item of tiles) {
+    assert.ok(item.labelSize >= 15, `${width} ${where} ${item.text}: label is 15px or more (${item.labelSize})`);
+    assert.ok(item.height >= minHeight - 0.5, `${width} ${where} ${item.text}: ${minHeight}px or taller (${item.height})`);
+    assert.ok(item.left >= 0 && item.right <= width, `${width} ${where} ${item.text}: inside the screen`);
+    if (!item.selected && !item.disabled) {
+      assert.equal(item.bg, "rgb(255, 255, 255)", `${width} ${where} ${item.text}: white`);
+      assert.equal(item.border, "rgb(100, 116, 139)", `${width} ${where} ${item.text}: #64748B border`);
+      assert.ok(!item.tick, `${width} ${where} ${item.text}: no tick`);
+    }
+  }
+}
+
+test("Payment tiles on Sell and Review and pay: mint, tick, 15px label (340, 390px)", { skip: SKIP, timeout: 600_000 }, async () => {
+  await withEdgeApp({ seeds: SEEDS, env: ENV }, async (app) => {
+    for (const width of WIDTHS) {
+      await app.open("base", width, 900);
+      await app.steps(["^Sell$"]);
+      await app.shows("Add items");
+      await sleep(300);
+      checkTiles(await app.evaluate(TILES), width, "Sell", 64);
+      const split = await app.evaluate(`(() => { const el = [...document.querySelectorAll("button")].find((b) => b.getAttribute("aria-label") === "Split payment" && b.offsetParent); return el && { text: el.textContent.trim(), dashed: getComputedStyle(el).borderTopStyle, svgs: el.querySelectorAll("svg").length, height: el.getBoundingClientRect().height }; })()`);
+      assert.ok(split, `${width}: the Split tile is there`);
+      assert.equal(split.text, "Split", `${width}: it says Split`);
+      assert.equal(split.dashed, "dashed", `${width}: it stays dashed`);
+      assert.equal(split.svgs, 1, `${width}: one split icon`);
+      assert.ok(split.height >= 64, `${width}: Split is 64px or taller`);
+      assert.ok((await app.evaluate(PAGE)).scroll, `${width}: Sell has no sideways scroll`);
+      await app.open("base", width, 900);
+      await app.steps(["^Sell$", "Add items", "^Rice", "^Add 1", "^Next"]);
+      await sleep(400);
+      checkTiles(await app.evaluate(TILES), width, "Review and pay", 60);
+      assert.ok((await app.evaluate(PAGE)).scroll, `${width}: Review has no sideways scroll`);
+    }
+  });
+});
+
+test("Saved as credit after a payment today: one Paid today row, method in the label, Now owes (340, 390px)", { skip: SKIP, timeout: 600_000 }, async () => {
+  await withEdgeApp({ seeds: SEEDS, env: ENV }, async (app) => {
+    for (const width of WIDTHS) {
+      await app.open("base", width, 900);
+      await app.steps(["^Sell$", "^5$", "^Owe$", "^[AK]?Amoto", "^Next", "A little at a time", "type:2", "^Today$"]);
+      await sleep(300);
+      await app.evaluate(`document.querySelector("[aria-label='Amount paid today']").focus()`);
+      await app.type("3");
+      await sleep(200);
+      await app.steps(["^Save plan$"]);
+      await app.shows("See Amoto’s details");
+      await sleep(300);
+      const m = await app.evaluate(`(() => {
+        const card = document.querySelector("[data-debt-saved-rows]"); const text = card ? card.textContent : "";
+        const rows = card ? [...card.querySelectorAll("[data-event-detail]")].map((el) => el.dataset.eventDetail) : [];
+        const paid = [...document.querySelectorAll("[data-event-detail='paid-today']")];
+        return { rows, paidCount: paid.length, paidInCard: paid.every((el) => card && card.contains(el)), paidText: paid[0] && paid[0].textContent.replace(/\\s+/g, " ").trim(), text, scroll: document.documentElement.scrollWidth <= innerWidth };
+      })()`);
+      assert.equal(m.paidCount, 1, `${width}: one Paid today row`);
+      assert.ok(m.paidInCard, `${width}: it is inside the card`);
+      assert.match(m.paidText, /^Paid today · Cash/, `${width}: a single method is named in the label (${m.paidText})`);
+      assert.deepEqual(m.rows, ["before", "added", "paid-today", "now-owes"], `${width}: no per-method sub-rows`);
+      assert.ok(!/MoMo/.test(m.text), `${width}: no MoMo row`);
+      assert.match(m.text, /Now owes/, `${width}: the Now owes row`);
+      assert.ok(m.scroll, `${width}: no sideways scroll`);
+    }
+  });
+});
