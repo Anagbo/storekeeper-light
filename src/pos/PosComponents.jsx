@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { Banknote, BarChart3, Check, Home as HomeIcon, List, Menu as MenuIcon, Package, Settings, ShoppingCart, Smartphone, UserRound, UsersRound, WifiOff } from "lucide-react";
+import { Banknote, BarChart3, Check, Home as HomeIcon, List, Menu as MenuIcon, Package, Settings, ShoppingCart, Smartphone, Split, UserRound, UsersRound, WifiOff } from "lucide-react";
 import { formatWeekdayDate } from "../lib/formatDate.js";
 import { posText as t } from "./i18n.js";
 import { useOnline } from "./useOnline.js";
@@ -267,6 +267,33 @@ export function AddButton({ children, plus = true, size = "standard", role, chec
   );
 }
 
+// The shared payment tile (Sell keypad and Review and pay; rules_global.selected_states, payment tiles).
+// Selected: mint #D1FAE5, 2px #03543F border, icon and label #03543F and a 16px tick badge top-right
+// (never dropped). Not selected: white, 2px #64748B border, #0F172A label. Disabled: #CBD5E1 border, #94A3B8 label.
+export function PaymentTile({ icon: Icon, label, selected = false, disabled = false, iconSize = 24, className = "", children, ...props }) {
+  const look = disabled
+    ? "border-[#CBD5E1] bg-white text-[#94A3B8]"
+    : selected
+      ? "border-[#03543F] bg-[#D1FAE5] text-[#03543F]"
+      : "border-[#64748B] bg-white text-[#0F172A]";
+  return (
+    <button
+      type="button"
+      data-payment-tile=""
+      aria-pressed={selected}
+      disabled={disabled}
+      {...props}
+      className={`relative flex min-w-0 flex-col items-center justify-center gap-1 overflow-hidden rounded-[14px] border-2 px-1 text-[15px] font-bold leading-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed ${look} ${className}`}
+    >
+      {selected && !disabled && (
+        <span data-tile-tick="" aria-hidden="true" className="absolute right-1 top-1 grid h-4 w-4 place-items-center rounded-full bg-[#03543F] text-white"><Check size={11} strokeWidth={3.5} /></span>
+      )}
+      {Icon && <Icon size={iconSize} className="shrink-0" aria-hidden="true" />}
+      {children ?? <span className="w-full min-w-0 truncate text-center">{label}</span>}
+    </button>
+  );
+}
+
 // The "leave" look (rules_global.button_system.leave): grey outline (2px #64748B border), #334155 bold
 // text, white fill, full width and 52px. Skip for now, Not now: lower priority than the main action but a
 // real button.
@@ -306,6 +333,11 @@ export function ChoiceChip({ kind = "choice", selected = false, children, classN
 
 export function PosCard({ children, className = "", ...rest }) {
   return <section {...rest} className={`rounded-2xl border-2 border-slate-600 bg-white p-4 ${className}`}>{children}</section>;
+}
+
+// One split icon for the Sell keypad Split tile (Review keeps the three-icon SplitIcons row).
+export function SplitIcon({ size = 22, className = "" }) {
+  return <Split size={size} className={`shrink-0 ${className}`} aria-hidden="true" />;
 }
 
 export function SplitIcons({ withOwe = false, size = 20, className = "" }) {

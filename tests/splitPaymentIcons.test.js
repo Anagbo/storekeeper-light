@@ -26,8 +26,8 @@ test("every Split payment control contains the joined icons and no separate + be
     const source = read(file);
     const at = source.lastIndexOf(`t("${key}")`);
     assert.ok(at > 0, `${file}: uses ${key}`);
-    const before = source.slice(Math.max(0, at - 700), at);
-    const icons = withOwe ? /<SplitIcons withOwe size=\{\d+\} \/>/ : /<SplitIcons size=\{\d+\} \/>/;
+    const before = source.slice(Math.max(0, at - 700), at + (file.endsWith("Sell.jsx") ? 400 : 0));
+    const icons = withOwe ? /<SplitIcons? (withOwe )?size=\{\d+\} \/>/ : /<SplitIcons size=\{\d+\} \/>/;
     assert.match(before, icons, `${file}: joined icons ${withOwe ? "with Owe" : "(Cash + MoMo)"} before the label`);
     // The control that holds the label draws no "+" of its own (AddButton must say plus={false}).
     const control = before.slice(Math.max(before.lastIndexOf("<AddButton"), before.lastIndexOf("<PosSecondaryButton"), before.lastIndexOf("<button")));

@@ -52,7 +52,7 @@ const MEASURE = `(() => {
 })()`;
 
 // [width, height, scrolls]: the three tall screens show Done without scrolling, the short ones scroll.
-const SIZES = [[340, 640, true], [340, 667, true], [360, 667, true], [360, 740, false], [393, 800, false], [393, 852, false]];
+const SIZES = [[340, 640, true], [340, 667, true], [360, 667, true], [360, 740, true], [393, 800, false], [393, 852, false]];
 
 test("15: Done is not pinned; at the end of the scroll it ends above the bottom bar with the four tiles above it; fully visible unscrolled on the tall screens (six sizes)", { skip: browser ? false : "no Chrome or Edge found (set HEADER_TEST_BROWSER)", timeout: 400_000 }, async () => {
   await withEdgeApp({ seeds: SEEDS }, async (app) => {

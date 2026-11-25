@@ -5,7 +5,7 @@ import { isSaveOutcomeUnknown, isSaveTimeout } from "../lib/saveAttempt.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
-import { AddButton, PosCard, SplitIcons, PosPage, PosPrimaryButton } from "./PosComponents.jsx";
+import { AddButton, PaymentTile, PosCard, SplitIcon, PosPage, PosPrimaryButton } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
 import { useLargeAmountConfirm } from "./LargeAmountConfirm.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
@@ -190,22 +190,20 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
               {paymentChoices.map(({ value, label, icon: Icon }) => {
                 const selected = paymentMethod === value;
                 return (
-                  <button
+                  <PaymentTile
                     key={value}
-                    type="button"
-                    aria-pressed={selected}
+                    icon={Icon}
+                    iconSize={30}
+                    label={t(label)}
+                    selected={selected}
                     onClick={() => choosePayment(value)}
                     disabled={value === "credit" && (!canSave || busy)}
-                    className={`${tileClass} ${selected ? "border-[3px] border-emerald-900 bg-green-200 text-emerald-900" : "border-2 border-slate-500 bg-white text-slate-900 hover:border-slate-700 hover:bg-slate-50"}`}
-                  >
-                    {selected && <span aria-hidden="true" className="absolute right-2.5 top-2 grid h-[26px] w-[26px] place-items-center rounded-full bg-emerald-900 text-white"><Check size={16} strokeWidth={3} /></span>}
-                    <Icon size={30} className="shrink-0" aria-hidden="true" />
-                    <span className="w-full min-w-0 truncate text-center">{t(label)}</span>
-                  </button>
+                    className="min-h-[92px] rounded-[18px] px-2 text-[19px]!"
+                  />
                 );
               })}
               <AddButton plus={false} size="tile" aria-label={t("sell.split")} disabled={!canSave || busy} onClick={openSplit} className={`${tileClass} px-2! text-[19px]! hover:bg-green-50`}>
-                <SplitIcons withOwe size={24} />
+                <SplitIcon size={30} />
                 <span className="w-full min-w-0 text-center">{t("sell.split")}</span>
               </AddButton>
             </div>
@@ -246,19 +244,16 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
           </AddButton>
           <div className="grid grid-cols-4 gap-1 sm:gap-2 lg:gap-3">
             {paymentChoices.map(({ value, label, icon: Icon }) => (
-              <button
+              <PaymentTile
                 key={value}
-                type="button"
-                aria-pressed={paymentMethod === value}
+                icon={Icon}
+                iconSize={22}
+                label={t(label)}
+                selected={paymentMethod === value}
                 onClick={() => choosePayment(value)}
                 disabled={value === "credit" && (!canSave || busy)}
-                className={`flex h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-[14px] border-2 px-1 text-xs font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 sm:h-20 sm:gap-1 sm:rounded-2xl sm:text-sm lg:h-24 lg:rounded-[18px] lg:border-[3px] lg:px-2 lg:text-[17px] ${
-                  paymentMethod === value ? "border-emerald-900 bg-green-200 text-slate-950" : "border-slate-500 bg-white text-slate-900"
-                }`}
-              >
-                <Icon size={18} className="shrink-0 sm:h-5 sm:w-5 lg:h-6 lg:w-6" aria-hidden="true" />
-                <span className="w-full min-w-0 truncate text-center">{t(label)}</span>
-              </button>
+                className="h-16 flex-1 sm:h-20 lg:h-24 lg:rounded-[18px] lg:text-[17px]!"
+              />
             ))}
             {/* split_payment_look (21 Nov 2026): Split is the add look (dashed 2px dark green), keeping its
                 Cash + MoMo + Owe icon and the tile size of the row; "Split" on the four-tile row. */}
@@ -267,11 +262,10 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
               aria-label={t("sell.split")}
               disabled={!canSave || busy}
               onClick={openSplit}
-              className="h-14 min-h-0! min-w-0 flex-1 flex-col gap-0.5! overflow-hidden px-1! py-0! text-xs! sm:h-20 sm:gap-1! sm:rounded-2xl sm:text-sm! lg:h-24 lg:rounded-[18px] lg:px-2! lg:text-[17px]!"
+              className="h-16 min-h-0! min-w-0 flex-1 flex-col gap-1! overflow-hidden px-1! py-0! text-[15px]! font-bold! sm:h-20 lg:h-24 lg:rounded-[18px] lg:px-2! lg:text-[17px]!"
             >
-              <SplitIcons withOwe size={11} />
-              <span className="w-full min-w-0 truncate text-center sm:hidden">Split</span>
-              <span className="hidden w-full min-w-0 truncate text-center sm:inline">{t("sell.split")}</span>
+              <SplitIcon size={22} />
+              <span className="w-full min-w-0 truncate text-center">Split</span>
             </AddButton>
           </div>
           {(amountErrors.message || error) && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 text-base font-semibold text-rose-950">{amountErrors.message || error}</p>}

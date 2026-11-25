@@ -1,7 +1,7 @@
 import { Banknote, Check, Smartphone, UserRound } from "lucide-react";
 import { formatGhs } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
-import { AddButton, PosCard, PosPage, PosPrimaryButton, SplitIcons, PosBackButton } from "./PosComponents.jsx";
+import { AddButton, PaymentTile, PosCard, PosPage, PosPrimaryButton, SplitIcons, PosBackButton } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
 import { useItemsSaleSave } from "./useItemsSaleSave.js";
 
@@ -43,17 +43,15 @@ export default function ReviewAndPay({ params = {}, onBack, onNavigate, onUpdate
       <h2 className="text-xl font-extrabold">{t("review.howPaid")}</h2>
       <div className="grid grid-cols-3 gap-2">
         {paymentChoices.map(({ value, label, icon: Icon }) => (
-          <button
+          <PaymentTile
             key={value}
-            type="button"
-            aria-pressed={paymentMethod === value}
+            icon={Icon}
+            iconSize={28}
+            label={t(label)}
+            selected={paymentMethod === value}
             onClick={() => choosePayment(value)}
-            className={`flex min-h-[76px] flex-col items-center justify-center gap-1 rounded-[18px] border-[3px] px-2 text-[17px] font-extrabold ${
-              paymentMethod === value ? "border-emerald-900 bg-green-200 text-slate-950" : "border-slate-500 bg-white text-slate-900"
-            }`}
-          >
-            <Icon size={28} aria-hidden="true" />{t(label)}
-          </button>
+            className="min-h-[76px] rounded-[18px] px-2 text-[17px]!"
+          />
         ))}
       </div>
       {/* split_payment_look (21 Nov 2026): Split is the add look (dashed 2px dark green), keeping its
