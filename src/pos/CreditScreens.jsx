@@ -1079,6 +1079,7 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
       customer={{ customerId, id: customerId, name: customerName, phone, ghanaCardNumber: savedCustomer?.ghanaCardNumber ?? params.customer?.ghanaCardNumber ?? "" }}
       onSaveCustomerContact={onSaveCustomerContact}
       onSaved={setAddedContact}
+      label={t("collect.addPhoneForReceipt")}
     />
   );
   const shownName = displayName(customerName);
@@ -1103,9 +1104,10 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
         planLine={params.installmentPlan?.isInstallmentPlan ? params.payBackLabel ?? null : null}
       />
       {/* Wide D11: Send and Copy side by side, the offline line full width under the pair. */}
-      {receiptsOn && receiptText && !hasPhone && addPhone}
-      {wide && receiptsOn && receiptText && !hasPhone && <CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} className="h-14!" />}
-      {wide && receiptsOn && receiptText && hasPhone && (
+      {/* saved_credit_layout (25 Nov 2026, polish 6): Send receipt is always there. Without a phone
+          openWhatsApp opens WhatsApp's contact chooser (share sheet), as on a cash or MoMo sale; the dashed
+          add-phone button sits under it. */}
+      {wide && receiptsOn && receiptText && (
         <ReceiptPair
           send={<SendReceiptButton onClick={() => void actions.send()} className="min-h-14 w-full" />}
           copy={<CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} className="h-14!" />}
@@ -1114,12 +1116,13 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
         />
       )}
       {wide && receiptsOn && !receiptText && <ReceiptFailedLine failed={actions.failed} wide />}
-      {!wide && receiptsOn && receiptText && hasPhone && (
+      {!wide && receiptsOn && receiptText && (
         <div className="flex flex-col gap-2">
           <SendReceiptButton onClick={() => void actions.send()} className="min-h-14 w-full" />
           <ReceiptOfflineLine online={actions.online} />
         </div>
       )}
+      {receiptsOn && receiptText && !hasPhone && addPhone}
       {!wide && receiptsOn && receiptText && <CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} />}
       {!wide && receiptsOn && <ReceiptFailedLine failed={actions.failed} />}
       {result?.debtId && <PosSecondaryButton type="button" className="w-full" onClick={() => onNavigate("DebtorDetail", { debtId: result.debtId, customerName })}>{t("credit.seeDetails", { name: shownName })}</PosSecondaryButton>}

@@ -348,8 +348,11 @@ test("31 with a saved number goes to that number; without one, no Send receipt b
       const view = render({ type: CreditScreens, props: { route: "CreditSaved", params, onHome() {}, onNavigate() {}, onSaveCustomerContact() {}, shopName: "Shop" } });
       flushEffects(view);
       if (viaShare) {
-        assert.equal(findButton(view.tree, "Send receipt"), null);
-        assert.ok(findButton(view.tree, "Add phone for WhatsApp"));
+        // polish 6: no phone still sends the receipt (the share sheet is the contact chooser) and shows add-phone.
+        assert.ok(findButton(view.tree, "Add phone number"));
+        await findButton(view.tree, "Send receipt").props.onClick();
+        assert.equal(calls.share.length, 1);
+        assert.equal(calls.location, "");
         continue;
       }
       await findButton(view.tree, "Send receipt").props.onClick();

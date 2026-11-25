@@ -69,8 +69,9 @@ test("sale on credit saved (31), receipts on, no phone: the add-phone button ope
     creditResult: { customerId: "c1", customerName: "ama", phone: "", debtId: "d1", amountPesewas: 2500, addedDebtPesewas: 2500, previousDebtPesewas: 0, totalDebtPesewas: 2500, initialPaymentPesewas: 0, initialPaymentParts: [], debtAfter: { isInstallmentPlan: false }, saleTransaction: { timestamp: Date.now() } }
   };
   const view = render({ type: CreditScreens, props: { route: "CreditSaved", params, onHome() {}, onNavigate() {}, onSaveCustomerContact: async (details) => details, shopName: "Shop" } });
-  assert.equal(named(view.tree, /^Send receipt/), undefined);
-  named(view.tree, /^\+ Add phone for WhatsApp$/).props.onClick();
+  // polish 6: the receipt is always sendable (no phone: the contact chooser), with the add-phone button too.
+  assert.ok(named(view.tree, /^Send receipt/), "Send receipt is there without a phone");
+  named(view.tree, /^\+ Add phone number$/).props.onClick();
   view.rerender();
   assert.ok(dialog(view.tree));
 });
