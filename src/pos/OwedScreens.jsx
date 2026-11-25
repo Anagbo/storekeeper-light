@@ -9,7 +9,7 @@ import { displayName } from "../lib/displayName.js";
 import { getDebtDueDate, groupUnpaidDebts, isDebtDueSoon, isDebtLate, loadAllUnpaidDebts, loadUnpaidDebtPage, matchesOwedSearch, OWED_PAGE_SIZE } from "./owed.js";
 import SearchField from "./SearchField.jsx";
 import { DueTag, hasSavedPhone, PersonRow } from "./PartyCard.jsx";
-import { AddButton, PosPage, PosSecondaryButton } from "./PosComponents.jsx";
+import { AddButton, ChoiceChip, PosPage, PosSecondaryButton } from "./PosComponents.jsx";
 import { openWhatsApp } from "../lib/openWhatsApp.js";
 import { buildWhatsAppReminderText } from "../utils/whatsapp.js";
 import { latestReminderAt, loadReminderEvents } from "../db/reminders.js";
@@ -213,16 +213,18 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
           ["late", "Late"],
           ["soon", "Due soon"]
         ].map(([value, label]) => (
-          <button
+          <ChoiceChip
+            kind="view"
             key={value}
-            type="button"
             role="tab"
+            aria-pressed={undefined}
             aria-selected={value === filter}
+            selected={value === filter}
             onClick={() => setFilter(value)}
-            className={`min-h-14 rounded-2xl border-2 px-2 text-base font-extrabold ${value === filter ? "border-slate-900 bg-slate-900 text-white" : "border-slate-500 bg-white text-slate-900"}`}
+            className="min-h-14 px-2 text-base"
           >
             {label}
-          </button>
+          </ChoiceChip>
         ))}
       </div>
       <SearchField value={query} onChange={setQuery} />

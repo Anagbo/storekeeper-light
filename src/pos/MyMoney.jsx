@@ -6,7 +6,7 @@ import { Amount, amountText, HideAmountsButton } from "./HiddenAmount.jsx";
 import { posText as t } from "./i18n.js";
 import { PHONE_LAYOUT } from "./layout.js";
 import { loadMyMoneyReport } from "./myMoneyReport.js";
-import { PosBackButton, PosCard, PosPage, PosSecondaryButton } from "./PosComponents.jsx";
+import { ChoiceChip, PosBackButton, PosCard, PosPage, PosSecondaryButton } from "./PosComponents.jsx";
 import { SOFT_HERO, SOFT_HERO_LABEL, SOFT_TILE } from "./softTile.js";
 
 // Brief 3.11 / wiring screen 33. Money left is the soft hero, the same as Home (rules_global.soft_tiles,
@@ -80,7 +80,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
       {/* (0) Today / This week / This month: three equal buttons, 16px, one line each at 340px. */}
       <div data-periods="" className={`grid grid-cols-3 gap-1 sm:gap-2 ${w("w-[420px] shrink-0")}`} role="group" aria-label={t("money.choosePeriod")}>
         {MY_MONEY_PERIODS.map(([value, label]) => (
-          <button key={value} type="button" aria-pressed={period === value} onClick={() => setPeriod(value)} className={`h-11 min-w-0 whitespace-nowrap rounded-[14px] border-2 px-0 text-base font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 sm:h-[52px] ${period === value ? "border-slate-900 bg-slate-900 text-white" : "border-slate-500 bg-white text-slate-950"}`}>{t(label)}</button>
+          <ChoiceChip kind="view" key={value} selected={period === value} onClick={() => setPeriod(value)} className="h-11 whitespace-nowrap px-0 text-base sm:h-[52px]">{t(label)}</ChoiceChip>
         ))}
       </div>
       </div>

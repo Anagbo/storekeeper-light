@@ -10,7 +10,7 @@ import { getSupplierBalances, orderSuppliersByRecentUse, orderSuppliersByUrgency
 import { posText as t } from "./i18n.js";
 import AmountTextInput from "./AmountTextInput.jsx";
 import { PartyCard, dueTag } from "./PartyCard.jsx";
-import { AddButton, PosBackButton, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
+import { AddButton, ChoiceChip, PosBackButton, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { useBackBlock, useBackHandler } from "./browserBack.js";
 import { useFormErrors } from "./formErrors.js";
 import WideDialog, { useWideDialogs } from "./WideDialog.jsx";
@@ -37,15 +37,14 @@ export function PaidWithChoice({ value, onChange }) {
       <legend className="mb-1 text-lg font-extrabold">{t("expense.paidWith")}</legend>
       <div className="grid grid-cols-2 gap-2">
         {[["cash", Banknote, "credit.method.cash"], ["momo", Smartphone, "credit.method.momo"]].map(([method, Icon, label]) => (
-          <button
+          <ChoiceChip
             key={method}
-            type="button"
-            aria-pressed={value === method}
+            selected={value === method}
             onClick={() => onChange(method)}
-            className={`flex min-h-[56px] min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-2xl border-[3px] px-2 text-xl font-extrabold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 ${value === method ? "border-emerald-900 bg-emerald-900 text-white" : "border-slate-500 bg-white text-slate-950"}`}
+            className="min-h-[56px] gap-2 whitespace-nowrap px-2 text-xl"
           >
             <Icon size={22} aria-hidden="true" />{t(label)}
-          </button>
+          </ChoiceChip>
         ))}
       </div>
     </fieldset>
@@ -123,9 +122,9 @@ export function SpentMoney({ params = {}, onBack, onNavigate, onUpdateParams, on
         <legend className="mb-1 text-lg font-extrabold">{t("expense.whatFor")}</legend>
         <div className="grid grid-cols-2 gap-2">
           {SUPPLIER_CATEGORIES.map((option) => (
-            <button key={option} type="button" aria-pressed={category === option} onClick={() => { setCategory(option); onUpdateParams?.({ expenseCategory: option }); }} className={`min-h-12 rounded-xl border-2 px-3 text-left font-bold ${category === option ? "border-emerald-900 bg-emerald-100" : "border-slate-500 bg-white"}`}>
+            <ChoiceChip key={option} selected={category === option} onClick={() => { setCategory(option); onUpdateParams?.({ expenseCategory: option }); }} className="justify-start px-3 text-left">
               {t(CATEGORY_LABELS[option])}
-            </button>
+            </ChoiceChip>
           ))}
         </div>
       </fieldset>
@@ -136,12 +135,12 @@ export function SpentMoney({ params = {}, onBack, onNavigate, onUpdateParams, on
       <fieldset>
         <legend className="mb-1 text-lg font-extrabold">{t("expense.paidAllNow")}</legend>
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" aria-pressed="true" className="min-h-[60px] rounded-2xl border-[3px] border-emerald-900 bg-emerald-900 text-xl font-extrabold text-white">
+          <ChoiceChip selected className="min-h-[60px] text-xl">
             {t("expense.yes")}
-          </button>
-          <button type="button" onClick={continueToSupplierScreen} className="min-h-[60px] rounded-2xl border-[3px] border-slate-500 bg-white text-xl font-extrabold">
+          </ChoiceChip>
+          <ChoiceChip selected={false} onClick={continueToSupplierScreen} className="min-h-[60px] text-xl">
             {t("expense.no")}
-          </button>
+          </ChoiceChip>
         </div>
       </fieldset>
       {/* Wiring 44: Paid with under Paid all now?, for Yes (Save). No asks it on 45 or at Pay on 46. */}

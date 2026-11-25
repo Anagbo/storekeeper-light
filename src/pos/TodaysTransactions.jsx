@@ -10,7 +10,7 @@ import {
 } from "../lib/money.js";
 import { posText as t } from "./i18n.js";
 import { getMoneyPeriodRange } from "./money.js";
-import { PosBackButton, PosPage } from "./PosComponents.jsx";
+import { ChoiceChip, PosBackButton, PosPage } from "./PosComponents.jsx";
 import { createPosTransactionRows, describeTransactionRow, filterPosTransactionRows } from "./transactionFeed.js";
 import { Chip, sumWideRows, TransactionTable } from "./TransactionTable.jsx";
 import { PHONE_LAYOUT } from "./layout.js";
@@ -112,15 +112,15 @@ function WideTransactions({ data, filter, setFilter, visibleRows, date, layout, 
           <WideSummary totals={data.totals} rail={rail} />
           <div role="group" aria-label={t("transactions.filters")} className={rail ? "grid grid-cols-4 gap-3" : "flex flex-wrap gap-3"}>
             {FILTERS.map((value) => (
-              <button
+              <ChoiceChip
+                kind="view"
                 key={value}
-                type="button"
-                aria-pressed={filter === value}
+                selected={filter === value}
                 onClick={() => setFilter(value)}
-                className={`h-[52px] ${rail ? "w-full min-w-0" : "w-40"} whitespace-nowrap rounded-[14px] border-2 px-1 text-[17px] font-bold ${filter === value ? "border-[#03543F] bg-[#03543F] text-white" : "border-slate-500 bg-white text-slate-950"}`}
+                className={`h-[52px] ${rail ? "w-full min-w-0" : "w-40"} whitespace-nowrap text-[17px] font-bold`}
               >
                 {t(`transactions.filter.${value}`)}
-              </button>
+              </ChoiceChip>
             ))}
           </div>
           {visibleRows.length ? (
@@ -211,15 +211,15 @@ export default function TodaysTransactions({ onBack, layout = PHONE_LAYOUT }) {
 
           <div role="group" aria-label={t("transactions.filters")} className="grid grid-cols-4 gap-1.5 sm:gap-2">
             {FILTERS.map((value) => (
-              <button
+              <ChoiceChip
+                kind="view"
                 key={value}
-                type="button"
-                aria-pressed={filter === value}
+                selected={filter === value}
                 onClick={() => setFilter(value)}
-                className={`h-[52px] min-w-0 rounded-[14px] border-2 px-1 text-[17px] font-extrabold ${filter === value ? "border-[#03543F] bg-[#03543F] text-white" : "border-slate-500 bg-white text-slate-950"}`}
+                className={`h-[52px] text-[17px]`}
               >
                 {t(`transactions.filter.${value}`)}
-              </button>
+              </ChoiceChip>
             ))}
           </div>
 

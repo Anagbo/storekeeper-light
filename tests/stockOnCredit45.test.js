@@ -76,8 +76,8 @@ test("45 picker: + New supplier shows the name and phone fields in the same card
   view.rerender();
   const newRow = radio(view.tree, "new");
   assert.equal(newRow.props["aria-checked"], true);
-  assert.match(cls(newRow), /border-solid/);
-  assert.match(cls(newRow), /bg-emerald-50/);
+  assert.match(cls(newRow), /border-dashed/); // selected_states: + New supplier stays dashed green, never mint
+  assert.doesNotMatch(cls(newRow), /bg-emerald-50|bg-\[#D1FAE5\]/);
   const card = all(view.tree, (n) => n.props["data-card"] === "supplier")[0];
   const fields = newFields(card);
   assert.ok(fields, "fields inside the supplier card");

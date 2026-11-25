@@ -23,7 +23,7 @@ import { getInstallmentsLeft, getPlanPeriodFigures, getPlanProgress } from "../u
 import { getCustomerLedgerRecords, getPlanPaidPesewas } from "../utils/debtLedgerMath.js";
 import { posText as t } from "./i18n.js";
 import { getDebtEntryReason } from "../lib/creditReason.js";
-import { AddButton, PosBackButton, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, SplitIcons, useTaskColumn } from "./PosComponents.jsx";
+import { AddButton, ChoiceChip, PosBackButton, PosPage, PosPrimaryButton, PosSecondaryButton, PosStatusTag, SplitIcons, useTaskColumn } from "./PosComponents.jsx";
 import CustomerContactEditor from "./CustomerContactEditor.jsx";
 import WideDialog, { useWideDialogs } from "./WideDialog.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
@@ -125,17 +125,16 @@ function PaymentMethodPicker({ value, onChange, onSplit, splitDisabled = false, 
         {PAYMENT_METHODS.map(({ value: method, label, icon: Icon }) => {
           const off = disabled || (zeroAmount && method === "momo");
           return (
-          <button
+          <ChoiceChip
             key={method}
-            type="button"
-            aria-pressed={value === method}
+            selected={value === method}
             disabled={off}
             onClick={() => { if (!off) onChange(method); }}
-            className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-2xl border-[3px] px-1 text-xs font-extrabold disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-16 sm:gap-1 sm:px-2 sm:text-base ${value === method ? "border-emerald-900 bg-green-200 text-slate-950" : "border-slate-500 bg-white text-slate-950"}`}
+            className="min-h-14 overflow-hidden px-1 text-xs sm:min-h-16 sm:px-2 sm:text-base"
           >
             <Icon size={20} className="shrink-0 sm:h-[22px] sm:w-[22px]" aria-hidden="true" />
-            <span className="w-full min-w-0 truncate text-center">{t(label)}</span>
-          </button>
+            <span className="min-w-0 truncate text-center">{t(label)}</span>
+          </ChoiceChip>
           );
         })}
         {/* open_text_sweep (17 Nov 2026): "+ Split payment" adds a second way to pay, so it is the add look. */}
@@ -235,9 +234,9 @@ function CollectionSheet({ debt, params = {}, onClose, onNavigate, onUpdateParam
             ["due", "collect.dueNow"],
             ["all", "collect.payAll"]
           ].map(([value, label]) => (
-            <button key={value} type="button" aria-pressed={mode === value} onClick={() => { setMode(value); onUpdateParams?.({ collectMode: value }); }} className={`min-h-12 rounded-xl border-2 px-2 text-sm font-extrabold sm:text-base ${mode === value ? "border-emerald-900 bg-emerald-900 text-white" : "border-slate-500 bg-white text-slate-950"}`}>
+            <ChoiceChip key={value} selected={mode === value} onClick={() => { setMode(value); onUpdateParams?.({ collectMode: value }); }} className="px-2 text-sm sm:text-base">
               {t(label)}
-            </button>
+            </ChoiceChip>
           ))}
           <button type="button" disabled={busy} onClick={() => onNavigate("CollectPayPart", { debtId: debt.id })} className="min-h-12 rounded-xl border-2 border-slate-500 bg-white px-2 text-sm font-extrabold text-slate-950 disabled:opacity-50 sm:text-base">
             {t("collect.payPart")}
@@ -1179,9 +1178,9 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
                     ["debt_forgiven", "Debt forgiven"],
                     ["other", "Other"]
                   ].map(([value, label]) => (
-                    <button key={value} type="button" aria-pressed={correctionReason === value} onClick={() => { setCorrectionReason(value); setCorrectionError(""); }} className={`min-h-12 rounded-full border-[3px] px-3.5 text-[17px] font-extrabold ${correctionReason === value ? "border-emerald-900 bg-emerald-900 text-white" : "border-slate-500 bg-white text-slate-900"}`}>
+                    <ChoiceChip key={value} selected={correctionReason === value} onClick={() => { setCorrectionReason(value); setCorrectionError(""); }} className="rounded-full! px-3.5 text-[17px]">
                       {label}
-                    </button>
+                    </ChoiceChip>
                   ))}
                 </div>
               </fieldset>

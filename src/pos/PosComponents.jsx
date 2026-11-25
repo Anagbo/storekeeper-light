@@ -250,7 +250,7 @@ const ADD_SIZES = {
 export function AddButton({ children, plus = true, size = "standard", role, checked = false, pressed, className = "", ...props }) {
   const radio = role === "radio";
   const layout = radio ? "min-h-[60px] w-full justify-start px-3.5 py-2 text-left" : ADD_SIZES[size];
-  const border = radio && checked ? "border-solid bg-emerald-50" : pressed ? "border-dashed bg-green-100" : "border-dashed bg-transparent";
+  const border = radio && checked ? "border-dashed bg-transparent ring-2 ring-emerald-900" : pressed ? "border-dashed bg-green-100" : "border-dashed bg-transparent";
   return (
     <button
       type="button"
@@ -277,6 +277,31 @@ export function LeaveButton({ children, className = "", ...props }) {
 // The one Back button (wiring rules_global.back_button): arrow-left icon (24px, 6px gap) then "Back", bold 800, 18px, 52px tall, 2px #0F172A border.
 export function PosBackButton({ className = "", ...props }) {
   return <button type="button" data-look="other" aria-label={t("items.back")} {...props} className={`flex h-[52px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-[14px] border-2 border-[#0F172A] bg-white px-4 text-[18px] font-extrabold text-[#0F172A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M19 12H5M11 5l-7 7 7 7" /></svg>{t("items.back")}</button>;
+}
+
+// The one selected-state component (rules_global.selected_states). kind="view" switches a view: navy
+// #0F172A with white text when selected. kind="choice" sets a value in a form: mint #D1FAE5, 2px #03543F
+// border, dark text and a 16px tick on the left (so it is never colour only). Unselected is white with a
+// 2px #64748B border. Solid green stays only on the one action of a screen.
+export function ChoiceChip({ kind = "choice", selected = false, children, className = "", ...props }) {
+  const look = selected
+    ? (kind === "view" ? "border-[#0F172A] bg-[#0F172A] text-white" : "border-[#03543F] bg-[#D1FAE5] text-[#0F172A]")
+    : "border-[#64748B] bg-white text-[#0F172A]";
+  return (
+    <button
+      type="button"
+      data-chip={kind}
+      data-selected={selected ? "true" : "false"}
+      aria-pressed={selected}
+      {...props}
+      className={`flex min-h-12 min-w-0 items-center justify-center gap-1 rounded-[14px] border-2 px-1.5 text-center font-extrabold leading-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-60 ${look} ${className}`}
+    >
+      {kind === "choice" && selected && (
+        <svg aria-hidden="true" data-chip-tick="" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M4 12.5l5 5L20 6.5" /></svg>
+      )}
+      {children}
+    </button>
+  );
 }
 
 export function PosCard({ children, className = "", ...rest }) {

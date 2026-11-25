@@ -13,7 +13,7 @@ import { PLAN_ERROR } from "../lib/planErrors.js";
 import { addDueCycles, dayAfter, getCreditBalanceAfterSale, getNextCycleDate, isValidDateString, localDateString, PAYMENT_FREQUENCIES, prepareInstallmentPlan } from "../utils/installments.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { getCreditAmountOwedPesewas } from "./creditAmount.js";
-import { AddButton, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton, SplitIcons, useTaskColumn, WIDE_TASK_COLUMN_WIDTH_PX } from "./PosComponents.jsx";
+import { AddButton, ChoiceChip, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton, SplitIcons, useTaskColumn, WIDE_TASK_COLUMN_WIDTH_PX } from "./PosComponents.jsx";
 import { SOFT_TILE } from "./softTile.js";
 import { shortSaveName } from "./saveLabel.js";
 import { CopyReceiptButton, ReceiptFailedLine, ReceiptOfflineLine, ReceiptPair, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
@@ -421,9 +421,9 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onUpdateParams, onReturnT
         </div>
       ) : reasonCase.text ? <ReasonForRow text={reasonCase.text} /> : null}
       {choices.map((choice) => (
-        <button key={choice.value} type="button" aria-pressed={dueChoice === choice.value} onClick={() => { setDueChoice(choice.value); onUpdateParams?.({ creditDueChoice: choice.value }); }} className={`min-h-14 shrink-0 rounded-2xl border-[3px] px-4 text-xl font-extrabold ${dueChoice === choice.value ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>
+        <ChoiceChip key={choice.value} selected={dueChoice === choice.value} onClick={() => { setDueChoice(choice.value); onUpdateParams?.({ creditDueChoice: choice.value }); }} className="min-h-14 shrink-0 px-4 text-xl">
           {choice.label}
-        </button>
+        </ChoiceChip>
       ))}
       <button type="button" onClick={() => onNavigate("ALittleAtATime", { ...params, ...reasonParams, creditDueChoice: dueChoice })} className="flex min-h-14 shrink-0 flex-col items-center justify-center rounded-2xl border-[3px] border-slate-500 px-4 text-lg font-extrabold leading-tight">
         {t("credit.aLittleAtATime")}
@@ -862,9 +862,9 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
         <legend className="mb-1 text-lg font-extrabold">{t("credit.howOften")}</legend>
         <div className="grid grid-cols-3 gap-2">
           {PAYMENT_FREQUENCIES.map((option) => (
-            <button key={option.value} type="button" aria-pressed={frequency === option.value} onClick={() => selectFrequency(option.value)} className={`min-h-14 rounded-2xl border-[3px] px-1 ${wide ? "text-[17px] font-extrabold" : "text-sm font-extrabold sm:text-base"} ${frequency === option.value ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>
+            <ChoiceChip key={option.value} selected={frequency === option.value} onClick={() => selectFrequency(option.value)} className={`min-h-14 ${wide ? "text-[17px]" : "text-sm sm:text-base"}`}>
               {t(`credit.frequency.${option.value}`)}
-            </button>
+            </ChoiceChip>
           ))}
         </div>
       </fieldset>
@@ -872,10 +872,9 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
         <legend className="mb-1 text-lg font-extrabold">{t("credit.firstPayment")}</legend>
         {/* Wide: Next cycle ({frequency}) gets two thirds, so its 17px label stays on one line at 1024px. */}
         <div className={wide ? "grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-2" : "grid grid-cols-2 gap-2"}>
-          <button
-            type="button"
+          <ChoiceChip
+            selected={startToday}
             disabled={paymentAlreadyMadeToday || alreadyPaidPesewas > 0}
-            aria-pressed={startToday}
             onClick={() => {
               if (paymentAlreadyMadeToday || alreadyPaidPesewas > 0) return;
               setStartToday(true);
@@ -890,11 +889,11 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
               }
               onUpdateParams?.(draftUpdates);
             }}
-            className={`min-h-14 rounded-2xl border-[3px] font-extrabold ${paymentAlreadyMadeToday || alreadyPaidPesewas > 0 ? "cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400 opacity-60" : startToday ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}
+            className="min-h-14"
           >
             {t("credit.today")}
-          </button>
-          <button type="button" aria-pressed={!startToday} disabled={hasReceivedMomo} onClick={() => {
+          </ChoiceChip>
+          <ChoiceChip selected={!startToday} disabled={hasReceivedMomo} onClick={() => {
             // Received MoMo is locked: Next cycle would drop it, so it is not offered then.
             if (hasReceivedMomo) return;
             setStartToday(false);
@@ -908,7 +907,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
               Object.assign(draftUpdates, { firstPaymentParts: undefined, splitParts: undefined, splitTotalPesewas: undefined, paymentMethod: "cash" });
             }
             onUpdateParams?.(draftUpdates);
-          }} className={`min-h-14 min-w-0 rounded-2xl border-[3px] px-1 ${wide ? "text-[17px]" : "text-[15px]"} leading-tight font-extrabold disabled:cursor-not-allowed disabled:opacity-60 ${!startToday ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{t("credit.nextCycle", { frequency: t(`credit.frequency.${frequency}`) })}</button>
+          }} className={`min-h-14 ${wide ? "text-[17px]" : "text-[15px]"}`}>{t("credit.nextCycle", { frequency: t(`credit.frequency.${frequency}`) })}</ChoiceChip>
         </div>
       </fieldset>
       {startToday && !paymentAlreadyMadeToday && (
@@ -957,21 +956,18 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
             <>
             <div className="grid grid-cols-3 gap-2">
               {["cash", "momo"].map((method) => (
-                <button
+                <ChoiceChip
                   key={method}
-                  type="button"
-                  aria-pressed={paymentMethod === method}
+                  selected={paymentMethod === method}
                   onClick={() => {
                     choosePaymentMethod(method);
                   }}
-                  className={wide
-                    ? `flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 px-1 text-[17px] font-bold ${paymentMethod === method ? "border-emerald-900 bg-green-100" : "border-slate-500 bg-white"}`
-                    : `min-h-12 rounded-xl border-2 px-1 text-sm font-bold ${paymentMethod === method ? "border-emerald-900 bg-green-100" : "border-slate-500 bg-white"}`}
+                  className={wide ? "gap-2 text-[17px]" : "text-sm"}
                 >
                   {/* rules_global.icons: on wide each choice shows its icon with the label (the name stays the label). */}
                   {wide && (method === "cash" ? <Banknote size={20} className="shrink-0" aria-hidden="true" /> : <Smartphone size={20} className="shrink-0" aria-hidden="true" />)}
                   {t(`credit.method.${method}`)}
-                </button>
+                </ChoiceChip>
               ))}
               {/* split_payment_look (21 Nov 2026): the add look with the joined cash + phone icons and the
                   label; chosen, it keeps the dashed border with the green fill of the tiles beside it. The
