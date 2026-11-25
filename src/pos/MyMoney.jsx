@@ -1,8 +1,13 @@
 import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { ArrowUpRight } from "lucide-react";
 import { saveHideAmounts } from "../db/preferences.js";
 import { Amount, amountText, HideAmountsButton } from "./HiddenAmount.jsx";
+
+// rules_global.profit_amount_colour: a profit is neutral #0F172A like every amount; a loss uses a real
+// minus sign (U+2212), not a hyphen. Hidden amounts stay hidden.
+function ProfitAmount({ pesewas, hidden }) {
+  return pesewas < 0 && !hidden ? <>{"−"}<Amount hidden={hidden} pesewas={-pesewas} /></> : <Amount hidden={hidden} pesewas={pesewas} />;
+}
 import { posText as t } from "./i18n.js";
 import { PHONE_LAYOUT } from "./layout.js";
 import { loadMyMoneyReport } from "./myMoneyReport.js";
@@ -121,7 +126,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
 
             {/* (3) Money spent: Paid in cash + Paid by MoMo + Method not recorded = Money spent. */}
             <section data-card="money-spent" className={`flex flex-col ${w("gap-2", "gap-1")} ${card}`}>
-              <CardTitle wide={wide} hidden={hidden} amountPesewas={summary.moneySpent}>{!wide && <ArrowUpRight size={18} className="shrink-0" aria-hidden="true" />}{!wide && " "}{t("money.moneySpent")}</CardTitle>
+              <CardTitle wide={wide} hidden={hidden} amountPesewas={summary.moneySpent}>{t("money.moneySpent")}</CardTitle>
               <Row data-row="cash-spent" label={t("money.paidInCash")} hidden={hidden} amountPesewas={summary.spentCash} />
               <Row data-row="momo-spent" label={t("money.paidByMomo")} hidden={hidden} amountPesewas={summary.spentMomo} />
               {summary.spentUnrecorded > 0 && <Row data-row="unrecorded-spent" label={t("money.methodNotRecorded")} hidden={hidden} amountPesewas={summary.spentUnrecorded} />}
@@ -144,7 +149,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
           {report.showProfit && report.itemProfit?.countedLines > 0 && (
             <section data-card="profit" data-profit-view="items" className={`amount-fit-container flex min-w-0 flex-col ${w(`order-2 justify-start gap-2 ${WIDE_HERO_CARD} p-6`, `gap-1 ${SOFT_TILE} px-3.5 py-3`)}`}>
               <p className={`text-lg font-extrabold ${wide ? "text-[#0F172A]" : ""}`}>{t("money.profitTitle", { period: periodWords })}</p>
-              <p className={wide ? WIDE_AMOUNT : "amount-fit font-extrabold leading-tight text-[#0F172A]"}><Amount hidden={hidden} pesewas={report.itemProfit.profitPesewas} /></p>
+              <p className={wide ? WIDE_AMOUNT : "amount-fit font-extrabold leading-tight text-[#0F172A]"}><ProfitAmount hidden={hidden} pesewas={report.itemProfit.profitPesewas} /></p>
               {report.itemProfit.countedLines < report.itemProfit.totalLines ? (
                 <>
                   <p data-profit-counts="" className={`${note("text-base leading-snug")} text-[#0F172A]`}>{t("money.profitCounts", { counted: report.itemProfit.countedLines, total: report.itemProfit.totalLines })}</p>
@@ -159,7 +164,7 @@ export default function MyMoney({ onNavigate, onBack = () => onNavigate("Home"),
           {report.showProfit && !(report.itemProfit?.countedLines > 0) && (
             <section data-card="profit" className={`amount-fit-container flex flex-col ${w("order-2 justify-start gap-2", "gap-0.5")} ${card}`}>
               <p className={`text-lg font-extrabold ${wide ? "text-[#0F172A]" : ""}`}>{t("money.estimatedProfit")}</p>
-              <p className={wide ? WIDE_AMOUNT : "amount-fit font-extrabold leading-tight text-emerald-900"}><Amount hidden={hidden} pesewas={summary.profit} /></p>
+              <p className={wide ? WIDE_AMOUNT : "amount-fit font-extrabold leading-tight text-[#0F172A]"}><ProfitAmount hidden={hidden} pesewas={summary.profit} /></p>
               <p className={`break-words ${note("text-sm leading-snug sm:text-base")} text-slate-800`}>{amountText("money.profitSum", { sales: summary.sales, stock: summary.stockBought, other: summary.otherCosts }, hidden)}</p>
               {report.averageProfitPesewas !== null && period === "week" && (
                 <p className={`${note("text-sm leading-snug sm:text-base")} text-slate-800`}>{amountText("money.averageFourWeeks", { amount: report.averageProfitPesewas }, hidden)}</p>
