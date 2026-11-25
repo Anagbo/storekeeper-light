@@ -34,6 +34,7 @@ const ALLOWLIST = [
   ["src/pos/CreditScreens.jsx", "name: result?.customerName ?? params.customer?.name", "stored record for the contact editor"],
   ["src/pos/CreditScreens.jsx", "name: savedCustomer.name ?? current.name", "stored record for the contact editor"],
   ["src/pos/SupplierScreens.jsx", "findDuplicatePerson(listed, { name: supplierName", "typed name compared for duplicate_person, not shown"],
+  ["src/pos/CreditScreens.jsx", "customer={{ customerId, id: customerId, name: customerName, phone", "stored record for the contact editor (add phone on 31)"],
   ["src/pos/DebtCollection.jsx", "name: result.customerName,", "stored record for the contact editor"],
   ["src/pos/DebtCollection.jsx", "name: savedCustomer.name ?? current.name", "stored record for the contact editor"],
   ["src/pos/DebtCollection.jsx", "name: data.name,", "stored customer passed to Add debt (route params)"],

@@ -33,6 +33,7 @@ import { CREDIT_REASON_MAX } from "../lib/creditReason.js";
 import { findDuplicatePerson, loadKnownCustomers } from "./duplicatePerson.js";
 import DuplicatePersonQuestion from "./DuplicatePersonQuestion.jsx";
 import DateField from "./DateField.jsx";
+import AddPhoneForWhatsApp from "./AddPhoneForWhatsApp.jsx";
 import { tidyPersonName } from "../lib/personName.js";
 import { loadRecentCreditReasons } from "../db/recentReasons.js";
 import { getCreditReasonCase } from "./creditDraft.js";
@@ -1052,8 +1053,9 @@ function buildCreditReceiptText(result, shopName) {
 
 // 31 (wiring "No reminder button on 31", 14 Nov 2026): no WhatsApp reminder and no contact
 // buttons. Reminders live on 29/43, Home's Collect first tile and the Owed list; a number is added
-// through Edit contact on 29/43. The saved number is still read so Send receipt opens that chat.
-function CreditSaved({ params, onHome, onNavigate, shopName }) {
+// through Edit contact on 29/43. The saved number is still read so Send receipt opens that chat;
+// without a valid number (saved_credit_layout, 25 Nov 2026) the dashed add-phone button replaces it.
+function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopName }) {
   const result = params.creditResult;
   const savedCustomer = useLiveQuery(async () => {
     const customerId = result?.customerId ?? params.customer?.id;
@@ -1062,8 +1064,20 @@ function CreditSaved({ params, onHome, onNavigate, shopName }) {
     if (!customerName.trim()) return null;
     return db.customers.where("nameLower").equals(customerName.trim().toLowerCase()).first();
   }, [result?.customerId, params.customer?.id, result?.customerName, params.customer?.name], null);
-  const phone = savedCustomer?.phone ?? result?.phone ?? params.customer?.phone ?? "";
+  const [addedContact, setAddedContact] = useState(null);
+  const phone = addedContact?.phone || (savedCustomer?.phone ?? result?.phone ?? params.customer?.phone ?? "");
   const customerName = result?.customerName ?? params.customer?.name ?? "";
+  // rules_global.saved_credit_layout: Send receipt (WhatsApp) only with a valid phone; without one the
+  // dashed "+ Add phone number to send WhatsApp" opens the contact editor (as on Payment received).
+  const hasPhone = Boolean(normalizeWhatsAppPhone(phone));
+  const customerId = savedCustomer?.id ?? result?.customerId ?? params.customer?.id ?? "";
+  const addPhone = (
+    <AddPhoneForWhatsApp
+      customer={{ customerId, id: customerId, name: customerName, phone, ghanaCardNumber: savedCustomer?.ghanaCardNumber ?? params.customer?.ghanaCardNumber ?? "" }}
+      onSaveCustomerContact={onSaveCustomerContact}
+      onSaved={setAddedContact}
+    />
+  );
   const shownName = displayName(customerName);
   const totalDebtPesewas = result?.totalDebtPesewas ?? 0;
   // Send receipt and Copy receipt show only with VITE_ENABLE_POS_RECEIPTS on (FEATURE_FLAGS.SHOW_POS_RECEIPTS).
@@ -1133,7 +1147,9 @@ function CreditSaved({ params, onHome, onNavigate, shopName }) {
         </div>
       )}
       {/* Wide D11: Send and Copy side by side, the offline line full width under the pair. */}
-      {wide && receiptsOn && receiptText && (
+      {receiptsOn && receiptText && !hasPhone && addPhone}
+      {wide && receiptsOn && receiptText && !hasPhone && <CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} className="h-14!" />}
+      {wide && receiptsOn && receiptText && hasPhone && (
         <ReceiptPair
           send={<SendReceiptButton onClick={() => void actions.send()} className="min-h-14 w-full" />}
           copy={<CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} className="h-14!" />}
@@ -1142,7 +1158,7 @@ function CreditSaved({ params, onHome, onNavigate, shopName }) {
         />
       )}
       {wide && receiptsOn && !receiptText && <ReceiptFailedLine failed={actions.failed} wide />}
-      {!wide && receiptsOn && receiptText && (
+      {!wide && receiptsOn && receiptText && hasPhone && (
         <div className="flex flex-col gap-2">
           <SendReceiptButton onClick={() => void actions.send()} className="min-h-14 w-full" />
           <ReceiptOfflineLine online={actions.online} />
@@ -1156,11 +1172,11 @@ function CreditSaved({ params, onHome, onNavigate, shopName }) {
   );
 }
 
-export default function CreditScreens({ route, params, onBack, onNavigate, onUpdateParams, onReturnToSplit, onSaveCredit, onHome, shopName }) {
+export default function CreditScreens({ route, params, onBack, onNavigate, onUpdateParams, onReturnToSplit, onSaveCredit, onSaveCustomerContact, onHome, shopName }) {
   if (route === "WhoOwesYou") return <WhoOwesYou params={params} onBack={onBack} onNavigate={onNavigate} onUpdateParams={onUpdateParams} />;
   if (route === "NewPerson") return <NewPerson params={params} onBack={onBack} onNavigate={onNavigate} onUpdateParams={onUpdateParams} />;
   if (route === "WhenWillTheyPay") return <WhenWillTheyPay params={params} onBack={onBack} onNavigate={onNavigate} onUpdateParams={onUpdateParams} onReturnToSplit={onReturnToSplit} onSaveCredit={onSaveCredit} />;
   if (route === "ALittleAtATime") return <ALittleAtATime params={params} onBack={onBack} onNavigate={onNavigate} onUpdateParams={onUpdateParams} onReturnToSplit={onReturnToSplit} onSaveCredit={onSaveCredit} />;
-  if (route === "CreditSaved") return <CreditSaved params={params} onHome={onHome} onNavigate={onNavigate} shopName={shopName} />;
+  if (route === "CreditSaved") return <CreditSaved params={params} onHome={onHome} onNavigate={onNavigate} onSaveCustomerContact={onSaveCustomerContact} shopName={shopName} />;
   return null;
 }

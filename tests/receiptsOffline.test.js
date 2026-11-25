@@ -161,10 +161,12 @@ test("31 Send receipt and Copy receipt send and copy the same GH₵ text", async
   const { default: CreditScreens } = await loadJsx("src/pos/CreditScreens.jsx", ON);
   setLiveQuery(() => null);
   try {
+    // saved_credit_layout (25 Nov 2026): Send receipt shows only with a phone, so Ama has one; the
+    // text sent is the one in the WhatsApp link.
     const params = {
-      customer: { id: "c1", name: "Ama", phone: "" },
+      customer: { id: "c1", name: "Ama", phone: "0241234567" },
       creditResult: {
-        customerId: "c1", customerName: "Ama", phone: "", debtId: "d1", amountPesewas: 2500, addedDebtPesewas: 2500,
+        customerId: "c1", customerName: "Ama", phone: "0241234567", debtId: "d1", amountPesewas: 2500, addedDebtPesewas: 2500,
         previousDebtPesewas: 0, totalDebtPesewas: 2500, initialPaymentPesewas: 0, initialPaymentParts: [],
         debtAfter: { isInstallmentPlan: false }, saleTransaction: { timestamp: Date.now() }
       }
@@ -173,8 +175,9 @@ test("31 Send receipt and Copy receipt send and copy the same GH₵ text", async
     flushEffects(view);
     await findButton(view.tree, "Send receipt").props.onClick();
     await findButton(view.tree, "Copy receipt").props.onClick();
-    assert.equal(calls.copy[0], calls.share[0].text);
-    assert.match(calls.share[0].text, /GH₵25\.00/);
+    const sent = decodeURIComponent(calls.location.split("text=")[1]);
+    assert.equal(calls.copy[0], sent);
+    assert.match(sent, /GH₵25\.00/);
   } finally {
     setLiveQuery(null);
   }
@@ -327,7 +330,8 @@ test("30 a sale with a part owed to a customer with a saved number goes to that 
   assert.deepEqual(calls.share, []);
 });
 
-test("31 with a saved number goes to that number; without one, the share sheet", async () => {
+// saved_credit_layout (25 Nov 2026): without a number there is no Send receipt; the add-phone button shows.
+test("31 with a saved number goes to that number; without one, no Send receipt but the add-phone button", async () => {
   const { default: CreditScreens } = await loadJsx("src/pos/CreditScreens.jsx", ON);
   setLiveQuery(() => null);
   try {
@@ -343,9 +347,14 @@ test("31 with a saved number goes to that number; without one, the share sheet",
       };
       const view = render({ type: CreditScreens, props: { route: "CreditSaved", params, onHome() {}, onNavigate() {}, onSaveCustomerContact() {}, shopName: "Shop" } });
       flushEffects(view);
+      if (viaShare) {
+        assert.equal(findButton(view.tree, "Send receipt"), null);
+        assert.ok(findButton(view.tree, "Add phone number to send WhatsApp"));
+        continue;
+      }
       await findButton(view.tree, "Send receipt").props.onClick();
-      assert.equal(calls.share.length, viaShare ? 1 : 0);
-      assert.equal(calls.location.startsWith("whatsapp://send?phone=233241234567&text="), !viaShare);
+      assert.equal(calls.share.length, 0);
+      assert.equal(calls.location.startsWith("whatsapp://send?phone=233241234567&text="), true);
     }
   } finally {
     setLiveQuery(null);

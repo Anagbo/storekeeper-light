@@ -841,6 +841,7 @@ export default function PosApp() {
       params={routeState.params}
       onDone={() => switchTab(POS_ROUTES.PeopleWhoOweYou)}
       onNavigate={navigate}
+      onSaveCustomerContact={saveCustomerContact}
       shopName={shopName}
     />
   ) : route === POS_ROUTES.CustomerSignature ? (

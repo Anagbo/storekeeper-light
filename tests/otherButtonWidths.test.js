@@ -37,7 +37,7 @@ const VISITS = [
   { name: "36 Your starter list from 39", seed: "base", steps: ["^Menu", "^Items", "Add from starter list"], expect: [] },
   { name: "35 What do you sell?", seed: "fresh", steps: ["^With items", "^Continue"], expect: ["More categories"], leave: ["Skip for now"] },
   { name: "36 Your starter list (setup)", seed: "fresh", steps: ["^With items", "^Continue", "^Provisions shop", "^Continue"], expect: [], leave: ["Skip, I’ll add items later"] },
-  { name: "Debt saved", seed: "base", steps: ["^Owed$", "Add debt$", "^[AK]?Amoto", "^Next", "^1$", "^0$", "^Next", "^Save · "], expect: ["WhatsApp Amoto", "See Amoto’s details"] },
+  { name: "Debt saved", seed: "base", steps: ["^Owed$", "Add debt$", "^[AK]?Amoto", "^Next", "^1$", "^0$", "^Next", "^Save · "], expect: ["See Amoto’s details"] }, // Amoto has no phone: the WhatsApp slot is the add-phone button (saved_credit_layout)
   { name: "30 Sale recorded", seed: "base", steps: ["^Sell$", "^5$", "^Done"], expect: [] },
   { name: "16 Split, editing a part", seed: "base", steps: ["^Sell$", "^5$", "^Split", "^Cash$", "^Edit Cash amount"], expect: ["Cancel"] }
 ];

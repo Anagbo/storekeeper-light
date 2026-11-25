@@ -46,17 +46,20 @@ function sequence(view) {
     .map((node) => (node.type === "p" ? "line" : textOf(node).trim()));
 }
 
+// saved_credit_layout (25 Nov 2026): without a phone, Send receipt (a WhatsApp button) is replaced by the
+// dashed "+ Add phone number to send WhatsApp", and its offline line goes with it.
+const ADD_PHONE = "+ Add phone number to send WhatsApp";
 for (const phone of ["0241234567", ""]) {
   const which = phone ? "with a phone" : "without a phone";
 
-  test(`31 ${which}, receipts on, offline: Send receipt, line, Copy receipt, See Ama's details, Done`, async () => {
+  test(`31 ${which}, receipts on, offline: Send receipt (or Add phone), line, Copy receipt, See Ama's details, Done`, async () => {
     setOnline(false);
-    assert.deepEqual(sequence(await show31(ON, phone)), ["Send receipt", "line", "Copy receipt", "See Ama’s details", "Done"]);
+    assert.deepEqual(sequence(await show31(ON, phone)), phone ? ["Send receipt", "line", "Copy receipt", "See Ama’s details", "Done"] : [ADD_PHONE, "Copy receipt", "See Ama’s details", "Done"]);
   });
 
   test(`31 ${which}, receipts on, online: no offline line`, async () => {
     setOnline(true);
-    assert.deepEqual(sequence(await show31(ON, phone)), ["Send receipt", "Copy receipt", "See Ama’s details", "Done"]);
+    assert.deepEqual(sequence(await show31(ON, phone)), [phone ? "Send receipt" : ADD_PHONE, "Copy receipt", "See Ama’s details", "Done"]);
   });
 
   test(`31 ${which}, receipts off: See Ama's details and Done only`, async () => {

@@ -109,7 +109,8 @@ const SCREENS = {
     return { view, find: () => [...walk(view.tree)].find((node) => node.type === "button" && node.props["aria-label"] === "WhatsApp Ama") };
   },
   "ManualDebtSaved (debt added)": (state) => manualDebtSaved({ ...state, phone: PHONE }),
-  "ManualDebtSaved (debt added), no phone (share sheet)": (state) => manualDebtSaved({ ...state, phone: "" }),
+  // ManualDebtSaved without a phone has no WhatsApp button any more (saved_credit_layout, 25 Nov 2026):
+  // the dashed add-phone button takes its place (tests/whatsappNoPhone.test.js).
   "29 debtor detail": (state) => detailScreen({ ...state, late: false, phone: PHONE }),
   "43 debtor detail": (state) => detailScreen({ ...state, late: true, phone: PHONE }),
   "29 debtor detail, no phone (share sheet)": (state) => detailScreen({ ...state, late: false, phone: "" }),
