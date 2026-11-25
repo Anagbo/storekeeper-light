@@ -38,7 +38,7 @@ const VISITS = [
   // Cash + MoMo + Owe icons (two plus signs) in the four-tile row, the 56px tile height; 55: the icons
   // beside "Split payment", full width under the three tiles; 19: Cash + MoMo icons above "Split payment".
   // (The measured text also holds "Split payment" from the label that shows only from 640px; it has no box below that.)
-  { name: "15 Sell", seed: "base", steps: ["^Sell$"], add: [{ text: "++SplitSplit payment", height: 56, lines: 2, label: "Split" }] },
+  { name: "15 Sell", seed: "base", steps: ["^Sell$"], add: [{ text: "Split", height: 64, lines: 1, label: "Split" }] },
   { name: "55 Review and pay", seed: "base", steps: ["^Sell$", "Add items", "^Rice", "^Add 1", "^Next"], add: [{ text: "++ Split payment", height: 68, atLeast: true, full: true, lines: 2, label: "Split payment" }] },
   // 19 (owner's decision, 21 Nov 2026): 12px corners like the Cash and MoMo tiles beside it.
   { name: "19 A little at a time", seed: "base", steps: ["^Sell$", "^5$", "^Owe$", "^[AK]?Amoto", "^Next", "^A little at a time", "^Today$"], add: [{ text: "+Split payment", height: 48, atLeast: true, lines: 2, label: "Split payment", sameRadiusAs: "Cash" }] }

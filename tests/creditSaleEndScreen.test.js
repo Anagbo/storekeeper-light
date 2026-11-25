@@ -235,7 +235,7 @@ test("split, GH₵3.00 cash + GH₵5.00 owed with a plan: 30 shows Cash GH₵3.0
   assertNoScreenError(app);
   assert.match(shown(app), /CashGH₵3\.00/);
   assert.match(shown(app), /Juju owesfrom this saleGH₵5\.00/);
-  assert.match(shown(app), /Total owedGH₵(?!5\.00)\d/, "earlier balance: a Total owed key-value row");
+  assert.match(shown(app), /Now owesGH₵(?!5\.00)\d/, "earlier balance: a Total owed key-value row");
   assert.doesNotMatch(shown(app), /CashGH₵8\.00/);
   const data = await ledger("Juju");
   assert.equal(data.balancePesewas, 19620 + 500);
