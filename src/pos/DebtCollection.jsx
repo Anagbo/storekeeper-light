@@ -928,7 +928,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
           </section>}
           <section data-balance-card="" className={`amount-fit-container min-w-0 ${SOFT_TILE} px-4 py-3`}>
             <p className="text-[17px] font-bold text-slate-600 [overflow-wrap:anywhere]">{t("collect.balanceOwed", { name: displayName(data.name) })}</p>
-            <p className="amount-fit font-bold tabular-nums text-[#0F172A]" style={{ fontSize: "40px" }}>{formatGhs(data.balancePesewas)}</p>
+            <p className="amount-fit font-bold tabular-nums text-[#0F172A]" style={{ fontSize: "40px" }}>{data.balancePesewas > 0 ? formatGhs(data.balancePesewas) : t("collect.nothingOwed")}</p>
             {dueLine
               ? <p className="mt-1 font-bold text-slate-900">{dueLine}</p>
               : dueLabel?.startsWith("Late ") && <p className="mt-1 font-bold text-slate-900">{dueLabel}</p>}
@@ -1068,9 +1068,8 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
           )}
           <section>
             {/* rules_global.button_system.add: "+ Add to debt" is the shared AddButton, full width and 52px, on
-                its own line under the What happened heading. */}
+                its own line above the What happened heading. */}
             <div className="mb-2 flex flex-col gap-2">
-              <h2 className="text-[22px] font-extrabold leading-tight">{t("collect.onTimeHistory")}</h2>
               <AddButton
                 onClick={() => onNavigate("ManualDebtAmount", {
                   manualDebt: true,
@@ -1087,6 +1086,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
               >
                 Add to debt
               </AddButton>
+              <h2 className="mt-1 text-[22px] font-extrabold leading-tight">{t("collect.onTimeHistory")}</h2>
             </div>
             {data.history.length ? (
               // Wiring "What happened cards" (final, 16 Nov 2026): the same cards as 73 (EventRows). An unsigned

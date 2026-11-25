@@ -684,6 +684,7 @@ const ENGLISH = Object.freeze({
   "collect.customerId": "ID {number}",
   "collect.namePays": "{name} pays",
   "collect.onTimeHistory": "What happened",
+  "collect.nothingOwed": "Nothing owed",
   "collect.creditTaken": "Added to debt",
   "collect.creditAdded": "Added to debt",
   "collect.paid": "Paid",

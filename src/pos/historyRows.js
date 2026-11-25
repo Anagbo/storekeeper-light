@@ -60,13 +60,17 @@ export function rowReason(event) {
 // row on 29, 43 and 73 (rules_global.customer_proof.paid_order).
 const METHOD_ORDER = ["Cash", "MoMo"];
 const methodRank = (method) => (METHOD_ORDER.includes(method) ? METHOD_ORDER.indexOf(method) : METHOD_ORDER.length);
-export function paidParts(event) {
+export function paidPartLines(event) {
   if (event.collectionParts?.length) {
     return [...event.collectionParts]
       .sort((left, right) => methodRank(left.method) - methodRank(right.method))
-      .map((part) => `${part.method} ${formatGhs(part.amountPesewas)}`).join(", ");
+      .map((part) => `${part.method} ${formatGhs(part.amountPesewas)}`);
   }
-  return `${event.method ?? "Cash"} ${formatGhs(event.amountPesewas)}`;
+  return [`${event.method ?? "Cash"} ${formatGhs(event.amountPesewas)}`];
+}
+
+export function paidParts(event) {
+  return paidPartLines(event).join(", ");
 }
 
 // The reason entered on 54 for a correction: the note typed, or the reason chosen.

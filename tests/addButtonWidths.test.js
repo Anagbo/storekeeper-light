@@ -24,8 +24,8 @@ const VISITS = [
   { name: "45 Stock on credit", seed: "suppliers", steps: ["^Spent money", "type:10", "^Stock$", "^No$"], add: [{ text: "+ New supplier", height: 60, sameWidthAs: "Kofi Wholesale" }], other: ["Show all 5 suppliers"] },
   // 39: both actions add (no solid green button on 39, accepted 17 Nov 2026).
   { name: "39 My items", seed: "base", steps: ["^Menu", "^Items"], add: [{ text: "+ New item", height: 52, full: true }, { text: "+ Add from starter list", height: 52, full: true }] },
-  // 28 (receipts on, no phone saved): "+ Add phone".
-  { name: "28 Payment received", seed: "base", steps: ["^Owed$", "^Collect from Amoto", "^Received$"], add: [{ text: "+ Add phone", height: 52, full: true }] },
+  // 28 (receipts on, no phone saved): "+ Add phone number".
+  { name: "28 Payment received", seed: "base", steps: ["^Owed$", "^Collect from Amoto", "^Received$"], add: [{ text: "+ Add phone number", height: 52, full: true }] },
   // 29: "+ Add to debt" on its own line under What happened; GH₵27 is under the signature threshold.
   { name: "29 Debtor detail", seed: "base", steps: ["^Owed$", "^Amoto"], add: [{ text: "+ Add to debt", height: 52, full: true }], other: ["Correct balance", "Show Amoto the record"] },
   // 43 (late): GH₵90 unsigned is at or above the threshold, so its card offers Get signature (no "+").
@@ -41,7 +41,7 @@ const VISITS = [
   { name: "15 Sell", seed: "base", steps: ["^Sell$"], add: [{ text: "++SplitSplit payment", height: 56, lines: 2, label: "Split" }] },
   { name: "55 Review and pay", seed: "base", steps: ["^Sell$", "Add items", "^Rice", "^Add 1", "^Next"], add: [{ text: "++ Split payment", height: 68, atLeast: true, full: true, lines: 2, label: "Split payment" }] },
   // 19 (owner's decision, 21 Nov 2026): 12px corners like the Cash and MoMo tiles beside it.
-  { name: "19 A little at a time", seed: "base", steps: ["^Sell$", "^5$", "^Owe$", "^[AK]?Amoto", "^Next", "^A little at a time", "^Today$"], add: [{ text: "+Split payment", height: 48, atLeast: true, lines: 2, label: "Split payment", radius: "12px", sameRadiusAs: "Cash" }] }
+  { name: "19 A little at a time", seed: "base", steps: ["^Sell$", "^5$", "^Owe$", "^[AK]?Amoto", "^Next", "^A little at a time", "^Today$"], add: [{ text: "+Split payment", height: 48, atLeast: true, lines: 2, label: "Split payment", sameRadiusAs: "Cash" }] }
 ];
 
 const WIDTHS = [340, 360, 393];

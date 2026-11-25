@@ -1,6 +1,6 @@
 import { needsSignature } from "../config/features.js";
 import { formatGhs } from "../lib/money.js";
-import { CREDIT_ROW_TYPES, correctionReason, paidParts, rowReason, rowTime } from "./historyRows.js";
+import { CREDIT_ROW_TYPES, correctionReason, paidPartLines, rowReason, rowTime } from "./historyRows.js";
 import { posText as t } from "./i18n.js";
 import SignedTag from "./SignedTag.jsx";
 import { SOFT_TILE, SOFT_TILE_DIVIDERS } from "./softTile.js";
@@ -77,7 +77,7 @@ export default function EventRows({ event, creditTitle, signatureAction = null }
         <Details>
           <EventDetail label={t("event.time")} name="time" valueProps={{ "data-when": "" }}>{rowTime(event)}</EventDetail>
           {/* rules_global.customer_proof.paid_order: Cash first, then MoMo (paidParts). */}
-          <EventDetail label={t("event.paidWith")} name="paid-with">{paidParts(event)}</EventDetail>
+          <EventDetail label={t("event.paidWith")} name="paid-with">{paidPartLines(event).map((line) => <span key={line} data-paid-line="" className="block whitespace-nowrap">{line}</span>)}</EventDetail>
         </Details>
       </Card>
     );
