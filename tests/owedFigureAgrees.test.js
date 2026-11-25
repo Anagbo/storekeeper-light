@@ -82,7 +82,8 @@ async function balanceScreens(app) {
   // 32 draws Home's person row (chunk C): the due tag sits between the name and the amount in text order.
   const list = flat(app).match(/Kofi.*?(GH₵[\d,]+\.\d{2})/);
   await go(app, "DebtorDetail", { debtId: debt.id, customerName: debt.customerName });
-  const detail = amountAfter(app, /Kofi owes ?(GH₵[\d,]+\.\d{2})/, "43");
+  // 43 at zero reads "Nothing owed" (297db30), which counts as 0.
+  const detail = amountAfter(app, /Kofi owes ?(GH₵[\d,]+\.\d{2}|Nothing owed)/, "43");
   await go(app, "TodaysTransactions");
   const chip = flat(app).match(/Kofi owes (GH₵[\d,]+\.\d{2})/);
   return { home22: home ? cedis(home[1]) : null, list32: list ? cedis(list[1]) : null, detail43: detail, chip24: chip ? cedis(chip[1]) : null };
@@ -194,8 +195,8 @@ test("(c) collect part of a debt on 25/26/27: 26 Left to pay, 27 Still owed line
   assert.deepEqual(after, { home22: 600, list32: 600, detail43: 600, chip24: null });
 });
 
-// (d) paid in full: 27 has no Still owed line, 28 says 0.00, 43 says 0.00, Kofi leaves Home and 32.
-test("(d) a debt paid in full: no Still owed line on 27, 28 and 43 say GH₵0.00, Kofi is gone from Home 22 and 32", async () => {
+// (d) paid in full: 27 has no Still owed line, 28 says 0.00, 43 says Nothing owed, Kofi leaves Home and 32.
+test("(d) a debt paid in full: no Still owed line on 27, 28 says GH₵0.00 and 43 Nothing owed, Kofi is gone from Home 22 and 32", async () => {
   const app = await open();
   const debt = (await db.debts.toArray())[0];
   await go(app, "CollectPayment", { debtId: debt.id, customerName: debt.customerName });

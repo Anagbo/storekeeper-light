@@ -47,8 +47,8 @@ function sequence(view) {
 }
 
 // saved_credit_layout (25 Nov 2026): without a phone, Send receipt (a WhatsApp button) is replaced by the
-// dashed "+ Add phone number to send WhatsApp", and its offline line goes with it.
-const ADD_PHONE = "+ Add phone number to send WhatsApp";
+// dashed "+ Add phone for WhatsApp", and its offline line goes with it.
+const ADD_PHONE = "+ Add phone for WhatsApp";
 for (const phone of ["0241234567", ""]) {
   const which = phone ? "with a phone" : "without a phone";
 

@@ -6,7 +6,7 @@ import { PROOF_T, correctionRow, creditRow, proofPages } from "./helpers/proofPa
 // Wiring "What happened cards" (final, 16 Nov 2026) on 29, 43 and 73, real browser at 340, 360 and 393px:
 // every card has a title row (title left, amount right, the amount never drops under the title), then
 // label-value rows: the label grey on the left (never wraps), the value bold on the right. A long reason
-// (60 characters) and "Cash GH₵1,234.00, MoMo GH₵12,345.00" wrap inside the right column only. Nothing
+// (60 characters) wraps inside the right column only; Paid with is one line per method (Cash, then MoMo). Nothing
 // scrolls sideways. Paid: Time, Paid with. Credit: Time, Reason, Signature. Corrected: Was, New balance,
 // Time, Reason.
 
@@ -49,6 +49,7 @@ const MEASURE = `(frame, win, doc) => {
         return {
           label: label.textContent, labelLines: textLines(label), labelBox: box(label), labelWeight: ls.fontWeight, labelColor: ls.color,
           value: value.textContent, valueLines: textLines(value), valueBox: box(value), valueWeight: vs.fontWeight, valueColor: vs.color, valueAlign: vs.textAlign,
+          paidLines: [...value.querySelectorAll("[data-paid-line]")].map((line) => ({ text: line.textContent, lines: textLines(line), ...box(line) })),
           size: vs.fontSize, divider: win.getComputedStyle(row).borderTopWidth
         };
       })
@@ -81,7 +82,13 @@ test("What happened cards on 29, 43 and 73 at 340, 360 and 393px: title row, the
     assert.equal(corrected.title.lines, 1, `${where}: "Balance corrected" never wraps`);
     // Decision (4) after the build (16 Nov 2026): no "+" before the Paid amount on any of the three.
     assert.equal(paid.amount.text, "GH₵13,579.00", `${where}: the Paid amount has no "+"`);
-    assert.equal(paid.rows[1].value, "Cash GH₵1,234.00, MoMo GH₵12,345.00", `${where}: Paid with, Cash first`);
+    // Paid with is one line per method since 297db30 (no comma list), Cash first.
+    assert.deepEqual(paid.rows[1].paidLines.map((line) => line.text), ["Cash GH₵1,234.00", "MoMo GH₵12,345.00"], `${where}: Paid with, Cash first, one line each`);
+    for (const line of paid.rows[1].paidLines) {
+      assert.equal(line.lines, 1, `${where}: "${line.text}" is one line`);
+      assert.ok(line.right <= paid.cardRight + 0.5 && line.left >= paid.rows[1].labelBox.right - 0.5, `${where}: "${line.text}" stays in the right column`);
+    }
+    assert.ok(paid.rows[1].paidLines[0].bottom <= paid.rows[1].paidLines[1].top + 0.5, `${where}: MoMo is under Cash`);
     assert.equal(longCredit.rows[1].value, LONG);
     assert.equal(corrected.rows[3].value, LONG);
     assert.equal(shortCredit.rows[1].value, "No reason written");
@@ -132,6 +139,6 @@ test("What happened cards on 29, 43 and 73 at 340, 360 and 393px: title row, the
     // The long values really wrap (more than one line) at these widths, and stay in their column.
     assert.ok(longCredit.rows[1].valueLines > 1, `${where}: the 60-character reason wraps`);
     assert.ok(corrected.rows[3].valueLines > 1, `${where}: the 60-character correction reason wraps`);
-    if (result.width < 393) assert.ok(paid.rows[1].valueLines > 1, `${where}: the Paid with value wraps`);
+    assert.equal(paid.rows[1].valueLines, 2, `${where}: the Paid with value is two lines, one per method`);
   }
 });

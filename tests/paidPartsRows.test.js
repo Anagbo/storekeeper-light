@@ -85,7 +85,10 @@ async function splitPart(app, method, amount) {
   await app.tap(/^Save$/);
 }
 
-test("31: Cash and MoMo are separate rows, Total received is their sum, the GH₵5.00 owed is in neither", async () => {
+// rules_global.saved_credit_layout (25 Nov 2026): on 31 the payment taken today is ONE "Paid today" row
+// (no sub-row per method, plain "Paid today" when two methods were used). What this protected stays: the
+// paid figure is the sum of the parts (Cash 1.00 + MoMo 2.00), and the GH₵5.00 owed from this sale is not in it.
+test("31: one Paid today row holds the sum of Cash and MoMo, the GH₵5.00 owed is not in it", async () => {
   const app = await open();
   await to19(app, "3");
   await app.tap(/Split payment$/);
@@ -97,18 +100,13 @@ test("31: Cash and MoMo are separate rows, Total received is their sum, the GH�
   await app.tap(/^Money received$/);
   assert.equal(app.route, "CreditSaved");
   const rows = rowsOf(app);
-  const total = named(rows, /^Total received/);
-  const cash = named(rows, /^Cash/);
-  const momo = named(rows, /^MoMo/);
-  assert.equal(total.length, 1, show(rows));
-  assert.equal(cash.length, 1, show(rows));
-  assert.equal(momo.length, 1, show(rows));
-  assert.equal(cash[0].amount, 1);
-  assert.equal(momo[0].amount, 2);
-  const above = rows.slice(0, rows.indexOf(total[0])).filter((row) => /^(Cash|MoMo)/.test(row.label));
-  assert.equal(above.reduce((sum, row) => sum + row.amount, 0), total[0].amount, "Total received = sum of the paid rows above it");
-  assert.equal(total[0].amount, 3);
-  assert.ok(![cash[0], momo[0], total[0]].some((row) => row.amount === 5 || row.amount === 8), "the owed GH₵5.00 is in no paid row or total");
+  const paid = named(rows, /^Paid today/);
+  assert.equal(paid.length, 1, show(rows));
+  assert.equal(paid[0].label.replace(/[−\s]+$/, ""), "Paid today", "two methods: the plain label");
+  assert.equal(paid[0].amount, 1 + 2, "Paid today = Cash + MoMo");
+  assert.equal(named(rows, /^(Cash|MoMo|Total received)/).length, 0, `no sub-row per method ${show(rows)}`);
+  assert.deepEqual(rows.map((row) => row.label.replace(/[−\s]+$/, "")), ["Before", "This sale", "Paid today", "Now owes"], show(rows));
+  assert.ok(paid[0].amount !== 5 && paid[0].amount !== 8, "the owed GH₵5.00 is not in the paid row");
 });
 
 test("30: Cash and MoMo are separate rows and the GH₵3.00 owed is its own row after them", async () => {
