@@ -8,6 +8,9 @@ export const SEEDS = {
     await recordCreditSale({ name: "Amoto", amountPesewas: 2700, now: Date.now() - 86400000 });
     await recordCreditSale({ name: "Kwabena Asamoah-Boateng", amountPesewas: 9000, dueDate: "2026-01-02", now: Date.now() - 86400000 * 30 });
     await createProduct({ name: "Rice", price: "12" });`,
+  // A customer with a phone, for the "with a phone" Saved screens.
+  withPhone: `await setPreference("posSetupCompleted", true);
+    await recordCreditSale({ name: "Amoto", phone: "0241234567", amountPesewas: 2700, now: Date.now() - 86400000 });`,
   // A long name that is still one word per part: the longest "See {Name}’s details" a shop is likely to type.
   longName: `await setPreference("posSetupCompleted", true);
     await recordCreditSale({ name: "Nana Akosua Frimpomaa Asamoah-Boateng", amountPesewas: 2700, now: Date.now() - 86400000 });`,

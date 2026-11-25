@@ -131,15 +131,16 @@ test("Saved as credit (Add debt): the name once, no waiting line, one add-phone 
 // 360x640 is measured and printed only (a very short screen may scroll).
 const FOLD_SIZES = [[360, 740, true], [390, 844, true], [360, 640, false]];
 const FOLD_FLOWS = [
-  ["Sell → Owe", ["^Sell$", "^5$", "^Owe$", "^[AK]?Amoto", "^Next", "^Save · "]],
-  ["Add debt", ["^Owed$", "Add debt$", "^[AK]?Amoto", "^Next", "^1$", "^0$", "^Next", "^Save · "]]
+  ["Sell → Owe", ["^Sell$", "^5$", "^Owe$", "^[AK]?Amoto", "^Next", "^Save · "], "base"],
+  ["Add debt", ["^Owed$", "Add debt$", "^[AK]?Amoto", "^Next", "^1$", "^0$", "^Next", "^Save · "], "base"],
+  ["Add debt with a phone", ["^Owed$", "Add debt$", "^[AK]?Amoto", "^Next", "^1$", "^0$", "^Next", "^Save · "], "withPhone"]
 ];
 
 test("Saved as credit without a phone: Done is visible without scrolling (360x740, 390x844; 360x640 reported)", { skip: SKIP, timeout: 600_000 }, async () => {
   await withEdgeApp({ seeds: SEEDS, env: ENV }, async (app) => {
     for (const [width, height, mustFit] of FOLD_SIZES) {
-      for (const [flow, steps] of FOLD_FLOWS) {
-        await app.open("base", width, height);
+      for (const [flow, steps, seed] of FOLD_FLOWS) {
+        await app.open(seed, width, height);
         await app.steps(steps);
         await app.shows("See Amoto’s details");
         await sleep(300);

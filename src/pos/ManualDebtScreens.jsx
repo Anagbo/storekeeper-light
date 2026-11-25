@@ -287,7 +287,6 @@ export function ManualDebtSaved({ params, onDone, onNavigate, onSaveCustomerCont
             onSaveCustomerContact={onSaveCustomerContact}
             onSaved={setAddedContact}
             wide={wide}
-            showCopy={false}
           />
         )}
         <PosSecondaryButton type="button" className="w-full" onClick={() => onNavigate("DebtorDetail", { customerId: result?.customer?.id ?? params.customer?.id, customerName: params.customer?.name, debtId: result?.debt?.id })}>{t("credit.seeDetails", { name: displayName(params.customer?.name) })}</PosSecondaryButton>
