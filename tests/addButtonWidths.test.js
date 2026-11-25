@@ -38,7 +38,10 @@ const VISITS = [
   // Cash + MoMo + Owe icons (two plus signs) in the four-tile row, the 56px tile height; 55: the icons
   // beside "Split payment", full width under the three tiles; 19: Cash + MoMo icons above "Split payment".
   // (The measured text also holds "Split payment" from the label that shows only from 640px; it has no box below that.)
-  { name: "15 Sell", seed: "base", steps: ["^Sell$"], add: [{ text: "Split", height: 64, lines: 1, label: "Split" }] },
+  // SELL AMOUNT RULE (c1b1320): Split is the dark-green add look once there is an amount; at GH₵0.00 it is
+  // disabled with the light dashed border (#CBD5E1) and grey label (#94A3B8), same size and corners.
+  { name: "15 Sell", seed: "base", steps: ["^Sell$", "^5$"], add: [{ text: "Split", height: 64, lines: 1, label: "Split" }] },
+  { name: "15 Sell at GH₵0.00", seed: "base", steps: ["^Sell$"], add: [{ text: "Split", height: 64, lines: 1, label: "Split", disabled: true }] },
   { name: "55 Review and pay", seed: "base", steps: ["^Sell$", "Add items", "^Rice", "^Add 1", "^Next"], add: [{ text: "++ Split payment", height: 68, atLeast: true, full: true, lines: 2, label: "Split payment" }] },
   // 19 (owner's decision, 21 Nov 2026): 12px corners like the Cash and MoMo tiles beside it.
   { name: "19 A little at a time", seed: "base", steps: ["^Sell$", "^5$", "^Owe$", "^[AK]?Amoto", "^Next", "^A little at a time", "^Today$"], add: [{ text: "+Split payment", height: 48, atLeast: true, lines: 2, label: "Split payment", sameRadiusAs: "Cash" }] }
@@ -67,13 +70,20 @@ test("the add look fits at 340, 360 and 393px: dashed 2px green, 14px corners, n
           assert.ok(c, `${label}: "${expected.text}" is an add button (${m.controls.filter((x) => x.look === "add").map((x) => x.text).join(", ")})`);
           const what = `${label}: "${expected.text}"`;
           assert.match(c.border, /^dashed 2px /, `${what}: dashed 2px border`);
-          assert.match(c.border.replace(/^dashed 2px /, ""), GREEN, `${what}: dark-green border`);
+          if (expected.disabled) {
+            assert.equal(c.border.replace(/^dashed 2px /, ""), "rgb(203, 213, 225)", `${what}: disabled, light dashed border`);
+            assert.equal(c.color, "rgb(148, 163, 184)", `${what}: disabled, grey label`);
+            const off = await app.evaluate(`[...document.querySelectorAll('[data-look="add"]')].filter((b) => b.textContent.trim() === ${JSON.stringify(expected.text)}).map((b) => b.disabled && b.getAttribute("aria-disabled") === "true")`);
+            assert.deepEqual(off, [true], `${what}: disabled and aria-disabled`);
+          } else {
+            assert.match(c.border.replace(/^dashed 2px /, ""), GREEN, `${what}: dark-green border`);
+          }
           assert.equal(c.radius, expected.radius ?? "14px", `${what}: ${expected.radius ?? "14px"} corners`);
           if (expected.sameRadiusAs) {
             const sibling = m.controls.find((control) => control.text === expected.sameRadiusAs);
             assert.ok(sibling && sibling.radius === c.radius, `${what}: the same corners as "${expected.sameRadiusAs}" (${sibling?.radius})`);
           }
-          assert.match(c.color, GREEN, `${what}: dark-green text`);
+          if (!expected.disabled) assert.match(c.color, GREEN, `${what}: dark-green text`);
           assert.ok(Number(c.fontWeight) >= 700, `${what}: bold`);
           assert.equal(c.background, "rgba(0, 0, 0, 0)", `${what}: no fill`);
           assert.ok(!c.underline, `${what}: not underlined`);

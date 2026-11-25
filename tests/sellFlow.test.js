@@ -5,6 +5,7 @@ import { after, before, beforeEach, test } from "node:test";
 import { db } from "../src/db/db.js";
 import { recordCashSale } from "../src/db/sales.js";
 import { pushRoute, POS_ROUTES, createRouteState, backRoute } from "../src/pos/routes.js";
+import { loadJsx, render, textOf, walk } from "./helpers/renderJsx.js";
 
 const sourcePaths = {
   sell: new URL("../src/pos/Sell.jsx", import.meta.url),
@@ -39,7 +40,7 @@ test("sell-flow screens 15, 20 and 55 expose the required contracts", async () =
   assert.match(sell, /onNavigate\("SellWithItems"/);
   assert.match(sell, /disabled=\{!canSave \|\| busy\}/);
   assert.match(sell, /if \(!canSave \|\| busy\) return/);
-  assert.match(sell, /disabled=\{value === "credit" && \(!canSave \|\| busy\)\}/);
+  // Owe disabled until there is an amount: checked by behaviour in the next test (SELL AMOUNT RULE).
   assert.match(cart, /name: "Other amount"/);
   assert.match(cart, /subtitle: "From Sell"/);
   assert.match(cart, /return normalizeSaleItems\(\[\{/);
@@ -50,6 +51,41 @@ test("sell-flow screens 15, 20 and 55 expose the required contracts", async () =
   assert.match(review, /onNavigate\("SplitPayment"/);
   assert.match(review, /onNavigate\("WhoOwesYou"/);
   assert.match(review, /onSaveSale/);
+});
+
+// SELL AMOUNT RULE (wiring 15, c1b1320): until the amount is above 0 only Cash is active; MoMo, Owe and
+// Split are disabled with aria-disabled, a tap goes nowhere and no message is shown. After a typed 5 all four work.
+test("15 Sell: at GH₵0.00 only Cash is active, MoMo, Owe and Split are aria-disabled, no message; a typed 5 enables them", async () => {
+  const { default: Sell } = await loadJsx("src/pos/Sell.jsx");
+  const went = [];
+  const view = render({ type: Sell, props: { params: {}, onNavigate: (...a) => went.push(a), onUpdateParams() {} } });
+  const host = (label) => {
+    let found = null;
+    for (const node of walk(view.tree)) {
+      if (node.type !== "button") continue;
+      if (textOf(node).trim() === label || node.props["aria-label"] === label) found = node;
+    }
+    assert.ok(found, `no button ${label}`);
+    return found;
+  };
+  const alerts = () => [...walk(view.tree)].filter((node) => node.props?.role === "alert").map((node) => textOf(node).trim());
+  assert.notEqual(host("Cash").props.disabled, true, "Cash is active at GH₵0.00");
+  for (const label of ["MoMo", "Owe", "Split"]) {
+    const button = host(label);
+    assert.equal(button.props.disabled, true, `${label} is disabled at GH₵0.00`);
+    assert.equal(button.props["aria-disabled"], true, `${label} is aria-disabled at GH₵0.00`);
+    button.props.onClick?.({ preventDefault() {}, stopPropagation() {} });
+    view.rerender();
+  }
+  assert.deepEqual(went, [], "a tap on a disabled tile goes nowhere");
+  assert.deepEqual(alerts(), [], "no message at GH₵0.00");
+  assert.doesNotMatch(textOf(view.tree), /Enter a sale amount/);
+  host("5").props.onClick({ preventDefault() {}, stopPropagation() {} });
+  view.rerender();
+  for (const label of ["Cash", "MoMo", "Owe", "Split"]) {
+    assert.notEqual(host(label).props.disabled, true, `${label} is active after a typed 5`);
+    assert.equal(host(label).props["aria-disabled"], undefined, `${label} is not aria-disabled after a typed 5`);
+  }
 });
 
 test("journey C carries the typed amount through the cart and review into screen 30", async () => {

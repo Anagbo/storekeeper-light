@@ -131,9 +131,8 @@ test("credit saved (31) has no reminder or contact editor and reads the saved nu
   const source = readFileSync(new URL("../src/pos/CreditScreens.jsx", import.meta.url), "utf8");
   // Wiring "No reminder button on 31" (14 Nov 2026).
   assert.doesNotMatch(source, /generateWhatsAppLink|CustomerContactEditor|credit\.whatsapp|openContactEditor/);
-  assert.match(source, /result\?\.initialPaymentPesewas > 0/);
-  assert.match(source, /t\("credit\.paymentRecorded"\)/);
-  assert.match(source, /t\("credit\.paymentRecordedTotal"\)/);
+  // The payment taken today (saved_credit_layout, 25 Nov 2026: one "Paid today" row instead of the old
+  // "Payment received today" and "Total received" lines) is checked on the rendered 31 in the next test.
   assert.match(source, /<SendReceiptButton/);
   assert.match(source, /useLiveQuery\(async \(\) =>/);
   assert.match(source, /db\.customers\.where\("nameLower"\)/);
@@ -158,16 +157,68 @@ test("screen 19 locks Today and preserves Cash, MoMo and Owe from a Sell split",
   assert.match(saleSplitSource, /initialPaymentPesewas: getPaidPaymentPesewas\(parts\)/);
 });
 
-test("screen 19 Today and Next cycle controls only toggle local payment state", () => {
-  const source = readFileSync(new URL("../src/pos/CreditScreens.jsx", import.meta.url), "utf8");
-  const screenSource = source.slice(source.indexOf("function ALittleAtATime"), source.indexOf("function CreditSaved"));
-  const todayButton = screenSource.match(/<button[\s\S]*?t\("credit\.today"\)[\s\S]*?<\/button>/)?.[0] ?? "";
-  const nextCycleButton = screenSource.match(/<button[\s\S]*?t\("credit\.nextCycle"[\s\S]*?<\/button>/)?.[0] ?? "";
+// 31 after a credit sale: a payment taken today is one "Paid today" row (− GH₵X) between This sale and
+// Now owes; with nothing paid there is no such row.
+test("credit saved (31) shows the payment taken today as the Paid today row, and none when nothing was paid", async () => {
+  const { loadJsx, render, setLiveQuery, textOf, walk } = await import("./helpers/renderJsx.js");
+  globalThis.HTMLElement ??= class {};
+  const { default: CreditScreens } = await loadJsx("src/pos/CreditScreens.jsx");
+  setLiveQuery(() => null);
+  try {
+    const rows = (paid) => {
+      const creditResult = { customerId: "c1", customerName: "Ama", phone: "", debtId: "d1", amountPesewas: 8000, addedDebtPesewas: 8000, previousDebtPesewas: 0, totalDebtPesewas: 8000 - paid, initialPaymentPesewas: paid, initialPaymentParts: paid ? [{ paymentMethod: "cash", amountPesewas: paid }] : [], debtAfter: { isInstallmentPlan: false }, saleTransaction: { timestamp: Date.now(), payment_method: "credit" } };
+      const view = render({ type: CreditScreens, props: { route: "CreditSaved", params: { creditResult, customer: { id: "c1", name: "Ama" } }, onHome() {}, onNavigate() {}, shopName: "Shop" } });
+      return [...walk(view.tree)].filter((node) => node.props?.["data-event-detail"] !== undefined).map((node) => [node.props["data-event-detail"], textOf(node)]);
+    };
+    assert.deepEqual(rows(3000), [["before", "BeforeGH₵0.00"], ["added", "This saleGH₵80.00"], ["paid-today", "Paid today · Cash− GH₵30.00"], ["now-owes", "Now owesGH₵50.00"]]);
+    assert.deepEqual(rows(0).map(([name]) => name), ["before", "added", "now-owes"], "nothing paid: no Paid today row");
+  } finally {
+    setLiveQuery(null);
+  }
+});
 
-  assert.doesNotMatch(todayButton, /onNavigate/);
-  assert.doesNotMatch(nextCycleButton, /onNavigate/);
-  assert.match(todayButton, /setStartToday\(true\)/);
-  assert.match(nextCycleButton, /setStartToday\(false\)/);
+// 19 first payment: with a payment already taken today (the cash part of a Sell split), Today is disabled,
+// Next cycle is chosen and "Already paid GH₵X today" explains why; with none, Today can be chosen. Both
+// chips only change the choice on 19 and never navigate.
+test("screen 19 Today and Next cycle controls only toggle local payment state", async () => {
+  const { loadJsx, render, setLiveQuery, textOf, walk } = await import("./helpers/renderJsx.js");
+  globalThis.HTMLElement ??= class {};
+  const { default: CreditScreens } = await loadJsx("src/pos/CreditScreens.jsx");
+  setLiveQuery(() => null);
+  const tap = (view, node) => { node.props.onClick({ preventDefault() {}, stopPropagation() {} }); view.rerender(); };
+  const chips = (view) => {
+    const buttons = [...walk(view.tree)].filter((node) => node.type === "button");
+    return { today: buttons.find((node) => textOf(node).trim() === "Today"), next: buttons.find((node) => /^Next cycle/.test(textOf(node).trim())) };
+  };
+  try {
+    const customer = { id: "c1", name: "Ama", totalDebtPesewas: 0 };
+    const went = [];
+    const paid = render({ type: CreditScreens, props: { route: "ALittleAtATime", params: { amountPesewas: 8000, customer, flow: "split", paymentAlreadyMadeToday: true, initialPaymentPesewas: 3000, splitParts: [{ paymentMethod: "cash", amountPesewas: 3000 }] }, onNavigate: (...a) => went.push(a), onUpdateParams() {}, onBack() {} } });
+    let c = chips(paid);
+    assert.equal(c.today.props.disabled, true, "paid today: Today is disabled");
+    assert.equal(c.today.props["aria-disabled"], true);
+    assert.equal(c.today.props["aria-pressed"], false);
+    assert.equal(c.next.props["aria-pressed"], true, "paid today: Next cycle is the first payment");
+    assert.match(textOf(paid.tree), /Already paid GH₵30\.00 today/);
+    tap(paid, c.today);
+    c = chips(paid);
+    assert.equal(c.today.props["aria-pressed"], false, "a tap on the disabled Today changes nothing");
+    assert.equal(c.next.props["aria-pressed"], true);
+
+    const none = render({ type: CreditScreens, props: { route: "ALittleAtATime", params: { amountPesewas: 8000, customer }, onNavigate: (...a) => went.push(a), onUpdateParams() {}, onBack() {} } });
+    c = chips(none);
+    assert.notEqual(c.today.props.disabled, true, "nothing paid: Today can be chosen");
+    assert.doesNotMatch(textOf(none.tree), /Already paid/);
+    tap(none, c.today);
+    c = chips(none);
+    assert.deepEqual([c.today.props["aria-pressed"], c.next.props["aria-pressed"]], [true, false], "Today chosen");
+    tap(none, c.next);
+    c = chips(none);
+    assert.deepEqual([c.today.props["aria-pressed"], c.next.props["aria-pressed"]], [false, true], "Next cycle chosen again");
+    assert.deepEqual(went, [], "the chips never navigate");
+  } finally {
+    setLiveQuery(null);
+  }
 });
 
 test("MoMo screens 56 and 57 match the prototype layout contract", () => {

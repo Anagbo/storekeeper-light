@@ -26,6 +26,8 @@ test("every Split payment control contains the joined icons and no separate + be
     const source = read(file);
     const at = source.lastIndexOf(`t("${key}")`);
     assert.ok(at > 0, `${file}: uses ${key}`);
+    // 15 Sell draws the original trio (SplitTrio, c1b1320): checked on the rendered tile in the next test.
+    if (file.endsWith("Sell.jsx")) continue;
     const before = source.slice(Math.max(0, at - 700), at + (file.endsWith("Sell.jsx") ? 400 : 0));
     const icons = withOwe ? /<SplitIcons? (withOwe )?size=\{\d+\} \/>/ : /<SplitIcons size=\{\d+\} \/>/;
     assert.match(before, icons, `${file}: joined icons ${withOwe ? "with Owe" : "(Cash + MoMo)"} before the label`);
@@ -39,6 +41,23 @@ test("every Split payment control contains the joined icons and no separate + be
   assert.match(read("src/pos/Sell.jsx"), /aria-label=\{t\("sell\.split"\)\}/);
   assert.match(read("src/pos/ReviewAndPay.jsx"), /aria-label=\{t\("review\.split"\)\}/);
   assert.match(read("src/pos/CreditScreens.jsx"), /aria-label=\{t\("split\.title"\)\}/);
+});
+
+// 15 Sell (c1b1320, wiring 15): the Split tile has the original three icons, cash + phone + person with
+// the small plus signs between them, then the label "Split"; no "+" before the label. Named "Split payment".
+test("15 Sell: the Split tile shows cash + phone + person with plus signs between, then Split, no + before the label", async () => {
+  const { default: Sell } = await loadJsx("src/pos/Sell.jsx");
+  const { render, walk, textOf } = await import("./helpers/renderJsx.js");
+  for (const params of [{}, { amountPesewas: 500 }]) {
+    const view = render({ type: Sell, props: { params, onNavigate() {}, onUpdateParams() {} } });
+    const tile = [...walk(view.tree)].find((node) => node.type === "button" && node.props["aria-label"] === "Split payment");
+    assert.ok(tile, "Sell has a button named Split payment");
+    const icons = [...walk(tile)].filter((node) => node.type === "svg").map((node) => (String(node.props.className).match(/lucide-([a-z-]+)/) ?? [])[1]);
+    assert.deepEqual(icons, ["banknote", "plus", "smartphone", "plus", "user-round"], "cash + phone + person, plus signs between them");
+    const trio = [...walk(tile)].find((node) => node.props?.["data-split-trio"] !== undefined);
+    assert.equal(trio.props["aria-hidden"], "true", "the icons are hidden from screen readers");
+    assert.equal(textOf(tile).trim(), "Split", "the label is Split, with no + of its own");
+  }
 });
 
 test("every Split payment control is the add look (AddButton), never the other look or a plain tile", () => {

@@ -4,7 +4,7 @@ import { loadJsx, render, setLiveQuery, textOf, walk } from "./helpers/renderJsx
 
 // rules_global.saved_credit_layout (25 Nov 2026), phone review item 4: on Saved as credit (Add debt and
 // the sale on credit) a person with no valid phone gets no working-looking WhatsApp button. The dashed
-// "+ Add phone number to send WhatsApp" opens the same contact editor as Payment received; once a number
+// "+ Add phone for WhatsApp" (c406749) opens the same contact editor as Payment received; once a number
 // is saved, the WhatsApp button is back.
 
 globalThis.HTMLElement ??= class {};
@@ -29,7 +29,7 @@ async function debtSaved(phone, saves = []) {
 test("Add debt saved, no phone: no WhatsApp Ama button, the dashed add-phone button instead", async () => {
   const view = await debtSaved("");
   assert.equal(named(view.tree, /^WhatsApp Ama$/), undefined);
-  const add = named(view.tree, /Add phone number to send WhatsApp$/);
+  const add = named(view.tree, /^\+ Add phone for WhatsApp$/);
   assert.ok(add, "the add-phone button is shown");
   assert.equal(add.props["data-look"], "add");
 });
@@ -37,7 +37,7 @@ test("Add debt saved, no phone: no WhatsApp Ama button, the dashed add-phone but
 test("Add debt saved, no phone: the add-phone button opens the contact editor; a saved number brings WhatsApp back", async () => {
   const saves = [];
   const view = await debtSaved("", saves);
-  named(view.tree, /Add phone number to send WhatsApp$/).props.onClick();
+  named(view.tree, /^\+ Add phone for WhatsApp$/).props.onClick();
   view.rerender();
   assert.ok(dialog(view.tree), "the contact editor opens");
   const phone = [...walk(dialog(view.tree))].find((node) => node.type === "input" && node.props.type === "tel");
@@ -49,16 +49,16 @@ test("Add debt saved, no phone: the add-phone button opens the contact editor; a
   assert.equal(saves[0].phone, "0241234567");
   assert.equal(dialog(view.tree), undefined, "the editor closes");
   assert.ok(named(view.tree, /^WhatsApp Ama$/), "WhatsApp is back");
-  assert.equal(named(view.tree, /Add phone number/), undefined);
+  assert.equal(named(view.tree, /Add phone/), undefined);
 });
 
 test("Add debt saved, with a phone: WhatsApp Ama, no add-phone button; a number that fails the check counts as none", async () => {
   const view = await debtSaved("0241234567");
   assert.ok(named(view.tree, /^WhatsApp Ama$/));
-  assert.equal(named(view.tree, /Add phone number/), undefined);
+  assert.equal(named(view.tree, /Add phone/), undefined);
   const bad = await debtSaved("12");
   assert.equal(named(bad.tree, /^WhatsApp Ama$/), undefined);
-  assert.ok(named(bad.tree, /Add phone number to send WhatsApp$/));
+  assert.ok(named(bad.tree, /^\+ Add phone for WhatsApp$/));
 });
 
 test("sale on credit saved (31), receipts on, no phone: the add-phone button opens the contact editor", async () => {
@@ -70,7 +70,7 @@ test("sale on credit saved (31), receipts on, no phone: the add-phone button ope
   };
   const view = render({ type: CreditScreens, props: { route: "CreditSaved", params, onHome() {}, onNavigate() {}, onSaveCustomerContact: async (details) => details, shopName: "Shop" } });
   assert.equal(named(view.tree, /^Send receipt/), undefined);
-  named(view.tree, /Add phone number to send WhatsApp$/).props.onClick();
+  named(view.tree, /^\+ Add phone for WhatsApp$/).props.onClick();
   view.rerender();
   assert.ok(dialog(view.tree));
 });

@@ -95,7 +95,12 @@ function screen19(a) {
     maximum: [...walk(tree)].filter((node) => node.type === "span" && /^Maximum/.test(textOf(node))).map(textOf),
     todayDisabled: Boolean(today.props.disabled),
     todayPressed: today.props["aria-pressed"],
-    todaySelectedStyle: /green-200/.test(today.props.className),
+    // Selected choice chip (rules_global.selected_states): mint #D1FAE5, 2px #03543F border, the tick inline.
+    todaySelectedStyle: (() => {
+      const classes = new Set(String(today.props.className).split(/\s+/));
+      return ["bg-[#D1FAE5]", "border-[#03543F]", "border-2"].every((c) => classes.has(c)) &&
+        [...walk(today)].some((node) => node.props?.["data-chip-tick"] !== undefined);
+    })(),
     nextPressed: next.props["aria-pressed"],
     saveOff: Boolean(save.props.disabled),
     recordedPanel: textOf(tree).includes(posText("credit.payingToday")),

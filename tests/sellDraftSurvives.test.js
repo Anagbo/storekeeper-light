@@ -50,7 +50,12 @@ const trips = {
     findButton(app.view.tree, "Owe").props.onClick();
     app.state = pushRoute(app.state, "WhenWillTheyPay", { amountPesewas: 12500 });
   },
-  "Split payment (16)": (app) => { app.view.tree && findButton(app.view.tree, "Split payment").props.onClick(); },
+  // The phone tile shows "Split" (c1b1320); its accessible name stays "Split payment".
+  "Split payment (16)": (app) => {
+    const split = [...walk(app.view.tree)].find((node) => node.type === "button" && node.props["aria-label"] === "Split payment");
+    assert.ok(split, "15 has the Split payment tile");
+    split.props.onClick();
+  },
   "MoMo and 61": (app) => { findButton(app.view.tree, "MoMo").props.onClick(); },
   "MoMo, 61, then 62": (app) => {
     findButton(app.view.tree, "MoMo").props.onClick();
