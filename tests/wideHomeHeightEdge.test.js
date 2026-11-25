@@ -27,6 +27,10 @@ const M = `(() => {
     txHeight: tx ? b(tx).height : null, rowHeight: row ? b(row).height : null,
     visible: rows.length, cut: rows.filter((r) => b(r).bottom > b(tx).bottom + 0.5).length,
     more: more ? more.textContent.trim() : null, moreInside: more ? b(more).bottom <= b(tx).bottom + 0.5 : null,
+    owedTitleTop: owed ? b(owed.querySelector("button span span")).top : null,
+    txTitleTop: tx ? b(tx.querySelector("[data-home-transactions-title]")).top : null,
+    owedSeeAllTop: owed ? b(owed.querySelector("[data-owed-see-all]")).top : null,
+    txSeeAllTop: tx ? b(tx.querySelector("[data-home-transactions-see-all]")).top : null,
     empty: Boolean(document.querySelector("[data-home-table-empty]"))
   };
 })()`;
@@ -47,6 +51,8 @@ test("Today's transactions card: Owed sets the height, only whole rows, +N more 
     assert.equal(m.cut, 0, "1856: no row is cut");
     assert.ok(m.visible < 10 && moreCount(m) + m.visible === 10, `1856: ${m.visible} rows + "${m.more}" = 10`);
     assert.ok(m.moreInside, "1856: the more line is inside the card");
+    assert.ok(Math.abs(m.txTitleTop - m.owedTitleTop) <= 1, `1856: titles on one line (${m.txTitleTop} vs ${m.owedTitleTop})`);
+    assert.ok(Math.abs(m.txSeeAllTop - m.owedSeeAllTop) <= 1, `1856: See all links on one line (${m.txSeeAllTop} vs ${m.owedSeeAllTop})`);
     const wideVisible = m.visible;
 
     await app.click("^Collapse menu$");

@@ -212,10 +212,10 @@ function FittedCompactRows({ rows, hidden, onNavigate }) {
 
 function TransactionsCard({ rows, hidden, onNavigate, layout, rail = false, narrow = false }) {
   return (
-    <section data-home-transactions="" aria-label={t("home.transactionsLink")} className={`flex min-w-0 flex-col rounded-[18px] border-2 border-slate-300 bg-white ${narrow ? "absolute inset-0 overflow-hidden py-3" : "py-4"} ${rail ? "px-3" : "px-5"}`}>
-      <button type="button" onClick={() => onNavigate("TodaysTransactions")} aria-label={t("home.transactionsLink")} className={`flex min-h-12 w-full min-w-0 items-center justify-between gap-3 rounded-lg text-left ${FOCUS} focus-visible:outline-emerald-800`}>
-        <span className="min-w-0 truncate text-[17px] font-bold text-slate-600">{t("home.transactionsLink")}</span>
-        <span className="shrink-0 whitespace-nowrap text-[17px] font-extrabold text-emerald-900">{t("home.seeAll")}</span>
+    <section data-home-transactions="" aria-label={t("home.transactionsLink")} className={`flex min-w-0 flex-col rounded-[18px] border-2 border-slate-300 bg-white ${narrow ? "absolute inset-0 overflow-hidden" : ""} py-4 ${rail ? "px-3" : "px-5"}`}>
+      <button type="button" data-home-transactions-head="" onClick={() => onNavigate("TodaysTransactions")} aria-label={t("home.transactionsLink")} className={`flex min-h-12 w-full min-w-0 items-start justify-between gap-3 rounded-lg text-left ${FOCUS} focus-visible:outline-emerald-800`}>
+        <span data-home-transactions-title="" className="min-w-0 truncate text-[17px] font-bold text-slate-600">{t("home.transactionsLink")}</span>
+        <span data-home-transactions-see-all="" className="inline-flex min-h-12 shrink-0 items-center whitespace-nowrap text-[17px] font-extrabold text-emerald-900">{t("home.seeAll")}</span>
       </button>
       {rows === null ? (
         <p className="py-2 text-[17px] text-slate-700">{t("home.tableLoadFailed")}</p>
@@ -261,9 +261,9 @@ function CompactTransactionRow({ row, hidden, measure = false }) {
   return (
     <li {...(measure ? {} : { "data-wide-row": "", "data-home-row": "", "data-home-compact-row": "", "data-row-kind": row.kind, "data-row-id": row.id })} className="flex items-start justify-between gap-3 border-b border-slate-200 py-2 last:border-b-0">
       <span className="min-w-0">
-        <span data-cell="what" className="block text-[17px] font-bold leading-snug [overflow-wrap:break-word]"><WhatText text={view.title} masked={hidden ? <HiddenAmount /> : null} /></span>
-        <span data-cell="when" className="block text-[15px] leading-snug text-slate-600"><time dateTime={new Date(row.timestamp).toISOString()}>{formatTime(row.timestamp)}</time>{view.person ? ` · ${view.person}` : ""}</span>
-        {line && <span data-cell="what-line2" className="block text-[15px] leading-snug text-slate-600">{line}</span>}
+        <span data-cell="what" className="block text-[17px] font-bold leading-tight [overflow-wrap:break-word]"><WhatText text={view.title} masked={hidden ? <HiddenAmount /> : null} /></span>
+        <span data-cell="when" className="block text-[15px] leading-tight text-slate-600"><time dateTime={new Date(row.timestamp).toISOString()}>{formatTime(row.timestamp)}</time>{view.person ? ` · ${view.person}` : ""}</span>
+        {line && <span data-cell="what-line2" className="block text-[15px] leading-tight text-slate-600">{line}</span>}
       </span>
       <span className="shrink-0 text-right">
         {moneyIn && <span data-cell="money-in" className="block whitespace-nowrap text-[17px] font-bold text-[#03543F]">+{amount(view.moneyInPesewas)}</span>}
