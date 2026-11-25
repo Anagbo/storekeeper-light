@@ -1,8 +1,10 @@
+import { cleanItemName } from "./itemName.js";
+
 export function normalizeSaleItems(items) {
   if (!Array.isArray(items)) throw new TypeError("Sale items must be a list.");
 
   return items.map((item) => {
-    const name = typeof item?.name === "string" ? item.name.trim() : "";
+    const name = cleanItemName(item?.name);
     const productId = item?.productId;
     const isOtherAmount = productId === null;
     const quantity = item?.quantity;

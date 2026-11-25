@@ -1,6 +1,7 @@
 ﻿import { db } from "./db.js";
 import { runTransactionWithTimeout } from "./runTransactionWithTimeout.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
+import { cleanItemName } from "../lib/itemName.js";
 
 import { findStarterItem, STARTER_CATEGORIES } from "./starterItems.js";
 
@@ -28,7 +29,7 @@ export function normalizeCostInput({ cost, costPricePesewas }) {
 const COST_PROBLEM = "Enter a valid amount for what you paid, or leave it empty.";
 
 export function normalizeProductInput({ name, price = "", pricePesewas: givenPesewas, cost, costPricePesewas }) {
-  const cleanName = typeof name === "string" ? name.trim() : "";
+  const cleanName = cleanItemName(name);
   const hasPesewas = givenPesewas !== undefined;
   const priceText = hasPesewas ? "" : String(price).trim();
   const pricePesewas = hasPesewas ? givenPesewas : priceText ? toPesewas(priceText) : 0;
