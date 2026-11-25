@@ -130,7 +130,7 @@ export function SpentMoney({ params = {}, onBack, onNavigate, onUpdateParams, on
       </fieldset>
       <label className="block space-y-1">
         <span className="text-base font-bold">{t("expense.note")}</span>
-        <input value={note} onChange={(event) => { setNote(event.target.value); onUpdateParams?.({ expenseNote: event.target.value }); }} className="min-h-12 w-full rounded-xl border-2 border-slate-500 px-3" />
+        <input value={note} placeholder={t("expense.notePlaceholder")} onChange={(event) => { setNote(event.target.value); onUpdateParams?.({ expenseNote: event.target.value }); }} className="min-h-12 w-full rounded-xl border-2 border-slate-500 px-3" />
       </label>
       <fieldset>
         <legend className="mb-1 text-lg font-extrabold">{t("expense.paidAllNow")}</legend>
@@ -149,6 +149,7 @@ export function SpentMoney({ params = {}, onBack, onNavigate, onUpdateParams, on
       <PosPrimaryButton type="button" onClick={() => void save()} disabled={saving || !Number.isSafeInteger(amountPesewas) || amountPesewas <= 0}>
         {saving ? t("expense.saving") : t("expense.save")}
       </PosPrimaryButton>
+      {(!Number.isSafeInteger(amountPesewas) || amountPesewas <= 0) && <p data-save-hint="" className="-mt-1 text-center text-[15px] font-normal text-[#475569]">{t("expense.enterAmountHint")}</p>}
     </PosPage>
   );
 }
@@ -256,7 +257,8 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
     }
   }
 
-  const card = "rounded-[18px] border-2 border-slate-300 bg-white px-4 py-3.5";
+  // form_fields: flat fields on the page, no bordered card around each question; the totals are the soft tile.
+  const card = "";
   const field = "h-[52px] w-full min-w-0 rounded-[14px] border-2 border-slate-500 bg-white px-3.5 text-lg font-semibold text-[#0F172A]";
   return (
     <PosPage className="flex max-w-2xl flex-col gap-3">
@@ -264,7 +266,7 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
         <PosBackButton onClick={onBack} />
         <h1 className="text-2xl font-extrabold">{t("expense.stockTitle")}</h1>
       </div>
-      <section data-card="totals" className={`flex flex-col gap-2 ${card}`}>
+      <section data-card="totals" className={`flex flex-col gap-2 ${SOFT_TILE} p-4`}>
         <div className="flex items-center justify-between gap-3 text-[17px]"><span>{t("expense.stockTotal")}</span><strong className="whitespace-nowrap text-xl">{formatGhs(amountPesewas ?? 0)}</strong></div>
         <div className="flex items-center justify-between gap-3 text-[17px]"><span>{t("expense.stillOwed")}</span><strong data-still-owed="" className={`whitespace-nowrap text-xl ${owedPesewas > 0 ? "text-[#0F172A]" : "text-emerald-900"}`}>{formatGhs(owedPesewas)}</strong></div>
       </section>

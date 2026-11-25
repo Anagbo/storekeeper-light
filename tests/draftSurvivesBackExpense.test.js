@@ -56,14 +56,14 @@ async function to44(app) {
   assert.equal(app.route, "SpentMoney");
   await change(app, inputs(app)[0], "50.00");
   await app.tap("Stock");
-  await change(app, labelled(app, "What was this expense for?"), "Rice bags");
+  await change(app, labelled(app, "Note (optional)"), "Rice bags");
 }
 
 function assert44(app) {
   assert.equal(app.route, "SpentMoney");
   assert.equal(inputs(app)[0].props.value, "50.00");
   assert.equal(app.button("Stock").props["aria-pressed"], true);
-  assert.equal(labelled(app, "What was this expense for?").props.value, "Rice bags");
+  assert.equal(labelled(app, "Note (optional)").props.value, "Rice bags");
 }
 
 for (const [name, back] of [["on-screen Back", (app) => app.tap("Back")], ["phone back", (app) => app.phoneBack()]]) {

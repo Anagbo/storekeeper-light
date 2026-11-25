@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { CalendarDays, Check } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { formatDate } from "../lib/formatDate.js";
 import AmountKeypad from "./AmountKeypad.jsx";
 import { amountTextToPesewas, pressAmountKey } from "./amountKeypad.js";
@@ -226,7 +226,7 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, o
         </section>
       )}
       <PosPrimaryButton type="button" disabled={saving || !Number.isSafeInteger(amountPesewas) || amountPesewas <= 0} onClick={continueFlow}>
-        <Check size={20} aria-hidden="true" /> Next
+        Next
       </PosPrimaryButton>
     </PosPage>
   );
