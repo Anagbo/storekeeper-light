@@ -305,7 +305,7 @@ function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
         <label className="block">
           <span className="mb-1 block font-extrabold">{t("credit.ghanaCard")}</span>
           <input autoCapitalize="characters" maxLength="15" placeholder={t("credit.ghanaCardPlaceholder")} value={ghanaCardNumber} onChange={(event) => { const formatted = formatGhanaCard(event.target.value); setGhanaCardNumber(formatted); onUpdateParams?.({ newPersonGhanaCard: formatted }); }} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />
-          <span className="text-sm text-slate-700">{t("credit.ghanaCardHint")}</span>
+          <span className="text-[15px] font-normal text-[#475569]">{t("credit.ghanaCardHint")}</span>
         </label>
         {formErrors.message && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{formErrors.message}</p>}
         <PosPrimaryButton type="submit" className="mt-auto">{t("credit.next")}</PosPrimaryButton>

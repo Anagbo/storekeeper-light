@@ -9,7 +9,7 @@ import { useReminderCheck } from "./ReminderCheck.jsx";
 import { latestReminderAt, loadReminderEvents } from "../db/reminders.js";
 import { formatDate } from "../lib/formatDate.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
-import { formatGhanaCard } from "../utils/formatters.js";
+import { maskGhanaCard } from "../utils/formatters.js";
 import { loadCustomerHistory } from "../utils/loadCustomerDebtHistory.js";
 import { getOutstandingDebtPesewas } from "../lib/money.js";
 import { openWhatsApp } from "../lib/openWhatsApp.js";
@@ -918,7 +918,7 @@ export function DebtorDetail({ params, onBack, onNavigate, onCollect, onSaveCust
             <span className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full bg-emerald-900 text-2xl font-extrabold text-white">{displayName(data.name).slice(0, 1).toUpperCase()}</span>
             <span className="min-w-0 flex-1">
               <strong className="line-clamp-2 break-words text-[22px] leading-tight">{displayName(data.name)}</strong>
-              {data.ghanaCardNumber && <span className="text-base text-slate-800">{t("collect.customerId", { number: formatGhanaCard(data.ghanaCardNumber) })}</span>}
+              {data.ghanaCardNumber && <span className="text-base text-slate-800">{t("collect.customerId", { number: maskGhanaCard(data.ghanaCardNumber) })}</span>}
             </span>
             {!embedded && (
               <button type="button" onClick={() => setContactEditorOpen(true)} className="shrink-0 rounded-xl border-2 border-emerald-900 px-2 py-2 text-sm font-extrabold text-emerald-900">

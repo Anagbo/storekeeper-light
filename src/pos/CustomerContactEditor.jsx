@@ -78,7 +78,7 @@ export default function CustomerContactEditor({ customer, onClose, onSave }) {
               placeholder={t("credit.ghanaCardPlaceholder")}
               className="mt-1 h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg font-normal"
             />
-            <span className="text-sm font-normal text-slate-700">{t("credit.ghanaCardHint")}</span>
+            <span className="block text-[15px] font-normal text-[#475569]">{t("credit.ghanaCardHint")}</span>
           </label>
           {(formErrors.message || error) && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 font-semibold text-rose-950">{formErrors.message || error}</p>}
           <div className="grid grid-cols-2 gap-2">

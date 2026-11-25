@@ -13,3 +13,10 @@ export function formatGhanaCard(value) {
   const checksum = digits.slice(9);
   return `GHA-${idDigits}${idDigits.length === 9 ? `-${checksum}` : ""}`;
 }
+
+// A Ghana Card number shown masked: only the last 4 characters of the number (person details).
+export function maskGhanaCard(value) {
+  const compact = String(value ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (compact.length <= 4) return compact ? "••••" : "";
+  return `••••${compact.slice(-4)}`;
+}

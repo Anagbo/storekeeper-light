@@ -411,7 +411,7 @@ const ENGLISH = Object.freeze({
   "credit.phoneHint": "Add their number so you can call or send a reminder.",
   "credit.ghanaCard": "Ghana Card number",
   "credit.ghanaCardPlaceholder": "GHA-000000000-0",
-  "credit.ghanaCardHint": "Optional. Helps you identify and find them later.",
+  "credit.ghanaCardHint": "Optional. Only you see it.",
   "credit.nameRequired": "Enter the customer’s name.",
   "credit.invalidGhanaCard": "Enter a Ghana Card number like GHA-123456789-0 or 1234567890.",
   "credit.whenPay": "When will {name} pay?",
