@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Banknote, CalendarDays, Check, Smartphone } from "lucide-react";
 import { formatDate } from "../lib/formatDate.js";
 import AmountKeypad from "./AmountKeypad.jsx";
@@ -38,6 +38,15 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, o
   const today = localDateString();
   const [takenOn, setTakenOn] = useState(params.takenOn ?? today);
   const [pickingDate, setPickingDate] = useState(false);
+  // Phone review item 5 (25 Nov 2026): while "What for?" has focus the phone keyboard is open, and the
+  // on-screen keypad above the field pushed the amount out of view. The keypad hides while the field
+  // has focus, so the amount stays on screen. It comes back a moment after the field loses focus, so a
+  // tap on Next is not moved away from under the finger by the keypad reappearing.
+  const [typingNote, setTypingNote] = useState(false);
+  const keypadTimer = useRef(0);
+  useEffect(() => () => clearTimeout(keypadTimer.current), []);
+  const noteFocus = () => { clearTimeout(keypadTimer.current); setTypingNote(true); };
+  const noteBlur = () => { clearTimeout(keypadTimer.current); keypadTimer.current = setTimeout(() => setTypingNote(false), 300); };
   const amountPesewas = amountTextToPesewas(amountText);
   const amountValid = Number.isSafeInteger(amountPesewas) && amountPesewas > 0;
   const debt = params.customer?.debt;
@@ -127,14 +136,14 @@ export function ManualDebtAmount({ params, onBack, onNavigate, onUpdateParams, o
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-900 font-extrabold text-white">{displayName(params.customer?.name).slice(0, 1)}</span>
         <strong className="truncate text-lg">{displayName(params.customer?.name)}</strong>
       </div>
-      <div className="rounded-2xl border-2 border-slate-500 bg-white px-4 py-2 text-right">
+      <div data-debt-amount="" className="rounded-2xl border-2 border-slate-500 bg-white px-4 py-2 text-right">
         <span className="block text-base font-bold text-slate-700">Amount owed</span>
         <strong className="block text-4xl font-extrabold text-[#0F172A] sm:text-5xl">{formatGhs(amountPesewas)}</strong>
       </div>
-      <AmountKeypad label="Amount keypad" onKey={pressAmount} />
+      {!typingNote && <AmountKeypad label="Amount keypad" onKey={pressAmount} />}
       <label className="block">
         <span className="sr-only">What for (optional)</span>
-        <input value={note} onChange={(event) => { setNote(event.target.value); onUpdateParams?.({ note: event.target.value }); }} placeholder="What for? (optional)" className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />
+        <input onFocus={noteFocus} onBlur={noteBlur} value={note} onChange={(event) => { setNote(event.target.value); onUpdateParams?.({ note: event.target.value }); }} placeholder="What for? (optional)" className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />
       </label>
       <button type="button" aria-expanded={pickingDate} onClick={() => setPickingDate((open) => !open)} className="flex h-14 w-full items-center justify-between rounded-2xl border-[3px] border-slate-500 bg-white px-3 text-lg font-bold">
         <span>{t("manualDebt.takenOn", { date: takenOn === today ? t("manualDebt.today") : formatDate(takenOn) })}</span>
