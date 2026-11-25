@@ -49,12 +49,15 @@ test("debt saved: Before, Added to debt, For rows; WhatsApp and See details stac
           assert.ok(row.valueBox.left >= row.labelBox.right - 0.5, `${label} ${row.label}: the value stays right of the label`);
           assert.ok(row.valueBox.right <= m.card.right, `${label} ${row.label}: inside the card`);
         }
-        // saved_credit_layout (25 Nov 2026): Send receipt is always there; Amoto has no phone, so the dashed add-phone button sits under it.
-        assert.deepEqual(m.actions.map((a) => a.text), ["Send receipt", "+ Add phone number", "See Amoto’s details"], `${label}: the three buttons, Send receipt first`);
-        const [, whatsapp, details] = m.actions;
+        // saved_credit_layout (25 Nov 2026): Send receipt is always there; Amoto has no phone, so the dashed add-phone button sits under it,
+        // then Copy receipt (same order as Sell → Owe, owner decision of 25/11), then See details.
+        assert.deepEqual(m.actions.map((a) => a.text), ["Send receipt", "+ Add phone number", "Copy receipt", "See Amoto’s details"], `${label}: the four buttons, Send receipt first`);
+        const [, whatsapp, , details] = m.actions;
         for (const action of m.actions) {
-          if (action.text !== "Send receipt") assert.equal(action.look, action === whatsapp ? "add" : "other", `${label} "${action.text}": look`);
-          assert.ok(action.height >= 51.5, `${label} "${action.text}": 52px or taller (${action.height})`);
+          // The two receipt buttons keep their own looks (no data-look), as on Sell → Owe.
+          if (!["Send receipt", "Copy receipt"].includes(action.text)) assert.equal(action.look, action === whatsapp ? "add" : "other", `${label} "${action.text}": look`);
+          // Copy receipt is the shared 48px button (h-12, the touch-target minimum), same as on Sell → Owe.
+          assert.ok(action.height >= (action.text === "Copy receipt" ? 47.5 : 51.5), `${label} "${action.text}": tall enough (${action.height})`);
           assert.equal(action.lines, 1, `${label} "${action.text}": one line`);
           assert.ok(Math.abs(action.width - (width - 32)) < 1, `${label} "${action.text}": full width (${action.width})`);
         }

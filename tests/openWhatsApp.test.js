@@ -141,10 +141,20 @@ test("scan: wa.me and whatsapp:// appear only in src/lib/openWhatsApp.js", () =>
 });
 
 test("scan: every screen that opens WhatsApp imports the opener (or sendReceipt, which calls it)", () => {
-  for (const file of ["src/pos/Home.jsx", "src/pos/OwedScreens.jsx", "src/pos/DebtCollection.jsx", "src/pos/ManualDebtScreens.jsx", "src/pos/receiptShare.js"]) {
+  for (const file of ["src/pos/Home.jsx", "src/pos/OwedScreens.jsx", "src/pos/DebtCollection.jsx", "src/pos/receiptShare.js"]) {
     assert.match(readFileSync(`${root}${file}`, "utf8"), /import \{ openWhatsApp[^}]*\} from "\.\.\/lib\/openWhatsApp\.js"/, file);
   }
-  assert.match(readFileSync(`${root}src/pos/ReceiptActions.jsx`, "utf8"), /sendReceipt/);
+  const read = (file) => readFileSync(`${root}${file}`, "utf8");
+  assert.match(read("src/pos/ReceiptActions.jsx"), /sendReceipt/);
+  // The saved-as-credit screens (Add debt saved, Sell → Owe) open WhatsApp only through the shared
+  // SavedCreditReceiptActions, which uses ReceiptActions → sendReceipt → openWhatsApp. Each link of that
+  // chain is checked, and the screen itself must not open WhatsApp on its own.
+  assert.match(read("src/pos/ManualDebtScreens.jsx"), /import SavedCreditReceiptActions\b[^;]*from "\.\/SavedCreditReceiptActions\.jsx"/);
+  assert.match(read("src/pos/SavedCreditReceiptActions.jsx"), /import \{[^}]*useReceiptActions[^}]*\} from "\.\/ReceiptActions\.jsx"/);
+  assert.match(read("src/pos/ReceiptActions.jsx"), /import \{[^}]*sendReceipt[^}]*\} from "\.\/receiptShare\.js"/);
+  assert.match(read("src/pos/ReceiptActions.jsx"), /await sendReceipt\(/);
+  assert.match(read("src/pos/receiptShare.js"), /return openWhatsApp\(/);
+  assert.doesNotMatch(read("src/pos/ManualDebtScreens.jsx"), /window\.open|wa\.me|location\.(href|assign)/);
 });
 
 // Item 5 for chunk E: the texts that go through the opener, and the 7-day sheet, join no two facts with " · ".
