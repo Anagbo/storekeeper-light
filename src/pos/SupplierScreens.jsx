@@ -18,6 +18,8 @@ import { useLayoutContext } from "./layout.js";
 import { SOFT_TILE } from "./softTile.js";
 import { findDuplicatePerson, suppliersWithBalances } from "./duplicatePerson.js";
 import DuplicatePersonQuestion from "./DuplicatePersonQuestion.jsx";
+import DateField from "./DateField.jsx";
+import { tidyPersonName } from "../lib/personName.js";
 
 const CATEGORY_LABELS = Object.freeze({
   stock: "expense.category.stock",
@@ -243,7 +245,7 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
         category: "stock",
         note: params?.note ?? "",
         supplierId: isNew ? undefined : supplierId || undefined,
-        newSupplier: isNew ? { name: supplierName, phone: supplierPhone } : undefined,
+        newSupplier: isNew ? { name: tidyPersonName(supplierName), phone: supplierPhone } : undefined,
         payBy,
         ...(paidPesewas > 0 && { paidWith })
       });
@@ -310,15 +312,15 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
             </div>
             {isNew && (
               <div data-new-supplier-fields="" className="flex flex-col gap-2.5 pt-1">
-                <label className="block"><span className="mb-1.5 block text-[15px] font-bold text-slate-600">{t("expense.supplierName")}</span><input ref={nameInput} value={supplierName} onChange={(event) => { setSupplierName(event.target.value); onUpdateParams?.({ stockSupplierName: event.target.value }); }} className={field} /></label>
+                <label className="block"><span className="mb-1.5 block text-[15px] font-bold text-slate-600">{t("expense.supplierName")}</span><input ref={nameInput} autoComplete="off" autoCapitalize="words" value={supplierName} onChange={(event) => { setSupplierName(event.target.value); onUpdateParams?.({ stockSupplierName: event.target.value }); }} className={field} /></label>
                 {duplicate?.by === "name" && question}
-                <label className="block"><span className="mb-1.5 block text-[15px] font-bold text-slate-600">{t("expense.supplierPhone")}</span><input type="tel" inputMode="tel" value={supplierPhone} onChange={(event) => { setSupplierPhone(event.target.value); onUpdateParams?.({ stockSupplierPhone: event.target.value }); }} className={field} /></label>
+                <label className="block"><span className="mb-1.5 block text-[15px] font-bold text-slate-600">{t("expense.supplierPhone")}</span><input type="tel" inputMode="tel" autoComplete="off" value={supplierPhone} onChange={(event) => { setSupplierPhone(event.target.value); onUpdateParams?.({ stockSupplierPhone: event.target.value }); }} className={field} /></label>
                 {duplicate?.by === "phone" && question}
               </div>
             )}
           </section>
           <section data-card="pay-by" className={card}>
-            <label className="block"><span className="mb-1.5 block text-base font-extrabold">{t("expense.payBy")}</span><input type="date" value={payBy} onChange={(event) => { setPayBy(event.target.value); onUpdateParams?.({ stockPayBy: event.target.value }); }} className={field} /></label>
+            <label className="block"><span className="mb-1.5 block text-base font-extrabold">{t("expense.payBy")}</span><DateField min={localDateString()} value={payBy} onChange={(event) => { setPayBy(event.target.value); onUpdateParams?.({ stockPayBy: event.target.value }); }} className={field} /></label>
           </section>
         </>
       )}

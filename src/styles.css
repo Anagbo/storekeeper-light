@@ -55,6 +55,11 @@ button {
   outline: none;
 }
 
+/* rules_global.form_fields: a native date picker is light, like the app (not dark on a dark phone). */
+.pos-app input[type="date"] {
+  color-scheme: light;
+}
+
 .amount-fit-container {
   container-type: inline-size;
   min-width: 0;

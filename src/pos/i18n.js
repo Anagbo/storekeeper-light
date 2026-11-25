@@ -460,6 +460,7 @@ const ENGLISH = Object.freeze({
   "credit.eachTimeTooHigh": "Each time is too high for this debt. Enter a smaller amount.",
   "credit.paymentPartsMismatch": "The payment today does not match the cash and MoMo entered. Go back and enter the payment again.",
   "credit.debtChanged":"This customer’s debt changed since you started. Go back and choose the customer again.",
+  "form.chooseDate": "Choose a date",
   "duplicate.exists": "{name} already exists (owes {amount}). Use this person?",
   "duplicate.existsSupplier": "{name} already exists (you owe {amount}). Use this person?",
   "duplicate.use": "Use this person",

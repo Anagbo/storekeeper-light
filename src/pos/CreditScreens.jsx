@@ -32,6 +32,8 @@ import { confirmDirectMomoParts, describeSplitPart, isLockedMomoRow, isUnconfirm
 import { CREDIT_REASON_MAX } from "../lib/creditReason.js";
 import { findDuplicatePerson, loadKnownCustomers } from "./duplicatePerson.js";
 import DuplicatePersonQuestion from "./DuplicatePersonQuestion.jsx";
+import DateField from "./DateField.jsx";
+import { tidyPersonName } from "../lib/personName.js";
 import { loadRecentCreditReasons } from "../db/recentReasons.js";
 import { getCreditReasonCase } from "./creditDraft.js";
 
@@ -251,7 +253,8 @@ function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
 
   function continueWithNewCustomer(event) {
     event.preventDefault();
-    const cleanName = name.trim();
+    // rules_global.form_fields: the name is saved tidied, a capital first letter per word.
+    const cleanName = tidyPersonName(name);
     if (!formErrors.check()) return;
     // A sale always reaches 34 with its amount (Owe on 15 needs one); without it there is nothing to
     // owe and nothing the owner can fix here, so Next does nothing.
@@ -287,13 +290,13 @@ function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
         {!params.manualDebt && <OwesFromSale amountPesewas={amountOwedPesewas} />}
         <label className="block">
           <span className="mb-1 block font-extrabold">{t("credit.name")}</span>
-          <input ref={nameInput} autoComplete="name" placeholder={t("credit.namePlaceholder")} value={name} onChange={(event) => { setName(event.target.value); onUpdateParams?.({ newPersonName: event.target.value }); }} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />
+          <input ref={nameInput} data-person-name="" autoComplete="off" autoCapitalize="words" placeholder={t("credit.namePlaceholder")} value={name} onChange={(event) => { setName(event.target.value); onUpdateParams?.({ newPersonName: event.target.value }); }} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg" />
           <span className="text-sm text-slate-700">{t("credit.nameHint")}</span>
         </label>
         {duplicate?.by === "name" && question}
         <label className="block">
           <span className="mb-1 block font-extrabold">{t("credit.phone")}</span>
-          <input type="tel" inputMode="tel" autoComplete="tel" placeholder={t("credit.phonePlaceholder")} value={phone} onChange={(event) => { setPhone(event.target.value); onUpdateParams?.({ newPersonPhone: event.target.value }); }} aria-invalid={phoneInvalid} aria-describedby="new-person-phone-hint" className={`h-14 w-full rounded-2xl border-[3px] px-3 text-lg ${phoneInvalid ? "border-rose-900" : "border-slate-500"}`} />
+          <input type="tel" inputMode="tel" autoComplete="off" placeholder={t("credit.phonePlaceholder")} value={phone} onChange={(event) => { setPhone(event.target.value); onUpdateParams?.({ newPersonPhone: event.target.value }); }} aria-invalid={phoneInvalid} aria-describedby="new-person-phone-hint" className={`h-14 w-full rounded-2xl border-[3px] px-3 text-lg ${phoneInvalid ? "border-rose-900" : "border-slate-500"}`} />
           <span id="new-person-phone-hint" className={`text-sm ${phoneInvalid ? "text-rose-900" : "text-slate-700"}`}>{phoneInvalid ? t("contact.invalidPhone") : t("credit.phoneHint")}</span>
         </label>
         {duplicate?.by === "phone" && question}
@@ -941,7 +944,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
       )}
       <label className="block">
         <span className="mb-1 block text-lg font-extrabold">{t("credit.nextPaymentDate")}</span>
-        <input type="date" min={dayAfter(today)} value={nextDueDate} aria-invalid={!dateValid} onChange={(event) => { setNextDueDate(event.target.value); onUpdateParams?.({ nextDueDate: event.target.value }); }} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg font-bold" />
+        <DateField min={dayAfter(today)} value={nextDueDate} aria-invalid={!dateValid} onChange={(event) => { setNextDueDate(event.target.value); onUpdateParams?.({ nextDueDate: event.target.value }); }} className="h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-lg font-bold" />
         {!dateValid && <span role="alert" className="mt-1 block text-sm font-semibold text-rose-900">{t("credit.invalidDueDate")}</span>}
       </label>
       {/* Wide D10: with the parts recorded, the panel is the only content here and it sits in the

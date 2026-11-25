@@ -146,7 +146,7 @@ test("an unknown failure keeps the general message", async () => {
 // ---- 34: a new person with the name of someone who already owes ------------------------------------------------------
 
 async function typeName(view, value) {
-  const name = [...walk(view.tree)].find((node) => node.type === "input" && node.props?.autoComplete === "name");
+  const name = [...walk(view.tree)].find((node) => node.type === "input" && node.props?.["data-person-name"] !== undefined);
   name.props.onChange({ target: { value } });
   view.rerender();
   flushEffects(view);

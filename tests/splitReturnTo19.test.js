@@ -108,7 +108,7 @@ async function openNineteen({ existing, sale = 8000, each = "40" }) {
   if (existing) await recordManualDebt({ name: "Ama", amountPesewas: existing, dueDate: addDueCycles(TODAY, "weekly", 1), now: Date.now() - 5000 });
   const a = app();
   a.start("NewPerson", { amountPesewas: sale, saleItems: [] });
-  input(a.tree, (props) => props.autoComplete === "name").props.onChange({ target: { value: existing ? "Ama" : "Kofi New" } });
+  input(a.tree, (props) => props["data-person-name"] !== undefined).props.onChange({ target: { value: existing ? "Ama" : "Kofi New" } });
   a.rerender(); a.flush();
   // rules_global.duplicate_person (25 Nov 2026): an existing name is asked about; "Use this person" goes on.
   if (existing) await waitFor(() => { a.rerender(); return [...walk(a.tree)].some((node) => node.props?.role === "status" && /already exists/.test(textOf(node))); }, "the duplicate question");

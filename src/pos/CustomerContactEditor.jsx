@@ -57,7 +57,7 @@ export default function CustomerContactEditor({ customer, onClose, onSave }) {
             <input
               type="tel"
               inputMode="tel"
-              autoComplete="tel"
+              autoComplete="off"
               maxLength="30"
               value={phone}
               onChange={(event) => { setPhone(event.target.value); setError(""); }}
