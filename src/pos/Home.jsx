@@ -235,7 +235,8 @@ function TransactionsCard({ rows, hidden, onNavigate, layout, rail = false, narr
 function useMeasuredWidth() {
   const [node, setNode] = useState(null);
   const [width, setWidth] = useState(0);
-  useEffect(() => {
+  // Layout effect: the first read lands before the first paint, so Home never shows one column and then jumps to two.
+  useLayoutEffect(() => {
     if (!node) return undefined;
     const read = () => setWidth(Math.round(node.getBoundingClientRect().width));
     read();
