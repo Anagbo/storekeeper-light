@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Banknote, Check, Clock3, Phone, Plus, ReceiptText, Smartphone, Undo2, UserRoundPen, X } from "lucide-react";
+import { Banknote, Check, Phone, Plus, ReceiptText, Smartphone, Undo2, UserRoundPen, X } from "lucide-react";
 import { db } from "../db/db.js";
 import { COLLECTION_UNDO_WINDOW_MS, undoDebtCollection } from "../db/debts.js";
 import { correctDebtBalance } from "../db/debtLedger.js";
@@ -545,6 +545,10 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
   const actions = useReceiptActions(receiptMessage, receiptPhone ?? "");
   // Undo is open for a while: the receipt is held back until it has passed, so a payment that is undone is never receipted.
   const receiptReady = remainingSeconds <= 0 && !undone;
+  // payment_received_layout: the countdown shows inside Undo and the receipt buttons ("Undo · 8s").
+  const countdown = remainingSeconds > 0 && !undone ? ` · ${remainingSeconds}s` : "";
+  const sendLabel = receiptReady ? t("collect.receiptShare") : `${t("collect.whatsapp")}${countdown}`;
+  const copyLabel = receiptReady ? t("receipt.copy") : `${t("receipt.copy")}${countdown}`;
 
   useEffect(() => {
     if (!savedCustomer) return;
@@ -617,13 +621,13 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
           pair (the phone's buttons; Undo stays the only thing that holds the receipt back). */}
       {wide && (
         <>
-          <PosSecondaryButton type="button" disabled={busy || remainingSeconds <= 0 || undone} onClick={() => void undo()} tone="danger" className="w-full">
-            <Undo2 size={22} aria-hidden="true" /> {t("collect.undo")}
+          <PosSecondaryButton type="button" disabled={busy || remainingSeconds <= 0 || undone} onClick={() => void undo()} tone="danger" aria-label={t("collect.undo")} className="w-full">
+            <Undo2 size={22} aria-hidden="true" /> {t("collect.undo")}{countdown}
           </PosSecondaryButton>
           {receiptsOn && (
             <ReceiptPair
-              send={<SendReceiptButton onClick={() => void actions.send()} disabled={!receiptReady} label={t("collect.receiptShare")} />}
-              copy={<CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} disabled={!receiptReady} className="h-14!" />}
+              send={<SendReceiptButton onClick={() => void actions.send()} disabled={!receiptReady} label={sendLabel} ariaLabel={t("collect.receiptShare")} />}
+              copy={<CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} disabled={!receiptReady} label={copyLabel} ariaLabel={receiptReady ? undefined : t("receipt.copy")} className="h-14!" />}
               online={actions.online || !receiptReady}
               failed={receiptReady ? actions.failed : null}
             />
@@ -632,30 +636,26 @@ export function PaymentReceived({ params, onHome, onNavigate, onSaveCustomerCont
       )}
       {!wide && <>
       <div className={`grid gap-2 ${receiptsOn ? "grid-cols-2" : "grid-cols-1"}`}>
-        <PosSecondaryButton type="button" disabled={busy || remainingSeconds <= 0 || undone} onClick={() => void undo()} tone="danger">
-          <Undo2 size={22} aria-hidden="true" /> {t("collect.undo")}
+        <PosSecondaryButton type="button" disabled={busy || remainingSeconds <= 0 || undone} onClick={() => void undo()} tone="danger" aria-label={t("collect.undo")}>
+          <Undo2 size={22} aria-hidden="true" /> {t("collect.undo")}{countdown}
         </PosSecondaryButton>
         {/* Without a valid phone, Send receipt opens the share sheet (receiptShare.sendReceipt). Only the Undo window holds it back. */}
-        {receiptsOn && <SendReceiptButton onClick={() => void actions.send()} disabled={!receiptReady} label={t("collect.receiptShare")} />}
+        {receiptsOn && <SendReceiptButton onClick={() => void actions.send()} disabled={!receiptReady} label={sendLabel} ariaLabel={t("collect.receiptShare")} />}
         {receiptsOn && receiptReady && <ReceiptOfflineLine online={actions.online} className="col-span-full" />}
       </div>
-      {receiptsOn && <CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} disabled={!receiptReady} />}
+      {receiptsOn && <CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} disabled={!receiptReady} label={copyLabel} ariaLabel={receiptReady ? undefined : t("receipt.copy")} />}
       {receiptsOn && receiptReady && <ReceiptFailedLine failed={actions.failed} />}
       </>}
-      {receiptsOn && remainingSeconds > 0 && !undone && (
-        <p role="status" className={`text-center ${wide ? "text-[17px]" : "text-sm"} font-semibold text-slate-700`}>{t("collect.receiptWait", { seconds: remainingSeconds })}</p>
+      {/* payment_received_layout: one helper line explains the wait (15px, #475569), then one dashed
+          "+ Add phone number" button 12px under it (the helper never touches the dashed button). */}
+      {remainingSeconds > 0 && !undone && (
+        <p data-helper="" role="status" className="mb-1 text-center text-[15px] font-normal text-[#475569]">{t(receiptsOn ? "collect.undoThenReceipt" : "collect.undoWindow", { seconds: Math.floor(COLLECTION_UNDO_WINDOW_MS / 1000) })}</p>
       )}
       {receiptsOn && !receiptPhone && !undone && (
-        <div className="text-center">
-          <AddButton onClick={() => setContactEditorOpen(true)}>
-            {t("collect.addPhoneForReceipt")}
-          </AddButton>
-          <p className={`${wide ? "text-[17px]" : "text-sm"} font-semibold text-slate-700`}>{t("collect.addPhoneForReceiptHint")}</p>
-        </div>
+        <AddButton data-add-phone="" onClick={() => setContactEditorOpen(true)} className="mt-1">
+          {t("collect.addPhoneForReceipt")}
+        </AddButton>
       )}
-      <p className="text-center text-[17px] text-slate-800">
-        <Clock3 size={16} className="mr-1 inline" aria-hidden="true" />{t("collect.undoWindow", { seconds: Math.floor(COLLECTION_UNDO_WINDOW_MS / 1000) })}
-      </p>
       <PosSecondaryButton type="button" onClick={() => onNavigate("DebtorDetail", { debtId: result.debtId, customerName: result.customerName })} className="w-full">
         {t("collect.seeDetails", { name: displayName(result.customerName) })}
       </PosSecondaryButton>

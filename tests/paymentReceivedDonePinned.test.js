@@ -44,7 +44,7 @@ const MEASURE = `(() => {
     hits, others,
     circle: circle ? box(circle) : null,
     undoLine: [...main.querySelectorAll("p")].some((p) => /^Undo is available for 10 seconds/.test(p.textContent.trim())),
-    shareWait: [...main.querySelectorAll("p")].some((p) => /^Share becomes available/.test(p.textContent.trim()))
+    shareWait: [...main.querySelectorAll("p")].some((p) => /receipt buttons work after that/.test(p.textContent.trim()))
   };
 })()`;
 

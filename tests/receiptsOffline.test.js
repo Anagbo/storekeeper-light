@@ -349,7 +349,7 @@ test("31 with a saved number goes to that number; without one, no Send receipt b
       flushEffects(view);
       if (viaShare) {
         assert.equal(findButton(view.tree, "Send receipt"), null);
-        assert.ok(findButton(view.tree, "Add phone number to send WhatsApp"));
+        assert.ok(findButton(view.tree, "Add phone for WhatsApp"));
         continue;
       }
       await findButton(view.tree, "Send receipt").props.onClick();
@@ -415,18 +415,18 @@ async function show28(env, phone) {
   }
 }
 
-test("28 without a phone and receipts on: \"+ Add phone\" (add look) with the quiet line under it", async () => {
+test("28 without a phone and receipts on: one dashed \"+ Add phone number\" (add look), no extra line under it", async () => {
   const view = await show28(ON, "");
-  const button = findButton(view.tree, "Add phone");
+  const button = findButton(view.tree, "Add phone number");
   assert.ok(button, "the add button");
   assert.equal(button.props["data-look"], "add");
-  assert.equal(textOf(button), "+ Add phone");
+  assert.equal(textOf(button), "+ Add phone number");
   assert.doesNotMatch(textOf(view.tree), /Add a phone number/);
-  assert.match(textOf(view.tree), /\+ Add phone\s*Next time the receipt opens their WhatsApp chat\./);
+  assert.doesNotMatch(textOf(view.tree), /Next time the receipt opens/);
 });
 
-test("28 with a phone, or with the receipts flag off: no link and no quiet line", async () => {
+test("28 with a phone, or with the receipts flag off: no add-phone button", async () => {
   for (const view of [await show28(ON, "+233241234567"), await show28({}, "")]) {
-    assert.doesNotMatch(textOf(view.tree), /Add phone|Next time the receipt opens/);
+    assert.doesNotMatch(textOf(view.tree), /Add phone/);
   }
 });

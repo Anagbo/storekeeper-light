@@ -115,9 +115,11 @@ test("28 flag on without a phone: Send receipt and Copy receipt are enabled once
 for (const [label, phone] of [["with a phone", PHONE], ["without a phone", ""]]) {
   test(`28 flag on ${label}: Send receipt and Copy receipt are disabled during the Undo window`, async () => {
     const tree = await show28(ON, phone, Date.now() + 60_000);
-    assert.ok(findButton(tree, "Send receipt").props.disabled);
-    assert.ok(findButton(tree, "Copy receipt").props.disabled);
-    assert.match(textOf(tree), /Share becomes available in/);
+    assert.ok(findButton(tree, "WhatsApp · ").props.disabled);
+    assert.ok(findButton(tree, "Copy receipt · ").props.disabled);
+    assert.match(textOf(tree), /The receipt buttons work after that/);
+    assert.match(textOf(tree), /WhatsApp · \d+s/, "the countdown is inside the button");
+    assert.match(textOf(tree), /Copy receipt · \d+s/);
   });
 }
 
