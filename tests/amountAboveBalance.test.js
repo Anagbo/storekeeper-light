@@ -58,6 +58,7 @@ const hostButton = (app, label) => {
   return found.type === "button" ? found : nodes(found).find((node) => node.type === "button");
 };
 const CONTROLS = [["Cash", /^Cash$/], ["MoMo", /^MoMo$/], ["Split payment", "Split payment"], ["Received", /Received$/]];
+const CHIPS = new Set(["Cash", "MoMo"]);
 
 // 22 > the Collect sheet (25) > Pay part (26).
 async function to26(app) {
@@ -76,7 +77,14 @@ async function assertAllBlocked(app, where) {
   for (const [name, label] of CONTROLS) {
     const button = hostButton(app, label);
     assert.equal(button.props.disabled, true, `${where}: ${name} is disabled`);
-    assert.match(String(button.props.className), /disabled:opacity-50/, `${where}: ${name} is faded when disabled`);
+    // Cash and MoMo are choice chips: the disabled look is a light #CBD5E1 border and a #94A3B8 label
+    // (no tick, no mint); Split payment and Received keep their faded look.
+    if (CHIPS.has(name)) {
+      const classes = new Set(String(button.props.className).split(/\s+/));
+      assert.ok(classes.has("border-[#CBD5E1]") && classes.has("text-[#94A3B8]") && !classes.has("bg-[#D1FAE5]"), `${where}: ${name} has the disabled chip look`);
+    } else {
+      assert.match(String(button.props.className), /disabled:opacity-50/, `${where}: ${name} is faded when disabled`);
+    }
   }
   // The handlers ignore the tap too (not just the look): nothing opens, nothing is recorded.
   const before = await db.payments.count();
@@ -151,7 +159,8 @@ test("26 in the real app at 340, 360 and 393px with an amount above the balance"
     const out = { scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth, error: document.body.innerText.includes(${JSON.stringify(ERROR)}) };
     for (const [name, b] of Object.entries(pick)) {
       const r = b.getBoundingClientRect();
-      out[name] = { disabled: b.disabled, opacity: getComputedStyle(b).opacity, left: r.left, right: r.right };
+      const cs = getComputedStyle(b);
+      out[name] = { disabled: b.disabled, opacity: cs.opacity, border: cs.borderTopColor, color: cs.color, left: r.left, right: r.right };
     }
     out.text = document.body.innerText;
     return out;
@@ -171,7 +180,11 @@ test("26 in the real app at 340, 360 and 393px with an amount above the balance"
       assert.ok(s.scrollWidth <= s.innerWidth, `${where}: no sideways scroll`);
       for (const name of ["cash", "momo", "split", "received"]) {
         assert.equal(s[name].disabled, true, `${where}: ${name} disabled`);
-        assert.equal(s[name].opacity, "0.5", `${where}: ${name} faded`);
+        if (name === "cash" || name === "momo") {
+          assert.deepEqual([s[name].border, s[name].color, s[name].opacity], ["rgb(203, 213, 225)", "rgb(148, 163, 184)", "1"], `${where}: ${name} has the disabled chip look`);
+        } else {
+          assert.equal(s[name].opacity, "0.5", `${where}: ${name} faded`);
+        }
         assert.ok(s[name].left >= -0.5 && s[name].right <= s.innerWidth + 0.5, `${where}: ${name} inside the screen`);
       }
       assert.equal(s.del.disabled, false, `${where}: the keypad stays active`);

@@ -326,20 +326,25 @@ export function PosBackButton({ className = "", ...props }) {
 // #0F172A with white text when selected. kind="choice" sets a value in a form: mint #D1FAE5, 2px #03543F
 // border, dark text and a 16px tick on the left (so it is never colour only). Unselected is white with a
 // 2px #64748B border. Solid green stays only on the one action of a screen.
-export function ChoiceChip({ kind = "choice", selected = false, children, className = "", ...props }) {
-  const look = selected
-    ? (kind === "view" ? "border-[#0F172A] bg-[#0F172A] text-white" : "border-[#03543F] bg-[#D1FAE5] text-[#0F172A]")
-    : "border-[#64748B] bg-white text-[#0F172A]";
+// Disabled: the payment tiles' disabled look (#CBD5E1 border, #94A3B8 label, white), not a half fade.
+export function ChoiceChip({ kind = "choice", selected = false, disabled = false, children, className = "", ...props }) {
+  const look = disabled
+    ? "border-[#CBD5E1] bg-white text-[#94A3B8]"
+    : selected
+      ? (kind === "view" ? "border-[#0F172A] bg-[#0F172A] text-white" : "border-[#03543F] bg-[#D1FAE5] text-[#0F172A]")
+      : "border-[#64748B] bg-white text-[#0F172A]";
   return (
     <button
       type="button"
       data-chip={kind}
       data-selected={selected ? "true" : "false"}
       aria-pressed={selected}
+      aria-disabled={disabled || undefined}
+      disabled={disabled}
       {...props}
-      className={`flex min-h-12 min-w-0 items-center justify-center gap-1 rounded-[14px] border-2 px-1.5 text-center font-extrabold leading-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-60 ${look} ${className}`}
+      className={`flex min-h-12 min-w-0 items-center justify-center gap-1 rounded-[14px] border-2 px-1.5 text-center font-extrabold leading-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed ${look} ${className}`}
     >
-      {kind === "choice" && selected && (
+      {kind === "choice" && selected && !disabled && (
         <TickBadge data-chip-tick="" />
       )}
       {children}

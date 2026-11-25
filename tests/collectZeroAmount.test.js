@@ -70,7 +70,13 @@ async function assertBlocked(app, where) {
   for (const [name, label] of [["MoMo", MOMO], ["Split payment", SPLIT]]) {
     const button = hostButton(app, label);
     assert.equal(button.props.disabled, true, `${where}: ${name} is disabled`);
-    assert.match(String(button.props.className), /disabled:opacity-50|opacity-50/, `${where}: ${name} is faded`);
+    // MoMo is a choice chip: disabled is the light #CBD5E1 border and #94A3B8 label; Split payment stays faded.
+    if (name === "MoMo") {
+      const classes = new Set(String(button.props.className).split(/\s+/));
+      assert.ok(classes.has("border-[#CBD5E1]") && classes.has("text-[#94A3B8]"), `${where}: ${name} has the disabled chip look`);
+    } else {
+      assert.match(String(button.props.className), /disabled:opacity-50|opacity-50/, `${where}: ${name} is faded`);
+    }
     await click(button);
     await app.settle();
     assert.equal(app.route, "CollectPayPart", `${where}: a tap on ${name} does nothing`);
@@ -150,7 +156,8 @@ test("25 Pay part in the real app at 340, 360 and 393px at GH₵0.00", { skip: b
     const out = { scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth };
     for (const [name, re] of Object.entries({ cash: /^Cash$/, momo: /^MoMo$/, split: /^Split payment$/, received: /Received$/, five: /^5$/ })) {
       const b = byText(re); if (!b) { out.missing = (out.missing || []).concat(name); continue; } const r = b.getBoundingClientRect();
-      out[name] = { disabled: b.disabled, opacity: getComputedStyle(b).opacity, left: r.left, right: r.right };
+      const cs = getComputedStyle(b);
+      out[name] = { disabled: b.disabled, opacity: cs.opacity, border: cs.borderTopColor, color: cs.color, left: r.left, right: r.right };
     }
     return out;
   })()`;
@@ -168,7 +175,11 @@ test("25 Pay part in the real app at 340, 360 and 393px at GH₵0.00", { skip: b
       assert.ok(s.scrollWidth <= s.innerWidth, `${where}: no sideways scroll`);
       for (const name of ["momo", "split", "received"]) {
         assert.equal(s[name].disabled, true, `${where}: ${name} disabled`);
-        assert.equal(s[name].opacity, "0.5", `${where}: ${name} faded`);
+        if (name === "momo") {
+          assert.deepEqual([s[name].border, s[name].color, s[name].opacity], ["rgb(203, 213, 225)", "rgb(148, 163, 184)", "1"], `${where}: ${name} has the disabled chip look`);
+        } else {
+          assert.equal(s[name].opacity, "0.5", `${where}: ${name} faded`);
+        }
       }
       for (const name of ["cash", "five"]) assert.equal(s[name].disabled, false, `${where}: ${name} stays active`);
       for (const name of ["cash", "momo", "split", "received"]) assert.ok(s[name].left >= -0.5 && s[name].right <= s.innerWidth + 0.5, `${where}: ${name} inside the screen`);
