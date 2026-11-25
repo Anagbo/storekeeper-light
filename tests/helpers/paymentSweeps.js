@@ -87,7 +87,7 @@ export async function sweep19(firstNames) {
   await app.keys(["8"]);
   await app.tap("Owe");
   await app.tap(/New person/);
-  nodes(app.view.tree).find((node) => node.type === "input" && node.props.placeholder === "e.g. Kofi Mensah").props.onChange({ target: { value: "Ama Owusu" } });
+  nodes(app.view.tree).find((node) => node.type === "input" && node.props.placeholder === "For example: Ama").props.onChange({ target: { value: "Ama Owusu" } });
   await app.settle();
   await nodes(app.view.tree).find((node) => node.type === "form").props.onSubmit({ preventDefault() {} });
   await app.settle();

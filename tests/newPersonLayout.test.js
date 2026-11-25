@@ -10,7 +10,7 @@ import { loadJsx, render } from "./helpers/renderJsx.js";
 // amount needs it. Add debt: no amount line at all.
 
 const WIDTHS = [340, 360, 393];
-const FIELDS = ["e.g. Kofi Mensah", "024 000 0000", "GHA-000000000-0"];
+const FIELDS = ["For example: Ama", "For example: 024 123 4567", "GHA-000000000-0"];
 
 async function page34(params) {
   const { default: CreditScreens } = await loadJsx("src/pos/CreditScreens.jsx");

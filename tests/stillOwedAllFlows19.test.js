@@ -65,7 +65,7 @@ async function newCustomerTo19(app) {
   await app.tap("Owe");
   await app.tap(/New person/);
   assert.equal(app.route, "NewPerson");
-  const nameInput = nodes(app.view.tree).find((node) => node.type === "input" && node.props.placeholder === "e.g. Kofi Mensah");
+  const nameInput = nodes(app.view.tree).find((node) => node.type === "input" && node.props.placeholder === "For example: Ama");
   nameInput.props.onChange({ target: { value: "KOFI MENSAH" } });
   await app.settle();
   const form = nodes(app.view.tree).find((node) => node.type === "form");

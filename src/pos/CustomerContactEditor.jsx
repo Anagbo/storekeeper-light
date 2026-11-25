@@ -61,6 +61,7 @@ export default function CustomerContactEditor({ customer, onClose, onSave }) {
               maxLength="30"
               value={phone}
               onChange={(event) => { setPhone(event.target.value); setError(""); }}
+              data-example-placeholder=""
               placeholder={t("credit.phonePlaceholder")}
               aria-invalid={phoneInvalid}
               aria-describedby="contact-phone-hint"

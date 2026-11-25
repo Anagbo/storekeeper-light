@@ -293,7 +293,7 @@ export function PaymentSettings({ params = {}, onBack, onNavigate, onUpdateParam
         </button>
       </div>
       {enabled && <>
-        <label className="mt-2 block font-bold">My MoMo number<input aria-label="My MoMo number" autoFocus={setUpNumber} value={numberInput} onChange={(event) => { setNumberInput(event.target.value); keepDraft({ numberInput: event.target.value }); setConfirming(false); }} type="tel" inputMode="tel" autoComplete="tel" placeholder="024 123 4567" className="mt-1 h-14 w-full rounded-xl border-[3px] border-slate-500 px-3 text-xl" /></label>
+        <label className="mt-2 block font-bold">My MoMo number<input aria-label="My MoMo number" autoFocus={setUpNumber} value={numberInput} onChange={(event) => { setNumberInput(event.target.value); keepDraft({ numberInput: event.target.value }); setConfirming(false); }} type="tel" inputMode="tel" autoComplete="tel" data-example-placeholder="" placeholder={t("credit.phonePlaceholder")} className="mt-1 h-14 w-full rounded-xl border-[3px] border-slate-500 px-3 text-xl" /></label>
         <fieldset className="mt-2">
           <legend className="mb-2 text-lg font-extrabold">Network</legend>
           <div className="grid grid-cols-3 gap-2">{RECEIVING_NETWORKS.map((item) => <button key={item} type="button" aria-pressed={settings.network === item} onClick={() => { setSettings((current) => ({ ...current, network: item })); keepDraft({ network: item }); setConfirming(false); }} className={`min-h-14 min-w-0 rounded-xl border-[3px] px-1 text-sm font-bold ${settings.network === item ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{item}</button>)}</div>
@@ -357,7 +357,7 @@ export function MoMoSetup({ params = {}, onBack, onNavigate, onUpdateParams, sho
       <legend className="mb-2 text-lg font-extrabold">Payout network</legend>
       <div className="flex flex-wrap gap-2">{NETWORKS.map((item) => <button key={item} type="button" aria-label={`Payout ${item}`} aria-pressed={network === item} onClick={() => { setNetwork(item); onUpdateParams?.({ payoutNetwork: item }); }} className={`min-h-14 min-w-[6.5rem] flex-1 rounded-2xl border-[3px] px-2 font-extrabold ${network === item ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{item}</button>)}</div>
     </fieldset>
-    <label className="font-bold">Payout MoMo number<input value={number} onChange={(event) => { setNumber(event.target.value); onUpdateParams?.({ payoutNumber: event.target.value }); }} type="tel" inputMode="tel" className="mt-1 h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-xl" /></label>
+    <label className="font-bold">Payout MoMo number<input value={number} onChange={(event) => { setNumber(event.target.value); onUpdateParams?.({ payoutNumber: event.target.value }); }} type="tel" inputMode="tel" data-example-placeholder="" placeholder={t("credit.phonePlaceholder")} className="mt-1 h-14 w-full rounded-2xl border-[3px] border-slate-500 px-3 text-xl" /></label>
     <p className="text-base text-slate-800">Payouts come on Paystack’s schedule, not the moment a customer pays.</p>
     <div className="flex-1" />
     <PosPrimaryButton type="button" onClick={async () => {
@@ -396,7 +396,7 @@ export function MoMoPayment({ params = {}, onBack, onNavigate, onUpdateParams })
       <legend className="mb-2 text-lg font-extrabold">Customer’s network</legend>
       <div className="flex flex-wrap gap-2">{NETWORKS.map((item) => <button key={item} type="button" aria-label={`Network ${item}`} aria-pressed={network === item} onClick={() => { setNetwork(item); onUpdateParams?.({ requestNetwork: item }); }} className={`min-h-14 min-w-[6.5rem] flex-1 rounded-xl border-[3px] px-2 font-bold ${network === item ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>{item}</button>)}</div>
     </fieldset>
-    <label className="font-bold">Customer’s MoMo number<input aria-label="Customer’s MoMo number" value={phone} onChange={(event) => { setPhone(event.target.value); onUpdateParams?.({ requestPhone: event.target.value }); }} type="tel" inputMode="tel" autoComplete="off" className="mt-1 h-14 w-full rounded-xl border-[3px] border-slate-500 px-3 text-xl" /></label>
+    <label className="font-bold">Customer’s MoMo number<input aria-label="Customer’s MoMo number" value={phone} onChange={(event) => { setPhone(event.target.value); onUpdateParams?.({ requestPhone: event.target.value }); }} type="tel" inputMode="tel" autoComplete="off" data-example-placeholder="" placeholder={t("credit.phonePlaceholder")} className="mt-1 h-14 w-full rounded-xl border-[3px] border-slate-500 px-3 text-xl" /></label>
     <PosPrimaryButton type="button" disabled={!PHONE_REQUEST_ENABLED} onClick={() => onNavigate(network === "Telecel" ? "MoMoCode" : "MoMoWaiting", { ...params, network, phone })}><Smartphone size={24} aria-hidden="true" />Send request</PosPrimaryButton>
     <PosSecondaryButton type="button" className="w-full" onClick={() => onNavigate("MoMoDirect", params)}>Customer already paid me directly</PosSecondaryButton>
     <p className="-mt-2 text-center text-sm text-slate-700">Saved as MoMo · you confirmed.</p>

@@ -55,7 +55,7 @@ async function to53(app) {
   await app.tap(/Add debt/);
   assert.equal(app.route, "WhoOwesYou");
   await app.tap(/New person/);
-  await change(app, byPlaceholder(app, "e.g. Kofi Mensah"), "Kofi");
+  await change(app, byPlaceholder(app, "For example: Ama"), "Kofi");
   await submit34(app);
   assert.equal(app.route, "ManualDebtAmount");
   await app.keys(["2", "5"]); // whole cedis on the shared keypad (15 Nov 2026)
@@ -83,7 +83,7 @@ for (const [name, back] of [["on-screen Back", (app) => app.tap("Back")], ["phon
     await to53(app);
     await back(app);
     assert.equal(app.route, "NewPerson");
-    assert.equal(byPlaceholder(app, "e.g. Kofi Mensah").props.value, "Kofi");
+    assert.equal(byPlaceholder(app, "For example: Ama").props.value, "Kofi");
     await submit34(app);
     assert53(app);
   });

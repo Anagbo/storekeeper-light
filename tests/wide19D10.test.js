@@ -53,7 +53,7 @@ async function to19(app, width) {
   await app.keys(["8"]);
   await app.tap("Owe");
   await app.tap(/New person/);
-  const nameInput = nodes(app.view.tree).find((node) => node.type === "input" && node.props.placeholder === "e.g. Kofi Mensah");
+  const nameInput = nodes(app.view.tree).find((node) => node.type === "input" && node.props.placeholder === "For example: Ama");
   nameInput.props.onChange({ target: { value: "KOFI MENSAH" } });
   await app.settle();
   await nodes(app.view.tree).find((node) => node.type === "form").props.onSubmit({ preventDefault() {} });
@@ -188,7 +188,7 @@ test("D10 with parts recorded on 27: one panel, in the summary; Next cycle and f
     await app.tap(/^Save$/);
     await app.tap(/^Owe$/);
     await app.tap(/New person/);
-    const nameInput = nodes(app.view.tree).find((node) => node.type === "input" && node.props.placeholder === "e.g. Kofi Mensah");
+    const nameInput = nodes(app.view.tree).find((node) => node.type === "input" && node.props.placeholder === "For example: Ama");
     nameInput.props.onChange({ target: { value: "KOFI MENSAH" } });
     await app.settle();
     await nodes(app.view.tree).find((node) => node.type === "form").props.onSubmit({ preventDefault() {} });

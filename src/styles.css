@@ -151,3 +151,9 @@ button {
     font-size: 17px !important;
   }
 }
+
+/* form_fields (polish 6): the grey example in a name or phone field stays readable (at least #64748B). */
+input[data-example-placeholder]::placeholder {
+  color: #64748B;
+  opacity: 1;
+}

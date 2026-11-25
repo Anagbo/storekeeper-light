@@ -238,7 +238,7 @@ async function to53(app) {
   await app.tap(/^Owed$/);
   await app.tap(/Add debt/);
   await app.tap(/New person/);
-  await change(app, byPlaceholder(app, "e.g. Kofi Mensah"), "Kofi");
+  await change(app, byPlaceholder(app, "For example: Ama"), "Kofi");
   nodes(app.view.tree).find((node) => node.type === "form").props.onSubmit({ preventDefault() {} });
   await app.settle();
   assert.equal(app.route, "ManualDebtAmount");
@@ -263,7 +263,7 @@ test("credit flow: Back inside 15 > 17 > 34 keeps the draft and never asks", asy
   await app.keys(["8"]);
   await app.tap("Owe");
   await app.tap(/New person/);
-  await change(app, byPlaceholder(app, "e.g. Kofi Mensah"), "KOFI");
+  await change(app, byPlaceholder(app, "For example: Ama"), "KOFI");
   await app.tap("Back");
   assert.equal(leaveQuestion(app), null, "34 > 17 does not ask");
   assert.equal(app.route, "WhoOwesYou");

@@ -313,9 +313,9 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
             </div>
             {isNew && (
               <div data-new-supplier-fields="" className="flex flex-col gap-2.5 pt-1">
-                <label className="block"><span className="mb-1.5 block text-[15px] font-bold text-slate-600">{t("expense.supplierName")}</span><input ref={nameInput} autoComplete="off" autoCapitalize="words" value={supplierName} onChange={(event) => { setSupplierName(event.target.value); onUpdateParams?.({ stockSupplierName: event.target.value }); }} className={field} /></label>
+                <label className="block"><span className="mb-1.5 block text-[15px] font-bold text-slate-600">{t("expense.supplierName")}</span><input ref={nameInput} autoComplete="off" autoCapitalize="words" data-example-placeholder="" placeholder={t("credit.supplierNamePlaceholder")} value={supplierName} onChange={(event) => { setSupplierName(event.target.value); onUpdateParams?.({ stockSupplierName: event.target.value }); }} className={field} /></label>
                 {duplicate?.by === "name" && question}
-                <label className="block"><span className="mb-1.5 block text-[15px] font-bold text-slate-600">{t("expense.supplierPhone")}</span><input type="tel" inputMode="tel" autoComplete="off" value={supplierPhone} onChange={(event) => { setSupplierPhone(event.target.value); onUpdateParams?.({ stockSupplierPhone: event.target.value }); }} className={field} /></label>
+                <label className="block"><span className="mb-1.5 block text-[15px] font-bold text-slate-600">{t("expense.supplierPhone")}</span><input type="tel" inputMode="tel" autoComplete="off" data-example-placeholder="" placeholder={t("credit.phonePlaceholder")} value={supplierPhone} onChange={(event) => { setSupplierPhone(event.target.value); onUpdateParams?.({ stockSupplierPhone: event.target.value }); }} className={field} /></label>
                 {duplicate?.by === "phone" && question}
               </div>
             )}

@@ -42,8 +42,8 @@ async function open() {
   return app;
 }
 
-const NAME = "e.g. Kofi Mensah";
-const PHONE = "024 000 0000";
+const NAME = "For example: Ama";
+const PHONE = "For example: 024 123 4567";
 const CARD = "GHA-000000000-0";
 const shown = (app) => app.text().replace(/\s+/g, " ");
 const inputsOf = (tree) => [...walk(tree)].filter((node) => node.type === "input");

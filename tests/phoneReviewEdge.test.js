@@ -236,3 +236,23 @@ test("Saved as credit after a payment today: one Paid today row, method in the l
     }
   });
 });
+
+// Polish 6 (form_fields): the name and phone fields carry a grey example (Stock on credit, New supplier).
+test("Stock on credit, New supplier: grey example placeholders on Supplier name and Phone (340, 390px)", { skip: SKIP, timeout: 600_000 }, async () => {
+  await withEdgeApp({ seeds: SEEDS, env: ENV }, async (app) => {
+    for (const width of WIDTHS) {
+      await app.open("suppliers", width, 900);
+      await app.steps(["^Spent money", "type:10", "^Stock$", "^No$", "New supplier$"]);
+      await sleep(400);
+      const m = await app.evaluate(`(() => {
+        const inputs = [...document.querySelectorAll("input[data-example-placeholder]")];
+        return { fields: inputs.map((i) => ({ type: i.type, placeholder: i.placeholder, value: i.value, color: getComputedStyle(i, "::placeholder").color, label: i.closest("label")?.textContent.trim() })), scroll: document.documentElement.scrollWidth <= innerWidth };
+      })()`);
+      const byLabel = (re) => m.fields.find((f) => re.test(f.label));
+      assert.equal(byLabel(/name/i)?.placeholder, "For example: Kofi", `${width}: the supplier name example`);
+      assert.equal(byLabel(/phone/i)?.placeholder, "For example: 024 123 4567", `${width}: the phone example`);
+      for (const field of m.fields) assert.equal(field.color, "rgb(100, 116, 139)", `${width}: the placeholder is #64748B`);
+      assert.ok(m.scroll, `${width}: no sideways scroll`);
+    }
+  });
+});

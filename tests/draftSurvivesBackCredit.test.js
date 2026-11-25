@@ -57,15 +57,15 @@ async function to34(app) {
   assert.equal(app.route, "WhoOwesYou");
   await app.tap(/New person/);
   assert.equal(app.route, "NewPerson");
-  await typeInto(app, byPlaceholder(app, "e.g. Kofi Mensah"), "KOFI MENSAH");
-  await typeInto(app, byPlaceholder(app, "024 000 0000"), "0241112223");
+  await typeInto(app, byPlaceholder(app, "For example: Ama"), "KOFI MENSAH");
+  await typeInto(app, byPlaceholder(app, "For example: 024 123 4567"), "0241112223");
   await typeInto(app, byPlaceholder(app, "GHA-000000000-0"), "GHA-123456789-0");
 }
 
 function assert34Filled(app) {
   assert.equal(app.route, "NewPerson");
-  assert.equal(byPlaceholder(app, "e.g. Kofi Mensah").props.value, "KOFI MENSAH");
-  assert.equal(byPlaceholder(app, "024 000 0000").props.value, "0241112223");
+  assert.equal(byPlaceholder(app, "For example: Ama").props.value, "KOFI MENSAH");
+  assert.equal(byPlaceholder(app, "For example: 024 123 4567").props.value, "0241112223");
   assert.equal(byPlaceholder(app, "GHA-000000000-0").props.value, "GHA-123456789-0");
   assert.ok(!shown(app).includes(ERROR_BOX), "no error box on a returning form");
 }
@@ -146,7 +146,7 @@ test("34: the error box shows only after Next with a problem, and not on return"
   assert.ok(!shown(app).includes(ERROR_BOX), "fresh form: no error box");
   await submit34(app);
   assert.ok(shown(app).includes(ERROR_BOX), "Next with no name: the error box");
-  await typeInto(app, byPlaceholder(app, "e.g. Kofi Mensah"), "KOFI MENSAH");
+  await typeInto(app, byPlaceholder(app, "For example: Ama"), "KOFI MENSAH");
   await submit34(app);
   await app.tap("Back");
   assert.equal(app.route, "NewPerson");
@@ -233,9 +233,9 @@ test("Save plan ends the task: a new credit sale starts with empty 34 and 19", a
   await app.keys(["5"]);
   await app.tap("Owe");
   await app.tap(/New person/);
-  assert.equal(byPlaceholder(app, "e.g. Kofi Mensah").props.value, "");
-  assert.equal(byPlaceholder(app, "024 000 0000").props.value, "");
-  await typeInto(app, byPlaceholder(app, "e.g. Kofi Mensah"), "Ama");
+  assert.equal(byPlaceholder(app, "For example: Ama").props.value, "");
+  assert.equal(byPlaceholder(app, "For example: 024 123 4567").props.value, "");
+  await typeInto(app, byPlaceholder(app, "For example: Ama"), "Ama");
   await submit34(app);
   await app.tap(/^A little at a time/);
   assert.equal(app.input("How much each time?").props.value, "");
@@ -254,7 +254,7 @@ test("header Home clears everything: a new credit sale starts empty", async () =
   await app.keys(["8"]);
   await app.tap("Owe");
   await app.tap(/New person/);
-  assert.equal(byPlaceholder(app, "e.g. Kofi Mensah").props.value, "");
+  assert.equal(byPlaceholder(app, "For example: Ama").props.value, "");
 });
 
 test("27 from 19: reopened parts, Done, Save plan, Money received: saved once with those parts", async () => {

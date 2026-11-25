@@ -55,7 +55,7 @@ async function newCustomerTo19(app) {
   await app.keys(["8"]);
   await app.tap("Owe");
   await app.tap(/New person/);
-  const nameInput = nodes(app.view.tree).find((node) => node.type === "input" && node.props.placeholder === "e.g. Kofi Mensah");
+  const nameInput = nodes(app.view.tree).find((node) => node.type === "input" && node.props.placeholder === "For example: Ama");
   nameInput.props.onChange({ target: { value: "Ama Owusu" } });
   await app.settle();
   await nodes(app.view.tree).find((node) => node.type === "form").props.onSubmit({ preventDefault() {} });
