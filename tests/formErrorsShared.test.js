@@ -201,14 +201,14 @@ test("37 How much is {item}?: \"Enter a valid price\" after Save price, gone onc
   assert.deepEqual(alerts(view.tree), []);
 });
 
-test("15 Sell: \"Enter a sale amount before taking MoMo.\" after MoMo with no amount, gone at the first digit", async () => {
+test("15 Sell: MoMo with no amount shows no message and goes nowhere", async () => {
   const { default: Sell } = await loadJsx("src/pos/Sell.jsx");
-  const view = render({ type: Sell, props: { params: {}, onNavigate() {}, onUpdateParams() {} } });
+  const went = [];
+  const view = render({ type: Sell, props: { params: {}, onNavigate: (...a) => went.push(a), onUpdateParams() {} } });
   assert.deepEqual(alerts(view.tree), []);
   tap(view, "MoMo");
-  assert.deepEqual(alerts(view.tree), ["Enter a sale amount before taking MoMo."]);
-  tap(view, "5");
   assert.deepEqual(alerts(view.tree), []);
+  assert.deepEqual(went, []);
 });
 
 async function openApp() {

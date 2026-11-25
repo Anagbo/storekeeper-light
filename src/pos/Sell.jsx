@@ -5,13 +5,12 @@ import { isSaveOutcomeUnknown, isSaveTimeout } from "../lib/saveAttempt.js";
 import { formatGhs, toPesewas } from "../lib/money.js";
 import { normalizeSaleItems, totalSaleItemsPesewas } from "../lib/saleItems.js";
 import { requestBackgroundSync } from "../lib/syncRegistration.js";
-import { AddButton, PaymentTile, PosCard, SplitIcon, PosPage, PosPrimaryButton } from "./PosComponents.jsx";
+import { AddButton, PaymentTile, PosCard, SplitTrio, PosPage, PosPrimaryButton } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
 import { useLargeAmountConfirm } from "./LargeAmountConfirm.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { useBackBlock } from "./browserBack.js";
-import { useFormErrors } from "./formErrors.js";
 import { getSellKeyAction } from "./sellKeyboard.js";
 import { PHONE_LAYOUT } from "./layout.js";
 import LastSaleBox from "./LastSaleBox.jsx";
@@ -23,6 +22,9 @@ const KEY_HEIGHT_15 = "52px";
 import { getSplitPaymentParams } from "./routes.js";
 import AmountKeypad from "./AmountKeypad.jsx";
 import { pesewasToAmountText, pressAmountKey } from "./amountKeypad.js";
+
+// Disabled Split: light dashed border, grey icons and label (no half-faded look).
+const SPLIT_DISABLED_CLASS = (disabled) => (disabled ? "border-[#CBD5E1]! text-[#94A3B8]! opacity-100!" : "");
 
 const paymentChoices = [
   { value: "cash", label: "sell.cash", icon: Banknote },
@@ -51,12 +53,11 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
   const hasSaleItems = saleItems.length > 0;
   const canSave = Number.isSafeInteger(amountPesewas) && amountPesewas > 0 &&
     (!hasSaleItems || amountPesewas === itemTotalPesewas);
-  // rules_global.form_errors: shown after MoMo or Owe with no amount, gone once there is one.
-  // The message names what the tap needed: credit (Owe) or MoMo (decided 16 Nov 2026).
-  const amountErrors = useFormErrors([
-    ["credit", canSave ? "" : t("sell.enterAmountFirst")],
-    ["momo", canSave ? "" : t("sell.enterAmountBeforeMomo")]
-  ]);
+  // SELL AMOUNT RULE: until the amount is above 0 only Cash is active; MoMo, Owe and Split are disabled
+  // and no message is shown.
+  const hasAmount = Number.isSafeInteger(amountPesewas) && amountPesewas > 0;
+  const otherTilesDisabled = !hasAmount || busy;
+  const splitDisabled = !canSave || busy;
 
   // An amount that arrives from outside (not the one typed here) replaces what is on the pad.
   useEffect(() => {
@@ -64,6 +65,11 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
       setAmount(pesewasToAmountText(params.amountPesewas));
     }
   }, [params.amountPesewas]);
+
+  // The amount went back to 0: MoMo goes back to Cash.
+  useEffect(() => {
+    if (!hasAmount && paymentMethod !== "cash") setPaymentMethod("cash");
+  }, [hasAmount, paymentMethod]);
 
   // Keep the draft in the route parameters (never the save attempt key: a restored screen starts a new one).
   useEffect(() => {
@@ -130,13 +136,12 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
 
   // One tap handler per tile, the same on every width.
   function choosePayment(value) {
+    if (value !== "cash" && otherTilesDisabled) return;
     if (value === "credit") {
-      if (amountErrors.check(["credit"]) && !busy) onNavigate("WhoOwesYou", { amountPesewas, saleItems, ...(typeof params.creditReason === "string" && { creditReason: params.creditReason }) });
+      onNavigate("WhoOwesYou", { amountPesewas, saleItems, ...(typeof params.creditReason === "string" && { creditReason: params.creditReason }) });
     } else if (value === "momo") {
       // Brief 3.12: a large MoMo amount asks before 61 (before the customer is asked to pay).
-      if (amountErrors.check(["momo"]) && !busy) {
-        if (!largeAmount.guard(amountPesewas, () => onNavigate("MoMoChoice", { amountPesewas, saleItems }), { momo: true })) onNavigate("MoMoChoice", { amountPesewas, saleItems });
-      }
+      if (!largeAmount.guard(amountPesewas, () => onNavigate("MoMoChoice", { amountPesewas, saleItems }), { momo: true })) onNavigate("MoMoChoice", { amountPesewas, saleItems });
     } else setPaymentMethod(value);
   }
 
@@ -151,7 +156,7 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
 
   const notices = (
     <>
-      {(amountErrors.message || error) && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 text-base font-semibold text-rose-950">{amountErrors.message || error}</p>}
+      {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 text-base font-semibold text-rose-950">{error}</p>}
       <SaveAttemptNotice saveAttempt={saveAttempt} busy={busy} onTryAgain={() => void saveSale(true)} />
     </>
   );
@@ -197,13 +202,13 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
                     label={t(label)}
                     selected={selected}
                     onClick={() => choosePayment(value)}
-                    disabled={value === "credit" && (!canSave || busy)}
+                    disabled={value !== "cash" && otherTilesDisabled}
                     className="min-h-[92px] rounded-[18px] px-2 text-[19px]!"
                   />
                 );
               })}
-              <AddButton plus={false} size="tile" aria-label={t("sell.split")} disabled={!canSave || busy} onClick={openSplit} className={`${tileClass} px-2! text-[19px]! hover:bg-green-50`}>
-                <SplitIcon size={30} />
+              <AddButton plus={false} size="tile" aria-label={t("sell.split")} aria-disabled={splitDisabled || undefined} disabled={splitDisabled} onClick={openSplit} className={`${tileClass} px-2! text-[19px]! hover:bg-green-50 ${SPLIT_DISABLED_CLASS(splitDisabled)}`}>
+                <SplitTrio />
                 <span className="w-full min-w-0 text-center">{t("sell.split")}</span>
               </AddButton>
             </div>
@@ -242,7 +247,7 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
           <AddButton size="compact" onClick={() => onNavigate("SellWithItems", { amountPesewas, saleItems })}>
             {t("sell.addItems")}
           </AddButton>
-          <div className="grid grid-cols-4 gap-1 sm:gap-2 lg:gap-3">
+          <div className="grid gap-1 sm:gap-2 lg:gap-3" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.5fr)" }}>
             {paymentChoices.map(({ value, label, icon: Icon }) => (
               <PaymentTile
                 key={value}
@@ -251,7 +256,7 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
                 label={t(label)}
                 selected={paymentMethod === value}
                 onClick={() => choosePayment(value)}
-                disabled={value === "credit" && (!canSave || busy)}
+                disabled={value !== "cash" && otherTilesDisabled}
                 className="h-16 flex-1 sm:h-20 lg:h-24 lg:rounded-[18px] lg:text-[17px]!"
               />
             ))}
@@ -260,15 +265,16 @@ export default function Sell({ params = {}, onNavigate, onUpdateParams, recordSa
             <AddButton
               plus={false}
               aria-label={t("sell.split")}
-              disabled={!canSave || busy}
+              aria-disabled={splitDisabled || undefined}
+              disabled={splitDisabled}
               onClick={openSplit}
-              className="h-16 min-h-0! min-w-0 flex-1 flex-col gap-1! overflow-hidden px-1! py-0! text-[15px]! font-bold! sm:h-20 lg:h-24 lg:rounded-[18px] lg:px-2! lg:text-[17px]!"
+              className={`h-16 min-h-0! min-w-0 flex-1 flex-col gap-1! overflow-hidden px-1! py-0! text-[15px]! font-bold! sm:h-20 lg:h-24 lg:rounded-[18px] lg:px-2! lg:text-[17px]! ${SPLIT_DISABLED_CLASS(splitDisabled)}`}
             >
-              <SplitIcon size={22} />
-              <span className="w-full min-w-0 truncate text-center">Split</span>
+              <SplitTrio />
+              <span className="w-full min-w-0 whitespace-nowrap text-center">Split</span>
             </AddButton>
           </div>
-          {(amountErrors.message || error) && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 text-base font-semibold text-rose-950">{amountErrors.message || error}</p>}
+          {error && <p role="alert" className="rounded-xl border-2 border-rose-900 bg-rose-100 p-3 text-base font-semibold text-rose-950">{error}</p>}
           <SaveAttemptNotice saveAttempt={saveAttempt} busy={busy} onTryAgain={() => void saveSale(true)} />
           <PosPrimaryButton type="button" onClick={() => void saveSale()} disabled={!canSave || busy} className="h-[60px] min-h-0 rounded-[20px] border-0 text-[26px] lg:h-20 lg:text-3xl">
             <Check size={32} aria-hidden="true" /> {busy ? t("sell.saving") : t("sell.done")}

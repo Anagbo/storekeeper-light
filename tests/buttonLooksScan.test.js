@@ -124,7 +124,7 @@ const ACTIONS = [
   ["Leave draft: Stay (main)", "LeaveDraftDialog.jsx", "PosPrimaryButton", /onClick=\{onStay\}/, /t\("leaveDraft\.stay"\)/],
   ["Leave draft: Leave (leave)", "LeaveDraftDialog.jsx", "LeaveButton", /onClick=\{onLeave\}/, /t\("leaveDraft\.leave"\)/],
   // split_payment_look (21 Nov 2026): 15, 55 and 19 are the add look (they were the other look on 15/55).
-  ["15 Split (dashed, joined icons, no +)", "Sell.jsx", "AddButton", /plus=\{false\}[\s\S]*aria-label=\{t\("sell\.split"\)\}/, /<SplitIcon size/],
+  ["15 Split (dashed, joined icons, no +)", "Sell.jsx", "AddButton", /plus=\{false\}[\s\S]*aria-label=\{t\("sell\.split"\)\}/, /<SplitTrio/],
   ["55 Split payment (dashed, joined icons, no +)", "ReviewAndPay.jsx", "AddButton", /plus=\{false\}[\s\S]*data-split-55=""/, /<SplitIcons withOwe[\s\S]*t\("review\.split"\)/],
   ["19 Split payment (dashed, joined icons, no +)", "CreditScreens.jsx", "AddButton", /plus=\{false\}[\s\S]*pressed=\{paymentMethod === "split"\}/, /<SplitIcons size=\{16\} \/>[\s\S]*t\("split\.title"\)/],
   // split_icons (20 Nov 2026): the dashed tile keeps its joined icons, so the children now start with <SplitIcons>.

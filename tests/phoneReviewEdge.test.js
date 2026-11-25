@@ -193,7 +193,7 @@ test("Payment tiles on Sell and Review and pay: mint, tick, 15px label (340, 390
       assert.ok(split, `${width}: the Split tile is there`);
       assert.equal(split.text, "Split", `${width}: it says Split`);
       assert.equal(split.dashed, "dashed", `${width}: it stays dashed`);
-      assert.equal(split.svgs, 1, `${width}: one split icon`);
+      assert.equal(split.svgs, 5, `${width}: the original trio (three icons and two plus signs)`);
       assert.ok(split.height >= 64, `${width}: Split is 64px or taller`);
       assert.ok((await app.evaluate(PAGE)).scroll, `${width}: Sell has no sideways scroll`);
       await app.open("base", width, 900);
