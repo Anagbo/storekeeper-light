@@ -9,7 +9,7 @@ import { localDateString } from "../utils/installments.js";
 import { getSupplierBalances, orderSuppliersByRecentUse, orderSuppliersByUrgency, SUPPLIER_CATEGORIES } from "../utils/suppliers.js";
 import { posText as t } from "./i18n.js";
 import AmountTextInput from "./AmountTextInput.jsx";
-import { PartyCard, dueTag } from "./PartyCard.jsx";
+import { PartyCard, callHrefFor, dueTag } from "./PartyCard.jsx";
 import { AddButton, ChoiceChip, PosBackButton, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { useBackBlock, useBackHandler } from "./browserBack.js";
 import { useFormErrors } from "./formErrors.js";
@@ -387,6 +387,8 @@ export function YouOweSuppliers({ onBack, onPay }) {
             </div>
             <p data-supplier-total="" className={`${layout.wide ? "text-[40px]" : "mt-1 text-[28px]"} whitespace-nowrap font-bold leading-tight text-[#0F172A]`}>{formatGhs(suppliers.reduce((sum, supplier) => sum + supplier.balancePesewas, 0))}</p>
           </section>
+          {/* supplier_pay_slot: on the phone the empty 52px Call slot is reserved only when at least one
+              supplier in the list has a phone; otherwise Pay is full width. Wide keeps its rule. */}
           <div data-supplier-grid="" className={`grid min-w-0 gap-3 ${layout.mode === "sidebar" ? "grid-cols-2" : "grid-cols-1"}`}>
           {orderSuppliersByUrgency(suppliers, today).map((supplier) => {
             const name = displayName(supplier.name);
@@ -405,7 +407,7 @@ export function YouOweSuppliers({ onBack, onPay }) {
                 today={today}
                 dateText={dateText}
                 cardWide={layout.wide}
-                reserveCall
+                reserveCall={layout.wide || suppliers.some((entry) => Boolean(callHrefFor(entry.phone)))}
                 wording="supplier"
                 action={{ label: t("supplier.pay"), ariaLabel: t("supplier.payAria", { name }), icon: Wallet, outlined: !urgent, onClick: () => { setSelectedSupplier(supplier); setAmount((supplier.balancePesewas / 100).toFixed(2)); setPaidWith("cash"); setError(""); } }}
                 phone={supplier.phone}
