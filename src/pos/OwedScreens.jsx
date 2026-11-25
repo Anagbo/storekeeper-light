@@ -21,6 +21,22 @@ import { PHONE_LAYOUT } from "./layout.js";
 // this screen's own route params (owedSelected), changed by replacing the current entry, so it
 // survives a trip to 25, 73 or Add to debt and never touches another screen's draft.
 // `renderDetail({ customerId, customerName, debtId })` is the 29/43 detail without Back and Done.
+// Phone review item 6 (25 Nov 2026): with Late or Due soon on, the tile shows only those people's total,
+// so it must not say "Total owed to you": it reads "Late · GH₵X" or "Due soon · GH₵X" (label and amount
+// on one line). All, and a search, keep "Total owed to you" above the amount.
+const FILTER_TILE_LABEL = { late: "Late", soon: "Due soon" };
+function filterTileLabel(filter, searching) {
+  return searching ? null : FILTER_TILE_LABEL[filter] ?? null;
+}
+function owedTileName(filter, searching, totalPesewas) {
+  const label = filterTileLabel(filter, searching);
+  return label ? `${label} · ${formatGhs(totalPesewas)}` : "Total owed to you";
+}
+function OwedTileLabel({ filter, searching, Heading, className }) {
+  const label = filterTileLabel(filter, searching);
+  return <Heading data-owed-tile-label="" className={`${className}${label ? " inline" : ""}`}>{label ? `${label} · ` : "Total owed to you"}</Heading>;
+}
+
 export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopName, layout = PHONE_LAYOUT, params = {}, onUpdateParams, renderDetail }) {
   const wide = layout.wide && typeof renderDetail === "function";
   const [filter, setFilter] = useState("all");
@@ -245,10 +261,10 @@ export default function PeopleWhoOweYou({ onBack, onNavigate, onCollect, shopNam
           {showMoreControl}
         </section>
       ) : (
-        <section className="box-border flex min-w-0 w-full flex-col gap-3" aria-label="Total owed to you">
+        <section className="box-border flex min-w-0 w-full flex-col gap-3" aria-label={owedTileName(filter, searching, totalPesewas)}>
           <div data-owed-summary className="box-border min-w-0 w-full rounded-[20px] bg-[#F1F5F9] px-4 py-3">
-            <h2 className="text-sm font-bold text-slate-600">Total owed to you</h2>
-            <p data-owed-total className="break-words text-[30px] font-bold leading-tight text-[#0F172A]">
+            <OwedTileLabel filter={filter} searching={searching} Heading="h2" className="text-sm font-bold text-slate-600" />
+            <p data-owed-total className={`break-words text-[30px] font-bold leading-tight text-[#0F172A]${filterTileLabel(filter, searching) ? " inline" : ""}`}>
               {formatGhs(totalPesewas)}
             </p>
           </div>
@@ -347,8 +363,8 @@ function WideOwed({ layout, addDebtButton, filter, setFilter, query, setQuery, i
           ) : (
             <>
               <div data-owed-summary="" className="box-border min-w-0 w-full rounded-[20px] bg-[#F1F5F9] px-4 py-3">
-                <h1 className="text-[17px] font-bold text-slate-600">Total owed to you</h1>
-                <p data-owed-total="" className="whitespace-nowrap text-[30px] font-bold leading-tight text-[#0F172A]">{formatGhs(totalPesewas)}</p>
+                <OwedTileLabel filter={filter} searching={searching} Heading="h1" className="text-[17px] font-bold text-slate-600" />
+                <p data-owed-total="" className={`whitespace-nowrap text-[30px] font-bold leading-tight text-[#0F172A]${filterTileLabel(filter, searching) ? " inline" : ""}`}>{formatGhs(totalPesewas)}</p>
               </div>
               <div className="flex flex-col gap-3" role="list">
                 {customers.map((customer) => {
