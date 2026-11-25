@@ -75,6 +75,33 @@ for (const [label, phone] of [["with a phone", PHONE], ["without a phone", ""]])
   test(`31 flag on ${label}: Send receipt`, async () => assertFlag(await show31(ON, phone), true, "31"));
 }
 
+// Add debt saved: the same flag and the same block as 31
+async function showAddDebtSaved(env, phone) {
+  const { ManualDebtSaved } = await loadJsx("src/pos/ManualDebtScreens.jsx", env);
+  setLiveQuery(() => null);
+  try {
+    return render({ type: ManualDebtSaved, props: { params: { customer: { id: "c1", name: "Ama", phone }, amountPesewas: 2500, note: "Rice" }, onDone() {}, onNavigate() {}, onSaveCustomerContact() {}, shopName: "Shop" } }).tree;
+  } finally {
+    setLiveQuery(null);
+  }
+}
+
+for (const [label, phone] of [["with a phone", PHONE], ["without a phone", ""]]) {
+  test(`Add debt saved flag off ${label}: no receipt buttons, no add-phone; See details and Done stay`, async () => {
+    const tree = await showAddDebtSaved(OFF, phone);
+    assertFlag(tree, false, "Add debt saved");
+    assert.doesNotMatch(textOf(tree), /Add phone number/);
+    assert.ok(findButton(tree, "See Ama"), "See details stays");
+    assert.ok(findButton(tree, "Done"), "Done stays");
+  });
+  test(`Add debt saved flag on ${label}: Send receipt and Copy receipt, as on 31`, async () => {
+    const tree = await showAddDebtSaved(ON, phone);
+    assertFlag(tree, true, "Add debt saved");
+    assert.ok(findButton(tree, "Send receipt"));
+    assert.ok(findButton(tree, "Copy receipt"));
+  });
+}
+
 // 28 Payment received
 function collectionParams(phone, undoExpiresAt = Date.now() - 1000) {
   return {

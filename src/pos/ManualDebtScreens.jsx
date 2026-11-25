@@ -5,7 +5,7 @@ import AmountKeypad from "./AmountKeypad.jsx";
 import { amountTextToPesewas, pressAmountKey } from "./amountKeypad.js";
 import { formatGhs } from "../lib/money.js";
 import { useLiveQuery } from "dexie-react-hooks";
-import { buildDebtAddedReceipt } from "./receiptTemplates.js";
+import { buildDebtAddedReceipt, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
 import { db } from "../db/db.js";
 import SavedCreditReceiptActions, { useSavedCreditPhone } from "./SavedCreditReceiptActions.jsx";
 import { getPlanPeriodFigures, isValidInstallmentPlanForBalance, localDateString } from "../utils/installments.js";
@@ -248,6 +248,8 @@ export function ManualDebtSaved({ params, onDone, onNavigate, onSaveCustomerCont
   const stored = storedCustomer && typeof storedCustomer === "object" ? storedCustomer : null;
   const { phone, hasPhone, setAddedContact } = useSavedCreditPhone(stored?.phone || params.customer?.phone || "");
   const wide = Boolean(useTaskColumn());
+  // Same flag as Sell → Owe: with VITE_ENABLE_POS_RECEIPTS off, no Send receipt, Copy receipt or add-phone button.
+  const receiptsOn = isReceiptTemplatesEnabled();
   let receiptText = null;
   try {
     receiptText = buildDebtAddedReceipt({
@@ -278,7 +280,7 @@ export function ManualDebtSaved({ params, onDone, onNavigate, onSaveCustomerCont
       {/* Buttons on this screen (wiring ManualDebtSaved rules): "WhatsApp {Name}" and "See {Name}’s details"
           are other buttons, full width, 52px, stacked; Done is the main button at the bottom. */}
       <div data-debt-saved-actions="" className="flex flex-col gap-2">
-        {receiptText && (
+        {receiptsOn && receiptText && (
           <SavedCreditReceiptActions
             text={receiptText}
             phone={phone}
