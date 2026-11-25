@@ -19,8 +19,11 @@ function liveQueries(stored) {
   setLiveQuery((deps) => (deps[0] === "manualDebtSavedCustomer" ? stored : deps[0] === "manualDebtSavedReminder" ? 0 : stored));
 }
 
-async function debtSaved(phone, saves = []) {
-  const { ManualDebtSaved } = await loadJsx("src/pos/ManualDebtScreens.jsx");
+// Polish 8 (bed5433): the receipt buttons follow VITE_ENABLE_POS_RECEIPTS, so these tests load the screen with it on.
+const ON = { VITE_ENABLE_POS_RECEIPTS: "true" };
+
+async function debtSaved(phone, saves = [], env = ON) {
+  const { ManualDebtSaved } = await loadJsx("src/pos/ManualDebtScreens.jsx", env);
   liveQueries({ id: "c1", name: "Ama", phone });
   const params = { customer: { id: "c1", name: "Ama", phone }, amountPesewas: 1000, manualDebtResult: { debt: { id: "d1", amountPesewas: 1000 }, customer: { id: "c1" } } };
   return render({ type: ManualDebtSaved, props: { params, onDone() {}, onNavigate() {}, onSaveCustomerContact: async (details) => { saves.push(details); return { ...details }; }, shopName: "Shop" } });
@@ -68,6 +71,18 @@ test("Add debt saved, with a phone: Send receipt, no add-phone button; a number 
   const bad = await debtSaved("12");
   assert.ok(named(bad.tree, SEND));
   assert.ok(named(bad.tree, ADD));
+});
+
+test("Add debt saved, receipts flag off: no Send receipt, Copy receipt or add-phone button, with or without a phone", async () => {
+  for (const phone of ["", "0241234567"]) {
+    const view = await debtSaved(phone, [], {});
+    const order = buttons(view.tree).map((node) => textOf(node).trim());
+    assert.equal(named(view.tree, SEND), undefined);
+    assert.equal(named(view.tree, ADD), undefined);
+    assert.equal(named(view.tree, /Copy receipt/), undefined);
+    assert.ok(order.includes("See Ama’s details"));
+    assert.equal(order[order.length - 1], "Done");
+  }
 });
 
 test("Add debt saved: the receipt text says who, how much was added and what they owe now", async () => {
