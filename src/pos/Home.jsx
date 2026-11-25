@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { CirclePlus, ShoppingCart } from "lucide-react";
 import { db } from "../db/db.js";
@@ -46,6 +46,8 @@ export const COLLECT_FIRST_PHONE = 1;
 export const COLLECT_FIRST_WIDE = 2;
 // The small table on wide Home: the latest rows of 24, See all opens the rest.
 export const HOME_TABLE_ROWS = 5;
+// The narrow card fits what the height allows, so it is given every row of today (Today’s transactions shows 24).
+const HOME_TABLE_LOADED_ROWS = 24;
 
 // Wide Home's small table (D1): read-only, from the same rows as Today's transactions (24). A row that
 // cannot be read must not stop Home loading: the card then says so and See all still opens 24.
@@ -53,7 +55,7 @@ async function loadHomeTable(transactions) {
   try {
     const suppliers = await db.suppliers.toArray();
     const rows = createPosTransactionRows(transactions, new Map(suppliers.map((supplier) => [supplier.id, supplier.name])));
-    return rows.slice(0, HOME_TABLE_ROWS);
+    return rows.slice(0, HOME_TABLE_LOADED_ROWS);
   } catch (error) {
     console.error("Could not show today’s transactions on Home.", error);
     return null;
@@ -167,9 +169,50 @@ function OwedCard({ data, hidden, urgent, onNavigate, onWhatsApp, wide }) {
 // header button is the phone's "Today's transactions" control: same accessible name, same destination.
 // rail: 12px side padding instead of 20px (with the page's 20px), so five-digit amounts in every column
 // fit at 768px (decided 21 Nov 2026).
+const MORE_LINE_PX = 48;
+
+// The narrow card's body (wide_layout, Home two columns): the card is as tall as the Owed card and never
+// taller (the wrapper sets the height, the card is absolutely positioned in it). Only the rows that fit
+// completely are shown, newest first; a "+N more · See all" line says how many are left. Heights come from
+// an invisible copy of all the rows, re-read when the body size or the rows change.
+function FittedCompactRows({ rows, hidden, onNavigate }) {
+  const [bodyNode, setBodyNode] = useState(null);
+  const measureRef = useRef(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  const [fit, setFit] = useState(null);
+  useEffect(() => {
+    if (!bodyNode) return undefined;
+    const read = () => setSize({ width: Math.round(bodyNode.clientWidth), height: Math.round(bodyNode.clientHeight) });
+    read();
+    if (typeof ResizeObserver !== "function") return undefined;
+    const observer = new ResizeObserver(read);
+    observer.observe(bodyNode);
+    return () => observer.disconnect();
+  }, [bodyNode]);
+  useLayoutEffect(() => {
+    const list = measureRef.current;
+    if (!list || size.height <= 0) return;
+    const heights = [...list.children].map((child) => child.getBoundingClientRect().height);
+    const count = (limit) => { let sum = 0; let n = 0; for (const h of heights) { if (sum + h > limit + 0.5) break; sum += h; n += 1; } return n; };
+    const all = count(size.height);
+    setFit(all === heights.length ? heights.length : count(size.height - MORE_LINE_PX));
+  }, [rows, hidden, size.width, size.height]);
+  const shown = fit === null ? rows.length : Math.min(fit, rows.length);
+  const more = rows.length - shown;
+  return (
+    <div ref={setBodyNode} data-home-compact-body="" className="relative min-h-0 flex-1 overflow-hidden">
+      <ul ref={measureRef} aria-hidden="true" inert="" data-home-compact-measure="" className="pointer-events-none invisible absolute inset-x-0 top-0">{rows.map((row) => <CompactTransactionRow key={row.id} row={row} hidden={hidden} measure />)}</ul>
+      <ul data-home-compact="" className="min-w-0">{rows.slice(0, shown).map((row) => <CompactTransactionRow key={row.id} row={row} hidden={hidden} />)}</ul>
+      {more > 0 && (
+        <button type="button" data-home-more="" onClick={() => onNavigate("TodaysTransactions")} className={`flex min-h-12 w-full items-center rounded-lg text-left text-[15px] font-bold text-[#03543F] ${FOCUS} focus-visible:outline-emerald-800`}>{t("home.moreSeeAll", { count: more })}</button>
+      )}
+    </div>
+  );
+}
+
 function TransactionsCard({ rows, hidden, onNavigate, layout, rail = false, narrow = false }) {
   return (
-    <section data-home-transactions="" aria-label={t("home.transactionsLink")} className={`flex min-w-0 flex-col rounded-[18px] border-2 border-slate-300 bg-white py-4 ${rail ? "px-3" : "px-5"}`}>
+    <section data-home-transactions="" aria-label={t("home.transactionsLink")} className={`flex min-w-0 flex-col rounded-[18px] border-2 border-slate-300 bg-white ${narrow ? "absolute inset-0 overflow-hidden py-3" : "py-4"} ${rail ? "px-3" : "px-5"}`}>
       <button type="button" onClick={() => onNavigate("TodaysTransactions")} aria-label={t("home.transactionsLink")} className={`flex min-h-12 w-full min-w-0 items-center justify-between gap-3 rounded-lg text-left ${FOCUS} focus-visible:outline-emerald-800`}>
         <span className="min-w-0 truncate text-[17px] font-bold text-slate-600">{t("home.transactionsLink")}</span>
         <span className="shrink-0 whitespace-nowrap text-[17px] font-extrabold text-emerald-900">{t("home.seeAll")}</span>
@@ -179,9 +222,9 @@ function TransactionsCard({ rows, hidden, onNavigate, layout, rail = false, narr
       ) : rows.length === 0 ? (
         <p data-home-table-empty="" className="py-2 text-[17px] text-slate-700">{t("home.noTransactions")}</p>
       ) : narrow ? (
-        <ul data-home-compact="" className="min-w-0">{rows.map((row) => <CompactTransactionRow key={row.id} row={row} hidden={hidden} />)}</ul>
+        <FittedCompactRows rows={rows} hidden={hidden} onNavigate={onNavigate} />
       ) : (
-        <TransactionTable rows={rows} amount={(pesewas) => <Amount pesewas={pesewas} hidden={hidden} />} compact layout={layout} maskedAmount={hidden ? <HiddenAmount /> : null} />
+        <TransactionTable rows={rows.slice(0, HOME_TABLE_ROWS)} amount={(pesewas) => <Amount pesewas={pesewas} hidden={hidden} />} compact layout={layout} maskedAmount={hidden ? <HiddenAmount /> : null} />
       )}
     </section>
   );
@@ -207,7 +250,7 @@ function useMeasuredWidth() {
 // Today's transactions in the narrow (one third) column: one compact line per row, same rows and
 // formatting as the table. Left: what it was (bold) with the time and the person in 15px grey; right: the
 // money in (green, +) with what went on credit under it, or the money spent (neutral, −).
-function CompactTransactionRow({ row, hidden }) {
+function CompactTransactionRow({ row, hidden, measure = false }) {
   const view = describeWideRow(row);
   const amount = (pesewas) => <Amount pesewas={pesewas} hidden={hidden} />;
   const moneyIn = view.moneyInPesewas > 0;
@@ -215,7 +258,7 @@ function CompactTransactionRow({ row, hidden }) {
   const credit = !moneyIn && !spent && view.owedPesewas > 0;
   const line = compactLine(row, amount);
   return (
-    <li data-wide-row="" data-home-row="" data-home-compact-row="" data-row-kind={row.kind} data-row-id={row.id} className="flex items-start justify-between gap-3 border-b border-slate-200 py-2.5 last:border-b-0">
+    <li {...(measure ? {} : { "data-wide-row": "", "data-home-row": "", "data-home-compact-row": "", "data-row-kind": row.kind, "data-row-id": row.id })} className="flex items-start justify-between gap-3 border-b border-slate-200 py-2 last:border-b-0">
       <span className="min-w-0">
         <span data-cell="what" className="block text-[17px] font-bold leading-snug [overflow-wrap:break-word]"><WhatText text={view.title} masked={hidden ? <HiddenAmount /> : null} /></span>
         <span data-cell="when" className="block text-[15px] leading-snug text-slate-600"><time dateTime={new Date(row.timestamp).toISOString()}>{formatTime(row.timestamp)}</time>{view.person ? ` · ${view.person}` : ""}</span>
@@ -345,9 +388,15 @@ export default function Home({ onNavigate, notice = "", shopName, layout = PHONE
           <Uncounted data={data} />
           {/* Row 2: Owed to you; row 3: Today's transactions full width (wiring 22 Home, 21 Nov 2026: five-digit
               amounts do not fit beside the Owed card at 17px). Nobody owes: the table is the only card. */}
-          <div ref={lowerRef} data-home-row-2="" data-columns={twoColumns ? 2 : 1} className={twoColumns ? "grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-start gap-5" : "flex flex-col gap-5"}>
+          <div ref={lowerRef} data-home-row-2="" data-columns={twoColumns ? 2 : 1} className={twoColumns ? "grid min-h-[240px] grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-stretch gap-5" : "flex flex-col gap-5"}>
             {urgent.length > 0 && <OwedCard data={data} hidden={hidden} urgent={urgent} onNavigate={onNavigate} onWhatsApp={onWhatsApp} wide />}
-            <TransactionsCard rows={data.table ?? null} hidden={hidden} onNavigate={onNavigate} layout={layout} rail={!sidebar} narrow={twoColumns} />
+            {twoColumns ? (
+              <div data-home-transactions-slot="" className="relative min-w-0">
+                <TransactionsCard rows={data.table ?? null} hidden={hidden} onNavigate={onNavigate} layout={layout} rail={!sidebar} narrow />
+              </div>
+            ) : (
+              <TransactionsCard rows={data.table ?? null} hidden={hidden} onNavigate={onNavigate} layout={layout} rail={!sidebar} />
+            )}
           </div>
         </>
       )}

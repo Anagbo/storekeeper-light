@@ -40,6 +40,7 @@ const ENGLISH = Object.freeze({
   "home.noDebtors": "Nobody owes you right now.",
   "home.transactionsLink": "Today’s transactions",
   "home.seeAll": "See all",
+  "home.moreSeeAll": "+{count} more · See all",
   "home.title": "Home",
   "home.tableTime": "Time",
   "home.tableWhat": "What",
