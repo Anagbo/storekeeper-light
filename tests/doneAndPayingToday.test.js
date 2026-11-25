@@ -161,7 +161,10 @@ test("19 after a failed save: still the draft words, and the confirmed MoMo row 
   assert.equal(textOf(line), "Received ✓", "on its own status line");
 });
 
-test("31 keeps Payment received today and Total received", async () => {
+// rules_global.saved_credit_layout (25 Nov 2026) replaced "Payment received today" and "Total received" on 31
+// with one "Paid today" row: the payment taken today (Cash 1.00 + MoMo 2.00) is still shown, as its total,
+// between This sale and Now owes; plain "Paid today" because two methods were used.
+test("31 shows the payment taken today: Before, This sale, Paid today (the total of the parts), Now owes", async () => {
   const app = await open();
   await split27From19(app);
   await app.tap(/^Done$/);
@@ -169,20 +172,16 @@ test("31 keeps Payment received today and Total received", async () => {
   await app.tap(/^Money received$/);
   assert.equal(app.route, "CreditSaved");
   const text = shown(app);
-  assert.match(text, /Payment received today/);
-  assert.match(text, /Total received/);
   assert.doesNotMatch(text, DRAFT_WORDS);
+  const box = nodes(app.view.tree).find((node) => node.props["data-debt-saved-rows"] !== undefined);
+  const rows = nodes(box).filter((node) => node.props["data-event-detail"] !== undefined).map((node) => [node.props["data-event-detail"], textOf(node)]);
+  assert.deepEqual(rows, [["before", "BeforeGH₵10.00"], ["added", "This saleGH₵8.00"], ["paid-today", "Paid today− GH₵3.00"], ["now-owes", "Now owesGH₵15.00"]]);
   // rules_global.soft_tiles (23 Nov 2026): the block is the soft tile (no mint fill, no green border),
-  // the rows inside are white, Total received is bold.
-  const box = nodes(app.view.tree).find((node) => node.props["data-payment-today"] !== undefined);
-  assert.match(box.props.className, /bg-\[#F1F5F9\]/);
-  assert.doesNotMatch(box.props.className, /emerald|\bborder\b/);
-  const rows = nodes(box).filter((node) => /\bbg-white\b/.test(node.props.className ?? ""));
-  assert.ok(rows.length >= 1, "white rows inside");
-  const total = nodes(box).find((node) => node.props["data-total-today"] !== undefined);
-  assert.match(total.props.className, /\bfont-bold\b/);
-  assert.match(total.props.className, /border-\[#E2E8F0\]/);
-  assert.doesNotMatch(total.props.className, /emerald/);
+  // with #E2E8F0 dividers between the rows.
+  const classes = new Set(String(box.props.className).split(/\s+/));
+  assert.ok(classes.has("bg-[#F1F5F9]"), "soft tile fill");
+  assert.ok(![...classes].some((c) => /emerald|^border(-2)?$|^border-slate/.test(c)), `no border, no green (${box.props.className})`);
+  assert.ok(classes.has("[&>div]:border-[#E2E8F0]"), "#E2E8F0 row dividers");
 });
 
 test("28 keeps its result wording (Payment received) and never shows the draft words", async () => {

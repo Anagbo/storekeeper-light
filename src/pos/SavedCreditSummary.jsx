@@ -2,6 +2,7 @@ import { Check } from "lucide-react";
 import { EventDetail, KeyValueRows } from "./EventRows.jsx";
 import { formatGhs } from "../lib/money.js";
 import { posText as t } from "./i18n.js";
+import { SOFT_TILE, SOFT_TILE_DIVIDERS } from "./softTile.js";
 
 // rules_global.saved_credit_layout (25 Nov 2026): one layout for Saved as credit after a sale on credit
 // and after Add debt. The tick, "Saved as credit", one large line "{name} owes GH₵X" (the name appears once),
@@ -26,7 +27,9 @@ export default function SavedCreditSummary({ name, owesPesewas, subline, beforeP
         <p data-saved-owes="" className="mt-1 min-w-0 text-2xl font-extrabold leading-tight text-[#0F172A] [overflow-wrap:anywhere] sm:text-4xl">{t("credit.customerOwes", { name, amount: formatGhs(owesPesewas) })}</p>
         {subline && <p data-saved-subline="" className="mt-1 text-[17px] text-slate-700">{subline}</p>}
       </div>
-      <KeyValueRows name="saved-credit" data-debt-saved-rows="" className="rounded-2xl border-2 border-slate-400 bg-white px-4 py-2 text-left [&>div:first-child]:border-t-0 [&>div:first-child]:pt-0">
+      {/* The soft card (rules_global.soft_tiles: a read-only block is the soft tile, #F1F5F9, no border,
+          #E2E8F0 row dividers). */}
+      <KeyValueRows name="saved-credit" data-debt-saved-rows="" className={`${SOFT_TILE} ${SOFT_TILE_DIVIDERS} px-4 py-2 text-left [&>div:first-child]:border-t-0 [&>div:first-child]:pt-0`}>
         <EventDetail label={t("credit.before")} name="before">{formatGhs(beforePesewas)}</EventDetail>
         <EventDetail label={addedLabel} name="added">{formatGhs(addedPesewas)}</EventDetail>
         {paidPesewas > 0 && <EventDetail label={paidTodayLabel(parts, fallbackMethod)} name="paid-today">{`− ${formatGhs(paidPesewas)}`}</EventDetail>}

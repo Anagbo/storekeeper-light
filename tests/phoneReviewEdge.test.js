@@ -221,12 +221,15 @@ test("Saved as credit after a payment today: one Paid today row, method in the l
         const card = document.querySelector("[data-debt-saved-rows]"); const text = card ? card.textContent : "";
         const rows = card ? [...card.querySelectorAll("[data-event-detail]")].map((el) => el.dataset.eventDetail) : [];
         const paid = [...document.querySelectorAll("[data-event-detail='paid-today']")];
-        return { rows, paidCount: paid.length, paidInCard: paid.every((el) => card && card.contains(el)), paidText: paid[0] && paid[0].textContent.replace(/\\s+/g, " ").trim(), text, scroll: document.documentElement.scrollWidth <= innerWidth };
+        const cs = card && getComputedStyle(card);
+        return { soft: cs && [cs.backgroundColor, cs.borderTopWidth], rows, paidCount: paid.length, paidInCard: paid.every((el) => card && card.contains(el)), paidText: paid[0] && paid[0].textContent.replace(/\\s+/g, " ").trim(), text, scroll: document.documentElement.scrollWidth <= innerWidth };
       })()`);
       assert.equal(m.paidCount, 1, `${width}: one Paid today row`);
       assert.ok(m.paidInCard, `${width}: it is inside the card`);
       assert.match(m.paidText, /^Paid today · Cash/, `${width}: a single method is named in the label (${m.paidText})`);
       assert.deepEqual(m.rows, ["before", "added", "paid-today", "now-owes"], `${width}: no per-method sub-rows`);
+      // saved_credit_layout "a soft card" (rules_global.soft_tiles): #F1F5F9, no border.
+      assert.deepEqual(m.soft, ["rgb(241, 245, 249)", "0px"], `${width}: the card is the soft tile`);
       assert.ok(!/MoMo/.test(m.text), `${width}: no MoMo row`);
       assert.match(m.text, /Now owes/, `${width}: the Now owes row`);
       assert.ok(m.scroll, `${width}: no sideways scroll`);
