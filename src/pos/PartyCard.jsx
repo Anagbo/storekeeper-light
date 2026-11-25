@@ -127,7 +127,7 @@ export function PartyCard({
   );
   const Frame = framed ? "section" : "div";
   return (
-    <Frame {...rest} className={`flex min-w-0 ${wide ? "flex-row items-center gap-4" : "flex-col gap-3"} ${framed ? "rounded-2xl border-2 border-slate-600 bg-white p-4" : ""}`}>
+    <Frame {...rest} className={`flex min-w-0 ${wide ? "flex-row items-center gap-4" : "flex-col gap-3"} ${framed ? (cardWide ? "rounded-[20px] border-2 border-slate-300 bg-white p-4" : "rounded-2xl border-2 border-slate-600 bg-white p-4") : ""}`}>
       {wide ? <div className="min-w-0 flex-1">{top}</div> : top}
       <div className={`flex min-w-0 ${wide ? "shrink-0 gap-3" : "gap-2"} ${cardWide ? "mt-auto justify-end" : ""}`}>
         <button type="button" aria-label={action.ariaLabel} onClick={action.onClick} className={`flex ${wide ? "h-12 w-40 shrink-0" : cardWide ? "h-[52px] w-48 shrink-0" : "h-[52px] min-w-0 flex-1"} items-center justify-center gap-2 rounded-[14px] border-2 px-4 text-lg ${wide || cardWide ? "font-bold" : "font-extrabold"} ${action.outlined ? "border-[#03543F] bg-white text-[#03543F]" : "border-emerald-950 bg-emerald-900 text-white"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800`}>

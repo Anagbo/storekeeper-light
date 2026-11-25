@@ -198,12 +198,12 @@ test("wide: Sell and Owed are in the sidebar too (they were the bottom bar)", as
   assert.equal(app.route, "PeopleWhoOweYou");
 });
 
-test("wide: the page sits in a centred column 1160px at most", async () => {
+test("wide: the page sits in a centred column 1200px at most", async () => {
   const app = await open(1440);
   const column = [...walk(app.view.tree)].find((node) => node.props?.["data-wide-content"] !== undefined);
   assert.ok(column, "the wide column");
   assert.equal(column.props.style.maxWidth, WIDE_CONTENT_MAX_PX);
-  assert.equal(WIDE_CONTENT_MAX_PX, 1160);
+  assert.equal(WIDE_CONTENT_MAX_PX, 1200);
   assert.match(column.props.className, /\bmx-auto\b/);
 });
 
@@ -314,8 +314,8 @@ for (const mode of ["sidebar", "rail"]) {
       const active = row.props["data-side-row"] === "MyMoney";
       assert.equal(row.props["aria-current"], active ? "page" : undefined);
       assert.ok(classes.includes("border-2"), "every row has the 2px border, so nothing moves");
-      assert.equal(classes.includes("bg-emerald-100"), active, `${row.props["data-side-row"]}: background`);
-      assert.equal(classes.includes("border-emerald-900"), active, `${row.props["data-side-row"]}: outline`);
+      assert.equal(classes.includes("bg-[#D1FAE5]"), active, `${row.props["data-side-row"]}: background`);
+      assert.equal(classes.includes("border-[#03543F]"), active, `${row.props["data-side-row"]}: outline`);
       if (!active) assert.ok(classes.includes("border-transparent"));
     }
   });

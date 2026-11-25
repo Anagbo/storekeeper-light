@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { Banknote, BarChart3, Check, Home as HomeIcon, List, Menu as MenuIcon, Package, Settings, ShoppingCart, Smartphone, Split, UserRound, UsersRound, WifiOff } from "lucide-react";
+import { Banknote, BarChart3, Check, Home as HomeIcon, List, Menu as MenuIcon, Package, Settings, ShoppingCart, PanelLeft, Smartphone, Split, Store, UserRound, UsersRound, WifiOff } from "lucide-react";
 import { formatWeekdayDate } from "../lib/formatDate.js";
 import { posText as t } from "./i18n.js";
 import { useOnline } from "./useOnline.js";
@@ -146,7 +146,7 @@ const SIDE_ROW_MODES = {
   sidebar: "min-h-[54px] w-full gap-3 whitespace-nowrap px-3.5 text-left",
   rail: "h-[60px] w-[60px] justify-center"
 };
-const SIDE_ROW_ACTIVE = "border-emerald-900 bg-emerald-100 text-emerald-950";
+const SIDE_ROW_ACTIVE = "border-[#03543F] bg-[#D1FAE5] text-[#03543F]";
 const SIDE_ROW_IDLE = "border-transparent bg-white text-slate-900 hover:border-slate-300 hover:bg-slate-100";
 
 function SideRow({ route, label, icon: Icon, mode, active, onNavigate }) {
@@ -161,7 +161,7 @@ function SideRow({ route, label, icon: Icon, mode, active, onNavigate }) {
       title={mode === "rail" ? name : undefined}
       className={`${SIDE_ROW_BASE} ${SIDE_ROW_MODES[mode]} ${active ? SIDE_ROW_ACTIVE : SIDE_ROW_IDLE}`}
     >
-      <Icon size={mode === "rail" ? 26 : 24} strokeWidth={2.2} aria-hidden="true" className="shrink-0 text-emerald-900" />
+      <Icon size={mode === "rail" ? 26 : 24} strokeWidth={2.2} aria-hidden="true" className={`shrink-0 ${active ? "text-[#03543F]" : "text-emerald-900"}`} />
       {mode === "sidebar" && <span className="min-w-0 truncate">{name}</span>}
     </button>
   );
@@ -171,23 +171,32 @@ function SideRow({ route, label, icon: Icon, mode, active, onNavigate }) {
 // component never reads the width. Top: the shop name with today's
 // date under it (the rail shows the shop tile; the name and date are its accessible text). Bottom:
 // Settings, then the connection status. statusLabel ("Syncing…") shows above the status while it runs.
-export function PosSideNav({ mode = "sidebar", current, onNavigate, shopName = "", statusLabel = "", hideSaved = false, now = Date.now() }) {
+export function PosSideNav({ mode = "sidebar", current, onNavigate, shopName = "", statusLabel = "", hideSaved = false, now = Date.now(), collapsible = false, collapsed = false, onToggleCollapse }) {
   const rail = mode === "rail";
   const dateText = formatWeekdayDate(now);
   const top = SIDEBAR_ROWS.filter((row) => !row.bottom);
   const bottom = SIDEBAR_ROWS.filter((row) => row.bottom);
+  // Sidebar mode only (layout.js decides): a 48px button folds the sidebar into the 84px rail (same rail
+  // component and styles) and back. Expanded it ends the brand row; folded it sits under the logo.
+  const toggle = collapsible && onToggleCollapse ? (
+    <button type="button" data-side-toggle="" onClick={onToggleCollapse} aria-expanded={!collapsed} aria-label={collapsed ? t("nav.expandMenu") : t("nav.collapseMenu")} title={collapsed ? t("nav.expandMenu") : t("nav.collapseMenu")} className="grid h-12 w-12 shrink-0 place-items-center rounded-[14px] border-2 border-[#CBD5E1] bg-white text-slate-900 hover:bg-slate-100 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[#0F172A]">
+      <PanelLeft size={26} strokeWidth={2.2} aria-hidden="true" />
+    </button>
+  ) : null;
   return (
     <nav aria-label={t("nav.main")} data-side-nav={mode} className={`flex h-full shrink-0 flex-col overflow-y-auto border-r-2 border-slate-200 bg-white pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] ${rail ? "w-[84px] items-center px-3" : "w-[300px] px-4"}`}>
       <div data-side-brand="" className={`flex items-center gap-3 border-b-2 border-slate-200 pb-3 ${rail ? "justify-center" : "px-1"}`}>
         <span aria-hidden="true" className="grid h-12 w-12 shrink-0 place-items-center rounded-[14px] bg-emerald-900 text-white">
-          <HomeIcon size={26} strokeWidth={2.2} />
+          <Store size={26} strokeWidth={2.2} />
         </span>
         <span className={rail ? "sr-only" : "min-w-0 flex-1"}>
           <span data-side-shop="" className="block truncate text-[19px] font-extrabold text-slate-900">{shopName}</span>
-          <span data-side-date="" className="block whitespace-nowrap text-[15px] font-semibold text-slate-700">{dateText}</span>
+          {!collapsible && <span data-side-date="" className="block whitespace-nowrap text-[15px] font-semibold text-slate-700">{dateText}</span>}
         </span>
+        {!rail && toggle}
       </div>
-      <div className={`mt-3 flex flex-col gap-1.5 ${rail ? "items-center" : ""}`}>
+      {rail && toggle && <div className="mt-3 flex justify-center">{toggle}</div>}
+      <div className={`${rail && toggle ? "mt-2" : "mt-3"} flex flex-col gap-1.5 ${rail ? "items-center" : ""}`}>
         {top.map((row) => <SideRow key={row.route} {...row} mode={mode} active={current === row.route} onNavigate={onNavigate} />)}
       </div>
       <div className={`mt-auto flex flex-col gap-1.5 pt-4 ${rail ? "items-center" : ""}`}>
@@ -205,9 +214,9 @@ export function PosSideNav({ mode = "sidebar", current, onNavigate, shopName = "
 function SideConnectionStatus({ hideSaved, rail = false }) {
   const online = useOnline();
   return (
-    <div role="status" aria-label={online ? t("status.nameOnline") : t("status.nameOffline")} className={`mt-1 flex items-start gap-2 border-t-2 border-slate-200 pt-3 ${rail ? "w-full justify-center" : "px-1"}`}>
-      <span className="mt-1">{online ? <OnlineDot /> : <OfflineIcon size={rail ? 22 : 16} />}</span>
-      <span className={rail ? "sr-only" : "flex flex-col text-sm"}>
+    <div role="status" aria-label={online ? t("status.nameOnline") : t("status.nameOffline")} className={`mt-1 flex items-start gap-3 border-t-2 border-slate-200 pt-3 ${rail ? "w-full justify-center" : "px-4"}`}>
+      <span className="mt-1.5 grid w-6 shrink-0 place-items-center">{online ? <OnlineDot /> : <OfflineIcon size={rail ? 22 : 16} />}</span>
+      <span className={rail ? "sr-only" : "flex flex-col text-[15px]"}>
         <span className="font-bold" style={{ color: online ? "#14532D" : OFFLINE_BROWN }}>{online ? t("status.onlineWord") : t("status.offlineWord")}</span>
         {!hideSaved && <span className="text-slate-700">{t("status.savedOnDevice")}</span>}
       </span>

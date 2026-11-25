@@ -9,7 +9,12 @@ import { createContext, useContext, useEffect, useState } from "react";
 // says whether My money is wide. Every screen gets this object from PosApp; none reads the width.
 export const LAYOUT_BREAKPOINTS = Object.freeze({ rail: 768, wideMyMoney: 1024, sidebar: 1280 });
 // Content never stretches past this; on wider screens it stays centred with the background around it.
-export const WIDE_CONTENT_MAX_PX = 1160;
+export const WIDE_CONTENT_MAX_PX = 1200;
+// Wide Home puts Owed and Today’s transactions side by side only when the content (the page column
+// inside its side padding) is at least this wide; measured on the element, not read from the window.
+export const HOME_TWO_COLUMN_MIN_PX = 1000;
+// The sidebar can fold into the rail’s 84px strip (sidebar mode only); the choice is kept per device.
+export const SIDEBAR_COLLAPSED_KEY = "storekeeper.sidebarCollapsed";
 
 export function getLayoutMode(width) {
   if (!(width >= LAYOUT_BREAKPOINTS.rail)) return "phone";
@@ -59,4 +64,17 @@ export function useLayout() {
     return () => { for (const list of lists) list.removeEventListener?.("change", onChange); };
   }, []);
   return layout;
+}
+
+// The sidebar fold (sidebar mode only): remembered per device; the app works without storage.
+export function useSidebarCollapsed() {
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return globalThis.localStorage?.getItem(SIDEBAR_COLLAPSED_KEY) === "1"; } catch { return false; }
+  });
+  const toggle = () => setCollapsed((previous) => {
+    const next = !previous;
+    try { globalThis.localStorage?.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0"); } catch { /* not remembered */ }
+    return next;
+  });
+  return [collapsed, toggle];
 }

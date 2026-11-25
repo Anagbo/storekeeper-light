@@ -47,7 +47,7 @@ import PosErrorBoundary from "./PosErrorBoundary.jsx";
 import CreditScreens from "./CreditScreens.jsx";
 import Sell from "./Sell.jsx";
 import { POS_THEME } from "./theme.js";
-import { LayoutContext, useLayout, WIDE_CONTENT_MAX_PX } from "./layout.js";
+import { LayoutContext, useLayout, useSidebarCollapsed, WIDE_CONTENT_MAX_PX } from "./layout.js";
 import { SpentMoney, StockOnCredit, YouOweSuppliers } from "./SupplierScreens.jsx";
 import ItemScreens from "./ItemScreens.jsx";
 import SellWithItems from "./SellWithItems.jsx";
@@ -101,7 +101,7 @@ function getStatusLabel(sync) {
 // wide_layout.page_types.dashboard: Home (22, also behind the Collect sheet 25) and My money (33) sit on
 // the grey page background with white cards (D1, D7). Other screens keep theirs until their wide step.
 // Owed (D3) also sits on the grey page: its white cards are directly on it (wiring 32, Layout).
-const DASHBOARD_ROUTES = new Set([POS_ROUTES.Home, POS_ROUTES.CollectPayment, POS_ROUTES.MyMoney, POS_ROUTES.PeopleWhoOweYou]);
+const DASHBOARD_ROUTES = new Set([POS_ROUTES.Home, POS_ROUTES.CollectPayment, POS_ROUTES.MyMoney, POS_ROUTES.PeopleWhoOweYou, POS_ROUTES.YouOweSuppliers]);
 const DASHBOARD_BACKGROUND = "#F1F5F9";
 // wide_layout.page_types.task_column: every sale, collect, plan, MoMo, supplier, spent-money,
 // manual-debt, backup and plan-payment screen not given its own wide page type (15 is D2, 20/55 D9,
@@ -238,6 +238,7 @@ export default function PosApp() {
   const menuWasOpen = useRef(false);
   // rules_global.wide_layout: the one layout decision (layout.js), read here once and passed down.
   const layout = useLayout();
+  const [sidebarCollapsed, toggleSidebar] = useSidebarCollapsed();
   // The Menu exists only in the phone layout: growing the window past 768px closes an open drawer.
   useEffect(() => { if (layout.wide) setMenuOpen(false); }, [layout.wide]);
   // Wide D9 is one screen on the 20 route: 55 opened on a wide window becomes 20 (no identical entry to go Back to).
@@ -930,7 +931,10 @@ export default function PosApp() {
       <div className="flex min-h-0 flex-1">
         {layout.wide && !isSetupFlow && (
           <PosSideNav
-            mode={layout.mode}
+            mode={layout.mode === "sidebar" && sidebarCollapsed ? "rail" : layout.mode}
+            collapsible={layout.mode === "sidebar"}
+            collapsed={sidebarCollapsed}
+            onToggleCollapse={toggleSidebar}
             current={route}
             onNavigate={chooseFromSidebar}
             shopName={shopName}
