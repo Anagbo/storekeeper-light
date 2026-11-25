@@ -37,7 +37,9 @@ const MEASURE = `(() => {
 
 test("wide Home table: five columns inside its card, amounts whole, correction and stock-on-credit lines", { skip: browser ? false : "no Chrome or Edge found (set HEADER_TEST_BROWSER)", timeout: 600_000 }, async () => {
   await withEdgeApp({ seeds: SEEDS, env: ENV }, async (app) => {
-    for (const [width, height] of [[768, 1024], [1280, 800], [1440, 900]]) {
+    // The table shows wherever the lower row is one column (768 rail, 1280 with the sidebar expanded);
+    // 1440 has two columns and compact rows instead (checked below).
+    for (const [width, height] of [[768, 1024], [1280, 800]]) {
       const at = `${width}x${height}`;
       await app.open("home", width, height);
       await waitFor(() => app.evaluate(`document.querySelectorAll("[data-home-row]").length >= 4`), `${at}: the table rows`);
@@ -59,5 +61,41 @@ test("wide Home table: five columns inside its card, amounts whole, correction a
       assert.ok(fix && /Lowered by GH₵12,345\.00/.test(fix.what) && fix.cells.every((c) => c === "—"), `${at}: correction line and dashes`);
       assert.ok(stock && /You owe .* GH₵12,345\.00/.test(stock.what) && stock.cells.every((c) => c === "—"), `${at}: stock on credit line and dashes`);
     }
+  });
+});
+
+// 1440x900 (content 960px or more, wiring WIDE HOME): two columns, Today’s transactions in the one-third
+// column as compact rows, no table. The rows stay inside the card, amounts whole on one line, and the rows
+// shown plus "+N more" account for all five transactions.
+const COMPACT = `(() => {
+  document.getAnimations().forEach((a) => { try { a.finish(); } catch {} });
+  const card = document.querySelector("[data-home-transactions]");
+  const cr = card.getBoundingClientRect();
+  const more = card.querySelector("[data-home-more]");
+  return {
+    innerWidth, scrollWidth: document.documentElement.scrollWidth,
+    columns: document.querySelector("[data-home-row-2]")?.dataset.columns,
+    tables: card.querySelectorAll("table").length,
+    rows: [...card.querySelectorAll("[data-home-compact-row]")].map((r) => { const b = r.getBoundingClientRect(); return { kind: r.dataset.rowKind, l: b.left, r: b.right, bottom: b.bottom }; }),
+    cardL: cr.left, cardR: cr.right, cardBottom: cr.bottom,
+    amounts: [...card.querySelectorAll("[data-home-compact-row] [data-cell=money-in], [data-home-compact-row] [data-cell=spent], [data-home-compact-row] [data-cell=owed]")].map((el) => ({ text: el.textContent, clipped: el.scrollWidth > el.clientWidth + 0.5, h: el.getBoundingClientRect().height, lh: parseFloat(getComputedStyle(el).lineHeight) })),
+    more: more ? Number((more.textContent.match(/\\d+/) || [0])[0]) : 0
+  };
+})()`;
+
+test("wide Home at 1440x900: two columns, Today’s transactions as compact rows inside the card, no table", { skip: browser ? false : "no Chrome or Edge found (set HEADER_TEST_BROWSER)", timeout: 600_000 }, async () => {
+  await withEdgeApp({ seeds: SEEDS, env: ENV }, async (app) => {
+    const at = "1440x900";
+    await app.open("home", 1440, 900);
+    await waitFor(() => app.evaluate(`document.querySelector("[data-home-row-2]")?.dataset.columns === "2" && document.querySelectorAll("[data-home-compact-row]").length >= 1`), `${at}: the compact rows`);
+    await sleep(300);
+    const m = await app.evaluate(COMPACT);
+    assert.ok(m.scrollWidth <= m.innerWidth, `${at}: no sideways scroll`);
+    assert.equal(m.columns, "2", `${at}: two columns`);
+    assert.equal(m.tables, 0, `${at}: no table in the one-third column`);
+    assert.ok(m.rows.length >= 1, `${at}: compact rows`);
+    assert.equal(m.rows.length + m.more, 5, `${at}: rows shown (${m.rows.length}) plus +N more (${m.more}) are all five`);
+    for (const r of m.rows) assert.ok(r.l >= m.cardL - 0.5 && r.r <= m.cardR + 0.5 && r.bottom <= m.cardBottom + 0.5, `${at}: ${r.kind} row inside the card`);
+    for (const a of m.amounts) assert.ok(!a.clipped && a.h < a.lh * 1.5, `${at}: amount ${a.text} whole on one line`);
   });
 });

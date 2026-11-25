@@ -108,7 +108,9 @@ const MEASURE = `(frame, win, doc) => {
   const hint = doc.querySelector("[data-empty-hint]");
   const input = doc.querySelector("input");
   const tiles = ["spent", "given-on-credit"].map((name) => { const el = doc.querySelector('[data-summary="' + name + '"]'); if (!el) return null; const cs = win.getComputedStyle(el); const amount = [...el.querySelectorAll("p")].at(-1); return { name, bg: cs.backgroundColor, left: cs.borderLeftWidth, top: cs.borderTopWidth, amountFont: win.getComputedStyle(amount).fontSize, labelLines: textLines(el.querySelector("p")), amountOverflow: amount.scrollWidth > amount.clientWidth + 0.5 || box(amount).right > box(el).right + 0.5 }; }).filter(Boolean);
-  const chips = [...doc.querySelectorAll("[data-chip]")].map((chip) => ({ box: box(chip), card: box(chip.closest("article")) }));
+  // The person and payment chips inside the transaction cards (the filter buttons are ChoiceChips with
+  // data-chip="view" since 1a0e284 and sit outside any card).
+  const chips = [...doc.querySelectorAll("article [data-chip]")].map((chip) => ({ box: box(chip), card: box(chip.closest("article")) }));
   return {
     pageOverflow: doc.scrollingElement.scrollWidth > win.innerWidth || doc.body.scrollWidth > win.innerWidth,
     rows, chipLines, buttons, oweRow, tiles, chips,
@@ -191,6 +193,7 @@ test("chunk B screens at 340, 360 and 393px: 16 status rows, 30 owe row and butt
         assert.ok(parseFloat(tile.amountFont) <= 22 && parseFloat(tile.amountFont) >= 17, `${where} / ${tile.name}: the amount is 22px at most (${tile.amountFont})`);
         assert.equal(tile.labelLines, 1, `${where} / ${tile.name}: the label is one line`);
       }
+      assert.ok(result.chips.length > 0, `${where}: the transaction cards have their chips`);
       for (const chip of result.chips) assert.ok(chip.box.right <= chip.card.right + 0.5, `${where}: a chip stays inside its card`);
     }
   }

@@ -17,7 +17,9 @@ const MEASURE = `(() => {
   if (!panel) return null;
   const form = panel.querySelector("[data-d10-form]"), summary = panel.querySelector("[data-d10-summary]");
   const name = (el) => el.getAttribute("aria-label") || el.textContent.replace(/\\s+/g, " ").trim();
-  const controls = [...panel.querySelectorAll("button, input")].filter((el) => el.getClientRects().length).map((el) => ({ label: name(el) || el.type, lines: el.tagName === "BUTTON" ? lines(el) : 1, overflow: el.tagName === "BUTTON" && el.scrollWidth > el.clientWidth + 0.5, ...box(el.tagName === "INPUT" && el.type !== "date" ? el.parentElement : el) }));
+  // A word split over two lines inside a button (a mid-word break).
+  const broken = (el) => { const out = []; const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); for (let n = w.nextNode(); n; n = w.nextNode()) { const re = /\\S+/g; let m; while ((m = re.exec(n.textContent))) { const r = document.createRange(); r.setStart(n, m.index); r.setEnd(n, m.index + m[0].length); if (new Set([...r.getClientRects()].filter((b) => b.width > 0).map((b) => Math.round(b.top / 4))).size > 1) out.push(m[0]); } } return out; };
+  const controls = [...panel.querySelectorAll("button, input")].filter((el) => el.getClientRects().length).map((el) => ({ label: name(el) || el.type, lines: el.tagName === "BUTTON" ? lines(el) : 1, broken: el.tagName === "BUTTON" ? broken(el) : [], overflow: el.tagName === "BUTTON" && el.scrollWidth > el.clientWidth + 0.5, ...box(el.tagName === "INPUT" && el.type !== "date" ? el.parentElement : el) }));
   const texts = [];
   const w = document.createTreeWalker(panel, NodeFilter.SHOW_TEXT);
   for (let n = w.nextNode(); n; n = w.nextNode()) {
@@ -101,8 +103,17 @@ test("D10 in real Edge at 768, 1024, 1280 and 1440 with GH₵12,345.00 and GH₵
         const found = m.texts.find((t) => t.text === label);
         assert.ok(found && found.size >= 17, `${at}: "${label}" 17px or larger (${found?.size})`);
       }
-      const wrapped = m.controls.filter((c) => c.lines > 1).map((c) => c.label);
+      // By design only the How often and Next cycle chips may take two lines (the selected chip's inline tick,
+      // 5a74990, makes "Every 2 weeks" two lines at 1024 and 1280): between words, never three lines, and as
+      // tall as the other chips of its row. Every other button label stays on one line.
+      const MAY_WRAP = /^(Every week|Every 2 weeks|Every month|Next cycle)/;
+      const wrapped = m.controls.filter((c) => c.lines > 1 && !(MAY_WRAP.test(c.label) && c.lines === 2)).map((c) => c.label);
       assert.deepEqual(wrapped, [], `${at}: no wrapped button label`);
+      assert.deepEqual(m.controls.filter((c) => c.broken.length).map((c) => `${c.label}: ${c.broken}`), [], `${at}: no word broken inside a button`);
+      for (const group of [/^Every /, /^(Today|Next cycle)/]) {
+        const chips = m.controls.filter((c) => group.test(c.label));
+        assert.ok(chips.length >= 2 && chips.every((c) => Math.abs(c.h - chips[0].h) < 0.5 && c.h >= 48), `${at}: the ${group} chips are one height (${chips.map((c) => `${c.label} ${Math.round(c.h)}`)})`);
+      }
       console.log(`${at}: panel ${Math.round(m.panel.w)}px, form ${Math.round(m.form.w)}px, summary ${Math.round(m.summary.w)}px, Owed ${m.owed.px}px, wrapped: ${wrapped.join("; ") || "none"}`);
     }
   });
