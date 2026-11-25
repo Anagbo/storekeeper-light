@@ -815,8 +815,12 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
     </PayingTodayPanel>
   ) : null;
   // Wide D10: tile labels are 17px; helper lines stay text-sm, which the task column draws at 15px.
+  const amountMissing = !(Number.isSafeInteger(installmentPesewas) && installmentPesewas > 0);
   const saveButton = (
-    <PosPrimaryButton type="button" disabled={saving || !planReady} className={wide ? "min-h-14 w-full" : "h-14"} onClick={() => void savePlan()}>{saving ? t("credit.saving") : t("credit.savePlan")}</PosPrimaryButton>
+    <>
+      <PosPrimaryButton type="button" disabled={saving || !planReady} className={wide ? "min-h-14 w-full" : "h-14"} onClick={() => void savePlan()}>{saving ? t("credit.saving") : t("credit.savePlan")}</PosPrimaryButton>
+      {amountMissing && <p data-save-hint="" className="mt-1 text-center text-[15px] font-normal text-[#475569]">{t("expense.enterAmountHint")}</p>}
+    </>
   );
   const notices = (
     <>
@@ -875,6 +879,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
         <div className={wide ? "grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-2" : "grid grid-cols-2 gap-2"}>
           <ChoiceChip
             selected={startToday}
+            aria-describedby={alreadyPaidPesewas > 0 ? "first-payment-today-why" : undefined}
             disabled={paymentAlreadyMadeToday || alreadyPaidPesewas > 0}
             onClick={() => {
               if (paymentAlreadyMadeToday || alreadyPaidPesewas > 0) return;
@@ -910,6 +915,7 @@ function ALittleAtATime({ params, onBack, onNavigate, onUpdateParams, onReturnTo
             onUpdateParams?.(draftUpdates);
           }} className={`min-h-14 ${wide ? "text-[17px]" : "text-[15px]"}`}>{t("credit.nextCycle", { frequency: t(`credit.frequency.${frequency}`) })}</ChoiceChip>
         </div>
+        {alreadyPaidPesewas > 0 && <p id="first-payment-today-why" data-first-payment-why="" className="mt-1 text-[15px] font-normal text-[#475569]">{t("credit.alreadyPaidToday", { amount: formatGhs(alreadyPaidPesewas) })}</p>}
       </fieldset>
       {startToday && !paymentAlreadyMadeToday && (
         <label className="block">

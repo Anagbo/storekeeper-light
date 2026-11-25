@@ -416,6 +416,7 @@ const ENGLISH = Object.freeze({
   "credit.invalidGhanaCard": "Enter a Ghana Card number like GHA-123456789-0 or 1234567890.",
   "credit.whenPay": "When will {name} pay?",
   "credit.today": "Today",
+  "credit.alreadyPaidToday": "Already paid {amount} today",
   "credit.inOneWeek": "In 1 week",
   "credit.inTwoWeeks": "In 2 weeks",
   "credit.aLittleAtATime": "A little at a time",
