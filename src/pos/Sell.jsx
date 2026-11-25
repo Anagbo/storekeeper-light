@@ -19,7 +19,7 @@ import { loadLastSaleToday } from "./lastSale.js";
 
 // Keypad keys on 15: 62px, shorter on short screens (never under 48px; the gaps stay 8px) so that Done
 // fits above the bottom bar without scrolling where it can.
-const KEY_HEIGHT_15 = "54px";
+const KEY_HEIGHT_15 = "52px";
 import { getSplitPaymentParams } from "./routes.js";
 import AmountKeypad from "./AmountKeypad.jsx";
 import { pesewasToAmountText, pressAmountKey } from "./amountKeypad.js";

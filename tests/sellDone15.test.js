@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { browser, sleep, withEdgeApp } from "./helpers/edgeApp.js";
 
 // Wiring 15 "Done on 15" (17 Nov 2026, second decision), real Edge: Done is NOT pinned. It is the 60px
-// solid green button at the end of the content; the keypad keys are 54px (62px elsewhere) and the page
+// solid green button at the end of the content; the keypad keys are 52px (62px elsewhere) and the page
 // keeps room below Done so that, scrolled to the end, Done ends fully above the top of the fixed bottom
 // bar (the raised Sell circle included). On the three tall screens Done is fully visible without
 // scrolling; on the three short ones the screen scrolls. Nothing floats over the content: Done never
@@ -52,7 +52,7 @@ const MEASURE = `(() => {
 })()`;
 
 // [width, height, scrolls]: the three tall screens show Done without scrolling, the short ones scroll.
-const SIZES = [[340, 640, true], [340, 667, true], [360, 667, true], [360, 740, true], [393, 800, false], [393, 852, false]];
+const SIZES = [[340, 640, true], [340, 667, true], [360, 667, true], [360, 740, false], [393, 800, false], [393, 852, false]];
 
 test("15: Done is not pinned; at the end of the scroll it ends above the bottom bar with the four tiles above it; fully visible unscrolled on the tall screens (six sizes)", { skip: browser ? false : "no Chrome or Edge found (set HEADER_TEST_BROWSER)", timeout: 400_000 }, async () => {
   await withEdgeApp({ seeds: SEEDS }, async (app) => {
@@ -68,8 +68,8 @@ test("15: Done is not pinned; at the end of the scroll it ends above the bottom 
       assert.ok(top.docScrollWidth <= width, `${label}: no sideways scroll (${top.docScrollWidth})`);
       assert.ok(top.docScrollHeight <= height + 0.5, `${label}: the document never scrolls, only the page area (${top.docScrollHeight})`);
       assert.deepEqual(top.floating, [], `${label}: nothing sticky or fixed floats over the content`);
-      // Keys: 54px on 15 with the usual 8px gap; Done: 60px, solid green.
-      assert.ok(Math.abs(top.key - 54) < 0.5, `${label}: the keys are 54px (${top.key})`);
+      // Keys: 52px on 15 with the usual 8px gap; Done: 60px, solid green.
+      assert.ok(Math.abs(top.key - 52) < 0.5, `${label}: the keys are 52px (${top.key})`);
       assert.ok(Math.abs(top.keyGap - 8) < 0.5, `${label}: the key spacing is unchanged, 8px (${top.keyGap})`);
       assert.ok(Math.abs(top.done.height - 60) < 0.5, `${label}: Done is 60px (${top.done.height})`);
       assert.match(top.doneBackground, GREEN, `${label}: Done is solid green`);
