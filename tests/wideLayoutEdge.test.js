@@ -33,7 +33,7 @@ const HOME = `(() => {
     scrollWidth: document.documentElement.scrollWidth, innerWidth,
     mode: nav?.dataset.sideNav ?? null, navWidth: box(nav)?.width ?? null,
     contentWidth: box(content)?.width ?? null,
-    columns: row?.dataset.columns ?? null, owed: box(owed), tx: box(tx),
+    columns: row?.dataset.columns ?? null, lowerWidth: row ? row.getBoundingClientRect().width : null, owed: box(owed), tx: box(tx),
     compact: Boolean(document.querySelector("[data-home-compact]")),
     owedOverflow: personRow ? personRow.scrollWidth > personRow.clientWidth + 1 : null,
     buttonLines: buttons.map((b) => Math.round(b.getBoundingClientRect().height)),
@@ -82,8 +82,22 @@ test("Home columns, the sidebar fold and the footer (1856, 1366, 1280, 1100, 390
     await app.click("^Expand menu$");
     await waitFor(async () => (await app.evaluate(HOME)).navWidth === 300, "the 300px sidebar");
     m = await settled(app, 1366);
-    // 1366 expanded: 1366 - 300 - 64 = 1002, so the 1000px rule gives two columns.
-    assert.equal(m.columns, "2", "1366 expanded follows the 1000px rule");
+    // 1366 expanded: 1366 - 300 - 64 - 15 (stable scrollbar gutter) = 987, so the 960px rule gives two columns.
+    assert.equal(m.columns, "2", "1366 expanded follows the 960px rule");
+
+    // Stable: a short window (page scrolls, classic scrollbar) gives the same row width and columns.
+    const rowWidth = m.lowerWidth;
+    await app.open("today", 1366, 420);
+    m = await settled(app, 1366);
+    assert.equal(m.columns, "2", "1366 expanded: still two columns when the page scrolls");
+    assert.ok(Math.abs(m.lowerWidth - rowWidth) < 1, `row width the same with and without a scrollbar (${m.lowerWidth} / ${rowWidth})`);
+
+    // 1339 expanded: the row is about 960px wide, the Owed row still holds.
+    await app.open("today", 1340, 900);
+    m = await settled(app, 1340);
+    assert.equal(m.columns, "2", "1340 expanded: two columns at the 960px edge");
+    assert.equal(m.owedOverflow, false, "Owed row does not overflow at 960");
+    assert.ok(m.buttonLines.every((h) => h <= 64), `no wrapped buttons at 960 (${m.buttonLines})`);
 
     // 1280 expanded: one column.
     await app.open("today", 1280, 900);

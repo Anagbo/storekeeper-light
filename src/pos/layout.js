@@ -12,7 +12,7 @@ export const LAYOUT_BREAKPOINTS = Object.freeze({ rail: 768, wideMyMoney: 1024, 
 export const WIDE_CONTENT_MAX_PX = 1200;
 // Wide Home puts Owed and Today’s transactions side by side only when the content (the page column
 // inside its side padding) is at least this wide; measured on the element, not read from the window.
-export const HOME_TWO_COLUMN_MIN_PX = 1000;
+export const HOME_TWO_COLUMN_MIN_PX = 960;
 // The sidebar can fold into the rail’s 84px strip (sidebar mode only); the choice is kept per device.
 export const SIDEBAR_COLLAPSED_KEY = "storekeeper.sidebarCollapsed";
 

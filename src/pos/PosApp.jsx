@@ -942,7 +942,7 @@ export default function PosApp() {
             hideSaved={route === POS_ROUTES.MoMoDirect}
           />
         )}
-        <div data-page-area="" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto" style={layout.wide && (DASHBOARD_ROUTES.has(route) || taskColumn) ? { backgroundColor: DASHBOARD_BACKGROUND } : undefined}>
+        <div data-page-area="" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto" style={layout.wide ? { scrollbarGutter: "stable", ...(DASHBOARD_ROUTES.has(route) || taskColumn ? { backgroundColor: DASHBOARD_BACKGROUND } : {}) } : undefined}>
           {layout.wide ? (
             <div data-wide-content="" className="mx-auto flex w-full min-w-0 flex-[1_0_auto] flex-col" style={{ maxWidth: WIDE_CONTENT_MAX_PX }}>
               <TaskColumnContext.Provider value={taskColumn ? layout.mode : null}>{page}</TaskColumnContext.Provider>
