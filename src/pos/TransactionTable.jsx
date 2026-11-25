@@ -103,7 +103,7 @@ export function sumWideRows(rows) {
 
 // The grey line a compact (Home) row gets: only a Balance corrected row ("Lowered by GH₵x") and a Stock on
 // credit row ("You owe {Supplier} GH₵x"). `amount` renders a figure (Home passes its Hide amounts rendering).
-function compactLine(row, amount) {
+export function compactLine(row, amount) {
   const withAmount = (text, pesewas) => text.split("{amount}").flatMap((part, index) => (index === 0 ? [part] : [<Fragment key={index}>{amount(pesewas)}</Fragment>, part]));
   if (row.kind === "adjustment") return withAmount(t("transactions.row.loweredByChip", { amount: "{amount}" }), Math.abs(row.adjustmentDeltaPesewas ?? 0));
   if (row.kind === "credit") return withAmount(t("transactions.row.youOweAmount", { name: displayName(row.supplierName) || t("expense.supplier"), amount: "{amount}" }), row.owedPesewas);

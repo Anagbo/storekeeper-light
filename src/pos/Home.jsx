@@ -1,10 +1,10 @@
-import { Fragment, useMemo } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { CirclePlus, ShoppingCart } from "lucide-react";
 import { db } from "../db/db.js";
 import { loadHideAmounts, saveHideAmounts } from "../db/preferences.js";
 import { latestReminderAt, loadReminderEvents } from "../db/reminders.js";
-import { formatWeekdayDate } from "../lib/formatDate.js";
+import { formatTime, formatWeekdayDate } from "../lib/formatDate.js";
 import {
   getFinancialTransactions,
   getOutstandingDebtPesewas,
@@ -14,7 +14,7 @@ import {
 import { openWhatsApp } from "../lib/openWhatsApp.js";
 import { buildWhatsAppReminderText } from "../utils/whatsapp.js";
 import { posText as t } from "./i18n.js";
-import { PHONE_LAYOUT } from "./layout.js";
+import { HOME_TWO_COLUMN_MIN_PX, PHONE_LAYOUT } from "./layout.js";
 import {
   getMoneyPeriodRange,
   getUrgentCustomerDebts,
@@ -26,7 +26,7 @@ import { PosCard, PosPage, PosSecondaryButton } from "./PosComponents.jsx";
 import { useReminderCheck } from "./ReminderCheck.jsx";
 import { SOFT_HERO, SOFT_HERO_EYE, SOFT_HERO_LABEL, WIDE_HERO } from "./softTile.js";
 import { createPosTransactionRows } from "./transactionFeed.js";
-import { TransactionTable } from "./TransactionTable.jsx";
+import { compactLine, describeWideRow, TransactionTable, WhatText } from "./TransactionTable.jsx";
 
 // The quiet "not counted" line counts only the skipped records that fall in the period Home shows
 // (today); a reversal from another day that the totals query also reads is not counted here.
@@ -167,7 +167,7 @@ function OwedCard({ data, hidden, urgent, onNavigate, onWhatsApp, wide }) {
 // header button is the phone's "Today's transactions" control: same accessible name, same destination.
 // rail: 12px side padding instead of 20px (with the page's 20px), so five-digit amounts in every column
 // fit at 768px (decided 21 Nov 2026).
-function TransactionsCard({ rows, hidden, onNavigate, layout, rail = false }) {
+function TransactionsCard({ rows, hidden, onNavigate, layout, rail = false, narrow = false }) {
   return (
     <section data-home-transactions="" aria-label={t("home.transactionsLink")} className={`flex min-w-0 flex-col rounded-[18px] border-2 border-slate-300 bg-white py-4 ${rail ? "px-3" : "px-5"}`}>
       <button type="button" onClick={() => onNavigate("TodaysTransactions")} aria-label={t("home.transactionsLink")} className={`flex min-h-12 w-full min-w-0 items-center justify-between gap-3 rounded-lg text-left ${FOCUS} focus-visible:outline-emerald-800`}>
@@ -178,10 +178,56 @@ function TransactionsCard({ rows, hidden, onNavigate, layout, rail = false }) {
         <p className="py-2 text-[17px] text-slate-700">{t("home.tableLoadFailed")}</p>
       ) : rows.length === 0 ? (
         <p data-home-table-empty="" className="py-2 text-[17px] text-slate-700">{t("home.noTransactions")}</p>
+      ) : narrow ? (
+        <ul data-home-compact="" className="min-w-0">{rows.map((row) => <CompactTransactionRow key={row.id} row={row} hidden={hidden} />)}</ul>
       ) : (
         <TransactionTable rows={rows} amount={(pesewas) => <Amount pesewas={pesewas} hidden={hidden} />} compact layout={layout} maskedAmount={hidden ? <HiddenAmount /> : null} />
       )}
     </section>
+  );
+}
+
+// The width of one element, measured (not a window width): Home's lower row asks how much room it has.
+// No ResizeObserver (tests, old browsers) reads as 0, which is the one-column layout.
+function useMeasuredWidth() {
+  const [node, setNode] = useState(null);
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    if (!node) return undefined;
+    const read = () => setWidth(Math.round(node.getBoundingClientRect().width));
+    read();
+    if (typeof ResizeObserver !== "function") return undefined;
+    const observer = new ResizeObserver(read);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [node]);
+  return [setNode, width];
+}
+
+// Today's transactions in the narrow (one third) column: one compact line per row, same rows and
+// formatting as the table. Left: what it was (bold) with the time and the person in 15px grey; right: the
+// money in (green, +) with what went on credit under it, or the money spent (neutral, −).
+function CompactTransactionRow({ row, hidden }) {
+  const view = describeWideRow(row);
+  const amount = (pesewas) => <Amount pesewas={pesewas} hidden={hidden} />;
+  const moneyIn = view.moneyInPesewas > 0;
+  const spent = !moneyIn && view.spentPesewas > 0;
+  const credit = !moneyIn && !spent && view.owedPesewas > 0;
+  const line = compactLine(row, amount);
+  return (
+    <li data-wide-row="" data-home-row="" data-home-compact-row="" data-row-kind={row.kind} data-row-id={row.id} className="flex items-start justify-between gap-3 border-b border-slate-200 py-2.5 last:border-b-0">
+      <span className="min-w-0">
+        <span data-cell="what" className="block text-[17px] font-bold leading-snug [overflow-wrap:break-word]"><WhatText text={view.title} masked={hidden ? <HiddenAmount /> : null} /></span>
+        <span data-cell="when" className="block text-[15px] leading-snug text-slate-600"><time dateTime={new Date(row.timestamp).toISOString()}>{formatTime(row.timestamp)}</time>{view.person ? ` · ${view.person}` : ""}</span>
+        {line && <span data-cell="what-line2" className="block text-[15px] leading-snug text-slate-600">{line}</span>}
+      </span>
+      <span className="shrink-0 text-right">
+        {moneyIn && <span data-cell="money-in" className="block whitespace-nowrap text-[17px] font-bold text-[#03543F]">+{amount(view.moneyInPesewas)}</span>}
+        {spent && <span data-cell="spent" className="block whitespace-nowrap text-[17px] font-bold text-[#0F172A]">−{amount(view.spentPesewas)}</span>}
+        {credit && <span data-cell="owed" className="block whitespace-nowrap text-[17px] font-bold text-[#0F172A]">{amount(view.owedPesewas)}</span>}
+        {moneyIn && view.owedPesewas > 0 && <span data-cell="on-credit" className="block whitespace-nowrap text-[15px] leading-snug text-slate-600">{t("home.onCreditLine", { amount: "{amount}" }).split("{amount}").flatMap((part, index) => (index === 0 ? [part] : [<Fragment key={index}>{amount(view.owedPesewas)}</Fragment>, part]))}</span>}
+      </span>
+    </li>
   );
 }
 
@@ -191,6 +237,7 @@ function TransactionsCard({ rows, hidden, onNavigate, layout, rail = false }) {
 export default function Home({ onNavigate, notice = "", shopName, layout = PHONE_LAYOUT }) {
   const wide = layout.wide;
   const range = useMemo(() => getMoneyPeriodRange("day"), []);
+  const [lowerRef, lowerWidth] = useMeasuredWidth();
   const data = useLiveQuery(async () => {
     // rules_global.hide_amounts: the setting loads with the figures, so they never show before it is known.
     const [transactions, debts, reminderEvents, hideAmounts] = await Promise.all([
@@ -274,6 +321,8 @@ export default function Home({ onNavigate, notice = "", shopName, layout = PHONE
   }
 
   const sidebar = layout.mode === "sidebar";
+  // Two columns (Owed 2/3, transactions 1/3) only when the row has at least HOME_TWO_COLUMN_MIN_PX.
+  const twoColumns = sidebar && urgent.length > 0 && lowerWidth >= HOME_TWO_COLUMN_MIN_PX;
   return (
     // Money on wide screens uses equal-width digits (wide_layout.sizes), so the whole page is tabular-nums.
     <PosPage wide rail={!sidebar} className="flex flex-col gap-5 tabular-nums">
@@ -296,9 +345,9 @@ export default function Home({ onNavigate, notice = "", shopName, layout = PHONE
           <Uncounted data={data} />
           {/* Row 2: Owed to you; row 3: Today's transactions full width (wiring 22 Home, 21 Nov 2026: five-digit
               amounts do not fit beside the Owed card at 17px). Nobody owes: the table is the only card. */}
-          <div data-home-row-2="" className="flex flex-col gap-5">
+          <div ref={lowerRef} data-home-row-2="" data-columns={twoColumns ? 2 : 1} className={twoColumns ? "grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-start gap-5" : "flex flex-col gap-5"}>
             {urgent.length > 0 && <OwedCard data={data} hidden={hidden} urgent={urgent} onNavigate={onNavigate} onWhatsApp={onWhatsApp} wide />}
-            <TransactionsCard rows={data.table ?? null} hidden={hidden} onNavigate={onNavigate} layout={layout} rail={!sidebar} />
+            <TransactionsCard rows={data.table ?? null} hidden={hidden} onNavigate={onNavigate} layout={layout} rail={!sidebar} narrow={twoColumns} />
           </div>
         </>
       )}
