@@ -67,7 +67,7 @@ test("30 Total owed row at 340, 360 and 393px: one-line label, bold amount right
     }
     const { total, owe } = result;
     assert.ok(total, `${where}: the Total owed row`);
-    assert.equal(total.label, "Total owed");
+    assert.equal(total.label, "Now owes");
     assert.equal(total.labelLines, 1, `${where}: the label is one line`);
     assert.equal(total.amount, "GH₵99,999.99");
     assert.equal(total.amountLines, 1, `${where}: the amount is one line`);

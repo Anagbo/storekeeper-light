@@ -657,7 +657,7 @@ const ENGLISH = Object.freeze({
   "saleRecorded.owesLabel": "{name} owes",
   "saleRecorded.owedLabel": "Owed",
   "saleRecorded.fromThisSale": "from this sale",
-  "saleRecorded.totalOwed": "Total owed",
+  "saleRecorded.totalOwed": "Now owes",
   "collect.receipt": "Payment receipt",
   "collect.receiptShare": "Send receipt",
   "collect.receiptForPayment": "Receipt for {amount} payment",
