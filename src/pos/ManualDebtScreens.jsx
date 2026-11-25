@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Banknote, CalendarDays, Check, Smartphone } from "lucide-react";
+import { CalendarDays, Check } from "lucide-react";
 import { formatDate } from "../lib/formatDate.js";
 import AmountKeypad from "./AmountKeypad.jsx";
 import { amountTextToPesewas, pressAmountKey } from "./amountKeypad.js";
@@ -18,6 +18,7 @@ import { getDebtDueLabel } from "./money.js";
 import { posText as t } from "./i18n.js";
 import { displayName } from "../lib/displayName.js";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
+import SavedCreditSummary from "./SavedCreditSummary.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
 import { useBackBlock } from "./browserBack.js";
@@ -267,52 +268,17 @@ export function ManualDebtSaved({ params, onDone, onNavigate, onSaveCustomerCont
   const shareReminder = () => openWhatsApp({ text: reminderText, phone, title: t("collect.remindOnWhatsApp") });
   return (
     <PosPage className="flex flex-col gap-4 text-center">
-      <div className="pt-2 text-center">
-        <div className="mx-auto mb-4 grid h-24 w-24 place-items-center rounded-full bg-emerald-900 text-white"><Check size={56} aria-hidden="true" /></div>
-        <h1 className="text-2xl font-extrabold">Saved as credit</h1>
-        <p className="mt-2 text-xl font-bold">{displayName(params.customer?.name)}</p>
-        <p className="mt-2 text-3xl font-extrabold text-[#0F172A] sm:text-4xl">{displayName(params.customer?.name)} owes {formatGhs(balance)}</p>
-      </div>
-      {/* Debt saved layout (wiring ManualDebtSaved rules, 17 Nov 2026): the card is only label-value rows
-          in the What happened row style (grey label left, bold value right, thin dividers): Before, Added
-          to debt, and For only when a reason was written. A long reason wraps in the right column. */}
-      <dl data-debt-saved-rows="" className="flex min-w-0 flex-col rounded-2xl border-2 border-slate-400 bg-white px-4 py-2 text-left text-lg [&>div:first-child]:border-t-0 [&>div:first-child]:pt-0">
-        <EventDetail label={t("debtSaved.before")} name="before">{formatGhs(previousDebt)}</EventDetail>
-        <EventDetail label={t("debtSaved.added")} name="added">{formatGhs(params.amountPesewas ?? 0)}</EventDetail>
-        {params.note?.trim() && <EventDetail label={t("debtSaved.for")} name="for">{params.note.trim()}</EventDetail>}
-      </dl>
-      {initialPaymentPesewas > 0 && (
-        <div data-paying-today="" className={`${SOFT_TILE} p-3 text-left`} aria-live="polite">
-          <p className="mb-2 font-extrabold text-[#0F172A]">{t("credit.paymentRecorded")}</p>
-          <div className="flex flex-col gap-2">
-            {initialPaymentParts.length > 0 ? (
-              initialPaymentParts.map((part) => (
-                <div key={`${part.paymentMethod}-${part.amountPesewas}`} className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 font-bold text-slate-900">
-                  <span className="flex min-w-0 items-center gap-2">
-                    {part.paymentMethod === "cash"
-                      ? <Banknote size={18} aria-hidden="true" />
-                      : <Smartphone size={18} aria-hidden="true" />}
-                    <span className="truncate">{t(`credit.method.${part.paymentMethod}`)}</span>
-                  </span>
-                  <span data-paying-today-amount="" className="shrink-0 tabular-nums">{formatGhs(part.amountPesewas)}</span>
-                </div>
-              ))
-            ) : (
-              <div className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 font-bold text-slate-900">
-                <span className="flex min-w-0 items-center gap-2">
-                  <Banknote size={18} aria-hidden="true" />
-                  <span className="truncate">{t("credit.method.cash")}</span>
-                </span>
-                <span data-paying-today-amount="" className="shrink-0 tabular-nums">{formatGhs(initialPaymentPesewas)}</span>
-              </div>
-            )}
-          </div>
-          <div data-total-today="" className="mt-2 flex items-center justify-between gap-3 border-t border-[#E2E8F0] px-3 pt-2 font-extrabold text-[#0F172A]">
-            <span>{t("credit.paymentRecordedTotal")}</span>
-            <span data-paying-today-amount="" className="tabular-nums">{formatGhs(initialPaymentPesewas)}</span>
-          </div>
-        </div>
-      )}
+      <SavedCreditSummary
+        name={displayName(params.customer?.name)}
+        owesPesewas={balance}
+        subline={params.note?.trim() ? t("credit.forLine", { reason: params.note.trim() }) : null}
+        beforePesewas={previousDebt}
+        addedLabel={t("debtSaved.added")}
+        addedPesewas={params.amountPesewas ?? 0}
+        paidPesewas={initialPaymentPesewas}
+        parts={initialPaymentParts}
+        planLine={params.installmentPlan?.isInstallmentPlan ? params.payBackLabel ?? null : null}
+      />
       {/* Buttons on this screen (wiring ManualDebtSaved rules): "WhatsApp {Name}" and "See {Name}’s details"
           are other buttons, full width, 52px, stacked; Done is the main button at the bottom. */}
       <div data-debt-saved-actions="" className="flex flex-col gap-2">

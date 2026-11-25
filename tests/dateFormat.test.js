@@ -34,7 +34,7 @@ test("the Owe row shows 'First payment 07/03/2099', not the ISO date", async () 
   assert.equal(returned[0].installmentPlan.nextDueDate, FAR, "the plan itself keeps the ISO date");
 });
 
-test("a plan that starts today says 'Today · next payment 07/03/2099'", async () => {
+test("a plan that starts today says 'First payment today · next 07/03/2099'", async () => {
   const { default: CreditScreens } = await loadJsx("src/pos/CreditScreens.jsx");
   const saved = [];
   const params = {
@@ -45,7 +45,7 @@ test("a plan that starts today says 'Today · next payment 07/03/2099'", async (
   await findButton(view.tree, "Save plan").props.onClick();
   for (let index = 0; index < 5; index += 1) await new Promise((resolve) => setImmediate(resolve));
   assert.equal(saved.length, 1);
-  assert.equal(saved[0].payBackLabel, "Today · next payment 07/03/2099");
+  assert.equal(saved[0].payBackLabel, "First payment today · next 07/03/2099");
 });
 
 // ---- Sale recorded (30) -------------------------------------------------------------------------------

@@ -22,6 +22,7 @@ import { posText as t } from "./i18n.js";
 import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
 import { useLargeAmountConfirm } from "./LargeAmountConfirm.jsx";
 import SaveAttemptNotice from "./SaveAttemptNotice.jsx";
+import SavedCreditSummary from "./SavedCreditSummary.jsx";
 import StillOwedRow from "./StillOwedRow.jsx";
 import { useSaveAttempt } from "./useSaveAttempt.js";
 import { getCarriedPaymentParts, getMomoPickParams, getPaidPaymentPesewas } from "./paymentAmount.js";
@@ -1083,65 +1084,18 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
   const wide = Boolean(useTaskColumn());
   return (
     <PosPage className="flex flex-col gap-3">
-      <div className="pt-2 text-center">
-        <div className="mx-auto mb-3 grid h-24 w-24 place-items-center rounded-full bg-emerald-900 text-white"><Check size={56} aria-hidden="true" /></div>
-        <h1 className="text-xl font-bold">{t("credit.saved")}</h1>
-        <p className="min-w-0 text-2xl font-extrabold leading-tight sm:text-4xl">
-          <span className="block [overflow-wrap:anywhere]">{shownName}</span>
-          <span className="block text-xl sm:text-3xl">{t("credit.owesAmount", { amount: formatGhs(totalDebtPesewas) })}</span>
-        </p>
-        <p className="text-base text-slate-700 sm:text-lg">{t("credit.thisSale", { amount: formatGhs(result?.amountPesewas ?? params.amountPesewas ?? 0) })}</p>
-      </div>
-      <PosCard className="space-y-2">
-        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 text-base sm:text-lg">
-          <span className="min-w-0">{t("credit.before")}</span>
-          <strong className="whitespace-nowrap text-right tabular-nums">{formatGhs(result?.previousDebtPesewas ?? 0)}</strong>
-        </div>
-        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 text-base sm:text-lg">
-          <span className="min-w-0">{t("credit.thisSale")}</span>
-          <strong className="whitespace-nowrap text-right text-[#0F172A] tabular-nums">+ {formatGhs(result?.addedDebtPesewas ?? 0)}</strong>
-        </div>
-        <div className="flex min-w-0 items-start justify-between gap-3 text-base sm:text-lg">
-          <span className="shrink-0">{t("credit.payBack")}</span>
-          <strong className="min-w-0 text-right break-words">{params.payBackLabel ?? t("credit.notSet")}</strong>
-        </div>
-      </PosCard>
-      {result?.initialPaymentPesewas > 0 && (
-        // rules_global.soft_tiles (23 Nov 2026): read-only, so the soft tile (no mint fill, no green
-        // border); the rows inside stay white; Total received stays bold.
-        <div data-payment-today="" className={`${SOFT_TILE} p-3`} aria-live="polite">
-          <p className="mb-2 font-bold text-slate-600">{t("credit.paymentRecorded")}</p>
-          <div className="flex flex-col gap-2">
-            {result.initialPaymentParts && result.initialPaymentParts.some((part) => part.amountPesewas > 0) ? (
-              result.initialPaymentParts.filter((part) => part.amountPesewas > 0).map((part) => (
-                <div key={`${part.paymentMethod}-${part.amountPesewas}`} className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 font-bold text-slate-900">
-                  <span className="flex min-w-0 items-center gap-2">
-                    {part.paymentMethod === "cash"
-                      ? <Banknote size={18} aria-hidden="true" />
-                      : <Smartphone size={18} aria-hidden="true" />}
-                    <span className="truncate">{t(`credit.method.${part.paymentMethod}`)}</span>
-                  </span>
-                  <span className="shrink-0 tabular-nums">{formatGhs(part.amountPesewas)}</span>
-                </div>
-              ))
-            ) : (
-              <div className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 font-bold text-slate-900">
-                <span className="flex min-w-0 items-center gap-2">
-                  {result.saleTransaction?.payment_method === "momo"
-                    ? <Smartphone size={18} aria-hidden="true" />
-                    : <Banknote size={18} aria-hidden="true" />}
-                  <span className="truncate">{t(`credit.method.${result.saleTransaction?.payment_method === "momo" ? "momo" : "cash"}`)}</span>
-                </span>
-                <span className="shrink-0 tabular-nums">{formatGhs(result.initialPaymentPesewas)}</span>
-              </div>
-            )}
-          </div>
-          <div data-total-today="" className="mt-2 flex items-center justify-between gap-3 border-t border-[#E2E8F0] px-3 pt-2 font-bold text-[#0F172A]">
-            <span>{t("credit.paymentRecordedTotal")}</span>
-            <span className="tabular-nums">{formatGhs(result.initialPaymentPesewas)}</span>
-          </div>
-        </div>
-      )}
+      <SavedCreditSummary
+        name={shownName}
+        owesPesewas={totalDebtPesewas}
+        subline={t("credit.thisSaleLine", { amount: formatGhs(result?.amountPesewas ?? params.amountPesewas ?? 0) })}
+        beforePesewas={result?.previousDebtPesewas ?? 0}
+        addedLabel={t("credit.thisSaleRow")}
+        addedPesewas={result?.addedDebtPesewas ?? 0}
+        paidPesewas={result?.initialPaymentPesewas ?? 0}
+        parts={result?.initialPaymentParts}
+        fallbackMethod={result?.saleTransaction?.payment_method}
+        planLine={params.installmentPlan?.isInstallmentPlan ? params.payBackLabel ?? null : null}
+      />
       {/* Wide D11: Send and Copy side by side, the offline line full width under the pair. */}
       {receiptsOn && receiptText && !hasPhone && addPhone}
       {wide && receiptsOn && receiptText && !hasPhone && <CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} className="h-14!" />}

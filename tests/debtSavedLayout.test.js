@@ -35,10 +35,12 @@ test("debt saved: Before, Added to debt, For rows; WhatsApp and See details stac
         await sleep(300);
         const m = await app.evaluate(MEASURE);
         assert.doesNotMatch(m.text, /What for:/, `${label}: no "What for:" line`);
-        assert.deepEqual(m.rows.map((row) => row.label), reason ? ["Before", "Added to debt", "For"] : ["Before", "Added to debt"], `${label}: the rows`);
+        assert.deepEqual(m.rows.map((row) => row.label), ["Before", "Added to debt", "Now owes"], `${label}: the rows`);
         assert.equal(m.rows[0].value, "GH₵27.00", `${label}: Before`);
         assert.equal(m.rows[1].value, "GH₵10.00", `${label}: Added to debt`);
-        if (reason) assert.equal(m.rows[2].value, reason, `${label}: For is the reason`);
+        assert.equal(m.rows[2].value, "GH₵37.00", `${label}: Now owes`);
+        if (reason) assert.match(m.text, new RegExp(`For: ${reason}`), `${label}: the reason is the line under the headline`);
+        assert.equal((m.text.match(/Amoto owes/g) ?? []).length, 1, `${label}: the name appears once`);
         for (const row of m.rows) {
           assert.equal(row.labelLines, 1, `${label} ${row.label}: the label never wraps`);
           assert.equal(row.valueWeight, "700", `${label} ${row.label}: the value is bold`);
@@ -48,15 +50,12 @@ test("debt saved: Before, Added to debt, For rows; WhatsApp and See details stac
           assert.ok(row.valueBox.right <= m.card.right, `${label} ${row.label}: inside the card`);
         }
         // saved_credit_layout (25 Nov 2026): Amoto has no phone, so the WhatsApp slot is the dashed add-phone button.
-        assert.deepEqual(m.actions.map((a) => a.text), ["+ Add phone number to send WhatsApp", "See Amoto’s details"], `${label}: the two buttons, the WhatsApp slot first`);
+        assert.deepEqual(m.actions.map((a) => a.text), ["+ Add phone for WhatsApp", "See Amoto’s details"], `${label}: the two buttons, the WhatsApp slot first`);
         const [whatsapp, details] = m.actions;
         for (const action of m.actions) {
           assert.equal(action.look, action === whatsapp ? "add" : "other", `${label} "${action.text}": look`);
           assert.ok(action.height >= 51.5, `${label} "${action.text}": 52px or taller (${action.height})`);
-          // The add-phone label is long (wording fixed by saved_credit_layout): it may take two lines at
-          // 340px, so it is checked by height (two lines are under 64px); the "+" counts as its own line top.
-          if (action === whatsapp) assert.ok(action.height <= 64, `${label} "${action.text}": at most two lines (h ${action.height})`);
-          else assert.equal(action.lines, 1, `${label} "${action.text}": one line`);
+          assert.equal(action.lines, 1, `${label} "${action.text}": one line`);
           assert.ok(Math.abs(action.width - (width - 32)) < 1, `${label} "${action.text}": full width (${action.width})`);
         }
         assert.ok(details.top >= whatsapp.bottom - 0.5, `${label}: stacked, See details under WhatsApp`);

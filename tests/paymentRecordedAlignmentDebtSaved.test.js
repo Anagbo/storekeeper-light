@@ -4,8 +4,9 @@ import { appCss, browser, measureInFrames, toHtml } from "./helpers/browserLayou
 import { loadJsx, render, setLiveQuery } from "./helpers/renderJsx.js";
 
 // The add-debt flow (53 > 18/19 > Debt saved): the Payment recorded panel with its total line follows
-// the same rule as 19 "Paying today alignment" (16 Nov 2026). Every amount, the Cash and MoMo rows and
-// the Total line, ends on one right edge at 340, 360 and 393px (it was 12px off, like 19).
+// the same rule as 19 "Paying today alignment" (16 Nov 2026). Since saved_credit_layout (25 Nov 2026)
+// Paid today is one row in the card with Before, Added to debt and Now owes; every value ends on one right
+// edge at 340, 360 and 393px.
 
 const WIDTHS = [340, 360, 393];
 
@@ -20,8 +21,8 @@ test("Debt saved (add-debt flow): Payment recorded amounts end on one right edge
     }
   };
   const pages = [
-    { name: "split", html: page({ initialPaymentPesewas: 600, initialPaymentParts: [{ paymentMethod: "cash", amountPesewas: 400 }, { paymentMethod: "momo", amountPesewas: 200 }] }), amounts: 3 },
-    { name: "cash only", html: page({ initialPaymentPesewas: 200 }), amounts: 2 }
+    { name: "split", html: page({ initialPaymentPesewas: 600, initialPaymentParts: [{ paymentMethod: "cash", amountPesewas: 400 }, { paymentMethod: "momo", amountPesewas: 200 }] }), amounts: 4 },
+    { name: "cash only", html: page({ initialPaymentPesewas: 200 }), amounts: 4 }
   ];
   const results = measureInFrames({
     pages,
@@ -29,11 +30,11 @@ test("Debt saved (add-debt flow): Payment recorded amounts end on one right edge
     widths: WIDTHS,
     height: 1200,
     measure: `(frame, win, doc) => {
-      const panel = doc.querySelector('[data-paying-today]');
+      const panel = doc.querySelector('[data-debt-saved-rows]');
       return {
         viewport: win.innerWidth,
         pageOverflow: doc.scrollingElement.scrollWidth > win.innerWidth,
-        amounts: panel ? [...panel.querySelectorAll('[data-paying-today-amount]')].map((el) => ({ text: el.textContent, right: el.getBoundingClientRect().right })) : []
+        amounts: panel ? [...panel.querySelectorAll('dd')].map((el) => ({ text: el.textContent, right: el.getBoundingClientRect().right })) : []
       };
     }`
   });
