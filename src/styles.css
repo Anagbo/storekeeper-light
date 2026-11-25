@@ -35,15 +35,24 @@ button {
 }
 
 /* wide_layout.keyboard_and_mouse: the ONE focus ring of every layout (phone and wide): 3px
-   #0F172A, 2px offset, keyboard focus only. It wins over each control's own older ring. A text field
-   has no offset: the ring sits on its border (the field's label, so one thick edge, no double line). */
-.pos-app :is(a[href], button, [role="tab"], [role="radio"], select, summary):focus-visible,
-.pos-app label:has(> input:focus-visible) {
+   #0F172A, 2px offset, keyboard focus only. It wins over each control's own older ring.
+   rules_global.form_fields: a text field has no offset and the ring sits on the field's OWN rounded
+   border, never on the label, helper or wrapper. A bare input drawn inside a box (GH₵ prefix, search
+   icon: the input is outline-none) rings that box, its direct parent; a box that also holds the label
+   text is marked data-field-box. */
+.pos-app :is(a[href], button, [role="tab"], [role="radio"], select, summary):focus-visible {
   outline: 3px solid #0F172A;
   outline-offset: 2px;
 }
-.pos-app label:has(> input:focus-visible) {
+.pos-app :is(input, textarea):focus-visible,
+.pos-app :has(> :is(input, textarea).outline-none:focus-visible),
+.pos-app [data-field-box]:has(:is(input, textarea):focus-visible) {
+  outline: 3px solid #0F172A;
   outline-offset: 0;
+}
+.pos-app :is(input, textarea).outline-none:focus-visible,
+.pos-app [data-field-box] :has(> :is(input, textarea):focus-visible) {
+  outline: none;
 }
 
 .amount-fit-container {

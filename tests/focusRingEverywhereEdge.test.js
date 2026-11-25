@@ -3,13 +3,14 @@ import { test } from "node:test";
 import { browser, sleep, waitFor, withEdgeApp } from "./helpers/edgeApp.js";
 import { ENV } from "./helpers/lookChecks.js";
 
-// The shared focus ring (3px solid #0F172A, 2px offset; a text field's label has no offset) wins on every
+// The shared focus ring (3px solid #0F172A, 2px offset; a text field has no offset) wins on every
 // control a keyboard user reaches: Tab through Home, Sell and the menu, at 390 and 1280, and check each focus.
 const SEEDS = { home: `await setPreference("posSetupCompleted", true); await createProduct({ name: "Bread", pricePesewas: 500 });` };
 const FOCUSED = `(() => {
   const el = document.activeElement;
   if (!el || el === document.body) return null;
-  const ring = el.tagName === "INPUT" ? el.closest("label") || el : el;
+  // form_fields: a text field rings itself; a bare (outline-none) input drawn in a box rings that box.
+  const ring = el.tagName === "INPUT" && el.classList.contains("outline-none") ? el.closest("[data-field-box]") || el.parentElement : el;
   const cs = getComputedStyle(ring);
   const kind = el.tagName === "INPUT" ? "field" : el.closest("[role=dialog]") ? "dialog " + el.tagName.toLowerCase() : el.closest("nav, aside") ? "nav " + el.tagName.toLowerCase() : el.matches("[data-look]") ? "button " + el.getAttribute("data-look") : el.tagName.toLowerCase();
   return { kind, name: (el.getAttribute("aria-label") || el.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 24), visible: el.matches(":focus-visible"), field: el.tagName === "INPUT", style: cs.outlineStyle, width: cs.outlineWidth, color: cs.outlineColor, offset: cs.outlineOffset };

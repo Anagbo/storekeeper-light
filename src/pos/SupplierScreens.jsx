@@ -50,7 +50,7 @@ export function PaidWithChoice({ value, onChange }) {
 
 function AmountInput({ label, value, onChange }) {
   return (
-    <label className="block rounded-[18px] border-2 border-slate-600 bg-white px-3 py-2">
+    <label data-field-box="" className="block rounded-[18px] border-2 border-slate-600 bg-white px-3 py-2">
       <span className="block text-base font-bold">{label}</span>
       <span className="flex items-center gap-2 text-3xl font-extrabold">
         <span aria-hidden="true">GH₵</span>
