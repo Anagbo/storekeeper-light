@@ -119,9 +119,39 @@ test("Saved as credit (Add debt): the name once, no waiting line, one add-phone 
       })()`);
       assert.equal(m.names, 1, `${width}: the name appears once`);
       assert.ok(!m.waiting, `${width}: no waiting line`);
-      assert.equal(m.addText, "+ Add phone for WhatsApp", `${width}: the add-phone label`);
+      assert.equal(m.addText, "+ Add phone number", `${width}: the add-phone label`);
       assert.equal(m.addLines, 1, `${width}: the add-phone label is one line`);
       assert.ok(m.scroll, `${width}: no sideways scroll`);
+    }
+  });
+});
+
+// Fold check (polish 7): on Saved as credit without a phone, Done is fully visible without scrolling at the
+// two common phone sizes. The px above the bottom edge (negative = below it) is printed for the report;
+// 360x640 is measured and printed only (a very short screen may scroll).
+const FOLD_SIZES = [[360, 740, true], [390, 844, true], [360, 640, false]];
+const FOLD_FLOWS = [
+  ["Sell → Owe", ["^Sell$", "^5$", "^Owe$", "^[AK]?Amoto", "^Next", "^Save · "]],
+  ["Add debt", ["^Owed$", "Add debt$", "^[AK]?Amoto", "^Next", "^1$", "^0$", "^Next", "^Save · "]]
+];
+
+test("Saved as credit without a phone: Done is visible without scrolling (360x740, 390x844; 360x640 reported)", { skip: SKIP, timeout: 600_000 }, async () => {
+  await withEdgeApp({ seeds: SEEDS, env: ENV }, async (app) => {
+    for (const [width, height, mustFit] of FOLD_SIZES) {
+      for (const [flow, steps] of FOLD_FLOWS) {
+        await app.open("base", width, height);
+        await app.steps(steps);
+        await app.shows("See Amoto’s details");
+        await sleep(300);
+        const m = await app.evaluate(`(() => {
+          const done = [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Done");
+          const r = done.getBoundingClientRect();
+          return { top: r.top, bottom: r.bottom, height: r.height, gap: innerHeight - r.bottom };
+        })()`);
+        console.log(`fold ${flow} ${width}x${height}: Done bottom ${m.bottom.toFixed(1)}, ${m.gap.toFixed(1)}px above the bottom edge (height ${m.height.toFixed(1)})`);
+        assert.ok(m.height >= 47.5, `${flow} ${width}x${height}: Done is 48px or taller`);
+        if (mustFit) assert.ok(m.gap >= 0 && m.top >= 0, `${flow} ${width}x${height}: Done is fully visible (${m.gap}px above the bottom)`);
+      }
     }
   });
 });

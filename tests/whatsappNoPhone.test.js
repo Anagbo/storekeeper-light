@@ -26,18 +26,27 @@ async function debtSaved(phone, saves = []) {
   return render({ type: ManualDebtSaved, props: { params, onDone() {}, onNavigate() {}, onSaveCustomerContact: async (details) => { saves.push(details); return { ...details }; }, shopName: "Shop" } });
 }
 
-test("Add debt saved, no phone: no WhatsApp Ama button, the dashed add-phone button instead", async () => {
+const SEND = /^Send receipt$/;
+const ADD = /^\+ Add phone number$/;
+
+test("Add debt saved, no phone: Send receipt is shown (share sheet), with the dashed + Add phone number under it", async () => {
   const view = await debtSaved("");
-  assert.equal(named(view.tree, /^WhatsApp Ama$/), undefined);
-  const add = named(view.tree, /^\+ Add phone for WhatsApp$/);
+  assert.equal(named(view.tree, /^WhatsApp Ama$/), undefined, "the old WhatsApp {name} label is gone");
+  const send = named(view.tree, SEND);
+  assert.ok(send, "Send receipt is always shown");
+  const add = named(view.tree, ADD);
   assert.ok(add, "the add-phone button is shown");
   assert.equal(add.props["data-look"], "add");
+  const order = buttons(view.tree).map((node) => textOf(node).trim());
+  assert.ok(order.indexOf("Send receipt") < order.indexOf("+ Add phone number"), "the add-phone button sits under Send receipt");
+  assert.ok(order.indexOf("+ Add phone number") < order.indexOf("See Ama’s details"));
+  assert.equal(order[order.length - 1], "Done");
 });
 
-test("Add debt saved, no phone: the add-phone button opens the contact editor; a saved number brings WhatsApp back", async () => {
+test("Add debt saved, no phone: the add-phone button opens the contact editor; a saved number removes it, Send receipt stays", async () => {
   const saves = [];
   const view = await debtSaved("", saves);
-  named(view.tree, /^\+ Add phone for WhatsApp$/).props.onClick();
+  named(view.tree, ADD).props.onClick();
   view.rerender();
   assert.ok(dialog(view.tree), "the contact editor opens");
   const phone = [...walk(dialog(view.tree))].find((node) => node.type === "input" && node.props.type === "tel");
@@ -48,17 +57,25 @@ test("Add debt saved, no phone: the add-phone button opens the contact editor; a
   assert.equal(saves.length, 1);
   assert.equal(saves[0].phone, "0241234567");
   assert.equal(dialog(view.tree), undefined, "the editor closes");
-  assert.ok(named(view.tree, /^WhatsApp Ama$/), "WhatsApp is back");
+  assert.ok(named(view.tree, SEND), "Send receipt stays");
   assert.equal(named(view.tree, /Add phone/), undefined);
 });
 
-test("Add debt saved, with a phone: WhatsApp Ama, no add-phone button; a number that fails the check counts as none", async () => {
+test("Add debt saved, with a phone: Send receipt, no add-phone button; a number that fails the check counts as none", async () => {
   const view = await debtSaved("0241234567");
-  assert.ok(named(view.tree, /^WhatsApp Ama$/));
+  assert.ok(named(view.tree, SEND));
   assert.equal(named(view.tree, /Add phone/), undefined);
   const bad = await debtSaved("12");
-  assert.equal(named(bad.tree, /^WhatsApp Ama$/), undefined);
-  assert.ok(named(bad.tree, /^\+ Add phone for WhatsApp$/));
+  assert.ok(named(bad.tree, SEND));
+  assert.ok(named(bad.tree, ADD));
+});
+
+test("Add debt saved: the receipt text says who, how much was added and what they owe now", async () => {
+  const { buildDebtAddedReceipt } = await loadJsx("src/pos/receiptTemplates.js");
+  const text = buildDebtAddedReceipt({ shopName: "Shop", customerName: "ama", addedPesewas: 1000, balancePesewas: 4500, reason: "Rice, Water" });
+  assert.match(text, /For: Ama/);
+  assert.match(text, /Debt added: GH₵10\.00 \(Rice, Water\)/);
+  assert.match(text, /Balance owed as of .*: GH₵45\.00/);
 });
 
 test("sale on credit saved (31), receipts on, no phone: the add-phone button opens the contact editor", async () => {

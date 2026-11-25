@@ -22,7 +22,7 @@ export default function SavedCreditSummary({ name, owesPesewas, subline, beforeP
   return (
     <>
       <div className="pt-2 text-center">
-        <div className="mx-auto mb-3 grid h-24 w-24 place-items-center rounded-full bg-emerald-900 text-white"><Check size={56} aria-hidden="true" /></div>
+        <div className="mx-auto mb-2 grid h-20 w-20 place-items-center rounded-full bg-emerald-900 text-white"><Check size={44} aria-hidden="true" /></div>
         <h1 className="text-xl font-bold">{t("credit.saved")}</h1>
         <p data-saved-owes="" className="mt-1 min-w-0 text-2xl font-extrabold leading-tight text-[#0F172A] [overflow-wrap:anywhere] sm:text-4xl">{t("credit.customerOwes", { name, amount: formatGhs(owesPesewas) })}</p>
         {subline && <p data-saved-subline="" className="mt-1 text-[17px] text-slate-700">{subline}</p>}

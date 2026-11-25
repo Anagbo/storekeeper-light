@@ -157,6 +157,22 @@ export function buildCustomerBalanceReceipt({
   ].join("\n");
 }
 
+// Add debt (a debt written down without a sale): who, how much was added, what they owe now.
+export function buildDebtAddedReceipt({ shopName, customerName, timestamp = Date.now(), addedPesewas, paidPesewas = 0, balancePesewas, reason = "" }) {
+  const shop = requireName(shopName, "A shop name is required for the receipt.");
+  const customer = displayName(requireName(customerName, "A customer name is required for the receipt."));
+  const note = typeof reason === "string" ? reason.trim() : "";
+  return [
+    `Receipt from ${shop}`,
+    formatDateTime(timestamp),
+    `For: ${customer}`,
+    `Debt added: ${amount(addedPesewas)}${note ? ` (${note})` : ""}`,
+    ...(paidPesewas > 0 ? [`Paid today: ${amount(paidPesewas)}`] : []),
+    `Balance owed as of ${formatDateTime(timestamp)}: ${amount(balancePesewas)}`,
+    "Thank you!"
+  ].join("\n");
+}
+
 // A cash/MoMo sale, or a sale partly on credit. Item lines appear only when the shop sells with items.
 export function buildSaleReceiptFromTransaction(transaction, shopName, { items, dueDate = "" } = {}) {
   const owedPesewas = transaction.creditExtendedPesewas ?? 0;

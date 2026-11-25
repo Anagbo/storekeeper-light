@@ -49,11 +49,11 @@ test("debt saved: Before, Added to debt, For rows; WhatsApp and See details stac
           assert.ok(row.valueBox.left >= row.labelBox.right - 0.5, `${label} ${row.label}: the value stays right of the label`);
           assert.ok(row.valueBox.right <= m.card.right, `${label} ${row.label}: inside the card`);
         }
-        // saved_credit_layout (25 Nov 2026): Amoto has no phone, so the WhatsApp slot is the dashed add-phone button.
-        assert.deepEqual(m.actions.map((a) => a.text), ["+ Add phone for WhatsApp", "See Amoto’s details"], `${label}: the two buttons, the WhatsApp slot first`);
-        const [whatsapp, details] = m.actions;
+        // saved_credit_layout (25 Nov 2026): Send receipt is always there; Amoto has no phone, so the dashed add-phone button sits under it.
+        assert.deepEqual(m.actions.map((a) => a.text), ["Send receipt", "+ Add phone number", "See Amoto’s details"], `${label}: the three buttons, Send receipt first`);
+        const [, whatsapp, details] = m.actions;
         for (const action of m.actions) {
-          assert.equal(action.look, action === whatsapp ? "add" : "other", `${label} "${action.text}": look`);
+          if (action.text !== "Send receipt") assert.equal(action.look, action === whatsapp ? "add" : "other", `${label} "${action.text}": look`);
           assert.ok(action.height >= 51.5, `${label} "${action.text}": 52px or taller (${action.height})`);
           assert.equal(action.lines, 1, `${label} "${action.text}": one line`);
           assert.ok(Math.abs(action.width - (width - 32)) < 1, `${label} "${action.text}": full width (${action.width})`);

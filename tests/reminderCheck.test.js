@@ -72,18 +72,6 @@ async function detailScreen({ late, phone, lastReminderAt }) {
   return { view, find };
 }
 
-async function manualDebtSaved({ phone, lastReminderAt }) {
-  const { ManualDebtSaved } = await loadJsx("src/pos/ManualDebtScreens.jsx");
-  setLiveQuery(([key, customerId]) => (key === "manualDebtSavedReminder" && customerId === "c1" ? lastReminderAt : undefined));
-  const params = {
-    customer: { id: "c1", name: "Ama", phone },
-    amountPesewas: 2000,
-    manualDebtResult: { customer: { id: "c1" }, debt: { id: "d1", amountPesewas: 8000 } }
-  };
-  const view = render({ type: ManualDebtSaved, props: { params, onDone() { navigation.push("done"); }, ...props } });
-  return { view, find: () => [...walk(view.tree)].find((node) => (node.type === "a" || node.type === "button") && textOf(node) === "WhatsApp Ama") };
-}
-
 const SCREENS = {
   "22 Home Collect first": async ({ lastReminderAt }) => {
     const { default: Home } = await loadJsx("src/pos/Home.jsx");
@@ -108,9 +96,8 @@ const SCREENS = {
     view.rerender();
     return { view, find: () => [...walk(view.tree)].find((node) => node.type === "button" && node.props["aria-label"] === "WhatsApp Ama") };
   },
-  "ManualDebtSaved (debt added)": (state) => manualDebtSaved({ ...state, phone: PHONE }),
-  // ManualDebtSaved without a phone has no WhatsApp button any more (saved_credit_layout, 25 Nov 2026):
-  // the dashed add-phone button takes its place (tests/whatsappNoPhone.test.js).
+  // Add debt saved (ManualDebtSaved) sends a receipt, not a reminder (saved_credit_layout, 25 Nov 2026):
+  // see tests/whatsappNoPhone.test.js.
   "29 debtor detail": (state) => detailScreen({ ...state, late: false, phone: PHONE }),
   "43 debtor detail": (state) => detailScreen({ ...state, late: true, phone: PHONE }),
   "29 debtor detail, no phone (share sheet)": (state) => detailScreen({ ...state, late: false, phone: "" }),
@@ -247,7 +234,7 @@ test("sheet wording: today, yesterday and a date, with the name in Title Case", 
 });
 
 test("every reminder button on 22, 32, 29 and 43 goes through the one shared check", () => {
-  for (const file of ["src/pos/Home.jsx", "src/pos/OwedScreens.jsx", "src/pos/DebtCollection.jsx", "src/pos/ManualDebtScreens.jsx"]) {
+  for (const file of ["src/pos/Home.jsx", "src/pos/OwedScreens.jsx", "src/pos/DebtCollection.jsx"]) {
     const source = read(file);
     assert.match(source, /useReminderCheck\(\)/, `${file} uses the shared check`);
     assert.match(source, /\{reminders\.sheet\}/, `${file} renders the shared sheet`);

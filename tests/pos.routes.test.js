@@ -133,7 +133,8 @@ test("credit saved (31) has no reminder or contact editor and reads the saved nu
   assert.doesNotMatch(source, /generateWhatsAppLink|CustomerContactEditor|credit\.whatsapp|openContactEditor/);
   // The payment taken today (saved_credit_layout, 25 Nov 2026: one "Paid today" row instead of the old
   // "Payment received today" and "Total received" lines) is checked on the rendered 31 in the next test.
-  assert.match(source, /<SendReceiptButton/);
+  assert.match(source, /<SavedCreditReceiptActions/);
+  assert.match(readFileSync(new URL("../src/pos/SavedCreditReceiptActions.jsx", import.meta.url), "utf8"), /<SendReceiptButton/);
   assert.match(source, /useLiveQuery\(async \(\) =>/);
   assert.match(source, /db\.customers\.where\("nameLower"\)/);
 });

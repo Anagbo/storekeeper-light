@@ -5,14 +5,11 @@ import AmountKeypad from "./AmountKeypad.jsx";
 import { amountTextToPesewas, pressAmountKey } from "./amountKeypad.js";
 import { formatGhs } from "../lib/money.js";
 import { useLiveQuery } from "dexie-react-hooks";
-import { buildWhatsAppReminderText, normalizeWhatsAppPhone } from "../utils/whatsapp.js";
+import { buildDebtAddedReceipt } from "./receiptTemplates.js";
 import { db } from "../db/db.js";
-import AddPhoneForWhatsApp from "./AddPhoneForWhatsApp.jsx";
-import { latestReminderAt, loadReminderEvents } from "../db/reminders.js";
-import { openWhatsApp } from "../lib/openWhatsApp.js";
-import { useReminderCheck } from "./ReminderCheck.jsx";
+import SavedCreditReceiptActions, { useSavedCreditPhone } from "./SavedCreditReceiptActions.jsx";
 import { getPlanPeriodFigures, isValidInstallmentPlanForBalance, localDateString } from "../utils/installments.js";
-import { PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
+import { PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton, useTaskColumn } from "./PosComponents.jsx";
 import { EventDetail, KeyValueRows } from "./EventRows.jsx";
 import { getDebtDueLabel } from "./money.js";
 import { posText as t } from "./i18n.js";
@@ -240,32 +237,31 @@ export function ManualDebtSaved({ params, onDone, onNavigate, onSaveCustomerCont
     : 0;
   const initialPaymentPesewas = result?.initialPaymentPesewas ?? params.initialPaymentPesewas ?? 0;
   const initialPaymentParts = result?.initialPaymentParts ?? params.initialPaymentParts ?? [];
-  // rules_global.reminders: this WhatsApp button goes through the same shared check and record as
-  // 22, 32, 29 and 43. rules_global.whatsapp_links: the shared opener, the person's chat with a valid
-  // number, the share sheet with the reminder text without one, as on 29/43.
-  const reminders = useReminderCheck();
+  // rules_global.saved_credit_layout (25 Nov 2026): the same receipt block as Sell → Owe's Saved as credit
+  // (SavedCreditReceiptActions). Send receipt is always there; the dashed add-phone button only without a phone.
   const reminderCustomerId = result?.customer?.id ?? params.customer?.id ?? "";
   const reminderName = params.customer?.name ?? "";
-  const lastReminderResult = useLiveQuery(
-    async () => latestReminderAt(await loadReminderEvents(), { customerId: reminderCustomerId, customerName: reminderName }),
-    ["manualDebtSavedReminder", reminderCustomerId, reminderName],
-    0
-  );
-  const lastReminderAt = typeof lastReminderResult === "number" ? lastReminderResult : 0;
-  const reminderPerson = { customerId: reminderCustomerId, name: reminderName };
-  const reminderText = buildWhatsAppReminderText(reminderName, balance, shopName);
-  // rules_global.saved_credit_layout: the WhatsApp button only with a valid phone (the saved record's,
-  // or one just added here); without one, the dashed "+ Add phone number to send WhatsApp".
   const storedCustomer = useLiveQuery(async () => {
     if (reminderCustomerId) return db.customers.get(reminderCustomerId);
     return reminderName.trim() ? db.customers.where("nameLower").equals(reminderName.trim().toLowerCase()).first() : null;
   }, ["manualDebtSavedCustomer", reminderCustomerId, reminderName], null);
   const stored = storedCustomer && typeof storedCustomer === "object" ? storedCustomer : null;
-  const [addedContact, setAddedContact] = useState(null);
-  const phone = addedContact?.phone || stored?.phone || params.customer?.phone || "";
-  const hasPhone = Boolean(normalizeWhatsAppPhone(phone));
+  const { phone, hasPhone, setAddedContact } = useSavedCreditPhone(stored?.phone || params.customer?.phone || "");
+  const wide = Boolean(useTaskColumn());
+  let receiptText = null;
+  try {
+    receiptText = buildDebtAddedReceipt({
+      shopName: shopName || "StoreKeeper Light",
+      customerName: reminderName,
+      addedPesewas: params.amountPesewas ?? 0,
+      paidPesewas: initialPaymentPesewas,
+      balancePesewas: balance,
+      reason: params.note
+    });
+  } catch (receiptError) {
+    console.error("Could not build the debt receipt.", receiptError);
+  }
   const contact = { customerId: reminderCustomerId, id: reminderCustomerId, name: reminderName, phone, ghanaCardNumber: stored?.ghanaCardNumber ?? params.customer?.ghanaCardNumber ?? "" };
-  const shareReminder = () => openWhatsApp({ text: reminderText, phone, title: t("collect.remindOnWhatsApp") });
   return (
     <PosPage className="flex flex-col gap-4 text-center">
       <SavedCreditSummary
@@ -282,17 +278,23 @@ export function ManualDebtSaved({ params, onDone, onNavigate, onSaveCustomerCont
       {/* Buttons on this screen (wiring ManualDebtSaved rules): "WhatsApp {Name}" and "See {Name}’s details"
           are other buttons, full width, 52px, stacked; Done is the main button at the bottom. */}
       <div data-debt-saved-actions="" className="flex flex-col gap-2">
-        {hasPhone ? (
-          <PosSecondaryButton type="button" disabled={!reminderText} onClick={(event) => reminders.onReminder(event, { person: reminderPerson, lastReminderAt, share: shareReminder })} className="w-full">{t("debtSaved.whatsapp", { name: displayName(params.customer?.name) })}</PosSecondaryButton>
-        ) : (
-          <AddPhoneForWhatsApp customer={contact} onSaveCustomerContact={onSaveCustomerContact} onSaved={setAddedContact} />
+        {receiptText && (
+          <SavedCreditReceiptActions
+            text={receiptText}
+            phone={phone}
+            hasPhone={hasPhone}
+            customer={contact}
+            onSaveCustomerContact={onSaveCustomerContact}
+            onSaved={setAddedContact}
+            wide={wide}
+            showCopy={false}
+          />
         )}
         <PosSecondaryButton type="button" className="w-full" onClick={() => onNavigate("DebtorDetail", { customerId: result?.customer?.id ?? params.customer?.id, customerName: params.customer?.name, debtId: result?.debt?.id })}>{t("credit.seeDetails", { name: displayName(params.customer?.name) })}</PosSecondaryButton>
       </div>
       <div className="mt-auto grid gap-2">
         <PosPrimaryButton type="button" onClick={onDone}>Done</PosPrimaryButton>
       </div>
-      {reminders.sheet}
     </PosPage>
   );
 }

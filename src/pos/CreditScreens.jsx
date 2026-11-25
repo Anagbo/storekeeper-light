@@ -16,7 +16,7 @@ import { getCreditAmountOwedPesewas } from "./creditAmount.js";
 import { AddButton, ChoiceChip, TickBadge, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton, SplitIcons, useTaskColumn, WIDE_TASK_COLUMN_WIDTH_PX } from "./PosComponents.jsx";
 import { SOFT_TILE } from "./softTile.js";
 import { shortSaveName } from "./saveLabel.js";
-import { CopyReceiptButton, ReceiptFailedLine, ReceiptOfflineLine, ReceiptPair, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
+import SavedCreditReceiptActions, { useSavedCreditPhone } from "./SavedCreditReceiptActions.jsx";
 import { buildCreditSaleReceipt, isReceiptTemplatesEnabled } from "./receiptTemplates.js";
 import { posText as t } from "./i18n.js";
 import { isSaveOutcomeUnknown } from "../lib/saveAttempt.js";
@@ -34,7 +34,6 @@ import { CREDIT_REASON_MAX, reasonChipSelected, toggleReasonChip } from "../lib/
 import { findDuplicatePerson, loadKnownCustomers } from "./duplicatePerson.js";
 import DuplicatePersonQuestion from "./DuplicatePersonQuestion.jsx";
 import DateField from "./DateField.jsx";
-import AddPhoneForWhatsApp from "./AddPhoneForWhatsApp.jsx";
 import { tidyPersonName } from "../lib/personName.js";
 import { loadRecentCreditReasons } from "../db/recentReasons.js";
 import { getCreditReasonCase } from "./creditDraft.js";
@@ -1068,30 +1067,18 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
     if (!customerName.trim()) return null;
     return db.customers.where("nameLower").equals(customerName.trim().toLowerCase()).first();
   }, [result?.customerId, params.customer?.id, result?.customerName, params.customer?.name], null);
-  const [addedContact, setAddedContact] = useState(null);
-  const phone = addedContact?.phone || (savedCustomer?.phone ?? result?.phone ?? params.customer?.phone ?? "");
+  const { phone, hasPhone, setAddedContact } = useSavedCreditPhone(savedCustomer?.phone ?? result?.phone ?? params.customer?.phone ?? "");
   const customerName = result?.customerName ?? params.customer?.name ?? "";
-  // rules_global.saved_credit_layout: Send receipt (WhatsApp) only with a valid phone; without one the
-  // dashed "+ Add phone number to send WhatsApp" opens the contact editor (as on Payment received).
-  const hasPhone = Boolean(normalizeWhatsAppPhone(phone));
   const customerId = savedCustomer?.id ?? result?.customerId ?? params.customer?.id ?? "";
-  const addPhone = (
-    <AddPhoneForWhatsApp
-      customer={{ customerId, id: customerId, name: customerName, phone, ghanaCardNumber: savedCustomer?.ghanaCardNumber ?? params.customer?.ghanaCardNumber ?? "" }}
-      onSaveCustomerContact={onSaveCustomerContact}
-      onSaved={setAddedContact}
-      label={t("collect.addPhoneForReceipt")}
-    />
-  );
+  const contact = { customerId, id: customerId, name: customerName, phone, ghanaCardNumber: savedCustomer?.ghanaCardNumber ?? params.customer?.ghanaCardNumber ?? "" };
   const shownName = displayName(customerName);
   const totalDebtPesewas = result?.totalDebtPesewas ?? 0;
   // Send receipt and Copy receipt show only with VITE_ENABLE_POS_RECEIPTS on (FEATURE_FLAGS.SHOW_POS_RECEIPTS).
   const receiptsOn = isReceiptTemplatesEnabled();
   const receiptText = buildCreditReceiptText(result, shopName);
-  const actions = useReceiptActions(receiptText ?? "", normalizeWhatsAppPhone(phone) ?? "");
   const wide = Boolean(useTaskColumn());
   return (
-    <PosPage className="flex flex-col gap-3">
+    <PosPage className="flex flex-col gap-2">
       <SavedCreditSummary
         name={shownName}
         owesPesewas={totalDebtPesewas}
@@ -1108,26 +1095,19 @@ function CreditSaved({ params, onHome, onNavigate, onSaveCustomerContact, shopNa
       {/* saved_credit_layout (25 Nov 2026, polish 6): Send receipt is always there. Without a phone
           openWhatsApp opens WhatsApp's contact chooser (share sheet), as on a cash or MoMo sale; the dashed
           add-phone button sits under it. */}
-      {wide && receiptsOn && receiptText && (
-        <ReceiptPair
-          send={<SendReceiptButton onClick={() => void actions.send()} className="min-h-14 w-full" />}
-          copy={<CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} className="h-14!" />}
-          online={actions.online}
-          failed={actions.failed}
+      {receiptsOn && receiptText && (
+        <SavedCreditReceiptActions
+          text={receiptText}
+          phone={phone}
+          hasPhone={hasPhone}
+          customer={contact}
+          onSaveCustomerContact={onSaveCustomerContact}
+          onSaved={setAddedContact}
+          wide={wide}
         />
       )}
-      {wide && receiptsOn && !receiptText && <ReceiptFailedLine failed={actions.failed} wide />}
-      {!wide && receiptsOn && receiptText && (
-        <div className="flex flex-col gap-2">
-          <SendReceiptButton onClick={() => void actions.send()} className="min-h-14 w-full" />
-          <ReceiptOfflineLine online={actions.online} />
-        </div>
-      )}
-      {receiptsOn && receiptText && !hasPhone && addPhone}
-      {!wide && receiptsOn && receiptText && <CopyReceiptButton onClick={() => void actions.copy()} copied={actions.copied} />}
-      {!wide && receiptsOn && <ReceiptFailedLine failed={actions.failed} />}
       {result?.debtId && <PosSecondaryButton type="button" className="w-full" onClick={() => onNavigate("DebtorDetail", { debtId: result.debtId, customerName })}>{t("credit.seeDetails", { name: shownName })}</PosSecondaryButton>}
-      <PosPrimaryButton type="button" onClick={onHome} className="mt-auto h-[68px] text-2xl">{t("credit.done")}</PosPrimaryButton>
+      <PosPrimaryButton type="button" onClick={onHome} className="mt-auto h-14 text-2xl">{t("credit.done")}</PosPrimaryButton>
     </PosPage>
   );
 }
