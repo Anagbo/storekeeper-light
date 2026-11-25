@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { Banknote, BarChart3, Check, Home as HomeIcon, List, Menu as MenuIcon, Package, Settings, ShoppingCart, PanelLeft, Smartphone, Split, Store, UserRound, UsersRound, WifiOff } from "lucide-react";
+import { Banknote, BarChart3, Plus, Check, Home as HomeIcon, List, Menu as MenuIcon, Package, Settings, ShoppingCart, PanelLeft, Smartphone, Store, UserRound, UsersRound, WifiOff } from "lucide-react";
 import { formatWeekdayDate } from "../lib/formatDate.js";
 import { posText as t } from "./i18n.js";
 import { useOnline } from "./useOnline.js";
@@ -279,6 +279,12 @@ export function AddButton({ children, plus = true, size = "standard", role, chec
 // The shared payment tile (Sell keypad and Review and pay; rules_global.selected_states, payment tiles).
 // Selected: mint #D1FAE5, 2px #03543F border, icon and label #03543F and a 16px tick badge top-right
 // (never dropped). Not selected: white, 2px #64748B border, #0F172A label. Disabled: #CBD5E1 border, #94A3B8 label.
+// The one selected tick (rules_global.selected_states, ONE TICK MARK): a 16px #03543F filled circle with a
+// white tick. Used by the tiles (top-right corner) and the chips (inline before the label).
+export function TickBadge({ className = "", ...props }) {
+  return <span aria-hidden="true" className={`grid h-4 w-4 shrink-0 place-items-center rounded-full bg-[#03543F] text-white ${className}`} {...props}><Check size={11} strokeWidth={3.5} /></span>;
+}
+
 export function PaymentTile({ icon: Icon, label, selected = false, disabled = false, iconSize = 24, className = "", children, ...props }) {
   const look = disabled
     ? "border-[#CBD5E1] bg-white text-[#94A3B8]"
@@ -290,12 +296,13 @@ export function PaymentTile({ icon: Icon, label, selected = false, disabled = fa
       type="button"
       data-payment-tile=""
       aria-pressed={selected}
+      aria-disabled={disabled || undefined}
       disabled={disabled}
       {...props}
       className={`relative flex min-w-0 flex-col items-center justify-center gap-1 overflow-hidden rounded-[14px] border-2 px-1 text-[15px] font-bold leading-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed ${look} ${className}`}
     >
       {selected && !disabled && (
-        <span data-tile-tick="" aria-hidden="true" className="absolute right-1 top-1 grid h-4 w-4 place-items-center rounded-full bg-[#03543F] text-white"><Check size={11} strokeWidth={3.5} /></span>
+        <TickBadge data-tile-tick="" className="absolute right-1 top-1" />
       )}
       {Icon && <Icon size={iconSize} className="shrink-0" aria-hidden="true" />}
       {children ?? <span className="w-full min-w-0 truncate text-center">{label}</span>}
@@ -333,7 +340,7 @@ export function ChoiceChip({ kind = "choice", selected = false, children, classN
       className={`flex min-h-12 min-w-0 items-center justify-center gap-1 rounded-[14px] border-2 px-1.5 text-center font-extrabold leading-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 disabled:cursor-not-allowed disabled:opacity-60 ${look} ${className}`}
     >
       {kind === "choice" && selected && (
-        <svg aria-hidden="true" data-chip-tick="" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M4 12.5l5 5L20 6.5" /></svg>
+        <TickBadge data-chip-tick="" />
       )}
       {children}
     </button>
@@ -344,9 +351,17 @@ export function PosCard({ children, className = "", ...rest }) {
   return <section {...rest} className={`rounded-2xl border-2 border-slate-600 bg-white p-4 ${className}`}>{children}</section>;
 }
 
-// One split icon for the Sell keypad Split tile (Review keeps the three-icon SplitIcons row).
-export function SplitIcon({ size = 22, className = "" }) {
-  return <Split size={size} className={`shrink-0 ${className}`} aria-hidden="true" />;
+// The original Cash + MoMo + Owe trio for the Sell keypad Split tile: 20px high, 76px wide.
+export function SplitTrio({ className = "" }) {
+  return (
+    <span data-split-trio="" aria-hidden="true" className={`flex h-5 w-[76px] shrink-0 items-center justify-between ${className}`}>
+      <Banknote size={17} className="shrink-0" />
+      <Plus size={10} strokeWidth={3.5} className="shrink-0" />
+      <Smartphone size={17} className="shrink-0" />
+      <Plus size={10} strokeWidth={3.5} className="shrink-0" />
+      <UserRound size={17} className="shrink-0" />
+    </span>
+  );
 }
 
 export function SplitIcons({ withOwe = false, size = 20, className = "" }) {

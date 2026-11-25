@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Banknote, Check, Smartphone } from "lucide-react";
+import { Banknote, Smartphone } from "lucide-react";
 import SearchField from "./SearchField.jsx";
 import { hasSearchText, matchesSearch } from "../lib/searchMatch.js";
 import { db } from "../db/db.js";
@@ -13,7 +13,7 @@ import { PLAN_ERROR } from "../lib/planErrors.js";
 import { addDueCycles, dayAfter, getCreditBalanceAfterSale, getNextCycleDate, isValidDateString, localDateString, PAYMENT_FREQUENCIES, prepareInstallmentPlan } from "../utils/installments.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
 import { getCreditAmountOwedPesewas } from "./creditAmount.js";
-import { AddButton, ChoiceChip, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton, SplitIcons, useTaskColumn, WIDE_TASK_COLUMN_WIDTH_PX } from "./PosComponents.jsx";
+import { AddButton, ChoiceChip, TickBadge, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton, SplitIcons, useTaskColumn, WIDE_TASK_COLUMN_WIDTH_PX } from "./PosComponents.jsx";
 import { SOFT_TILE } from "./softTile.js";
 import { shortSaveName } from "./saveLabel.js";
 import { CopyReceiptButton, ReceiptFailedLine, ReceiptOfflineLine, ReceiptPair, SendReceiptButton, useReceiptActions } from "./ReceiptActions.jsx";
@@ -100,7 +100,7 @@ function CustomerChoice({ customer, selected, onSelect }) {
           <span className="amount-fit">{formatGhs(customer.totalDebtPesewas)}</span>
         </span>
       ))}
-      {selected && <Check size={22} aria-hidden="true" />}
+      {selected && <TickBadge />}
     </button>
   );
 }

@@ -9,7 +9,7 @@ import { requestBackgroundSync } from "../lib/syncRegistration.js";
 import { amountTextToPesewas, COUNT_KEYPAD, countFromKeypadText, MONEY_KEYPAD, pressAmountKey } from "./amountKeypad.js";
 import { posText as t } from "./i18n.js";
 import AmountKeypad from "./AmountKeypad.jsx";
-import { LeaveButton, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
+import { LeaveButton, TickBadge, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton } from "./PosComponents.jsx";
 import { useBackBlock } from "./browserBack.js";
 import { useFormErrors } from "./formErrors.js";
 
@@ -197,7 +197,7 @@ export function MoreCategories({ selected, onSelectedChange, onBack, onDone }) {
               return (
                 <button key={id} type="button" aria-pressed={checked} onClick={() => onSelectedChange(toggleId(selected, id))}
                   className={`min-h-12 rounded-full border-2 px-4 text-base font-bold ${checked ? "border-emerald-900 bg-green-200" : "border-slate-500 bg-white"}`}>
-                  {checked && <Check size={16} className="mr-1 inline" aria-hidden="true" />}{name}
+                  {checked && <TickBadge className="mr-1.5 inline-grid align-middle" />}{name}
                 </button>
               );
             })}

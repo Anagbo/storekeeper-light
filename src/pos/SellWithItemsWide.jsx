@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Banknote, Check, Smartphone, UserRound } from "lucide-react";
 import { formatGhs } from "../lib/money.js";
-import { AddButton, PosBackButton, PosPage, PosPrimaryButton, SplitIcons } from "./PosComponents.jsx";
+import { AddButton, TickBadge, PosBackButton, PosPage, PosPrimaryButton, SplitIcons } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
 import { ItemSearch, ItemTiles, StackedSaleLines, useSellCart } from "./SellItemsParts.jsx";
 import { useItemsSaleSave } from "./useItemsSaleSave.js";
@@ -111,7 +111,7 @@ export default function SellWithItemsWide({ params = {}, layout, onBack, onOther
                   disabled={value !== "cash" && (!hasCart || busy)}
                   className={`${TILE_CLASS} ${selected ? "border-[3px] border-emerald-900 bg-green-200 text-emerald-900" : "border-2 border-slate-500 bg-white text-slate-900 hover:border-slate-700 hover:bg-slate-50"}`}
                 >
-                  {selected && <span aria-hidden="true" className="absolute right-2.5 top-2 grid h-[26px] w-[26px] place-items-center rounded-full bg-emerald-900 text-white"><Check size={16} strokeWidth={3} /></span>}
+                  {selected && <TickBadge className="absolute right-2.5 top-2" />}
                   <Icon size={30} className="shrink-0" aria-hidden="true" />
                   <span className="w-full min-w-0 truncate text-center">{t(label)}</span>
                 </button>
