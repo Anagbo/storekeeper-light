@@ -367,3 +367,30 @@ test("18: Save is two lines (Save / Kwabena A… owes GH₵12,345.00) at 340, 36
     }
   });
 });
+
+// Polish 6: the recent reason chips are multi-select with the ChoiceChip tick, at 340 and 390px.
+test("18: two reason chips both show the tick and join in the field; a second tap removes one (340, 390px)", { skip: browser ? false : "no Chrome or Edge found (set HEADER_TEST_BROWSER)", timeout: 240_000 }, async () => {
+  await with18Browser(async (session, base) => {
+    const { evaluate } = session;
+    const state = () => evaluate(`(() => ({
+      value: document.getElementById("credit-reason").value,
+      ticks: [...document.querySelectorAll("[data-reason-chip]")].filter((c) => c.querySelector("[data-chip-tick]")).map((c) => c.textContent.trim()),
+      pressed: [...document.querySelectorAll("[data-reason-chip][aria-pressed='true']")].map((c) => c.textContent.trim()).sort(),
+      scroll: document.documentElement.scrollWidth <= innerWidth
+    }))()`);
+    for (const width of [340, 390]) {
+      await open18(session, `${base}?case=short`, width, 800);
+      await click(evaluate, "^Rice$");
+      await click(evaluate, "^Water$");
+      let s = await state();
+      assert.equal(s.value, "Rice, Water", `${width}: the field reads the two items joined`);
+      assert.deepEqual(s.ticks.sort(), ["Rice", "Water"], `${width}: both chips show the tick`);
+      assert.deepEqual(s.pressed, ["Rice", "Water"], `${width}: both are pressed`);
+      await click(evaluate, "^Rice$");
+      s = await state();
+      assert.equal(s.value, "Water", `${width}: the second tap removes the item`);
+      assert.deepEqual(s.pressed, ["Water"], `${width}: only Water is selected`);
+      assert.ok(s.scroll, `${width}: no sideways scroll`);
+    }
+  });
+});

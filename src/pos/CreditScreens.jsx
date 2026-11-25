@@ -30,7 +30,7 @@ import { useBackBlock } from "./browserBack.js";
 import { useFormErrors } from "./formErrors.js";
 import AmountTextInput from "./AmountTextInput.jsx";
 import { confirmDirectMomoParts, describeSplitPart, isLockedMomoRow, isUnconfirmedDirectMomo } from "./splitTender.js";
-import { CREDIT_REASON_MAX } from "../lib/creditReason.js";
+import { CREDIT_REASON_MAX, reasonChipSelected, toggleReasonChip } from "../lib/creditReason.js";
 import { findDuplicatePerson, loadKnownCustomers } from "./duplicatePerson.js";
 import DuplicatePersonQuestion from "./DuplicatePersonQuestion.jsx";
 import DateField from "./DateField.jsx";
@@ -347,7 +347,8 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onUpdateParams, onReturnT
     return () => { active = false; };
   }, [reasonCase.kind]);
 
-  // Typing replaces the text; a chip fills it. Kept in the route params with the rest of the draft.
+  // Typing edits the text; a chip adds its text as one more item (joined with ", ") or, when already one of
+  // the items, removes it (polish 6). Kept in the route params with the rest of the draft.
   function changeReason(value) {
     const next = value.slice(0, CREDIT_REASON_MAX);
     setReason(next);
@@ -413,9 +414,9 @@ function WhenWillTheyPay({ params, onBack, onNavigate, onUpdateParams, onReturnT
           {recentReasons.length > 0 && (
             <div role="group" aria-label={t("credit.recentReasons")} data-recent-reasons="" className="flex flex-wrap gap-x-2 gap-y-1.5">
               {recentReasons.map((recent) => (
-                <button key={recent} type="button" data-reason-chip="" onClick={() => changeReason(recent)} className="h-10 max-w-full truncate rounded-full border-2 border-slate-500 bg-white px-3.5 text-base font-bold text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-800">
-                  {recent}
-                </button>
+                <ChoiceChip key={recent} data-reason-chip="" selected={reasonChipSelected(reason, recent)} onClick={() => changeReason(toggleReasonChip(reason, recent))} className="h-10! min-h-10! max-w-full px-3.5 text-[17px] font-bold">
+                  <span className="min-w-0 truncate">{recent}</span>
+                </ChoiceChip>
               ))}
             </div>
           )}

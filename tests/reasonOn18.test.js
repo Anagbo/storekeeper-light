@@ -157,10 +157,21 @@ test("chips: the last three distinct reasons; a tap fills the field; hidden when
   await to18(again);
   assert.deepEqual(chips(again), ["Bread", "rice", "School fees"]);
   await again.type("credit-reason", "Something else");
+  // polish 6: chips are multi-select. A tap adds the text as one more item, a second tap removes it, typed
+  // text counts as an item, and a selected chip shows the pressed state.
+  const pressed = (app) => [...walk(app.view.tree)].filter((node) => node.props?.["data-reason-chip"] !== undefined && node.props["aria-pressed"]).map((node) => textOf(node).trim());
   await again.tap("School fees");
-  assert.equal(reasonField(again).props.value, "School fees");
+  assert.equal(reasonField(again).props.value, "Something else, School fees");
+  await again.tap("Bread");
+  assert.equal(reasonField(again).props.value, "Something else, School fees, Bread");
+  assert.deepEqual(pressed(again).sort(), ["Bread", "School fees"]);
+  await again.tap("School fees");
+  assert.equal(reasonField(again).props.value, "Something else, Bread");
+  assert.deepEqual(pressed(again), ["Bread"]);
+  await again.type("credit-reason", "Bread, Gas");
+  assert.deepEqual(pressed(again), ["Bread"], "typed items keep a chip selected");
   await again.tap(/^Save · /);
-  assert.equal((await latestCredit("Juju")).creditReason, "School fees");
+  assert.equal((await latestCredit("Juju")).creditReason, "Bread, Gas");
 });
 
 test("53: no field on 18; a read-only For row with what was typed, or no row", async () => {

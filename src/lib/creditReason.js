@@ -75,3 +75,25 @@ export function getDebtEntryReason(debt) {
   if (!debt) return "";
   return cleanText(debt.note) || cleanText(debt.description) || cleanText(debt.itemDescription);
 }
+
+// rules_global "Recent reason chip" (polish 6): the What for field is a list of items joined with ", ".
+// A chip is selected when all of its items are in the field; a tap adds its items or removes them. Typed
+// items count too, and the field stays editable. Compared ignoring case.
+const reasonItems = (text) => (typeof text === "string" ? text.split(",").map((part) => part.trim()).filter(Boolean) : []);
+
+export function reasonChipSelected(field, chip) {
+  const have = new Set(reasonItems(field).map((item) => item.toLowerCase()));
+  const wanted = reasonItems(chip);
+  return wanted.length > 0 && wanted.every((item) => have.has(item.toLowerCase()));
+}
+
+export function toggleReasonChip(field, chip) {
+  const items = reasonItems(field);
+  const wanted = reasonItems(chip);
+  if (reasonChipSelected(field, chip)) {
+    const drop = new Set(wanted.map((item) => item.toLowerCase()));
+    return items.filter((item) => !drop.has(item.toLowerCase())).join(", ");
+  }
+  const have = new Set(items.map((item) => item.toLowerCase()));
+  return [...items, ...wanted.filter((item) => !have.has(item.toLowerCase()))].join(", ");
+}
