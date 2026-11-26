@@ -34,11 +34,20 @@ const M = `(() => {
     empty: Boolean(document.querySelector("[data-home-table-empty]"))
   };
 })()`;
-const settled = (app, width, total = 10) => waitFor(async () => {
-  const m = await app.evaluate(M);
-  const sum = m.visible + (m.more ? Number(/^\+(\d+)/.exec(m.more)?.[1]) : 0);
-  return m.txBottom !== null && m.innerWidth === width && m.visible > 0 && sum === total ? m : null;
-}, "Home at " + width);
+// Layout settles after the rows render (the card height follows Owed): return only when two reads in a
+// row are identical, so nothing is measured mid-layout.
+const settled = (app, width, total = 10) => {
+  let last = null;
+  return waitFor(async () => {
+    const m = await app.evaluate(M);
+    const sum = m.visible + (m.more ? Number(/^\+(\d+)/.exec(m.more)?.[1]) : 0);
+    const ready = m.txBottom !== null && m.innerWidth === width && m.visible > 0 && sum === total;
+    const key = JSON.stringify(m);
+    const stable = ready && key === last;
+    last = ready ? key : null;
+    return stable ? m : null;
+  }, "Home at " + width);
+};
 const moreCount = (m) => Number(/^\+(\d+) more · See all$/.exec(m.more)?.[1]);
 
 test("Today's transactions card: Owed sets the height, only whole rows, +N more (1856, 1366 collapsed)", { skip: SKIP, timeout: 600_000 }, async () => {
