@@ -18,6 +18,7 @@ import { useLayoutContext } from "./layout.js";
 import { SOFT_TILE } from "./softTile.js";
 import { findDuplicatePerson, suppliersWithBalances } from "./duplicatePerson.js";
 import DuplicatePersonQuestion from "./DuplicatePersonQuestion.jsx";
+import { PhoneFieldMessage, phoneInputProps, usePhoneCheck } from "./PhoneField.jsx";
 import DateField from "./DateField.jsx";
 import { tidyPersonName } from "../lib/personName.js";
 
@@ -179,6 +180,8 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
   const [showAll, setShowAll] = useState(false);
   const [supplierName, setSupplierName] = useState(params?.stockSupplierName ?? "");
   const [supplierPhone, setSupplierPhone] = useState(params?.stockSupplierPhone ?? "");
+  // Phone (optional) is checked on leaving the field and on Save; its message is under the field.
+  const phoneCheck = usePhoneCheck(supplierPhone);
   const [payBy, setPayBy] = useState(params?.stockPayBy ?? "");
   // Wiring 45: Paid with for the part paid now, asked only when Paid now is above zero.
   const [paidWith, setPaidWith] = useState(params?.stockPaidWith === "momo" ? "momo" : "cash");
@@ -231,7 +234,9 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
   async function save() {
     if (saving || !Number.isSafeInteger(paidPesewas) || paidPesewas < 0 || paidPesewas > amountPesewas) return;
     setError("");
-    if (!formErrors.check()) return;
+    // The new supplier's phone counts only while its fields are shown (something owed, + New supplier).
+    const phoneOk = !(owedPesewas > 0 && isNew) || phoneCheck.check();
+    if (!formErrors.check() || !phoneOk) return;
     if (owedPesewas > 0 && unresolved) {
       (renaming ? nameInput : useThisPerson).current?.focus();
       return;
@@ -315,7 +320,7 @@ export function StockOnCredit({ params, onBack, onUpdateParams, onSaveExpense })
               <div data-new-supplier-fields="" className="flex flex-col gap-2.5 pt-1">
                 <label className="block"><span className="mb-1.5 block text-[15px] font-bold text-slate-600">{t("expense.supplierName")}</span><input ref={nameInput} autoComplete="off" autoCapitalize="words" data-example-placeholder="" placeholder={t("credit.supplierNamePlaceholder")} value={supplierName} onChange={(event) => { setSupplierName(event.target.value); onUpdateParams?.({ stockSupplierName: event.target.value }); }} className={field} /></label>
                 {duplicate?.by === "name" && question}
-                <label className="block"><span className="mb-1.5 block text-[15px] font-bold text-slate-600">{t("expense.supplierPhone")}</span><input type="tel" inputMode="tel" autoComplete="off" data-example-placeholder="" placeholder={t("credit.phonePlaceholder")} value={supplierPhone} onChange={(event) => { setSupplierPhone(event.target.value); onUpdateParams?.({ stockSupplierPhone: event.target.value }); }} className={field} /></label>
+                <label className="block"><span className="mb-1.5 block text-[15px] font-bold text-slate-600">{t("expense.supplierPhone")}</span><input type="tel" inputMode="tel" autoComplete="off" data-example-placeholder="" placeholder={t("credit.phonePlaceholder")} value={supplierPhone} onChange={(event) => { setSupplierPhone(event.target.value); onUpdateParams?.({ stockSupplierPhone: event.target.value }); }} {...phoneInputProps(phoneCheck, "new-supplier-phone-message")} className={phoneCheck.showError ? field.replace("border-slate-500", "border-rose-900") : field} /><PhoneFieldMessage id="new-supplier-phone-message" check={phoneCheck} /></label>
                 {duplicate?.by === "phone" && question}
               </div>
             )}
