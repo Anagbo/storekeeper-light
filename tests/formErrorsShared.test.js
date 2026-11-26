@@ -137,7 +137,7 @@ test("New item: the name error goes once a name is typed; a price error stays un
 test("Edit contact: a bad phone stays named while it is still bad, and goes once it is valid", async () => {
   const { default: CustomerContactEditor } = await loadJsx("src/pos/CustomerContactEditor.jsx");
   const view = render({ type: CustomerContactEditor, props: { customer: { id: 1, name: "Kofi", phone: "" }, onClose() {}, onSave: async () => {} } });
-  const errorBox = () => alerts(view.tree).filter((text) => text.startsWith("Enter a valid Ghana mobile number"));
+  const errorBox = () => alerts(view.tree).filter((text) => text.startsWith("Enter a valid mobile number, like 024 123 4567"));
   type(view, inputs(view.tree)[0], "123");
   assert.equal(errorBox().length, 0, "no box before Save");
   submit(view);

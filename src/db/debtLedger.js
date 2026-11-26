@@ -6,6 +6,7 @@ import { createId } from "../lib/ids.js";
 import { PLAN_ERROR, planError } from "../lib/planErrors.js";
 import { isValidGhanaCardNumber, normalizeGhanaCardNumber } from "../lib/ghanaCardNumber.js";
 import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
+import { INVALID_PHONE_MESSAGE, isValidPhone } from "../lib/phoneNumber.js";
 import { getMomoConfirmedPesewas, getMomoDetails, getMomoVerification, MOMO_VERIFICATION } from "../pos/momoMapping.js";
 import {
   isValidDateString,
@@ -600,8 +601,8 @@ export async function updateCustomerProfile({
     : normalizeGhanaCardNumber(ghanaCardNumber);
 
   if (!cleanName) throw new TypeError("A customer name is required.");
-  if (cleanPhone !== undefined && cleanPhone && !normalizeWhatsAppPhone(cleanPhone)) {
-    throw new TypeError("Enter a valid Ghana mobile number, such as 024 123 4567.");
+  if (cleanPhone !== undefined && !isValidPhone(cleanPhone)) {
+    throw new TypeError(INVALID_PHONE_MESSAGE);
   }
   if (cleanGhanaCardNumber !== undefined && !isValidGhanaCardNumber(cleanGhanaCardNumber)) {
     throw new TypeError("Enter a valid Ghana Card number.");
@@ -781,7 +782,7 @@ export async function updateCustomerPhone({
   now = Date.now()
 }) {
   const normalizedPhone = normalizeWhatsAppPhone(phone);
-  if (!normalizedPhone) throw new TypeError("Enter a valid Ghana WhatsApp number.");
+  if (!normalizedPhone) throw new TypeError(INVALID_PHONE_MESSAGE);
   if (updateAllMatching) {
     const customerName = getCustomerName(debt);
     const customer = await resolveCustomer({ customerId: debt.customerId, name: customerName, now });

@@ -503,7 +503,7 @@ const ENGLISH = Object.freeze({
   "contact.addFor": "Add phone or WhatsApp contact for {name}",
   "contact.explanation": "Save a phone number to enable calls and WhatsApp receipts or reminders.",
   "contact.phoneHint": "Use a Ghana mobile number, for example 024 123 4567.",
-  "contact.invalidPhone": "Enter a valid Ghana mobile number, such as 024 123 4567.",
+  "contact.invalidPhone": "Enter a valid mobile number, like 024 123 4567",
   "contact.save": "Save contact",
   "contact.saving": "Saving…",
   "contact.saveFailed": "Contact details could not be saved. No changes were committed. Try again.",
