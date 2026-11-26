@@ -92,7 +92,8 @@ test("34 New person (returning form, add-debt flow): no error box on a returning
   const view = render({ type: CreditScreens, props: { route: "NewPerson", params: { manualDebt: true, newPersonName: "", newPersonPhone: "024" }, onBack() {}, onNavigate() {}, onUpdateParams() {} } });
   assert.deepEqual(alerts(view.tree), []);
   submit(view);
-  assert.deepEqual(alerts(view.tree), ["Enter the customer’s name."]);
+  // The box names the first problem; the bad phone "024" also gets its own message under its field.
+  assert.deepEqual(new Set(alerts(view.tree)), new Set(["Enter the customer’s name.", "Enter a valid mobile number, like 024 123 4567"]));
 });
 
 test("44 Spent money: \"Enter an amount\" after No, gone once an amount is typed", async () => {

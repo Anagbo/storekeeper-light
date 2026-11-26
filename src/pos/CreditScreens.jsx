@@ -11,7 +11,7 @@ import { formatGhs, toPesewas } from "../lib/money.js";
 import { formatGhanaCard } from "../utils/formatters.js";
 import { PLAN_ERROR } from "../lib/planErrors.js";
 import { addDueCycles, dayAfter, getCreditBalanceAfterSale, getNextCycleDate, isValidDateString, localDateString, PAYMENT_FREQUENCIES, prepareInstallmentPlan } from "../utils/installments.js";
-import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
+import { PhoneFieldMessage, phoneInputProps, usePhoneCheck } from "./PhoneField.jsx";
 import { getCreditAmountOwedPesewas } from "./creditAmount.js";
 import { AddButton, ChoiceChip, TickBadge, PosCard, PosPage, PosPrimaryButton, PosSecondaryButton, PosBackButton, SplitIcons, useTaskColumn, WIDE_TASK_COLUMN_WIDTH_PX } from "./PosComponents.jsx";
 import { SOFT_TILE } from "./softTile.js";
@@ -224,12 +224,12 @@ function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
   const duplicateKey = duplicate ? `${duplicate.by}:${duplicate.person.id || duplicate.person.name}` : "";
   const renaming = Boolean(duplicate && keptAsNew === duplicateKey && duplicate.by === "name");
   const unresolved = Boolean(duplicate && keptAsNew !== duplicateKey) || renaming;
-  const phoneInvalid = Boolean(phone.trim() && !normalizeWhatsAppPhone(phone));
+  // The phone is checked on leaving the field and on Next; its message is under the field (PhoneField).
+  const phoneCheck = usePhoneCheck(phone);
   // Wiring 34 "Error on 34" and rules_global.form_errors: there is no amount field here, so the box
-  // names only the name, phone or card; it shows after Next and goes as soon as that is fixed.
+  // names only the name or card (the phone message is under its field); it shows after Next and goes as soon as that is fixed.
   const formErrors = useFormErrors([
     ["name", name.trim() ? "" : t("credit.nameRequired")],
-    ["phone", phoneInvalid ? t("contact.invalidPhone") : ""],
     ["ghanaCard", isValidGhanaCardNumber(ghanaCardNumber) ? "" : t("credit.invalidGhanaCard")]
   ]);
 
@@ -256,7 +256,8 @@ function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
     event.preventDefault();
     // rules_global.form_fields: the name is saved tidied, a capital first letter per word.
     const cleanName = tidyPersonName(name);
-    if (!formErrors.check()) return;
+    const phoneOk = phoneCheck.check();
+    if (!formErrors.check() || !phoneOk) return;
     // A sale always reaches 34 with its amount (Owe on 15 needs one); without it there is nothing to
     // owe and nothing the owner can fix here, so Next does nothing.
     if (!params.manualDebt && amountOwedPesewas <= 0) return;
@@ -297,8 +298,8 @@ function NewPerson({ params, onBack, onNavigate, onUpdateParams }) {
         {duplicate?.by === "name" && question}
         <label className="block">
           <span className="mb-1 block font-extrabold">{t("credit.phone")}</span>
-          <input type="tel" inputMode="tel" autoComplete="off" data-example-placeholder="" placeholder={t("credit.phonePlaceholder")} value={phone} onChange={(event) => { setPhone(event.target.value); onUpdateParams?.({ newPersonPhone: event.target.value }); }} aria-invalid={phoneInvalid} aria-describedby="new-person-phone-hint" className={`h-14 w-full rounded-2xl border-[3px] px-3 text-lg ${phoneInvalid ? "border-rose-900" : "border-slate-500"}`} />
-          <span id="new-person-phone-hint" className={`text-sm ${phoneInvalid ? "text-rose-900" : "text-slate-700"}`}>{phoneInvalid ? t("contact.invalidPhone") : t("credit.phoneHint")}</span>
+          <input type="tel" inputMode="tel" autoComplete="off" data-example-placeholder="" placeholder={t("credit.phonePlaceholder")} value={phone} onChange={(event) => { setPhone(event.target.value); onUpdateParams?.({ newPersonPhone: event.target.value }); }} {...phoneInputProps(phoneCheck, "new-person-phone-hint", { hint: true })} className={`h-14 w-full rounded-2xl border-[3px] px-3 text-lg ${phoneCheck.showError ? "border-rose-900" : "border-slate-500"}`} />
+          <PhoneFieldMessage id="new-person-phone-hint" check={phoneCheck} hint={t("credit.phoneHint")} />
         </label>
         {duplicate?.by === "phone" && question}
         <label className="block">
