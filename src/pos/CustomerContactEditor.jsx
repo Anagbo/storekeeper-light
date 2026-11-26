@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { isValidGhanaCardNumber, normalizeGhanaCardNumber } from "../lib/ghanaCardNumber.js";
 import { formatGhanaCard } from "../utils/formatters.js";
-import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
+import { PhoneFieldMessage, phoneInputProps, usePhoneCheck } from "./PhoneField.jsx";
 import { PosPrimaryButton, PosSecondaryButton } from "./PosComponents.jsx";
 import { posText as t } from "./i18n.js";
 import { displayName } from "../lib/displayName.js";
@@ -15,10 +15,10 @@ export default function CustomerContactEditor({ customer, onClose, onSave }) {
   useBackBlock(busy);
   useBackHandler(true, onClose);
   const [error, setError] = useState("");
-  const phoneInvalid = Boolean(phone.trim() && !normalizeWhatsAppPhone(phone));
+  // The phone is checked on leaving the field and on Save; its message is under the field (PhoneField).
+  const phoneCheck = usePhoneCheck(phone);
   // rules_global.form_errors: shown after Save with a problem, gone as soon as it is fixed.
   const formErrors = useFormErrors([
-    ["phone", phoneInvalid ? t("contact.invalidPhone") : ""],
     ["ghanaCard", isValidGhanaCardNumber(ghanaCardNumber) ? "" : t("credit.invalidGhanaCard")]
   ]);
 
@@ -26,7 +26,8 @@ export default function CustomerContactEditor({ customer, onClose, onSave }) {
     event.preventDefault();
     if (busy) return;
     setError("");
-    if (!formErrors.check()) return;
+    const phoneOk = phoneCheck.check();
+    if (!formErrors.check() || !phoneOk) return;
 
     setBusy(true);
     setError("");
@@ -63,11 +64,10 @@ export default function CustomerContactEditor({ customer, onClose, onSave }) {
               onChange={(event) => { setPhone(event.target.value); setError(""); }}
               data-example-placeholder=""
               placeholder={t("credit.phonePlaceholder")}
-              aria-invalid={phoneInvalid}
-              aria-describedby="contact-phone-hint"
-              className={`mt-1 h-14 w-full rounded-2xl border-[3px] px-3 text-lg font-normal ${phoneInvalid ? "border-rose-900" : "border-slate-500"}`}
+              {...phoneInputProps(phoneCheck, "contact-phone-hint", { hint: true })}
+              className={`mt-1 h-14 w-full rounded-2xl border-[3px] px-3 text-lg font-normal ${phoneCheck.showError ? "border-rose-900" : "border-slate-500"}`}
             />
-            <span id="contact-phone-hint" className={`text-sm font-normal ${phoneInvalid ? "text-rose-900" : "text-slate-700"}`}>{phoneInvalid ? t("contact.invalidPhone") : t("contact.phoneHint")}</span>
+            <PhoneFieldMessage id="contact-phone-hint" check={phoneCheck} hint={t("contact.phoneHint")} />
           </label>
           <label className="block font-bold">
             {t("credit.ghanaCard")}
