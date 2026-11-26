@@ -2,7 +2,7 @@ import { Banknote, Phone } from "lucide-react";
 import { displayName } from "../lib/displayName.js";
 import { formatGhs } from "../lib/money.js";
 import { localDateString } from "../utils/installments.js";
-import { normalizeWhatsAppPhone } from "../utils/whatsapp.js";
+import { hasUsablePhone } from "../lib/phoneNumber.js";
 import { posText as t } from "./i18n.js";
 import { AddButton, PosStatusTag } from "./PosComponents.jsx";
 
@@ -35,7 +35,7 @@ export function DueTag({ dueDate, today, wording = "person", large = false }) {
 
 // A Call link only for a valid phone number; never a greyed, disabled Call button (46 suppliers).
 export function callHrefFor(phone) {
-  if (!normalizeWhatsAppPhone(phone)) return "";
+  if (!hasUsablePhone(phone)) return "";
   return `tel:${String(phone).replace(/[^\d+]/g, "")}`;
 }
 
